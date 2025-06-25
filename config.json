@@ -1,0 +1,23 @@
+{
+  "default_model": "deepseek-r1:32b",
+  "default_temperature": 0.7,
+  "default_personality": "Family members.aunt",
+  "auto_save_enabled": true,
+  "spellcheck_enabled": true,
+  "window_size": {
+    "width": 1200,
+    "height": 800
+  },
+  "chat_settings": {
+    "max_tokens": 2048,
+    "top_p": 0.9,
+    "frequency_penalty": 0.0,
+    "presence_penalty": 0.0
+  },
+  "enhancement_enabled": false,
+  "history_enabled": true,
+  "wordwrap_enabled": true,
+  "json_format_enabled": false,
+  "verbose_enabled": false,
+  "think_enabled": false
+}
