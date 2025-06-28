@@ -192,6 +192,7 @@ The application uses `config.json` for default settings:
 ```
 
 ### Available Models
+Download models from Ollamas official site..
 https://ollama.com/search
 
 ## 🏗️ Project Structure
