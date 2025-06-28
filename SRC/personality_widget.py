@@ -1,9 +1,14 @@
+"""
+Personality Widget - Extracted from ollama_chat.py
+Handles personality selection and display.
+"""
+
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
                                QComboBox, QPushButton, QTextEdit, QLineEdit,
                                QFormLayout, QGroupBox, QCheckBox, QSpinBox,
                                QMessageBox, QListWidget, QSplitter, QTabWidget)
 from PySide6.QtCore import Signal, Qt
-from personality_model import PersonalityModel, PersonalityTraits, PersonalityPrompt, PersonalityConfig, PersonalityMetadata
+from SRC.Personalities.personality_model_refactored import PersonalityModel, PersonalityTraits, PersonalityPrompt, PersonalityConfig, PersonalityMetadata
 
 class PersonalityWidget(QWidget):
     """Widget for managing AI personalities"""

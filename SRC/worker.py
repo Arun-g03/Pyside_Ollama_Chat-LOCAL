@@ -47,6 +47,9 @@ class Worker(QObject):
                         chunk = json.loads(line)
                         content = chunk.get("message", {}).get("content", "")
                         self.stream_chunk_signal.emit(content)
+                        # Check for 'done' flag
+                        if chunk.get("done", False):
+                            break
         except Exception as e:
             self.update_message_signal.emit(f"Error: {str(e)}")
         finally:

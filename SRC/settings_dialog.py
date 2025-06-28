@@ -3,7 +3,7 @@ from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel,
                                QFormLayout, QGroupBox, QMessageBox, QTabWidget,
                                QWidget)
 from PySide6.QtCore import Qt, QTimer
-from config_manager import ConfigManager
+from SRC.config_manager import ConfigManager
 
 class SettingsDialog(QDialog):
     """Dialog for configuring application settings"""
