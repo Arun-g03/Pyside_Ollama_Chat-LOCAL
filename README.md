@@ -205,15 +205,39 @@ Pyside_Chat/
 ├── SRC/                   # Source code
 │   ├── ollama_chat.py     # Main chat interface
 │   ├── personality_widget.py # Personality management
-│   ├── personality_model.py  # Personality data model
 │   ├── settings_dialog.py    # Settings interface
 │   ├── config_manager.py     # Configuration management
 │   ├── complexity_widget.py  # Complexity analysis UI
 │   ├── complexity_analyzer.py # Complexity analysis logic
 │   ├── worker.py          # Background worker
 │   ├── styles.py          # UI styling
-│   └── utils.py           # Utility functions
-├── personalities/         # Personality definitions
+│   ├── utils.py           # Utility functions
+│   ├── ui/                # User interface components
+│   │   ├── chat_tab.py    # Chat interface tab
+│   │   ├── model_tab.py   # Model selection tab
+│   │   ├── personality_tab.py # Personality management tab
+│   │   ├── spellchecker_widget.py # Spellchecker UI
+│   │   └── Widgets/       # Reusable UI widgets
+│   ├── services/          # Business logic services
+│   │   ├── ollama_service.py # Ollama API integration
+│   │   ├── conversation_service.py # Conversation management
+│   │   └── enhancement_service.py # Text enhancement features
+│   ├── models/            # Data models
+│   │   └── conversation_metadata.py # Conversation data structures
+│   ├── utils/             # Utility modules
+│   │   ├── message_formatter.py # Message formatting utilities
+│   │   └── streaming_handler.py # Streaming response handling
+│   └── Personalities/     # Personality system
+│       ├── personality_model_refactored.py # Personality data model
+│       ├── models/        # Personality data structures
+│       │   ├── personality_types.py # Personality type definitions
+│       │   └── personality_pronouns.py # Pronoun handling
+│       ├── services/      # Personality business logic
+│       │   ├── personality_service.py # Personality management
+│       │   └── personality_loader.py # Personality loading utilities
+│       └── utils/         # Personality utilities
+│           └── personality_formatter.py # Personality formatting
+├── personality_Profiles/  # Personality definitions
 │   ├── Family members/    # Family-related personalities
 │   ├── Professions/       # Professional personalities
 │   ├── relationships/     # Relationship-based personalities
@@ -221,7 +245,8 @@ Pyside_Chat/
 │   └── Specialists/       # Specialist personalities
 ├── DOCUMENTATION/         # Project documentation
 ├── chat_history/          # Conversation history storage
-├── tests/                 # Test files
+├── chat_env/              # Chat environment files
+├── @/                     # Additional resources
 └── utils/                 # Utility scripts
 ```
 
@@ -278,9 +303,6 @@ This project is licensed under the MIT License with the following conditions:
 - You must include the original copyright notice and license
 - You cannot redistribute this as a standalone product
 - You cannot claim this work as your own
-
-
-
 
 ## 🤝 Contributing
 
