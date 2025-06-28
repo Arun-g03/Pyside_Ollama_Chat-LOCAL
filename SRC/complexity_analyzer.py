@@ -373,19 +373,24 @@ class RequestComplexityAnalyzer:
 
     def get_model_recommendation(self, complexity_metrics: ComplexityMetrics, available_models: List[str]) -> str:
         """Get model recommendation based on complexity analysis"""
-        if complexity_metrics.level in [ComplexityLevel.SIMPLE, ComplexityLevel.MEDIUM]:
-            # Prefer 7B models for speed
-            for model in available_models:
-                if '7b' in model.lower() or '7b' in model.lower():
-                    return model
-        else:
-            # Prefer larger models for complex tasks
-            for model in available_models:
-                if '32b' in model.lower() or '70b' in model.lower():
-                    return model
+        # Extract model sizes from names (e.g., 1.5b, 3b, 7b, 32b, 70b)
+        def extract_size(model_name):
+            import re
+            match = re.search(r'(\d+(?:\.\d+)?)[bB]', model_name)
+            return float(match.group(1)) if match else float('inf')
         
-        # Fallback to first available model
-        return available_models[0] if available_models else "deepseek-r1:7b"
+        # Sort models by size ascending
+        sorted_models = sorted(available_models, key=extract_size)
+        
+        if complexity_metrics.level == ComplexityLevel.SIMPLE:
+            # Use the smallest model
+            return sorted_models[0] if sorted_models else available_models[0] if available_models else "deepseek-r1:7b"
+        elif complexity_metrics.level == ComplexityLevel.MEDIUM:
+            # Use the next smallest (if available), else smallest
+            return sorted_models[1] if len(sorted_models) > 1 else (sorted_models[0] if sorted_models else available_models[0] if available_models else "deepseek-r1:7b")
+        else:
+            # Use the largest model
+            return sorted_models[-1] if sorted_models else available_models[0] if available_models else "deepseek-r1:7b"
 
     def format_complexity_report(self, metrics: ComplexityMetrics) -> str:
         """Format complexity analysis as a readable report"""

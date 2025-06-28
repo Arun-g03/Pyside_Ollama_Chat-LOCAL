@@ -217,4 +217,16 @@ class ConfigManager:
     
     def set_think_enabled(self, enabled: bool) -> bool:
         """Set think mode enabled/disabled"""
-        return self.set("think_enabled", enabled) 
+        return self.set("think_enabled", enabled)
+    
+    def get_max_tokens(self):
+        return self.config.get('chat_settings', {}).get('max_tokens', 2048)
+    
+    def get_top_p(self):
+        return self.config.get('chat_settings', {}).get('top_p', 0.9)
+    
+    def get_frequency_penalty(self):
+        return self.config.get('chat_settings', {}).get('frequency_penalty', 0.0)
+    
+    def get_presence_penalty(self):
+        return self.config.get('chat_settings', {}).get('presence_penalty', 0.0) 

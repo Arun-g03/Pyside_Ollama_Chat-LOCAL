@@ -278,6 +278,31 @@ class ConversationManager(QObject):
             print(f"Failed to delete {filepath}: {e}")
             return False
     
+    def rename_conversation(self, old_filepath: str, new_filepath: str) -> bool:
+        """
+        Rename a conversation file and update references
+        
+        Args:
+            old_filepath: Original file path
+            new_filepath: New file path
+            
+        Returns:
+            True if renamed successfully, False otherwise
+        """
+        try:
+            # Rename the file
+            os.rename(old_filepath, new_filepath)
+            
+            # Update current conversation file reference if this was the current one
+            if self.metadata.current_conversation_file == old_filepath:
+                self.metadata.current_conversation_file = new_filepath
+                self.metadata_updated.emit()
+            
+            return True
+        except Exception as e:
+            print(f"Failed to rename {old_filepath} to {new_filepath}: {e}")
+            return False
+    
     def clear_current_conversation(self) -> None:
         """Clear current conversation metadata"""
         self.metadata.reset()

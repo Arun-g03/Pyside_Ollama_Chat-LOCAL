@@ -11,6 +11,7 @@ from PySide6.QtCore import Signal, Qt, QTimer, QThread, QEvent
 from PySide6.QtGui import QTextCursor, QFont, QAction
 
 from SRC.ui.spellchecker_widget import SpellCheckerTextEdit
+from SRC.ui.Widgets.chat_navigation import ChatNavigationWidget
 from SRC.utils.message_formatter import MessageFormatter
 from SRC.utils.streaming_handler import StreamingHandler
 
@@ -21,10 +22,16 @@ class ChatTab(QWidget):
     # Signals
     message_sent = Signal(str)  # Emitted when user sends a message
     message_cancelled = Signal()  # Emitted when user cancels a message
+    conversation_selected = Signal(str)  # Emitted when a conversation is selected
+    conversation_deleted = Signal(str)   # Emitted when a conversation is deleted
+    conversation_renamed = Signal(str, str)  # Emitted when a conversation is renamed (old_path, new_path)
+    new_conversation_requested = Signal() # Emitted when new conversation is requested
+    append_response_signal = Signal(str, object)  # chunk, model_name
     
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, conversation_manager=None):
         super().__init__(parent)
         self.parent = parent
+        self.conversation_manager = conversation_manager
         self.setup_ui()
         self.setup_streaming_handler()
         self.setup_connections()
@@ -39,19 +46,39 @@ class ChatTab(QWidget):
     def setup_ui(self):
         """Setup the chat interface UI"""
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
         
-        # Create splitter for chat and controls
-        splitter = QSplitter(Qt.Vertical)
-        layout.addWidget(splitter)
+        # Create horizontal splitter for navigation and chat
+        main_splitter = QSplitter(Qt.Horizontal)
+        layout.addWidget(main_splitter)
+        
+        # Navigation panel (left side)
+        if self.conversation_manager:
+            self.navigation_widget = ChatNavigationWidget(self.conversation_manager, self)
+            self.navigation_widget.setMaximumWidth(300)
+            self.navigation_widget.setMinimumWidth(200)
+            main_splitter.addWidget(self.navigation_widget)
+        
+        # Chat area (right side)
+        chat_widget = QWidget()
+        chat_layout = QVBoxLayout(chat_widget)
+        chat_layout.setContentsMargins(0, 0, 0, 0)
+        
+        # Create vertical splitter for chat display and controls
+        chat_splitter = QSplitter(Qt.Vertical)
+        chat_layout.addWidget(chat_splitter)
         
         # Chat display area
-        self.setup_chat_display(splitter)
+        self.setup_chat_display(chat_splitter)
         
         # Controls area
-        self.setup_controls(splitter)
+        self.setup_controls(chat_splitter)
         
         # Set splitter proportions
-        splitter.setSizes([600, 200])
+        chat_splitter.setSizes([600, 200])
+        main_splitter.setSizes([250, 950])  # Navigation: 250px, Chat: 950px
+        
+        main_splitter.addWidget(chat_widget)
         
     def setup_chat_display(self, parent):
         """Setup the chat display area"""
@@ -208,6 +235,15 @@ class ChatTab(QWidget):
         # Connect personality combo
         self.personality_combo.currentTextChanged.connect(self.on_personality_combo_changed)
         
+        # Connect navigation widget signals
+        if hasattr(self, 'navigation_widget'):
+            self.navigation_widget.conversation_selected.connect(self.conversation_selected.emit)
+            self.navigation_widget.conversation_deleted.connect(self.conversation_deleted.emit)
+            self.navigation_widget.conversation_renamed.connect(self.conversation_renamed.emit)
+            self.navigation_widget.new_conversation_requested.connect(self.new_conversation_requested.emit)
+        # Thread-safe response appending
+        self.append_response_signal.connect(self.append_response_chunk)
+        
     def eventFilter(self, obj, event):
         """Handle key events in message input"""
         if obj == self.message_input and event.type() == QEvent.Type.KeyPress:
@@ -250,13 +286,14 @@ class ChatTab(QWidget):
         tag = "user" if sender == "You" else "ai"
         self.streaming_handler.append_message(sender, message, is_code, tag)
         
-    def append_response_chunk(self, chunk: str):
+    def append_response_chunk(self, chunk: str, model_name: str = None):
         """Append a streaming response chunk"""
         if not self.is_streaming:
             self.start_streaming()
         self.current_response += chunk
+        label = f"Assistant ({model_name})" if model_name else "Assistant"
         self.streaming_handler.update_streaming_message(
-            self.current_response, "Assistant", None, False, tag="ai"
+            self.current_response, label, None, False, tag="ai"
         )
         
     def start_streaming(self):
@@ -284,16 +321,14 @@ class ChatTab(QWidget):
     def update_model_list(self, models: list):
         """Update the model dropdown"""
         current_model = self.model_combo.currentText()
-        
         self.model_combo.clear()
+        self.model_combo.addItem("Auto")
         self.model_combo.addItems(models)
-        
         # Restore previous selection if it still exists
-        if current_model and current_model in models:
+        if current_model and current_model in ["Auto"] + models:
             self.model_combo.setCurrentText(current_model)
         elif models:
             self.model_combo.setCurrentIndex(0)
-            
         self.current_model = self.model_combo.currentText()
     
     def update_personality_list(self, personalities: list):
@@ -378,6 +413,54 @@ class ChatTab(QWidget):
                 QMessageBox.information(self, "Success", "Chat loaded successfully!")
             except Exception as e:
                 QMessageBox.critical(self, "Error", f"Failed to load chat: {str(e)}")
+    
+    def load_conversation(self, filepath: str):
+        """Load a conversation from the conversation manager"""
+        try:
+            if self.conversation_manager:
+                conversation, metadata = self.conversation_manager.load_conversation(filepath)
+                
+                # Clear current chat display
+                self.clear_chat()
+                # Clear in-memory conversation history
+                if hasattr(self.parent, 'conversation_service'):
+                    self.parent.conversation_service.clear_conversation()
+                
+                # Display conversation messages
+                for message in conversation:
+                    role = message.get("role", "unknown")
+                    content = message.get("content", "")
+                    
+                    if role == "user":
+                        self.append_to_chat("You", content)
+                    elif role == "assistant":
+                        self.append_to_chat("Assistant", content)
+                    elif role == "system":
+                        self.append_to_chat("System", content)
+                
+                # Update navigation widget
+                if hasattr(self, 'navigation_widget'):
+                    self.navigation_widget.set_current_conversation(filepath)
+                
+                # Update model and personality if available in metadata
+                if metadata.model and metadata.model in [self.model_combo.itemText(i) for i in range(self.model_combo.count())]:
+                    self.model_combo.setCurrentText(metadata.model)
+                
+                if metadata.personality and metadata.personality in [self.personality_combo.itemText(i) for i in range(self.personality_combo.count())]:
+                    self.personality_combo.setCurrentText(metadata.personality)
+                
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to load conversation: {str(e)}")
+    
+    def refresh_navigation(self):
+        """Refresh the navigation widget"""
+        if hasattr(self, 'navigation_widget'):
+            self.navigation_widget.refresh_conversations()
+    
+    def set_current_conversation_file(self, filepath: str):
+        """Set the current conversation file in the navigation widget"""
+        if hasattr(self, 'navigation_widget'):
+            self.navigation_widget.set_current_conversation(filepath)
 
     def on_message_cancelled(self):
         """Handle message cancellation"""

@@ -7,6 +7,7 @@ from PySide6.QtWidgets import (QMainWindow, QTabWidget, QVBoxLayout, QWidget, QS
                                QMenuBar, QMenu, QToolBar, QMessageBox)
 from PySide6.QtCore import QTimer, QThread
 from PySide6.QtGui import QIcon, QAction
+import os
 
 # Import extracted components
 from SRC.ui.chat_tab import ChatTab
@@ -101,7 +102,7 @@ class OllamaChat(QMainWindow):
         main_layout.addWidget(self.tabs)
         
         # Create and add tabs
-        self.chat_tab = ChatTab(self)
+        self.chat_tab = ChatTab(self, self.conversation_manager)
         self.model_tab = ModelTab(self)
         self.personality_tab = PersonalityTab(self)
         
@@ -199,6 +200,10 @@ class OllamaChat(QMainWindow):
         # Connect chat tab signals
         self.chat_tab.message_sent.connect(self.on_message_sent)
         self.chat_tab.message_cancelled.connect(self.on_message_cancelled)
+        self.chat_tab.conversation_selected.connect(self.on_conversation_selected)
+        self.chat_tab.conversation_deleted.connect(self.on_conversation_deleted)
+        self.chat_tab.conversation_renamed.connect(self.on_conversation_renamed)
+        self.chat_tab.new_conversation_requested.connect(self.new_conversation)
         
         # Connect model tab signals
         self.model_tab.model_pull_requested.connect(self.ollama_service.pull_model)
@@ -253,40 +258,63 @@ class OllamaChat(QMainWindow):
     
     def send_to_ollama(self, message):
         """Send message to Ollama and handle response asynchronously"""
-        # Prepare messages for Ollama
+        # Always append the user message first if not already present
         messages = self.conversation_service.get_messages()
+        if not messages or messages[-1].get("role") != "user" or messages[-1].get("content") != message:
+            self.conversation_service.add_message("user", message)
+            messages = self.conversation_service.get_messages()
         print("DEBUG: Messages before sending:", messages)
+        
+        # Add system prompt if needed (at the start)
         if messages:
             system_prompt = self.personality_tab.personality_model.build_comprehensive_system_prompt()
-            if system_prompt:
+            if system_prompt and (not messages or messages[0].get("role") != "system"):
                 messages = [{"role": "system", "content": system_prompt}] + messages
         
         # Get current model
         model = self.chat_tab.get_current_model()
+        available_models = self.ollama_service.get_models() or []
+        chosen_model = model
+        
+        # Auto model selection using complexity checker
+        if model == "Auto":
+            from SRC.complexity_analyzer import RequestComplexityAnalyzer
+            analyzer = RequestComplexityAnalyzer()
+            # Use only the last user message for complexity
+            complexity_metrics = analyzer.analyze_complexity(message, messages)
+            chosen_model = analyzer.get_model_recommendation(complexity_metrics, available_models)
+            # Insert a system message about the chosen model (after user message, before AI response)
+            system_info = f"Using model {chosen_model} (auto-selected based on request complexity)"
+            self.conversation_service.add_message("system", system_info)
+            self.chat_tab.append_to_chat("System", system_info)
+            messages = self.conversation_service.get_messages()
         
         # Create worker thread for async communication
         self.worker_thread = QThread()
         self.worker = Worker()
         self.worker.moveToThread(self.worker_thread)
         
+        # Store the chosen model for this response
+        self._current_response_model = chosen_model
+
         # Connect worker signals
-        self.worker.stream_chunk_signal.connect(self.chat_tab.append_response_chunk)
+        self.worker.stream_chunk_signal.connect(lambda chunk: self.chat_tab.append_response_signal.emit(chunk, self._current_response_model if model == "Auto" else None))
         self.worker.finished_signal.connect(self.on_worker_finished)
         self.worker.update_message_signal.connect(self.on_worker_error)
         
         # Connect thread signals
         self.worker_thread.started.connect(
             lambda: self.worker.run_stream(
-                f"{self.ollama_service.base_url}/chat",
-                {
-                    "model": model,
-                    "messages": messages,
-                    "temperature": self.chat_tab.get_temperature(),
-                    "stream": True
-                }
+                messages,
+                chosen_model,
+                self.chat_tab.get_temperature(),
+                self.config_manager.get_ollama_url(),
+                self.config_manager.get_max_tokens(),
+                self.config_manager.get_top_p(),
+                self.config_manager.get_frequency_penalty(),
+                self.config_manager.get_presence_penalty(),
             )
         )
-        
         # Start the worker thread
         self.worker_thread.start()
 
@@ -295,9 +323,16 @@ class OllamaChat(QMainWindow):
         # Add final response to conversation
         final_response = self.chat_tab.get_current_response()
         self.conversation_service.add_message("assistant", final_response)
-        self.conversation_manager.auto_save_conversation(
+        
+        # Save conversation and get the filepath
+        saved_filepath = self.conversation_manager.auto_save_conversation(
             self.conversation_service.get_messages()
         )
+        
+        # Update navigation widget with current conversation file
+        if saved_filepath:
+            self.chat_tab.set_current_conversation_file(saved_filepath)
+            self.chat_tab.refresh_navigation()
         
         # Stop streaming and clean up
         self.on_message_finished()
@@ -335,6 +370,55 @@ class OllamaChat(QMainWindow):
         
         # Update the chat tab
         self.chat_tab.on_message_cancelled()
+    
+    def on_conversation_selected(self, filepath: str):
+        """Handle conversation selection from navigation"""
+        try:
+            # Load the selected conversation
+            self.chat_tab.load_conversation(filepath)
+            
+            # Update conversation service with loaded messages
+            conversation, metadata = self.conversation_manager.load_conversation(filepath)
+            self.conversation_service.conversation = conversation.copy()
+            
+            # Update status
+            self.status_var = f"Loaded conversation: {metadata.get_display_info()}"
+            self.status_bar.showMessage(self.status_var)
+            
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to load conversation: {str(e)}")
+    
+    def on_conversation_deleted(self, filepath: str):
+        """Handle conversation deletion from navigation"""
+        try:
+            # If the deleted conversation was the current one, clear the chat
+            if (self.conversation_manager.get_current_metadata().current_conversation_file == filepath):
+                self.conversation_service.clear_conversation()
+                self.chat_tab.clear_chat()
+                self.conversation_manager.clear_current_conversation()
+            
+            # Update status
+            self.status_var = "Conversation deleted"
+            self.status_bar.showMessage(self.status_var)
+            
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to handle conversation deletion: {str(e)}")
+    
+    def on_conversation_renamed(self, old_filepath: str, new_filepath: str):
+        """Handle conversation rename from navigation"""
+        try:
+            # Update the current conversation file reference in the chat tab
+            if self.conversation_manager.get_current_metadata().current_conversation_file == new_filepath:
+                self.chat_tab.set_current_conversation_file(new_filepath)
+            
+            # Update status
+            old_name = os.path.basename(old_filepath)
+            new_name = os.path.basename(new_filepath)
+            self.status_var = f"Renamed conversation: {old_name} → {new_name}"
+            self.status_bar.showMessage(self.status_var)
+            
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to handle conversation rename: {str(e)}")
     
     def on_personality_changed(self, personality_name):
         """Handle personality changes"""
@@ -402,6 +486,11 @@ class OllamaChat(QMainWindow):
             # Optionally, reset conversation manager metadata object
             from SRC.models.conversation_metadata import ConversationMetadata
             self.conversation_manager.metadata = ConversationMetadata()
+            
+            # Refresh navigation widget
+            self.chat_tab.refresh_navigation()
+            self.chat_tab.set_current_conversation_file(None)
+            
             self.status_var = "Started new conversation"
             self.status_bar.showMessage(self.status_var)
     
