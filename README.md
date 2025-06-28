@@ -192,29 +192,7 @@ The application uses `config.json` for default settings:
 ```
 
 ### Available Models
-- `deepseek-r1:32b` (default)
-- `llama3.2:3b`
-- `llama3.2:7b`
-- `llama3.2:70b`
-- `mistral:7b`
-- `qwen2.5:7b`
-- `qwen2.5:14b`
-- `qwen2.5:32b`
-- `qwen2.5:72b`
-- `phi3.5:3.8b`
-- `phi3.5:14b`
-- `gemma2:2b`
-- `gemma2:9b`
-- `gemma2:27b`
-- `codellama:7b`
-- `codellama:13b`
-- `codellama:34b`
-- `codellama:70b`
-- `neural-chat:7b`
-- `neural-chat:14b`
-- `llava:7b`
-- `llava:13b`
-- `llava:34b`
+https://ollama.com/search
 
 ## 🏗️ Project Structure
 
