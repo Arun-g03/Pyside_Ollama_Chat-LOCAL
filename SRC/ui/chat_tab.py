@@ -42,6 +42,18 @@ class ChatTab(QWidget):
         self.is_streaming = False
         self.current_response = ""
         
+        # Apply sleek style to all QSplitters in this tab
+        self.setStyleSheet("""
+            QSplitter::handle {
+                background: #232323;
+                border: none;
+                width: 3px;
+                border-radius: 2px;
+            }
+            QSplitter::handle:hover {
+                background: #444444;
+            }
+        """)
         
     def setup_ui(self):
         """Setup the chat interface UI"""

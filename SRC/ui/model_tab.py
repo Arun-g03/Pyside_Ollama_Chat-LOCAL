@@ -30,6 +30,19 @@ class ModelTab(QWidget):
         self.models = []
         self.operation_in_progress = False
         
+        # Apply sleek style to all QSplitters in this tab
+        self.setStyleSheet("""
+            QSplitter::handle {
+                background: #232323;
+                border: none;
+                width: 3px;
+                border-radius: 2px;
+            }
+            QSplitter::handle:hover {
+                background: #444444;
+            }
+        """)
+        
     def setup_ui(self):
         """Setup the model management UI"""
         layout = QVBoxLayout(self)

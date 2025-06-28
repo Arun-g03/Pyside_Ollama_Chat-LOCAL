@@ -37,6 +37,19 @@ class PersonalityWidget(QWidget):
         
         # Personality management tab
         self.setup_management_tab()
+        
+        # Apply sleek style to all QSplitters in this widget
+        self.setStyleSheet("""
+            QSplitter::handle {
+                background: #232323;
+                border: none;
+                width: 3px;
+                border-radius: 2px;
+            }
+            QSplitter::handle:hover {
+                background: #444444;
+            }
+        """)
     
     def setup_selection_tab(self):
         """Setup the personality selection tab"""
