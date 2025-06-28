@@ -67,6 +67,7 @@ class Worker(QObject):
                     if line:
                         chunk = json.loads(line)
                         content = chunk.get("message", {}).get("content", "")
+                        #print("STREAM CHUNK:", content)
                         self.stream_chunk_signal.emit(content)
                         if chunk.get("done", False):
                             break

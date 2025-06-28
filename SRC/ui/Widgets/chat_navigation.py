@@ -129,10 +129,10 @@ class ChatNavigationWidget(QWidget):
                 background-color: #3d3d3d;
             }
             QListWidget::item:selected {
-                background-color: #0078d4;
+                background-color: #444444;
             }
             QListWidget::item:selected:active {
-                background-color: #106ebe;
+                background-color: #555555;
             }
         """)
         layout.addWidget(self.conversations_list)

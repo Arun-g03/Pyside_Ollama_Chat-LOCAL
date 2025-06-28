@@ -7,7 +7,7 @@ from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QTextEdit,
                                QPushButton, QComboBox, QSlider, QLabel, QSplitter,
                                QScrollArea, QFrame, QMenuBar, QMenu,
                                QFileDialog, QMessageBox, QProgressBar)
-from PySide6.QtCore import Signal, Qt, QTimer, QThread, QEvent
+from PySide6.QtCore import Signal, Qt, QTimer, QThread, QEvent, QCoreApplication
 from PySide6.QtGui import QTextCursor, QFont, QAction
 
 from SRC.ui.spellchecker_widget import SpellCheckerTextEdit
@@ -41,6 +41,8 @@ class ChatTab(QWidget):
         self.temperature = 0.7
         self.is_streaming = False
         self.current_response = ""
+        self.last_message_type = None  # Track last message type
+        self.last_system_message_widget = None  # Track last system message widget (if using custom widgets)
         
         # Apply sleek style to all QSplitters in this tab
         self.setStyleSheet("""
@@ -91,6 +93,92 @@ class ChatTab(QWidget):
         main_splitter.setSizes([250, 950])  # Navigation: 250px, Chat: 950px
         
         main_splitter.addWidget(chat_widget)
+        
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #232323;
+                color: #fff;
+            }
+            QTabWidget::pane {
+                border: 1px solid #444;
+                border-radius: 6px;
+                background: #232323;
+            }
+            QTabBar::tab {
+                background: #232323;
+                color: #fff;
+                border: 1px solid #444;
+                border-bottom: none;
+                border-radius: 6px 6px 0 0;
+                padding: 8px 18px;
+                font-size: 14px;
+            }
+            QTabBar::tab:selected {
+                background: #2d2d2d;
+                color: #fff;
+                border-bottom: 2px solid #0078d4;
+            }
+            QGroupBox {
+                border: 1px solid #444;
+                border-radius: 8px;
+                margin-top: 16px;
+                font-weight: bold;
+                color: #fff;
+            }
+            QGroupBox:title {
+                subcontrol-origin: margin;
+                subcontrol-position: top left;
+                padding: 0 8px;
+                background: #232323;
+                color: #fff;
+            }
+            QLabel {
+                color: #fff;
+                font-size: 14px;
+            }
+            QComboBox, QSpinBox {
+                background-color: #2d2d2d;
+                color: #fff;
+                border: 1px solid #555;
+                border-radius: 5px;
+                padding: 6px 10px;
+                font-size: 14px;
+            }
+            QComboBox QAbstractItemView {
+                background-color: #232323;
+                color: #fff;
+                border: 1px solid #555;
+                selection-background-color: #0078d4;
+            }
+            QCheckBox {
+                color: #fff;
+                font-size: 14px;
+                spacing: 8px;
+            }
+            QPushButton {
+                background-color: #0078d4;
+                color: #fff;
+                border: none;
+                border-radius: 5px;
+                padding: 8px 18px;
+                font-size: 14px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #106ebe;
+            }
+            QPushButton:pressed {
+                background-color: #005a9e;
+            }
+            QPushButton:disabled {
+                background-color: #555;
+                color: #888;
+            }
+            QSpinBox::up-button, QSpinBox::down-button {
+                background: #232323;
+                border: none;
+            }
+        """)
         
     def setup_chat_display(self, parent):
         """Setup the chat display area"""
@@ -269,7 +357,8 @@ class ChatTab(QWidget):
         
         # Message input
         self.message_input = SpellCheckerTextEdit()
-        self.message_input.setMaximumHeight(100)
+        
+        self.message_input.setMinimumHeight(40)  # Allow shrinking but not too small
         self.message_input.setPlaceholderText("Type your message here...")
         self.message_input.setStyleSheet("""
             QTextEdit {
@@ -402,13 +491,23 @@ class ChatTab(QWidget):
     def append_to_chat(self, sender: str, message: str, is_code: bool = False):
         """Add a message to the chat display"""
         tag = "user" if sender == "You" else "ai"
+        # If sender is System and message is a personality switch
+        if sender == "System" and message.startswith("Switched to "):
+            if self.last_message_type == "system_switch":
+                # Update the last system switch message instead of appending
+                self.streaming_handler.update_last_system_switch(message)
+                return
+            else:
+                self.last_message_type = "system_switch"
+        else:
+            self.last_message_type = tag
         self.streaming_handler.append_message(sender, message, is_code, tag)
         
     def append_response_chunk(self, chunk: str, model_name: str = None):
         """Append a streaming response chunk"""
         if not self.is_streaming:
             self.start_streaming()
-        self.current_response += chunk
+        self.current_response += chunk  # accumulate here only!
         label = f"Assistant ({model_name})" if model_name else "Assistant"
         self.streaming_handler.update_streaming_message(
             self.current_response, label, None, False, tag="ai"
@@ -425,11 +524,17 @@ class ChatTab(QWidget):
         
     def stop_streaming(self):
         """Stop streaming state"""
-        if self.is_streaming:  # Only change state if currently streaming
-            self.is_streaming = False
-            self.send_button.setEnabled(True)
-            self.cancel_button.setVisible(False)
-            self.streaming_handler.finalize_streaming_message()
+        print("[DEBUG] stop_streaming called. is_streaming:", self.is_streaming)
+        self.is_streaming = False
+        self.send_button.setEnabled(True)
+        self.cancel_button.setVisible(False)
+        print("[DEBUG] stop_streaming: send_button enabled?", self.send_button.isEnabled(), "cancel_button visible?", self.cancel_button.isVisible())
+        self.streaming_handler.finalize_streaming_message()
+        self.send_button.update()
+        self.cancel_button.update()
+        self.chat_display.update()
+        from PySide6.QtWidgets import QApplication
+        QApplication.processEvents()
         
     def on_temperature_changed(self, value):
         """Handle temperature slider change"""
@@ -474,7 +579,6 @@ class ChatTab(QWidget):
             
     def on_personality_changed(self, personality_name: str):
         """Handle personality change"""
-        # Add system message about personality change
         self.append_to_chat("System", f"Switched to {personality_name} personality")
         
     def get_current_model(self) -> str:
@@ -496,6 +600,9 @@ class ChatTab(QWidget):
     def clear_chat(self):
         """Clear the chat display"""
         self.chat_display.clear()
+        # Also clear the streaming handler's internal messages list
+        if hasattr(self, 'streaming_handler'):
+            self.streaming_handler.cleanup()
         
     def save_chat(self):
         """Save the current chat to a file"""
@@ -523,6 +630,10 @@ class ChatTab(QWidget):
         )
         if filename:
             try:
+                # Clear the streaming handler before loading new content
+                if hasattr(self, 'streaming_handler'):
+                    self.streaming_handler.cleanup()
+                
                 with open(filename, 'r', encoding='utf-8') as f:
                     content = f.read()
                     

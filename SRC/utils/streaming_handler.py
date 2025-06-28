@@ -16,6 +16,10 @@ class StreamingHandler:
     def __init__(self, chat_display: QTextEdit):
         self.chat_display = chat_display
         self.messages = []  # List of dicts: {sender, content, is_code, is_streaming, tag}
+        self._stream_buffer = None
+        self._stream_timer = QTimer()
+        self._stream_timer.setInterval(50)  # ms
+        self._stream_timer.timeout.connect(self._flush_stream_buffer)
 
     def append_message(self, sender: str, content: str, is_code: bool = False, tag: str = "ai"):
         """Append a new message (user or system) and re-render chat display"""
@@ -40,7 +44,16 @@ class StreamingHandler:
         self._render_chat_display()
 
     def update_streaming_message(self, content: str, sender: str, message_id: str = None, is_code: bool = False, tag: str = "ai"):
-        """Update the last streaming message and re-render chat display"""
+        """Update the last streaming message and re-render chat display (throttled)"""
+        self._stream_buffer = (content, is_code, tag)
+        if not self._stream_timer.isActive():
+            self._stream_timer.start()
+
+    def _flush_stream_buffer(self):
+        if self._stream_buffer is None:
+            return
+        content, is_code, tag = self._stream_buffer
+        self._stream_buffer = None
         # Find the last streaming message
         for msg in reversed(self.messages):
             if msg['is_streaming']:
@@ -49,12 +62,28 @@ class StreamingHandler:
                 msg['tag'] = tag
                 break
         self._render_chat_display()
+        # If still streaming, keep timer running; else, stop
+        if not any(msg['is_streaming'] for msg in self.messages):
+            self._stream_timer.stop()
 
     def finalize_streaming_message(self):
-        """Mark the last streaming message as complete and re-render chat display"""
+        """Mark the last streaming message as complete and re-render chat display (flush buffer)"""
+        self._flush_stream_buffer()
+        # Always re-render, even if no message was streaming
+        found_streaming = False
         for msg in reversed(self.messages):
             if msg['is_streaming']:
                 msg['is_streaming'] = False
+                found_streaming = True
+                break
+        self._render_chat_display()
+        self.chat_display.update()
+
+    def update_last_system_switch(self, message: str):
+        """Update the last system switch message ("Switched to ...") and re-render chat display"""
+        for msg in reversed(self.messages):
+            if msg['sender'] == 'System' and msg['content'].startswith('Switched to '):
+                msg['content'] = message
                 break
         self._render_chat_display()
 

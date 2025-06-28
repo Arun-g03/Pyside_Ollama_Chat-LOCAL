@@ -19,5 +19,6 @@
   "wordwrap_enabled": true,
   "json_format_enabled": false,
   "verbose_enabled": true,
-  "think_enabled": true
+  "think_enabled": true,
+  "theme": "Dark"
 }

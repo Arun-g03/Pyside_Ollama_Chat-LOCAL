@@ -96,6 +96,14 @@ class SettingsDialog(QDialog):
         
         layout.addWidget(temp_group)
         
+        # Default theme group
+        theme_group = QGroupBox("Theme")
+        theme_layout = QFormLayout(theme_group)
+        self.theme_combo = QComboBox()
+        self.theme_combo.addItems(["Dark", "Light"])
+        theme_layout.addRow("Theme:", self.theme_combo)
+        layout.addWidget(theme_group)
+        
         # Window settings group
         window_group = QGroupBox("Window Settings")
         window_layout = QFormLayout(window_group)
@@ -224,6 +232,10 @@ class SettingsDialog(QDialog):
             default_temp = self.config_manager.get_default_temperature()
             self.temp_spin.setValue(int(default_temp * 10))
             
+            # Load theme
+            theme = self.config_manager.get("theme", "Dark")
+            self.theme_combo.setCurrentText(theme)
+            
             # Load window size
             width, height = self.config_manager.get_window_size()
             self.width_spin.setValue(width)
@@ -266,6 +278,9 @@ class SettingsDialog(QDialog):
             # Save default temperature
             temp_value = self.temp_spin.value() / 10.0
             self.config_manager.set_default_temperature(temp_value)
+            
+            # Save theme
+            self.config_manager.set("theme", self.theme_combo.currentText())
             
             # Save window size
             self.config_manager.set_window_size(self.width_spin.value(), self.height_spin.value())
@@ -320,5 +335,6 @@ class SettingsDialog(QDialog):
             self.think_checkbox.setChecked(False)
             self.max_tokens_spin.setValue(2048)
             self.top_p_spin.setValue(90)  # 0.9
+            self.theme_combo.setCurrentText("Dark")
             
             QMessageBox.information(self, "Reset Complete", "Settings have been reset to defaults.") 

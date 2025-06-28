@@ -20,6 +20,7 @@ from SRC.models.conversation_metadata import ConversationManager
 from SRC.config_manager import ConfigManager
 from SRC.settings_dialog import SettingsDialog
 from SRC.worker import Worker
+from SRC.styles import dark_stylesheet, light_stylesheet
 
 
 class OllamaChat(QMainWindow):
@@ -378,6 +379,7 @@ class OllamaChat(QMainWindow):
 
     def on_message_finished(self):
         """Handle message finished"""
+        print("[DEBUG] on_message_finished called")
         self.chat_tab.stop_streaming()
         
     
@@ -453,6 +455,9 @@ class OllamaChat(QMainWindow):
         
         # Clear conversation
         self.conversation_service.clear_conversation()
+        
+        # Clear chat display to prevent old messages from appearing
+        self.chat_tab.clear_chat()
         
         # Update UI
         self.chat_tab.on_personality_changed(personality_name)
@@ -576,7 +581,6 @@ class OllamaChat(QMainWindow):
     
     def apply_dark_theme(self):
         """Apply dark theme styling"""
-        from SRC.styles import dark_stylesheet
         self.setStyleSheet(dark_stylesheet)
     
     def closeEvent(self, event):
@@ -600,6 +604,22 @@ class OllamaChat(QMainWindow):
     def showEvent(self, event):
         """Handle application show event"""
         super().showEvent(event)
+        
+        # Refresh models on first show
+        if not self.initialization_complete:
+            return
+            
+        # Update window size from config
+        width, height = self.config_manager.get_window_size()
+        if width > 0 and height > 0:
+            self.resize(width, height)
+
+        # Apply theme
+        theme = self.config_manager.get("theme", "Dark")
+        if theme == "Light":
+            self.setStyleSheet(light_stylesheet)
+        else:
+            self.setStyleSheet(dark_stylesheet)
         
         # Refresh models on first show
         if not self.initialization_complete:
