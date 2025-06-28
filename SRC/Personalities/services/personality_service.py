@@ -7,6 +7,7 @@ coordinating between the loader, formatter, and other components.
 
 from typing import Dict, List, Optional, Any
 from datetime import datetime
+import os
 
 from ..models import PersonalityTraits, PersonalityPrompt, PersonalityConfig, PersonalityMetadata
 from ..services.personality_loader import PersonalityLoader
@@ -16,9 +17,10 @@ from ..utils.personality_formatter import PersonalityFormatter
 class PersonalityService:
     """Main service for managing AI personalities"""
     
-    def __init__(self, personalities_dir: str = "personalities"):
+    def __init__(self, personalities_dir: str = "personality_Profiles"):
         self.personalities_dir = personalities_dir
         self.personalities: Dict[str, Dict[str, Any]] = {}
+        self.personality_file_paths: Dict[str, str] = {}  # Track file paths for each personality
         self.current_personality: Optional[str] = None
         
         # Initialize components
@@ -30,7 +32,18 @@ class PersonalityService:
     
     def _initialize_personalities(self):
         """Initialize personalities by loading from files"""
-        self.personalities = self.loader.load_all_personalities()
+        self.personalities = {}
+        self.personality_file_paths = {}
+        
+        # Load all personalities and track their file paths
+        all_personalities = self.loader.load_all_personalities()
+        all_file_paths = self.loader.find_personality_files()
+        
+        for filepath in all_file_paths:
+            personality_name = self.loader.extract_personality_name(filepath)
+            if personality_name in all_personalities:
+                self.personalities[personality_name] = all_personalities[personality_name]
+                self.personality_file_paths[personality_name] = filepath
         
         # Set default current personality if available
         if self.personalities:
@@ -39,6 +52,35 @@ class PersonalityService:
                 self.current_personality = "assistant"
             else:
                 self.current_personality = list(self.personalities.keys())[0]
+    
+    def is_system_personality(self, name: str) -> bool:
+        """Check if a personality is a system personality (read-only)"""
+        if name not in self.personality_file_paths:
+            return False
+        
+        filepath = self.personality_file_paths[name]
+        # System personalities are those NOT in the Custom folder
+        return "Custom" not in filepath
+    
+    def is_custom_personality(self, name: str) -> bool:
+        """Check if a personality is a custom personality (editable/deletable)"""
+        return not self.is_system_personality(name)
+    
+    def get_system_personalities(self) -> Dict[str, Dict[str, Any]]:
+        """Get system personalities (read-only)"""
+        system_personalities = {}
+        for name, personality_data in self.personalities.items():
+            if self.is_system_personality(name):
+                system_personalities[name] = personality_data
+        return system_personalities
+    
+    def get_custom_personalities(self) -> Dict[str, Dict[str, Any]]:
+        """Get custom personalities (editable/deletable)"""
+        custom_personalities = {}
+        for name, personality_data in self.personalities.items():
+            if self.is_custom_personality(name):
+                custom_personalities[name] = personality_data
+        return custom_personalities
     
     def get_available_personalities(self) -> List[str]:
         """Get list of all available personality names"""
@@ -63,15 +105,27 @@ class PersonalityService:
     
     def create_custom_personality(self, name: str, traits: PersonalityTraits, prompt: PersonalityPrompt, 
                                  config: PersonalityConfig = None, metadata: PersonalityMetadata = None) -> bool:
-        """Create a new custom personality"""
+        """Create a new custom personality in the Custom folder"""
         try:
+            # Ensure the personality name doesn't conflict with system personalities
+            if name in self.personalities and self.is_system_personality(name):
+                print(f"Cannot create custom personality '{name}' - name conflicts with system personality")
+                return False
+            
             # Create personality data
             personality_data = self.loader.create_personality_data(traits, prompt, config, metadata)
             
-            # Save to file
-            if self.loader.save_personality_to_file(name, personality_data):
+            # Ensure custom personalities are saved to the Custom folder
+            custom_name = f"Custom.{name}" if not name.startswith("Custom.") else name
+            
+            # Save to file in Custom folder
+            if self.loader.save_personality_to_file(custom_name, personality_data):
                 # Add to memory
-                self.personalities[name] = personality_data
+                self.personalities[custom_name] = personality_data
+                # Update file path tracking
+                filepath = self.loader.find_personality_file_by_name(custom_name)
+                if filepath:
+                    self.personality_file_paths[custom_name] = filepath
                 return True
             return False
         except Exception as e:
@@ -79,27 +133,60 @@ class PersonalityService:
             return False
     
     def delete_custom_personality(self, name: str) -> bool:
-        """Delete a custom personality"""
-        if name in self.personalities:
-            try:
-                # Delete file
-                if self.loader.delete_personality_file(name):
-                    # Remove from memory
-                    del self.personalities[name]
-                    
-                    # Update current personality if it was deleted
-                    if self.current_personality == name:
-                        if self.personalities:
-                            self.current_personality = list(self.personalities.keys())[0]
-                        else:
-                            self.current_personality = None
-                    
-                    return True
-                return False
-            except Exception as e:
-                print(f"Error deleting personality {name}: {e}")
-                return False
-        return False
+        """Delete a custom personality (only if it's in the Custom folder)"""
+        if name not in self.personalities:
+            return False
+        
+        # Check if it's a system personality
+        if self.is_system_personality(name):
+            print(f"Cannot delete system personality '{name}'")
+            return False
+        
+        try:
+            # Delete file
+            if self.loader.delete_personality_file(name):
+                # Remove from memory
+                del self.personalities[name]
+                if name in self.personality_file_paths:
+                    del self.personality_file_paths[name]
+                
+                # Update current personality if it was deleted
+                if self.current_personality == name:
+                    if self.personalities:
+                        self.current_personality = list(self.personalities.keys())[0]
+                    else:
+                        self.current_personality = None
+                
+                return True
+            return False
+        except Exception as e:
+            print(f"Error deleting personality {name}: {e}")
+            return False
+    
+    def update_custom_personality(self, name: str, traits: PersonalityTraits, prompt: PersonalityPrompt, 
+                                 config: PersonalityConfig = None, metadata: PersonalityMetadata = None) -> bool:
+        """Update a custom personality (only if it's in the Custom folder)"""
+        if name not in self.personalities:
+            return False
+        
+        # Check if it's a system personality
+        if self.is_system_personality(name):
+            print(f"Cannot update system personality '{name}'")
+            return False
+        
+        try:
+            # Create updated personality data
+            personality_data = self.loader.create_personality_data(traits, prompt, config, metadata)
+            
+            # Save to file
+            if self.loader.save_personality_to_file(name, personality_data):
+                # Update in memory
+                self.personalities[name] = personality_data
+                return True
+            return False
+        except Exception as e:
+            print(f"Error updating personality {name}: {e}")
+            return False
     
     def refresh_personalities(self) -> bool:
         """Refresh personalities from disk, reloading all JSON files"""
@@ -204,20 +291,16 @@ class PersonalityService:
         
         return self.formatter.build_comprehensive_system_prompt(current_personality)
     
-    def get_custom_personalities(self) -> Dict[str, Dict[str, Any]]:
-        """Get custom personalities (personalities not in default categories)"""
-        custom_personalities = {}
+    def get_personality_categories(self) -> List[str]:
+        """Get list of all personality categories"""
+        categories = set()
         
-        for name, personality_data in self.personalities.items():
-            # Check if this is a custom personality (not in default categories)
+        for personality_data in self.personalities.values():
             metadata = personality_data.get("metadata", {})
             category = metadata.get("category", "general")
-            
-            # Consider it custom if it's not in a standard category
-            if category not in ["assistant", "creative", "technical", "friendly", "professional"]:
-                custom_personalities[name] = personality_data
+            categories.add(category)
         
-        return custom_personalities
+        return sorted(list(categories))
     
     def get_personalities_by_category(self, category: str) -> Dict[str, Dict[str, Any]]:
         """Get personalities by category"""
@@ -232,16 +315,15 @@ class PersonalityService:
         
         return categorized_personalities
     
-    def get_personality_categories(self) -> List[str]:
-        """Get list of all personality categories"""
-        categories = set()
+    def get_personalities_by_folder(self, folder_name: str) -> Dict[str, Dict[str, Any]]:
+        """Get personalities by folder name"""
+        folder_personalities = {}
         
-        for personality_data in self.personalities.values():
-            metadata = personality_data.get("metadata", {})
-            category = metadata.get("category", "general")
-            categories.add(category)
+        for name, personality_data in self.personalities.items():
+            if name.startswith(folder_name + "."):
+                folder_personalities[name] = personality_data
         
-        return sorted(list(categories))
+        return folder_personalities
     
     def search_personalities(self, query: str) -> List[str]:
         """Search personalities by name, description, or tags"""

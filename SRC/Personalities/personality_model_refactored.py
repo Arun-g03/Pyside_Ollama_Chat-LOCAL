@@ -131,6 +131,27 @@ class PersonalityModel:
         # Use the improved service implementation
         return self.service.get_custom_personalities()
     
+    def get_system_personalities(self) -> Dict[str, Dict[str, Any]]:
+        """Get system personalities (read-only)"""
+        return self.service.get_system_personalities()
+    
+    def is_system_personality(self, name: str) -> bool:
+        """Check if a personality is a system personality (read-only)"""
+        return self.service.is_system_personality(name)
+    
+    def is_custom_personality(self, name: str) -> bool:
+        """Check if a personality is a custom personality (editable/deletable)"""
+        return self.service.is_custom_personality(name)
+    
+    def update_custom_personality(self, name: str, traits: PersonalityTraits, prompt: PersonalityPrompt, 
+                                 config: PersonalityConfig = None, metadata: PersonalityMetadata = None) -> bool:
+        """Update a custom personality (only if it's in the Custom folder)"""
+        result = self.service.update_custom_personality(name, traits, prompt, config, metadata)
+        if result:
+            # Update local references
+            self.personalities = self.service.personalities
+        return result
+    
     def save_custom_personality(self, name: str, personality_data: Dict[str, Any]) -> bool:
         """Save a custom personality - for backward compatibility"""
         # This method delegates to the loader's save method

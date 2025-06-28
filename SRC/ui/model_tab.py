@@ -54,30 +54,47 @@ class ModelTab(QWidget):
         
         # Model list group
         models_group = QGroupBox("Available Models")
+        models_group.setStyleSheet("""
+            QGroupBox {
+                font-weight: bold;
+                color: #ffffff;
+                border: 2px solid #555;
+                border-radius: 5px;
+                margin-top: 1ex;
+                padding-top: 10px;
+                background-color: #2d2d2d;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 5px 0 5px;
+                color: #ffffff;
+            }
+        """)
         models_layout = QVBoxLayout(models_group)
         
         # Model list
         self.model_list = QListWidget()
         self.model_list.setStyleSheet("""
             QListWidget {
-                background-color: #2d2d2d;
+                background-color: #1e1e1e;
                 color: #ffffff;
-                border: 1px solid #555;
+                border: 1px solid #444;
                 border-radius: 5px;
-                padding: 5px;
+                padding: 8px;
                 font-family: 'Segoe UI', Arial, sans-serif;
                 font-size: 14px;
             }
             QListWidget::item {
                 padding: 8px;
-                border-bottom: 1px solid #444;
+                border-bottom: 1px solid #333;
             }
             QListWidget::item:selected {
                 background-color: #0078d4;
                 color: white;
             }
             QListWidget::item:hover {
-                background-color: #3d3d3d;
+                background-color: #2d2d2d;
             }
         """)
         models_layout.addWidget(self.model_list)
@@ -113,11 +130,36 @@ class ModelTab(QWidget):
         
         # Pull model group
         pull_group = QGroupBox("Pull New Model")
+        pull_group.setStyleSheet("""
+            QGroupBox {
+                font-weight: bold;
+                color: #ffffff;
+                border: 2px solid #555;
+                border-radius: 5px;
+                margin-top: 1ex;
+                padding-top: 10px;
+                background-color: #2d2d2d;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 5px 0 5px;
+                color: #ffffff;
+            }
+        """)
         pull_layout = QVBoxLayout(pull_group)
         
         # Model name input
         input_layout = QHBoxLayout()
-        input_layout.addWidget(QLabel("Model Name:"))
+        model_name_label = QLabel("Model Name:")
+        model_name_label.setStyleSheet("""
+            QLabel {
+                color: #ffffff;
+                font-family: 'Segoe UI', Arial, sans-serif;
+                font-size: 14px;
+            }
+        """)
+        input_layout.addWidget(model_name_label)
         self.model_name_input = QLineEdit()
         self.model_name_input.setPlaceholderText("e.g., llama2:7b")
         self.model_name_input.setStyleSheet("""
@@ -165,6 +207,23 @@ class ModelTab(QWidget):
         
         # Model operations group
         operations_group = QGroupBox("Model Operations")
+        operations_group.setStyleSheet("""
+            QGroupBox {
+                font-weight: bold;
+                color: #ffffff;
+                border: 2px solid #555;
+                border-radius: 5px;
+                margin-top: 1ex;
+                padding-top: 10px;
+                background-color: #2d2d2d;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 5px 0 5px;
+                color: #ffffff;
+            }
+        """)
         operations_layout_ops = QVBoxLayout(operations_group)
         
         # Operation buttons
@@ -221,6 +280,23 @@ class ModelTab(QWidget):
         
         # Status area
         status_group = QGroupBox("Operation Status")
+        status_group.setStyleSheet("""
+            QGroupBox {
+                font-weight: bold;
+                color: #ffffff;
+                border: 2px solid #555;
+                border-radius: 5px;
+                margin-top: 1ex;
+                padding-top: 10px;
+                background-color: #2d2d2d;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 5px 0 5px;
+                color: #ffffff;
+            }
+        """)
         status_layout = QVBoxLayout(status_group)
         
         # Progress bar

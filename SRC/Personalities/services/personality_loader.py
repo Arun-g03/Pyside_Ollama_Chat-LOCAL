@@ -17,12 +17,17 @@ from ..models import PersonalityTraits, PersonalityPrompt, PersonalityConfig, Pe
 class PersonalityLoader:
     """Handles loading and saving personality data from/to files"""
     
-    def __init__(self, personalities_dir: str = "personalities"):
+    def __init__(self, personalities_dir: str = "personality_Profiles"):
         self.personalities_dir = personalities_dir
         
         # Create personalities directory if it doesn't exist
         if not os.path.exists(personalities_dir):
             os.makedirs(personalities_dir)
+        
+        # Create Custom folder for custom personalities
+        custom_dir = os.path.join(personalities_dir, "Custom")
+        if not os.path.exists(custom_dir):
+            os.makedirs(custom_dir)
     
     def find_personality_files(self, directory: str = None) -> List[str]:
         """Recursively find all personality JSON files in the given directory and subdirectories"""

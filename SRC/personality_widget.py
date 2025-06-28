@@ -237,6 +237,32 @@ class PersonalityWidget(QWidget):
         layout.addStretch()
         
         self.tabs.addTab(creation_widget, "Create Personality")
+        
+        # Apply stylesheet
+        creation_widget.setStyleSheet("""
+            QLineEdit, QTextEdit, QComboBox, QSpinBox, QDoubleSpinBox {
+                color: #ffffff;
+                background-color: #2d2d2d;
+                border: 1px solid #555;
+                border-radius: 5px;
+                padding: 8px;
+                font-family: 'Segoe UI', Arial, sans-serif;
+                font-size: 14px;
+            }
+            QLineEdit:focus, QTextEdit:focus, QComboBox:focus, QSpinBox:focus, QDoubleSpinBox:focus {
+                border: 1px solid #0078d4;
+            }
+            QComboBox QAbstractItemView {
+                background-color: #2d2d2d;
+                color: #ffffff;
+                selection-background-color: #0078d4;
+            }
+            QCheckBox, QLabel {
+                color: #ffffff;
+                font-family: 'Segoe UI', Arial, sans-serif;
+                font-size: 14px;
+            }
+        """)
     
     def setup_management_tab(self):
         """Setup the personality management tab"""

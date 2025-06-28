@@ -49,8 +49,9 @@ class ChatNavigationWidget(QWidget):
         header_layout.addStretch()
         
         # New conversation button
-        self.new_btn = QPushButton("+")
-        self.new_btn.setFixedSize(30, 30)
+        self.new_btn = QPushButton("New Chat")
+        self.new_btn.setMinimumWidth(90)
+        self.new_btn.setMaximumHeight(30)
         self.new_btn.setToolTip("New Conversation")
         self.new_btn.setStyleSheet("""
             QPushButton {
@@ -59,7 +60,9 @@ class ChatNavigationWidget(QWidget):
                 border: none;
                 border-radius: 15px;
                 font-weight: bold;
-                font-size: 16px;
+                font-size: 14px;
+                padding-left: 12px;
+                padding-right: 12px;
             }
             QPushButton:hover {
                 background-color: #106ebe;
@@ -69,6 +72,31 @@ class ChatNavigationWidget(QWidget):
             }
         """)
         header_layout.addWidget(self.new_btn)
+        
+        # Clear all button
+        self.clear_all_btn = QPushButton("Clear All")
+        self.clear_all_btn.setMinimumWidth(80)
+        self.clear_all_btn.setMaximumHeight(30)
+        self.clear_all_btn.setToolTip("Delete all conversations")
+        self.clear_all_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #d83b01;
+                color: white;
+                border: none;
+                border-radius: 15px;
+                font-weight: bold;
+                font-size: 14px;
+                padding-left: 10px;
+                padding-right: 10px;
+            }
+            QPushButton:hover {
+                background-color: #b02e01;
+            }
+            QPushButton:pressed {
+                background-color: #8a2301;
+            }
+        """)
+        header_layout.addWidget(self.clear_all_btn)
         
         layout.addLayout(header_layout)
         
@@ -121,6 +149,7 @@ class ChatNavigationWidget(QWidget):
     def setup_connections(self):
         """Setup signal connections"""
         self.new_btn.clicked.connect(self.new_conversation_requested.emit)
+        self.clear_all_btn.clicked.connect(self.clear_all_conversations)
         self.conversations_list.itemDoubleClicked.connect(self.on_conversation_double_clicked)
         self.conversations_list.customContextMenuRequested.connect(self.show_context_menu)
         
@@ -269,4 +298,21 @@ class ChatNavigationWidget(QWidget):
         current_item = self.conversations_list.currentItem()
         if current_item:
             return current_item.data(Qt.UserRole)
-        return None 
+        return None
+    
+    def clear_all_conversations(self):
+        """Delete all conversations after confirmation"""
+        reply = QMessageBox.question(
+            self, "Clear All Conversations",
+            "Are you sure you want to delete ALL conversations?\n\nThis action cannot be undone.",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+        if reply == QMessageBox.Yes:
+            try:
+                conversations = self.conversation_manager.list_conversations()
+                for filepath, _ in conversations:
+                    self.conversation_manager.delete_conversation(filepath)
+                self.refresh_conversations()
+            except Exception as e:
+                QMessageBox.warning(self, "Error", f"Failed to clear all conversations: {str(e)}") 

@@ -87,7 +87,7 @@ class OllamaChat(QMainWindow):
     def setup_ui(self):
         """Setup the main UI"""
         # Set window properties
-        self.setWindowTitle("Ollama Chat")
+        self.setWindowTitle("Ollama Chat - Local LLM Chat Application")
         self.setGeometry(100, 100, 1200, 800)
         
         # Create central widget
@@ -99,6 +99,32 @@ class OllamaChat(QMainWindow):
         
         # Create tab widget
         self.tabs = QTabWidget()
+        self.tabs.setStyleSheet("""
+            QTabWidget::pane {
+                border: 1px solid #444;
+                background-color: #1e1e1e;
+            }
+            QTabBar::tab {
+                background: #2d2d2d;
+                color: #ffffff;
+                border: 1px solid #555;
+                border-bottom: none;
+                border-top-left-radius: 5px;
+                border-top-right-radius: 5px;
+                padding: 8px 24px;
+                margin-right: 2px;
+                font-family: 'Segoe UI', Arial, sans-serif;
+                font-size: 15px;
+            }
+            QTabBar::tab:selected {
+                background: #0078d4;
+                color: #ffffff;
+            }
+            QTabBar::tab:hover {
+                background: #3d3d3d;
+                color: #ffffff;
+            }
+        """)
         main_layout.addWidget(self.tabs)
         
         # Create and add tabs
@@ -469,30 +495,24 @@ class OllamaChat(QMainWindow):
     # Menu action handlers
     def new_conversation(self):
         """Start a new conversation"""
-        reply = QMessageBox.question(
-            self, "New Conversation", 
-            "Start a new conversation? This will clear the current chat.",
-            QMessageBox.Yes | QMessageBox.No
-        )
+        # Immediately start a new conversation without prompt
+        # Clear in-memory conversation and UI
+        self.conversation_service.clear_conversation()
+        self.chat_tab.clear_chat()
+        # Forcefully reset conversation manager metadata and file reference
+        self.conversation_manager.clear_current_conversation()
+        # Double-check: forcibly clear any lingering messages
+        self.conversation_service.conversation = []
+        # Optionally, reset conversation manager metadata object
+        from SRC.models.conversation_metadata import ConversationMetadata
+        self.conversation_manager.metadata = ConversationMetadata()
         
-        if reply == QMessageBox.Yes:
-            # Clear in-memory conversation and UI
-            self.conversation_service.clear_conversation()
-            self.chat_tab.clear_chat()
-            # Forcefully reset conversation manager metadata and file reference
-            self.conversation_manager.clear_current_conversation()
-            # Double-check: forcibly clear any lingering messages
-            self.conversation_service.conversation = []
-            # Optionally, reset conversation manager metadata object
-            from SRC.models.conversation_metadata import ConversationMetadata
-            self.conversation_manager.metadata = ConversationMetadata()
-            
-            # Refresh navigation widget
-            self.chat_tab.refresh_navigation()
-            self.chat_tab.set_current_conversation_file(None)
-            
-            self.status_var = "Started new conversation"
-            self.status_bar.showMessage(self.status_var)
+        # Refresh navigation widget
+        self.chat_tab.refresh_navigation()
+        self.chat_tab.set_current_conversation_file(None)
+        
+        self.status_var = "Started new conversation"
+        self.status_bar.showMessage(self.status_var)
     
     def clear_chat(self):
         """Clear the chat display"""

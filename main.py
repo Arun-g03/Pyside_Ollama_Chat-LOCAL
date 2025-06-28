@@ -7,7 +7,7 @@ def main():
     app = QApplication(sys.argv)
     print("Application started")
     # Set application properties
-    app.setApplicationName("Ollama Chat")
+    app.setApplicationName("Ollama Chat - Local LLM Chat Application")
     app.setApplicationVersion("1.0")
     
     # Create and show the main window

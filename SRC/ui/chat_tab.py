@@ -117,27 +117,133 @@ class ChatTab(QWidget):
         settings_layout = QHBoxLayout()
         
         # Model selector
-        settings_layout.addWidget(QLabel("Model:"))
+        model_label = QLabel("Model:")
+        model_label.setStyleSheet("""
+            QLabel {
+                color: #ffffff;
+                font-family: 'Segoe UI', Arial, sans-serif;
+                font-size: 14px;
+            }
+        """)
+        settings_layout.addWidget(model_label)
         self.model_combo = QComboBox()
         self.model_combo.setMinimumWidth(150)
+        self.model_combo.setStyleSheet("""
+            QComboBox {
+                background-color: #2d2d2d;
+                color: #ffffff;
+                border: 1px solid #555;
+                border-radius: 5px;
+                padding: 8px;
+                font-family: 'Segoe UI', Arial, sans-serif;
+                font-size: 14px;
+            }
+            QComboBox::drop-down {
+                border: none;
+            }
+            QComboBox::down-arrow {
+                image: none;
+                border-left: 5px solid transparent;
+                border-right: 5px solid transparent;
+                border-top: 5px solid #ffffff;
+            }
+            QComboBox QAbstractItemView {
+                background-color: #2d2d2d;
+                color: #ffffff;
+                border: 1px solid #555;
+                selection-background-color: #0078d4;
+            }
+        """)
         settings_layout.addWidget(self.model_combo)
         
         # Personality selector
-        settings_layout.addWidget(QLabel("Personality:"))
+        personality_label = QLabel("Personality:")
+        personality_label.setStyleSheet("""
+            QLabel {
+                color: #ffffff;
+                font-family: 'Segoe UI', Arial, sans-serif;
+                font-size: 14px;
+            }
+        """)
+        settings_layout.addWidget(personality_label)
         self.personality_combo = QComboBox()
         self.personality_combo.setMinimumWidth(150)
         self.personality_combo.setToolTip("Select AI personality")
+        self.personality_combo.setStyleSheet("""
+            QComboBox {
+                background-color: #2d2d2d;
+                color: #ffffff;
+                border: 1px solid #555;
+                border-radius: 5px;
+                padding: 8px;
+                font-family: 'Segoe UI', Arial, sans-serif;
+                font-size: 14px;
+            }
+            QComboBox::drop-down {
+                border: none;
+            }
+            QComboBox::down-arrow {
+                image: none;
+                border-left: 5px solid transparent;
+                border-right: 5px solid transparent;
+                border-top: 5px solid #ffffff;
+            }
+            QComboBox QAbstractItemView {
+                background-color: #2d2d2d;
+                color: #ffffff;
+                border: 1px solid #555;
+                selection-background-color: #0078d4;
+            }
+        """)
         settings_layout.addWidget(self.personality_combo)
         
         # Temperature slider
-        settings_layout.addWidget(QLabel("Temperature:"))
+        temperature_label = QLabel("Temperature:")
+        temperature_label.setStyleSheet("""
+            QLabel {
+                color: #ffffff;
+                font-family: 'Segoe UI', Arial, sans-serif;
+                font-size: 14px;
+            }
+        """)
+        settings_layout.addWidget(temperature_label)
         self.temperature_slider = QSlider(Qt.Horizontal)
         self.temperature_slider.setRange(0, 20)
         self.temperature_slider.setValue(7)
         self.temperature_slider.setToolTip("Temperature: 0.0 to 2.0")
+        self.temperature_slider.setStyleSheet("""
+            QSlider::groove:horizontal {
+                border: 1px solid #555;
+                height: 8px;
+                background: #2d2d2d;
+                border-radius: 4px;
+            }
+            QSlider::handle:horizontal {
+                background: #0078d4;
+                border: 1px solid #0078d4;
+                width: 18px;
+                margin: -2px 0;
+                border-radius: 9px;
+            }
+            QSlider::handle:horizontal:hover {
+                background: #106ebe;
+            }
+            QSlider::sub-page:horizontal {
+                background: #0078d4;
+                border-radius: 4px;
+            }
+        """)
         settings_layout.addWidget(self.temperature_slider)
         
         self.temperature_label = QLabel("0.7")
+        self.temperature_label.setStyleSheet("""
+            QLabel {
+                color: #ffffff;
+                font-family: 'Segoe UI', Arial, sans-serif;
+                font-size: 14px;
+                min-width: 30px;
+            }
+        """)
         settings_layout.addWidget(self.temperature_label)
         
         # Connect temperature slider
@@ -337,9 +443,12 @@ class ChatTab(QWidget):
         
         self.personality_combo.clear()
         self.personality_combo.addItems(personalities)
+        print(f"DEBUG: personalities: {personalities}")
         
-        # Restore previous selection if it still exists
-        if current_personality and current_personality in personalities:
+        # Set default personality to "Specialists.assistant" if available, otherwise use first available
+        if "Specialists.assistant" in personalities:
+            self.personality_combo.setCurrentText("Specialists.assistant")
+        elif current_personality and current_personality in personalities:
             self.personality_combo.setCurrentText(current_personality)
         elif personalities:
             self.personality_combo.setCurrentIndex(0)
