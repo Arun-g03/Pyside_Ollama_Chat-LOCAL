@@ -12,6 +12,9 @@ from dataclasses import asdict
 from datetime import datetime
 
 from ..models import PersonalityTraits, PersonalityPrompt, PersonalityConfig, PersonalityMetadata
+from SRC.utils.Logging.Custom_Logger import CustomLogger
+
+logger = CustomLogger.get_logger(__name__)
 
 
 class PersonalityLoader:
@@ -69,7 +72,7 @@ class PersonalityLoader:
                 personality_data = json.load(f)
                 return personality_data
         except Exception as e:
-            print(f"Error loading personality {filepath}: {e}")
+            logger.debug(f"Error loading personality {filepath}: {e}",print_to_terminal=True)
             return None
     
     def load_all_personalities(self) -> Dict[str, Dict[str, Any]]:
@@ -108,7 +111,7 @@ class PersonalityLoader:
             
             return True
         except Exception as e:
-            print(f"Error saving personality {name}: {e}")
+            logger.debug(f"Error saving personality {name}: {e}",print_to_terminal=True)
             return False
     
     def find_personality_file_by_name(self, personality_name: str) -> Optional[str]:
@@ -135,7 +138,7 @@ class PersonalityLoader:
                 return True
             return False
         except Exception as e:
-            print(f"Error deleting personality {name}: {e}")
+            logger.debug(f"Error deleting personality {name}: {e}",print_to_terminal=True)
             return False
     
     def create_personality_data(self, traits: PersonalityTraits, prompt: PersonalityPrompt, 
@@ -201,7 +204,7 @@ class PersonalityLoader:
             
             return True
         except Exception as e:
-            print(f"Error backing up personality {name}: {e}")
+            logger.debug(f"Error backing up personality {name}: {e}",print_to_terminal=True)
             return False
     
     def restore_personality_from_backup(self, backup_filepath: str) -> bool:
@@ -210,7 +213,7 @@ class PersonalityLoader:
             # Validate the backup file
             errors = self.validate_personality_file(backup_filepath)
             if errors:
-                print(f"Backup file validation errors: {errors}")
+                logger.debug(f"Backup file validation errors: {errors}",print_to_terminal=True)
                 return False
             
             # Extract personality name from backup filename
@@ -220,7 +223,7 @@ class PersonalityLoader:
             # Extract original name (everything before the last underscore)
             name_parts = name_with_timestamp.rsplit('_', 1)
             if len(name_parts) < 2:
-                print("Invalid backup filename format")
+                logger.debug("Invalid backup filename format",print_to_terminal=True)
                 return False
             
             original_name = name_parts[0]
@@ -232,7 +235,7 @@ class PersonalityLoader:
             return self.save_personality_to_file(original_name, personality_data)
             
         except Exception as e:
-            print(f"Error restoring personality from backup: {e}")
+            logger.debug(f"Error restoring personality from backup: {e}",print_to_terminal=True)
             return False
     
     def get_personality_file_info(self, filepath: str) -> Dict[str, Any]:

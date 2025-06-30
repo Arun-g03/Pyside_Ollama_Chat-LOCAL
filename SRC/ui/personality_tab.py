@@ -10,7 +10,9 @@ from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
 from PySide6.QtCore import Signal, Qt
 from SRC.Personalities.personality_model_refactored import PersonalityModel, PersonalityTraits, PersonalityPrompt, PersonalityConfig, PersonalityMetadata
 from datetime import datetime
+from SRC.utils.Logging.Custom_Logger import CustomLogger
 
+logger = CustomLogger.get_logger(__name__)
 
 class PersonalityTab(QWidget):
     """Personality management tab"""
@@ -593,7 +595,7 @@ class PersonalityTab(QWidget):
             for personality in system_personalities:
                 self.system_personalities_list.addItem(personality)
         except Exception as e:
-            print(f"Failed to update system personalities list: {e}")
+            logger.debug(f"Failed to update system personalities list: {e}",print_to_terminal=True)
     
     def update_custom_personalities_list(self):
         """Update the custom personalities list"""
@@ -604,7 +606,7 @@ class PersonalityTab(QWidget):
             for personality in custom_personalities:
                 self.custom_personalities_list.addItem(personality)
         except Exception as e:
-            print(f"Failed to update custom personalities list: {e}")
+            logger.debug(f"Failed to update custom personalities list: {e}",print_to_terminal=True)
     
     def on_system_personality_selected(self, item):
         """Handle system personality selection"""
@@ -816,5 +818,5 @@ class PersonalityTab(QWidget):
         try:
             return self.personality_model.get_available_personalities()
         except Exception as e:
-            print(f"Error getting available personalities: {e}")
+            logger.debug(f"Error getting available personalities: {e}",print_to_terminal=True)
             return [] 

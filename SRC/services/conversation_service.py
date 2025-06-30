@@ -7,6 +7,9 @@ import os
 import json
 from typing import List, Dict, Optional
 from PySide6.QtCore import QObject, Signal
+from SRC.utils.Logging.Custom_Logger import CustomLogger
+
+logger = CustomLogger.get_logger(__name__)
 
 class ConversationService(QObject):
     """Service for managing conversation state and persistence"""
@@ -27,6 +30,8 @@ class ConversationService(QObject):
             message["id"] = message_id
         self.conversation.append(message)
         self.conversation_updated.emit(self.conversation)
+        logger.debug(f"DEBUG: Added message to conversation: {message}")
+
     
     def get_messages(self) -> List[Dict]:
         """Get the current conversation messages"""

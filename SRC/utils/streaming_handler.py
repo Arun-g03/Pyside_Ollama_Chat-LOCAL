@@ -3,11 +3,13 @@ Streaming Handler - Extracted from ollama_chat.py
 Handles streaming response processing and display updates.
 """
 
-from PySide6.QtWidgets import QTextEdit
+from PySide6.QtWidgets import QTextEdit, QApplication
 from PySide6.QtCore import QTimer
 from PySide6.QtGui import QTextCursor, QTextCharFormat, QColor
-
 from SRC.utils.message_formatter import MessageFormatter
+from SRC.utils.Logging.Custom_Logger import CustomLogger
+
+logger = CustomLogger.get_logger(__name__)
 
 
 class StreamingHandler:
@@ -20,6 +22,9 @@ class StreamingHandler:
         self._stream_timer = QTimer()
         self._stream_timer.setInterval(50)  # ms
         self._stream_timer.timeout.connect(self._flush_stream_buffer)
+        #global incrementor
+        #self.incrementor = 0
+
 
     def append_message(self, sender: str, content: str, is_code: bool = False, tag: str = "ai"):
         """Append a new message (user or system) and re-render chat display"""
@@ -30,7 +35,10 @@ class StreamingHandler:
             'is_streaming': False,
             'tag': tag
         })
+        logger.debug("[DEBUG][append_message] messages: %s", ', '.join(f"{m['sender']} streaming={m['is_streaming']} len={len(m['content'])}" for m in self.messages))
         self._render_chat_display()
+        self.chat_display.update()
+        QTimer.singleShot(0, self._render_chat_display)
 
     def start_streaming_message(self, sender: str, tag: str = "ai"):
         """Append a streaming placeholder message and re-render chat display"""
@@ -46,6 +54,9 @@ class StreamingHandler:
     def update_streaming_message(self, content: str, sender: str, message_id: str = None, is_code: bool = False, tag: str = "ai"):
         """Update the last streaming message and re-render chat display (throttled)"""
         self._stream_buffer = (content, is_code, tag)
+        #self.incrementor = self.incrementor + 1
+        
+        #logger.debug(f"{self.incrementor}[DEBUG][update_streaming_message] before update messages: %s", ', '.join(f"{m['sender']} streaming={m['is_streaming']} len={len(m['content'])}" for m in self.messages))
         if not self._stream_timer.isActive():
             self._stream_timer.start()
 
@@ -68,6 +79,7 @@ class StreamingHandler:
 
     def finalize_streaming_message(self):
         """Mark the last streaming message as complete and re-render chat display (flush buffer)"""
+        logger.debug("[DEBUG][finalize_streaming_message] before finalize messages: %s", ', '.join(f"{m['sender']} streaming={m['is_streaming']} len={len(m['content'])}" for m in self.messages))
         self._flush_stream_buffer()
         # Always re-render, even if no message was streaming
         found_streaming = False
@@ -76,6 +88,7 @@ class StreamingHandler:
                 msg['is_streaming'] = False
                 found_streaming = True
                 break
+        logger.debug("[DEBUG][finalize_streaming_message] after finalize messages: %s", ', '.join(f"{m['sender']} streaming={m['is_streaming']} len={len(m['content'])}" for m in self.messages))
         self._render_chat_display()
         self.chat_display.update()
 
@@ -89,6 +102,7 @@ class StreamingHandler:
 
     def _render_chat_display(self):
         """Re-render the entire chat display from the message list using tables for alignment and content-width bubbles"""
+        
         self.chat_display.clear()
         prev_was_thinking = False
         for msg in self.messages:
@@ -119,6 +133,24 @@ class StreamingHandler:
                     prev_was_thinking = True
                     continue
                 else:
+                    # Format streaming AI messages just like finalized ones
+                    if tag == 'ai':
+                        thoughts, main_answer = MessageFormatter.split_thoughts_and_answer(content)
+                        if thoughts:
+                            # Render thoughts block first
+                            thoughts_html = f"""
+                            <table width='100%' cellspacing='0' cellpadding='0'><tr>
+                              <td align='left'>
+                                <div style='background-color: #23272e; color: #aaa; border-radius: 8px; padding: 10px 16px; margin: 8px 0 4px 0; max-width: 500px; min-width: 60px; display: inline-block; word-break: break-word; border: 2px dashed #888; font-style: italic;'>
+                                  <b style='color: #aaa;'>Assistant Thoughts💭:</b><br> {MessageFormatter.handle_html_tags(thoughts)}
+                                </div>
+                              </td>
+                              <td></td>
+                            </tr></table>
+                            """
+                            self.chat_display.insertHtml(thoughts_html)
+                            self.chat_display.insertHtml("<br>")
+                            content = main_answer
                     formatted_content = MessageFormatter.detect_and_format_code(content)
                     formatted_content = MessageFormatter.handle_html_tags(formatted_content)
             elif is_code:
@@ -183,6 +215,7 @@ class StreamingHandler:
             self.chat_display.insertHtml("<br>")
             prev_was_thinking = False
         self.chat_display.ensureCursorVisible()
+        logger.debug(f"[DEBUG] _render_chat_display finished. Message count: {len(self.messages)}", print_to_terminal=True)
 
     def remove_streaming_placeholder(self):
         """Remove the last streaming message (if any) and re-render chat display"""

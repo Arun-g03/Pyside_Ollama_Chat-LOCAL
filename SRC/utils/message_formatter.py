@@ -8,7 +8,9 @@ from html import escape
 from pygments import highlight
 from pygments.lexers import guess_lexer, get_lexer_by_name
 from pygments.formatters import HtmlFormatter
+from SRC.utils.Logging.Custom_Logger import CustomLogger
 
+logger = CustomLogger.get_logger(__name__)
 
 class MessageFormatter:
     """Utility class for formatting messages with code highlighting and HTML processing"""
@@ -51,7 +53,7 @@ class MessageFormatter:
             lexer = guess_lexer(message)  # Automatically detect the lexer based on code content
             return lexer
         except Exception as e:
-            print(f"Error detecting code type: {e}")
+            logger.debug(f"Error detecting code type: {e}",print_to_terminal=True)
             return None
     
     @staticmethod
@@ -87,7 +89,7 @@ class MessageFormatter:
             return highlighted_code
             
         except Exception as e:
-            print(f"Error highlighting code: {e}")
+            logger.debug(f"Error highlighting code: {e}",print_to_terminal=True)
             # Return escaped code as fallback
             return escape(message)
     

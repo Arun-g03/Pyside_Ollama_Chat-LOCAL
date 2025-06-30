@@ -7,6 +7,9 @@ import re
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import QTextEdit, QMenu
 from PySide6.QtGui import QTextCharFormat, QColor, QTextCursor, QAction
+from SRC.utils.Logging.Custom_Logger import CustomLogger
+
+logger = CustomLogger.get_logger(__name__)
 
 # Spellchecker imports
 try:
@@ -14,7 +17,7 @@ try:
     SPELLCHECK_AVAILABLE = True
 except ImportError:
     SPELLCHECK_AVAILABLE = False
-    print("Spellchecker not available. Install pyenchant: pip install pyenchant")
+    logger.debug("Spellchecker not available. Install pyenchant: pip install pyenchant",print_to_terminal=True)
 
 
 class SpellCheckerTextEdit(QTextEdit):
@@ -35,16 +38,16 @@ class SpellCheckerTextEdit(QTextEdit):
         if SPELLCHECK_AVAILABLE:
             try:
                 self.spellchecker = enchant.Dict("en_US")
-                print("✅ Spellchecker initialized with en_US dictionary")
+                logger.debug("✅Spellchecker initialized with en_US dictionary",print_to_terminal=True)
                 # Create a single timer for spell checking
                 self.spellcheck_timer = QTimer()
                 self.spellcheck_timer.setSingleShot(True)
                 self.spellcheck_timer.timeout.connect(self.highlight_misspelled_words)
             except Exception as e:
-                print(f"Could not initialize spellchecker: {e}")
+                logger.debug(f"Could not initialize spellchecker: {e}",print_to_terminal=True)
                 self.spellchecker = None
         else:
-            print("❌ Spellchecker not available - install pyenchant: pip install pyenchant")
+            logger.debug("❌ Spellchecker not available - install pyenchant: pip install pyenchant",print_to_terminal=True)
             self.spellchecker = None
     
     def setup_context_menu(self):
@@ -115,7 +118,7 @@ class SpellCheckerTextEdit(QTextEdit):
                 if self.spellcheck_timer:
                     self.spellcheck_timer.start(50)
             except Exception as e:
-                print(f"Could not add '{word}' to dictionary: {e}")
+                logger.debug(f"Could not add '{word}' to dictionary: {e}",print_to_terminal=True)
     
     def ignore_word(self, word):
         """Ignore the word (add to personal dictionary)"""

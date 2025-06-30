@@ -12,6 +12,9 @@ import os
 from ..models import PersonalityTraits, PersonalityPrompt, PersonalityConfig, PersonalityMetadata
 from ..services.personality_loader import PersonalityLoader
 from ..utils.personality_formatter import PersonalityFormatter
+from SRC.utils.Logging.Custom_Logger import CustomLogger
+
+logger = CustomLogger.get_logger(__name__)
 
 
 class PersonalityService:
@@ -109,7 +112,7 @@ class PersonalityService:
         try:
             # Ensure the personality name doesn't conflict with system personalities
             if name in self.personalities and self.is_system_personality(name):
-                print(f"Cannot create custom personality '{name}' - name conflicts with system personality")
+                logger.debug(f"Cannot create custom personality '{name}' - name conflicts with system personality",print_to_terminal=True)
                 return False
             
             # Create personality data
@@ -129,7 +132,7 @@ class PersonalityService:
                 return True
             return False
         except Exception as e:
-            print(f"Error creating personality {name}: {e}")
+            logger.debug(f"Error creating personality {name}: {e}",print_to_terminal=True)
             return False
     
     def delete_custom_personality(self, name: str) -> bool:
@@ -139,7 +142,7 @@ class PersonalityService:
         
         # Check if it's a system personality
         if self.is_system_personality(name):
-            print(f"Cannot delete system personality '{name}'")
+            logger.debug(f"Cannot delete system personality '{name}'",print_to_terminal=True)
             return False
         
         try:
@@ -160,7 +163,7 @@ class PersonalityService:
                 return True
             return False
         except Exception as e:
-            print(f"Error deleting personality {name}: {e}")
+            logger.debug(f"Error deleting personality {name}: {e}",print_to_terminal=True)
             return False
     
     def update_custom_personality(self, name: str, traits: PersonalityTraits, prompt: PersonalityPrompt, 
@@ -171,7 +174,7 @@ class PersonalityService:
         
         # Check if it's a system personality
         if self.is_system_personality(name):
-            print(f"Cannot update system personality '{name}'")
+            logger.debug(f"Cannot update system personality '{name}'",print_to_terminal=True)
             return False
         
         try:
@@ -185,7 +188,7 @@ class PersonalityService:
                 return True
             return False
         except Exception as e:
-            print(f"Error updating personality {name}: {e}")
+            logger.debug(f"Error updating personality {name}: {e}",print_to_terminal=True)
             return False
     
     def refresh_personalities(self) -> bool:
@@ -206,7 +209,7 @@ class PersonalityService:
             
             return True
         except Exception as e:
-            print(f"Error refreshing personalities: {e}")
+            logger.debug(f"Error refreshing personalities: {e}",print_to_terminal=True)
             return False
     
     def format_prompt_with_personality(self, user_input: str, context: str = "") -> str:

@@ -9,6 +9,9 @@ from typing import Optional, Dict, Any
 import json
 import os
 from PySide6.QtCore import QObject, Signal
+from SRC.utils.Logging.Custom_Logger import CustomLogger
+
+logger = CustomLogger.get_logger(__name__)
 
 
 @dataclass
@@ -229,7 +232,7 @@ class ConversationManager(QObject):
             return self.metadata.current_conversation_file
             
         except Exception as e:
-            print(f"Auto-save failed: {e}")
+            logger.debug(f"Auto-save failed: {e}",print_to_terminal=True)
             return None
     
     def list_conversations(self) -> list[tuple[str, ConversationMetadata]]:
@@ -251,7 +254,7 @@ class ConversationManager(QObject):
                     conversation, metadata = self.load_conversation(filepath)
                     conversations.append((filepath, metadata))
                 except Exception as e:
-                    print(f"Error reading {filename}: {e}")
+                    logger.debug(f"Error reading {filename}: {e}",print_to_terminal=True)
                     # Add with basic metadata even if corrupted
                     basic_metadata = ConversationMetadata()
                     basic_metadata.current_conversation_file = filepath
@@ -275,7 +278,7 @@ class ConversationManager(QObject):
             os.remove(filepath)
             return True
         except Exception as e:
-            print(f"Failed to delete {filepath}: {e}")
+            logger.debug(f"Failed to delete {filepath}: {e}",print_to_terminal=True)
             return False
     
     def rename_conversation(self, old_filepath: str, new_filepath: str) -> bool:
@@ -300,7 +303,7 @@ class ConversationManager(QObject):
             
             return True
         except Exception as e:
-            print(f"Failed to rename {old_filepath} to {new_filepath}: {e}")
+            logger.debug(f"Failed to rename {old_filepath} to {new_filepath}: {e}",print_to_terminal=True)
             return False
     
     def clear_current_conversation(self) -> None:

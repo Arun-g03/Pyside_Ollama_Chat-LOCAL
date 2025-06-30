@@ -21,7 +21,9 @@ from SRC.config_manager import ConfigManager
 from SRC.settings_dialog import SettingsDialog
 from SRC.worker import Worker
 from SRC.styles import dark_stylesheet, light_stylesheet
+from SRC.utils.Logging.Custom_Logger import CustomLogger
 
+logger = CustomLogger.get_logger(__name__)
 
 class OllamaChat(QMainWindow):
     """Main application window - simplified after refactoring"""
@@ -266,7 +268,7 @@ class OllamaChat(QMainWindow):
             if personalities:
                 self.chat_tab.update_personality_list(personalities)
         except Exception as e:
-            print(f"Error refreshing personalities: {e}")
+            logger.debug(f"Error refreshing personalities: {e}",print_to_terminal=True)
     
     def on_models_updated(self, models):
         """Handle model list updates"""
@@ -290,7 +292,8 @@ class OllamaChat(QMainWindow):
         if not messages or messages[-1].get("role") != "user" or messages[-1].get("content") != message:
             self.conversation_service.add_message("user", message)
             messages = self.conversation_service.get_messages()
-        print("DEBUG: Messages before sending:", messages)
+        
+        logger.debug(f"DEBUG: Messages before sending: {messages}",print_to_terminal=True)
         
         # Add system prompt if needed (at the start)
         if messages:
@@ -350,6 +353,7 @@ class OllamaChat(QMainWindow):
         # Add final response to conversation
         final_response = self.chat_tab.get_current_response()
         self.conversation_service.add_message("assistant", final_response)
+        logger.info(f"AI: {final_response}")
         
         # Save conversation and get the filepath
         saved_filepath = self.conversation_manager.auto_save_conversation(
@@ -361,6 +365,8 @@ class OllamaChat(QMainWindow):
             self.chat_tab.set_current_conversation_file(saved_filepath)
             self.chat_tab.refresh_navigation()
         
+        self.chat_tab.streaming_handler.finalize_streaming_message()
+
         # Stop streaming and clean up
         self.on_message_finished()
         
@@ -379,7 +385,7 @@ class OllamaChat(QMainWindow):
 
     def on_message_finished(self):
         """Handle message finished"""
-        print("[DEBUG] on_message_finished called")
+        logger.debug("[DEBUG] on_message_finished called")
         self.chat_tab.stop_streaming()
         
     
@@ -598,7 +604,7 @@ class OllamaChat(QMainWindow):
             event.accept()
             
         except Exception as e:
-            print(f"Error during close: {e}")
+            logger.debug(f"Error during close: {e}",print_to_terminal=True)
             event.accept()
     
     def showEvent(self, event):

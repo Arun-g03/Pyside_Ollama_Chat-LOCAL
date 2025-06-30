@@ -4,6 +4,9 @@ from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel,
                                QWidget)
 from PySide6.QtCore import Qt, QTimer
 from SRC.config_manager import ConfigManager
+from SRC.utils.Logging.Custom_Logger import CustomLogger
+
+logger = CustomLogger.get_logger(__name__)
 
 class SettingsDialog(QDialog):
     """Dialog for configuring application settings"""
@@ -214,7 +217,7 @@ class SettingsDialog(QDialog):
     def load_current_settings(self):
         """Load current settings into the UI"""
         if not self.ui_ready:
-            print(f"🔧 SETTINGS: UI not ready yet, skipping settings load")
+            logger.debug(f" SETTINGS: UI not ready yet, skipping settings load",print_to_terminal=False)
             return
             
         try:
@@ -254,7 +257,7 @@ class SettingsDialog(QDialog):
                 self.verbose_checkbox.setChecked(self.config_manager.is_verbose_enabled())
                 self.think_checkbox.setChecked(self.config_manager.is_think_enabled())
             except RuntimeError as e:
-                print(f"🔧 SETTINGS: UI elements deleted during load: {e}")
+                logger.debug(f" SETTINGS: UI elements deleted during load: {e}",print_to_terminal=True)
                 return
             
             # Load chat parameters
@@ -263,7 +266,7 @@ class SettingsDialog(QDialog):
             self.top_p_spin.setValue(int(chat_settings.get("top_p", 0.9) * 100))
             
         except Exception as e:
-            print(f"🔧 SETTINGS: Error loading settings: {e}")
+            logger.debug(f" SETTINGS: Error loading settings: {e}",print_to_terminal=True)
             QMessageBox.warning(self, "Warning", f"Some settings could not be loaded: {str(e)}")
     
     def save_settings(self):

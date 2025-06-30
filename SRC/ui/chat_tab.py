@@ -14,7 +14,9 @@ from SRC.ui.spellchecker_widget import SpellCheckerTextEdit
 from SRC.ui.Widgets.chat_navigation import ChatNavigationWidget
 from SRC.utils.message_formatter import MessageFormatter
 from SRC.utils.streaming_handler import StreamingHandler
+from SRC.utils.Logging.Custom_Logger import CustomLogger
 
+logger = CustomLogger.get_logger(__name__)
 
 class ChatTab(QWidget):
     """Main chat interface tab"""
@@ -524,11 +526,11 @@ class ChatTab(QWidget):
         
     def stop_streaming(self):
         """Stop streaming state"""
-        print("[DEBUG] stop_streaming called. is_streaming:", self.is_streaming)
+        logger.debug("[DEBUG] stop_streaming called. is_streaming: %s", self.is_streaming)
         self.is_streaming = False
         self.send_button.setEnabled(True)
         self.cancel_button.setVisible(False)
-        print("[DEBUG] stop_streaming: send_button enabled?", self.send_button.isEnabled(), "cancel_button visible?", self.cancel_button.isVisible())
+        logger.debug(f"[DEBUG] stop_streaming: send_button enabled? {self.send_button.isEnabled()} cancel_button visible? {self.cancel_button.isVisible()}")
         self.streaming_handler.finalize_streaming_message()
         self.send_button.update()
         self.cancel_button.update()
@@ -560,7 +562,7 @@ class ChatTab(QWidget):
         
         self.personality_combo.clear()
         self.personality_combo.addItems(personalities)
-        print(f"DEBUG: personalities: {personalities}")
+        logger.debug(f"DEBUG: personalities: {personalities}")
         
         # Set default personality to "Specialists.assistant" if available, otherwise use first available
         if "Specialists.assistant" in personalities:
@@ -699,6 +701,4 @@ class ChatTab(QWidget):
         self.stop_streaming()
         self.streaming_handler.remove_streaming_placeholder()
 
-    def on_message_cancelled(self):
-        """Handle message cancellation"""
-        self.stop_streaming() 
+   
