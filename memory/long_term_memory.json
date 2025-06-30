@@ -1,1 +1,56 @@
-[]
+[
+  {
+    "type": "fact",
+    "key": "name",
+    "value": "Bob",
+    "summary": null,
+    "timestamp": "2025-07-01T00:45:46.951547",
+    "importance": 0.65,
+    "tags": [
+      "name",
+      "enjoy"
+    ],
+    "access_count": 1,
+    "last_accessed": "2025-07-01T00:45:46.977184",
+    "context_keywords": [
+      "name",
+      "enjoy"
+    ]
+  },
+  {
+    "type": "fact",
+    "key": "user_name",
+    "value": "Bob",
+    "summary": null,
+    "timestamp": "2025-07-01T00:45:46.959220",
+    "importance": 0.65,
+    "tags": [
+      "name",
+      "enjoy"
+    ],
+    "access_count": 1,
+    "last_accessed": "2025-07-01T00:45:46.977184",
+    "context_keywords": [
+      "name",
+      "enjoy"
+    ]
+  },
+  {
+    "type": "fact",
+    "key": "preference_enjoy",
+    "value": "programming",
+    "summary": null,
+    "timestamp": "2025-07-01T00:45:46.969301",
+    "importance": 0.65,
+    "tags": [
+      "name",
+      "enjoy"
+    ],
+    "access_count": 1,
+    "last_accessed": "2025-07-01T00:45:46.977184",
+    "context_keywords": [
+      "name",
+      "enjoy"
+    ]
+  }
+]

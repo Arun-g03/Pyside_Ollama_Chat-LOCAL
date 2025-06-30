@@ -19,6 +19,16 @@ requests>=2.31.0
 pygments>=2.15.0
 
 # =============================================================================
+# SEMANTIC SEARCH & VECTOR EMBEDDINGS
+# =============================================================================
+
+# Sentence transformers for semantic search
+sentence-transformers>=2.2.0
+
+# Scikit-learn for similarity calculations
+scikit-learn>=1.3.0
+
+# =============================================================================
 # TEXT-TO-SPEECH PACKAGES
 # =============================================================================
 

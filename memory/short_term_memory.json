@@ -1,0 +1,18 @@
+[
+  {
+    "role": "user",
+    "content": "hello"
+  },
+  {
+    "role": "assistant",
+    "content": ""
+  },
+  {
+    "role": "user",
+    "content": "My name is bob and i enjoy programming"
+  },
+  {
+    "role": "assistant",
+    "content": "<think>\n\n</think>\n\nHello! How can I assist you today? 😊"
+  }
+]

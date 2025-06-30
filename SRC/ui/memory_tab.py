@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QTabWidget,
 from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtGui import QFont, QColor
 from datetime import datetime
-from SRC.services.memory_service import MemoryService, MemoryEntry, MemorySummary
+from SRC.services.memory_service import MemoryService, MemoryEntry
 from SRC.utils.Logging.Custom_Logger import CustomLogger
 
 logger = CustomLogger.get_logger(__name__)
@@ -115,6 +115,7 @@ class MemoryTab(QWidget):
         """Create the memory overview tab"""
         widget = QWidget()
         layout = QVBoxLayout()
+        self.overview_layout = layout  # Store reference for semantic search labels
         
         # Statistics
         stats_group = QGroupBox("Memory Statistics")
@@ -129,6 +130,17 @@ class MemoryTab(QWidget):
         stats_layout.addWidget(self.total_summaries_label)
         stats_layout.addWidget(self.avg_importance_label)
         stats_layout.addWidget(self.context_messages_label)
+        
+        # Semantic search info (will be populated in refresh_overview)
+        self.semantic_status_label = QLabel("Model Status: Loading...")
+        self.semantic_model_label = QLabel("Model: Unknown")
+        self.semantic_count_label = QLabel("Vectorized Memories: 0")
+        
+        stats_layout.addWidget(QLabel(""))  # Spacer
+        stats_layout.addWidget(QLabel("Semantic Search:"))
+        stats_layout.addWidget(self.semantic_status_label)
+        stats_layout.addWidget(self.semantic_model_label)
+        stats_layout.addWidget(self.semantic_count_label)
         
         stats_group.setLayout(stats_layout)
         layout.addWidget(stats_group)
@@ -298,6 +310,17 @@ class MemoryTab(QWidget):
         self.avg_importance_label.setText(f"Average Importance: {stats['average_importance']:.2f}")
         self.context_messages_label.setText(f"Max Context Messages: {stats['max_context_messages']}")
         
+        # Add semantic search information
+        semantic_stats = stats.get('semantic_search', {})
+        if semantic_stats:
+            model_status = "Loaded" if semantic_stats.get('model_loaded', False) else "Not Loaded"
+            model_name = semantic_stats.get('model_name', 'Unknown')
+            vectorized_count = semantic_stats.get('total_memories', 0)
+            
+            self.semantic_status_label.setText(f"Model Status: {model_status}")
+            self.semantic_model_label.setText(f"Model: {model_name}")
+            self.semantic_count_label.setText(f"Vectorized Memories: {vectorized_count}")
+        
         # Update memory types table
         self.memory_types_table.setRowCount(len(stats['memory_types']))
         for i, (memory_type, count) in enumerate(stats['memory_types'].items()):
@@ -306,12 +329,34 @@ class MemoryTab(QWidget):
         
         # Update recent activity
         self.recent_activity_list.clear()
-        recent_memories = sorted(self.memory_service.memories, 
-                               key=lambda x: x.timestamp, reverse=True)[:10]
         
-        for memory in recent_memories:
-            date = datetime.fromisoformat(memory.timestamp).strftime("%Y-%m-%d %H:%M")
-            item_text = f"{date} - {memory.memory_type}: {memory.content[:50]}..."
+        # Combine memories and LTM entries for recent activity
+        all_entries = []
+        
+        # Add old memories
+        for memory in self.memory_service.memories:
+            all_entries.append({
+                'timestamp': memory.timestamp,
+                'type': memory.memory_type,
+                'content': memory.content
+            })
+        
+        # Add LTM entries
+        for entry in self.memory_service.ltm.entries:
+            content = entry.summary if entry.type == 'summary' else entry.value
+            if content:
+                all_entries.append({
+                    'timestamp': entry.timestamp,
+                    'type': entry.type,
+                    'content': content
+                })
+        
+        # Sort by timestamp and show recent entries
+        recent_entries = sorted(all_entries, key=lambda x: x['timestamp'], reverse=True)[:10]
+        
+        for entry in recent_entries:
+            date = datetime.fromisoformat(entry['timestamp']).strftime("%Y-%m-%d %H:%M")
+            item_text = f"{date} - {entry['type']}: {entry['content'][:50]}..."
             item = QListWidgetItem(item_text)
             self.recent_activity_list.addItem(item)
     
@@ -350,11 +395,13 @@ class MemoryTab(QWidget):
         """Refresh the summaries list"""
         self.summaries_list.clear()
         
-        for summary in self.memory_service.summaries:
+        summaries = self.memory_service.ltm.get_entries('summary')
+        for summary in summaries:
             date = datetime.fromisoformat(summary.timestamp).strftime("%Y-%m-%d %H:%M")
-            item_text = f"{date} - {summary.summary[:50]}..."
+            summary_text = summary.summary or ""
+            item_text = f"{date} - {summary_text[:50]}..."
             item = QListWidgetItem(item_text)
-            item.setData(Qt.UserRole, summary.id)
+            item.setData(Qt.UserRole, summary.timestamp)  # Use timestamp as identifier
             self.summaries_list.addItem(item)
     
     def search_memories(self):
@@ -404,15 +451,17 @@ class MemoryTab(QWidget):
         """Show details for selected summary"""
         current_item = self.summaries_list.currentItem()
         if current_item:
-            summary_id = current_item.data(Qt.UserRole)
-            summary = next((s for s in self.memory_service.summaries if s.id == summary_id), None)
+            summary_timestamp = current_item.data(Qt.UserRole)
+            summaries = self.memory_service.ltm.get_entries('summary')
+            summary = next((s for s in summaries if s.timestamp == summary_timestamp), None)
             
             if summary:
-                self.summary_details_text.setText(summary.summary)
+                self.summary_details_text.setText(summary.summary or "")
                 
                 self.key_points_list.clear()
-                for point in summary.key_points:
-                    self.key_points_list.addItem(point)
+                if summary.tags:
+                    for tag in summary.tags:
+                        self.key_points_list.addItem(tag)
     
     def summarize_current_conversation(self):
         """Summarize the current conversation"""
