@@ -8,8 +8,20 @@ This script helps install the required spellchecker dependencies.
 import subprocess
 import sys
 import os
-from SRC.utils.Logging.Custom_Logger import CustomLogger
-logger = CustomLogger.get_logger(__name__)
+
+# Add the project root to Python path for imports
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
+try:
+    from SRC.utils.Logging.Custom_Logger import CustomLogger
+    logger = CustomLogger.get_logger(__name__)
+except ImportError:
+    # Fallback logger if CustomLogger is not available
+    import logging
+    logging.basicConfig(level=logging.DEBUG, format='%(levelname)s: %(message)s')
+    logger = logging.getLogger(__name__)
 
 def install_package(package):
     """Install a package using pip"""

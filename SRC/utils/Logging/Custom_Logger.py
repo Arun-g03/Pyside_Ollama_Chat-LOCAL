@@ -61,6 +61,17 @@ class PrintOnLogMixin:
             self._print(clean_msg)
 
 class CustomLogger(logging.Logger):
+    """
+    Custom Logging class for the PyChat project.
+    
+    This class provides enhanced logging functionality with file output and
+    optional terminal printing. For complete setup and usage instructions,
+    refer to: DOCUMENTATION/Logging Commands.md
+    
+    Args:
+        name (str): The name of the logger.
+        level (int): The level of the logger.
+    """
     _instance = None
     _loggers = {}
     _cleared_files = set()
