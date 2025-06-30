@@ -1,6 +1,9 @@
 import json
 import os
 from typing import Dict, Any, Optional
+from SRC.utils.Logging.Custom_Logger import CustomLogger
+
+logger = CustomLogger.get_logger(__name__)
 
 class ConfigManager:
     """Manages application configuration settings"""
@@ -36,7 +39,7 @@ class ConfigManager:
                     # Merge with defaults to ensure all keys exist
                     return self.merge_configs(default_config, loaded_config)
             except Exception as e:
-                print(f"Error loading config: {e}, using defaults")
+                logger.debug(f"Error loading config: {e}, using defaults",print_to_terminal=True)
                 return default_config
         else:
             # Create default config file
@@ -63,7 +66,7 @@ class ConfigManager:
                 json.dump(config, f, indent=2, ensure_ascii=False)
             return True
         except Exception as e:
-            print(f"Error saving config: {e}")
+            logger.debug(f"Error saving config: {e}",print_to_terminal=True)
             return False
     
     def get(self, key: str, default: Any = None) -> Any:
@@ -217,4 +220,16 @@ class ConfigManager:
     
     def set_think_enabled(self, enabled: bool) -> bool:
         """Set think mode enabled/disabled"""
-        return self.set("think_enabled", enabled) 
+        return self.set("think_enabled", enabled)
+    
+    def get_max_tokens(self):
+        return self.config.get('chat_settings', {}).get('max_tokens', 2048)
+    
+    def get_top_p(self):
+        return self.config.get('chat_settings', {}).get('top_p', 0.9)
+    
+    def get_frequency_penalty(self):
+        return self.config.get('chat_settings', {}).get('frequency_penalty', 0.0)
+    
+    def get_presence_penalty(self):
+        return self.config.get('chat_settings', {}).get('presence_penalty', 0.0) 

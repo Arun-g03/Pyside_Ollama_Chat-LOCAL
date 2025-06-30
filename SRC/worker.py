@@ -38,15 +38,39 @@ class Worker(QObject):
         """
         return self._running
 
-    def run_stream(self, url, data):
+    def run_stream(
+        self,
+        messages,
+        model,
+        temperature,
+        ollama_url,
+        max_tokens,
+        top_p,
+        frequency_penalty,
+        presence_penalty
+    ):
         try:
+            url = f"{ollama_url}/chat"
+            data = {
+                "model": model,
+                "messages": messages,
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+                "top_p": top_p,
+                "frequency_penalty": frequency_penalty,
+                "presence_penalty": presence_penalty,
+                "stream": True
+            }
             with requests.post(url, json=data, stream=True) as response:
                 response.raise_for_status()
                 for line in response.iter_lines(decode_unicode=True):
                     if line:
                         chunk = json.loads(line)
                         content = chunk.get("message", {}).get("content", "")
+                        #logger.debug("STREAM CHUNK:", content,print_to_terminal=True)
                         self.stream_chunk_signal.emit(content)
+                        if chunk.get("done", False):
+                            break
         except Exception as e:
             self.update_message_signal.emit(f"Error: {str(e)}")
         finally:

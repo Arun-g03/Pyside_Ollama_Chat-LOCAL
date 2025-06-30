@@ -3,7 +3,10 @@ from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel,
                                QFormLayout, QGroupBox, QMessageBox, QTabWidget,
                                QWidget)
 from PySide6.QtCore import Qt, QTimer
-from config_manager import ConfigManager
+from SRC.config_manager import ConfigManager
+from SRC.utils.Logging.Custom_Logger import CustomLogger
+
+logger = CustomLogger.get_logger(__name__)
 
 class SettingsDialog(QDialog):
     """Dialog for configuring application settings"""
@@ -95,6 +98,14 @@ class SettingsDialog(QDialog):
         temp_layout.addRow("Default Temperature:", self.temp_spin)
         
         layout.addWidget(temp_group)
+        
+        # Default theme group
+        theme_group = QGroupBox("Theme")
+        theme_layout = QFormLayout(theme_group)
+        self.theme_combo = QComboBox()
+        self.theme_combo.addItems(["Dark", "Light"])
+        theme_layout.addRow("Theme:", self.theme_combo)
+        layout.addWidget(theme_group)
         
         # Window settings group
         window_group = QGroupBox("Window Settings")
@@ -206,7 +217,7 @@ class SettingsDialog(QDialog):
     def load_current_settings(self):
         """Load current settings into the UI"""
         if not self.ui_ready:
-            print(f"🔧 SETTINGS: UI not ready yet, skipping settings load")
+            logger.debug(f" SETTINGS: UI not ready yet, skipping settings load",print_to_terminal=False)
             return
             
         try:
@@ -223,6 +234,10 @@ class SettingsDialog(QDialog):
             # Load default temperature
             default_temp = self.config_manager.get_default_temperature()
             self.temp_spin.setValue(int(default_temp * 10))
+            
+            # Load theme
+            theme = self.config_manager.get("theme", "Dark")
+            self.theme_combo.setCurrentText(theme)
             
             # Load window size
             width, height = self.config_manager.get_window_size()
@@ -242,7 +257,7 @@ class SettingsDialog(QDialog):
                 self.verbose_checkbox.setChecked(self.config_manager.is_verbose_enabled())
                 self.think_checkbox.setChecked(self.config_manager.is_think_enabled())
             except RuntimeError as e:
-                print(f"🔧 SETTINGS: UI elements deleted during load: {e}")
+                logger.debug(f" SETTINGS: UI elements deleted during load: {e}",print_to_terminal=True)
                 return
             
             # Load chat parameters
@@ -251,7 +266,7 @@ class SettingsDialog(QDialog):
             self.top_p_spin.setValue(int(chat_settings.get("top_p", 0.9) * 100))
             
         except Exception as e:
-            print(f"🔧 SETTINGS: Error loading settings: {e}")
+            logger.debug(f" SETTINGS: Error loading settings: {e}",print_to_terminal=True)
             QMessageBox.warning(self, "Warning", f"Some settings could not be loaded: {str(e)}")
     
     def save_settings(self):
@@ -266,6 +281,9 @@ class SettingsDialog(QDialog):
             # Save default temperature
             temp_value = self.temp_spin.value() / 10.0
             self.config_manager.set_default_temperature(temp_value)
+            
+            # Save theme
+            self.config_manager.set("theme", self.theme_combo.currentText())
             
             # Save window size
             self.config_manager.set_window_size(self.width_spin.value(), self.height_spin.value())
@@ -320,5 +338,6 @@ class SettingsDialog(QDialog):
             self.think_checkbox.setChecked(False)
             self.max_tokens_spin.setValue(2048)
             self.top_p_spin.setValue(90)  # 0.9
+            self.theme_combo.setCurrentText("Dark")
             
             QMessageBox.information(self, "Reset Complete", "Settings have been reset to defaults.") 

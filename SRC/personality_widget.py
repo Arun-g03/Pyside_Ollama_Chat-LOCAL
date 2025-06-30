@@ -1,9 +1,14 @@
+"""
+Personality Widget - Extracted from ollama_chat.py
+Handles personality selection and display.
+"""
+
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
                                QComboBox, QPushButton, QTextEdit, QLineEdit,
                                QFormLayout, QGroupBox, QCheckBox, QSpinBox,
                                QMessageBox, QListWidget, QSplitter, QTabWidget)
 from PySide6.QtCore import Signal, Qt
-from personality_model import PersonalityModel, PersonalityTraits, PersonalityPrompt, PersonalityConfig, PersonalityMetadata
+from SRC.Personalities.personality_model_refactored import PersonalityModel, PersonalityTraits, PersonalityPrompt, PersonalityConfig, PersonalityMetadata
 
 class PersonalityWidget(QWidget):
     """Widget for managing AI personalities"""
@@ -32,6 +37,19 @@ class PersonalityWidget(QWidget):
         
         # Personality management tab
         self.setup_management_tab()
+        
+        # Apply sleek style to all QSplitters in this widget
+        self.setStyleSheet("""
+            QSplitter::handle {
+                background: #232323;
+                border: none;
+                width: 3px;
+                border-radius: 2px;
+            }
+            QSplitter::handle:hover {
+                background: #444444;
+            }
+        """)
     
     def setup_selection_tab(self):
         """Setup the personality selection tab"""
@@ -232,6 +250,32 @@ class PersonalityWidget(QWidget):
         layout.addStretch()
         
         self.tabs.addTab(creation_widget, "Create Personality")
+        
+        # Apply stylesheet
+        creation_widget.setStyleSheet("""
+            QLineEdit, QTextEdit, QComboBox, QSpinBox, QDoubleSpinBox {
+                color: #ffffff;
+                background-color: #2d2d2d;
+                border: 1px solid #555;
+                border-radius: 5px;
+                padding: 8px;
+                font-family: 'Segoe UI', Arial, sans-serif;
+                font-size: 14px;
+            }
+            QLineEdit:focus, QTextEdit:focus, QComboBox:focus, QSpinBox:focus, QDoubleSpinBox:focus {
+                border: 1px solid #0078d4;
+            }
+            QComboBox QAbstractItemView {
+                background-color: #2d2d2d;
+                color: #ffffff;
+                selection-background-color: #0078d4;
+            }
+            QCheckBox, QLabel {
+                color: #ffffff;
+                font-family: 'Segoe UI', Arial, sans-serif;
+                font-size: 14px;
+            }
+        """)
     
     def setup_management_tab(self):
         """Setup the personality management tab"""

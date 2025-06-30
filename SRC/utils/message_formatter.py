@@ -1,0 +1,248 @@
+"""
+Message Formatter - Extracted from ollama_chat.py
+Handles message formatting, code highlighting, and HTML processing.
+"""
+
+import re
+from html import escape
+from pygments import highlight
+from pygments.lexers import guess_lexer, get_lexer_by_name
+from pygments.formatters import HtmlFormatter
+from SRC.utils.Logging.Custom_Logger import CustomLogger
+
+logger = CustomLogger.get_logger(__name__)
+
+class MessageFormatter:
+    """Utility class for formatting messages with code highlighting and HTML processing"""
+    
+    @staticmethod
+    def detect_code_in_message(message: str) -> bool:
+        """
+        Detect if a message contains code blocks or inline code.
+        Returns True if code is detected, False otherwise.
+        """
+        # Check for block code (triple backticks)
+        if re.search(r'```.*?```', message, re.DOTALL):
+            return True
+        
+        # Check for inline code (single backticks)
+        if re.search(r'`[^`]+`', message):
+            return True
+        
+        # Check for common code patterns
+        code_patterns = [
+            r'\b(def|class|function|import|from|if|else|elif|for|while|try|except|finally|with|as)\b',
+            r'[{}();=<>+\-*/]',  # Common code symbols
+            r'\b(print|return|break|continue|pass|raise)\b',
+            r'\b(var|let|const|function|if|else|for|while|try|catch|finally)\b',  # JavaScript
+            r'\b(public|private|protected|static|final|abstract|interface|extends|implements)\b',  # Java
+        ]
+        
+        for pattern in code_patterns:
+            if re.search(pattern, message):
+                return True
+        
+        return False
+    
+    @staticmethod
+    def detect_code_type(message: str):
+        """
+        Detects the programming language of a code block using Pygments.
+        """
+        try:
+            lexer = guess_lexer(message)  # Automatically detect the lexer based on code content
+            return lexer
+        except Exception as e:
+            logger.debug(f"Error detecting code type: {e}",print_to_terminal=True)
+            return None
+    
+    @staticmethod
+    def syntax_highlight_code(message: str, language: str = None) -> str:
+        """
+        Highlight the code using Pygments and return formatted HTML.
+        """
+        try:
+            if language:
+                # Try to get lexer by name first
+                try:
+                    lexer = get_lexer_by_name(language)
+                except:
+                    # Fallback to guessing
+                    lexer = MessageFormatter.detect_code_type(message)
+            else:
+                lexer = MessageFormatter.detect_code_type(message)
+                
+            if lexer is None:
+                # Fallback to text lexer if no language detected
+                lexer = get_lexer_by_name('text')
+            
+            # Use Pygments to apply syntax highlighting with better styling
+            formatter = HtmlFormatter(
+                style="monokai", 
+                full=True, 
+                noclasses=True,
+                nobackground=True,  # Don't add background to individual tokens
+                prestyles="margin: 0; padding: 0; font-family: 'Consolas', 'Monaco', 'Courier New', monospace; font-size: 13px; line-height: 1.4;"
+            )
+            highlighted_code = highlight(message, lexer, formatter)
+            
+            return highlighted_code
+            
+        except Exception as e:
+            logger.debug(f"Error highlighting code: {e}",print_to_terminal=True)
+            # Return escaped code as fallback
+            return escape(message)
+    
+    @staticmethod
+    def detect_and_format_code(message: str) -> str:
+        """
+        Detects code and applies formatting. Highlights syntax using Pygments.
+        It handles inline and block code wrapped in backticks (```) and applies syntax highlighting.
+        """
+        # Format block code (triple backticks) with optional language identifier
+        # This regex captures: ```language\ncode``` or ```\ncode```
+        block_code_pattern = re.compile(r'```(\w+)?\n?(.*?)```', re.DOTALL)
+        formatted_message = message
+
+        def format_block_code(match):
+            language = match.group(1)  # Language identifier (may be None)
+            code_content = match.group(2).strip()  # Get the content inside the block
+            
+            # Apply syntax highlighting
+            highlighted_code = MessageFormatter.syntax_highlight_code(code_content, language)
+            
+            # Create language label if specified
+            language_label = ""
+            if language:
+                language_label = f'<div style="background-color: #1e1e1e; color: #dcdcdc; padding: 5px 10px; border-bottom: 1px solid #444; font-family: monospace; font-size: 11px; text-transform: uppercase;">{language}</div>'
+            
+            # Return formatted code block with language label
+            return f'<div style="background-color: #2d2d2d; border-radius: 5px; overflow: hidden; margin: 10px 0; border: 1px solid #444;">{language_label}<div style="padding: 10px; color: #dcdcdc; font-family: \'Consolas\', \'Monaco\', \'Courier New\', monospace; font-size: 13px; line-height: 1.4; overflow-x: auto;">{highlighted_code}</div></div>'
+
+        # Replace block code with formatted HTML
+        formatted_message = re.sub(block_code_pattern, format_block_code, formatted_message)
+
+        # Format inline code (single backticks) - but avoid formatting if it's inside a code block
+        # Use a simpler approach to avoid double-formatting
+        inline_code_pattern = re.compile(r'`([^`]+)`')
+        formatted_message = re.sub(inline_code_pattern, r'<code style="background-color: #2d2d2d; color: #dcdcaa; padding: 2px 4px; border-radius: 3px; font-family: \'Consolas\', \'Monaco\', \'Courier New\', monospace; font-size: 12px;">\1</code>', formatted_message)
+
+        return formatted_message
+    
+    @staticmethod
+    def handle_html_tags(message: str) -> str:
+        """
+        Properly handle HTML tags in messages - escape them for display when they're part of discussions
+        but preserve actual formatting tags and code blocks.
+        """
+        # First, identify and protect code blocks (they may contain HTML tags that should be displayed, not interpreted)
+        code_blocks = []
+        
+        def protect_code_blocks(match):
+            code_blocks.append(match.group(0))
+            return f"__CODE_BLOCK_{len(code_blocks)-1}__"
+        
+        # Temporarily replace code blocks with placeholders
+        # Protect both inline and block code
+        protected_message = re.sub(r'<code[^>]*>.*?</code>', protect_code_blocks, message, flags=re.DOTALL)
+        protected_message = re.sub(r'<pre[^>]*>.*?</pre>', protect_code_blocks, protected_message, flags=re.DOTALL)
+        protected_message = re.sub(r'<div[^>]*style="background-color: #2d2d2d[^>]*>.*?</div>', protect_code_blocks, protected_message, flags=re.DOTALL)
+        
+        # Handle formatting tags we want to preserve with better styling
+        protected_message = re.sub(r'<ul>(.*?)</ul>', r'<ul style="list-style-type: disc; padding-left: 20px; margin: 10px 0;">\1</ul>', protected_message, flags=re.DOTALL)
+        protected_message = re.sub(r'<ol>(.*?)</ol>', r'<ol style="padding-left: 20px; margin: 10px 0;">\1</ol>', protected_message, flags=re.DOTALL)
+        protected_message = re.sub(r'<li>(.*?)</li>', r'<li style="margin: 5px 0;">\1</li>', protected_message)
+        protected_message = re.sub(r'<b>(.*?)</b>', r'<b style="font-weight: bold; color: #ffffff;">\1</b>', protected_message)
+        protected_message = re.sub(r'<i>(.*?)</i>', r'<i style="font-style: italic; color: #cccccc;">\1</i>', protected_message)
+        protected_message = re.sub(r'<h1>(.*?)</h1>', r'<h1 style="font-size: 24px; font-weight: bold; color: #ffffff; margin: 15px 0 10px 0; border-bottom: 2px solid #555; padding-bottom: 5px;">\1</h1>', protected_message)
+        protected_message = re.sub(r'<h2>(.*?)</h2>', r'<h2 style="font-size: 20px; font-weight: bold; color: #ffffff; margin: 12px 0 8px 0;">\1</h2>', protected_message)
+        protected_message = re.sub(r'<h3>(.*?)</h3>', r'<h3 style="font-size: 16px; font-weight: bold; color: #ffffff; margin: 10px 0 6px 0;">\1</h3>', protected_message)
+        protected_message = re.sub(r'<p>(.*?)</p>', r'<p style="margin: 8px 0;">\1</p>', protected_message)
+        
+        # Escape HTML tags outside of code blocks
+        escaped_message = escape(protected_message)
+
+        # Restore code blocks
+        for i, code_block in enumerate(code_blocks):
+            escaped_message = escaped_message.replace(f"__CODE_BLOCK_{i}__", code_block)
+
+        return escaped_message
+    
+    @staticmethod
+    def cleanup_message(sender: str, message: str, is_code: bool = False) -> str:
+        """Prepares a message for display by adding sender and formatting."""
+        # Format based on sender
+        if sender == "You":
+            # Auto-detect and format code in the message
+            message = MessageFormatter.detect_and_format_code(message)
+        elif sender == "System":
+            message = f"<i style='color: #aaa;'>{message}</i>"
+        elif sender == "Assistant's Thoughts":
+            # The message is already formatted HTML, so we don't process it further.
+            pass
+        else:  # Assistant
+            if is_code:
+                # For explicit code messages, apply syntax highlighting
+                message = MessageFormatter.syntax_highlight_code(message)
+                # Wrap in code block styling
+                message = f'<div style="background-color: #2d2d2d; border-radius: 5px; overflow: hidden; margin: 10px 0; border: 1px solid #444;"><div style="padding: 10px; color: #dcdcdc; font-family: \'Consolas\', \'Monaco\', \'Courier New\', monospace; font-size: 13px; line-height: 1.4; overflow-x: auto;">{message}</div></div>'
+            else:
+                # For regular assistant messages, detect and format code blocks first
+                message = MessageFormatter.detect_and_format_code(message)
+                # Then handle any remaining HTML tags
+                message = MessageFormatter.handle_html_tags(message)
+
+        return message
+    
+    @staticmethod
+    def format_chat_message(sender: str, message: str, is_code: bool = False) -> str:
+        """Format a complete chat message with styling based on sender type."""
+        # Clean the message before formatting
+        cleaned_message = MessageFormatter.cleanup_message(sender, message, is_code)
+        
+        # Apply different styles for different message types
+        if sender == "System":
+            formatted_message = f"""
+                <div style="background-color: #1e1e1e; padding: 8px 10px; border-radius: 5px; margin-bottom: 10px; border-left: 3px solid #666;">
+                    <b style="color: #888;">{sender}:</b> {cleaned_message}
+                </div>
+            """
+        elif sender == "Assistant's Thoughts":
+            formatted_message = f"""
+                <div style="background-color: #1a1a1a; padding: 8px 10px; border-radius: 5px; margin-bottom: 10px; border-left: 3px solid #555;">
+                    <b style="color: #aaa;">{sender}:</b> {cleaned_message}
+                </div>
+            """
+        elif is_code:
+            # For code messages, use a distinct dark background and a monospace font for better readability
+            formatted_message = f"""
+                <div style="background-color: #2d2d2d; padding: 10px; border-radius: 5px; margin-bottom: 10px; border: 1px solid #444;">
+                    <b style="color: #ffffff; margin-bottom: 5px; display: block;">{sender}:</b>
+                    {cleaned_message}
+                </div>
+            """
+        else:
+            # For regular messages, apply a lighter background with soft contrast
+            formatted_message = f"""
+                <div style="background-color: #2e2e2e; padding: 10px; border-radius: 5px; margin-bottom: 10px; border: 1px solid #444;">
+                    <b style="color: #ffffff;">{sender}:</b> {cleaned_message}
+                </div>
+            """
+
+        return formatted_message
+    
+    @staticmethod
+    def split_thoughts_and_answer(message: str):
+        """
+        Splits a message into (thoughts, main_answer) if <think>...</think> is present.
+        Returns a tuple (thoughts, main_answer). If no <think>, thoughts is None.
+        """
+        import re
+        match = re.search(r'<think>(.*?)</think>', message, re.DOTALL | re.IGNORECASE)
+        if match:
+            thoughts = match.group(1).strip()
+            # Remove the <think>...</think> part from the message
+            main_answer = re.sub(r'<think>.*?</think>', '', message, flags=re.DOTALL | re.IGNORECASE).strip()
+            return thoughts, main_answer
+        else:
+            return None, message 
