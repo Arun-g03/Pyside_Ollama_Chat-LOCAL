@@ -13,9 +13,11 @@ import os
 from SRC.ui.chat_tab import ChatTab
 from SRC.ui.model_tab import ModelTab
 from SRC.ui.personality_tab import PersonalityTab
+from SRC.ui.memory_tab import MemoryTab
 from SRC.services.ollama_service import OllamaService
 from SRC.services.conversation_service import ConversationService
 from SRC.services.enhancement_service import EnhancementService
+from SRC.services.memory_service import MemoryService
 from SRC.models.conversation_metadata import ConversationManager
 from SRC.config_manager import ConfigManager
 from SRC.settings_dialog import SettingsDialog
@@ -72,6 +74,18 @@ class OllamaChat(QMainWindow):
         
         # Enhancement service for response enhancement
         self.enhancement_service = EnhancementService(self.ollama_service)
+        
+        # Memory service for LLM memory management (conditional)
+        self.memory_enabled = self.config_manager.get("memory_enabled", True)
+        if self.memory_enabled:
+            self.memory_service = MemoryService(
+                memory_dir="memory",
+                max_context_messages=self.config_manager.get_max_context_messages()
+            )
+            self.conversation_service.set_memory_service(self.memory_service)
+        else:
+            self.memory_service = None
+            self.conversation_service.set_memory_service(None)
         
         # Conversation manager for persistence
         self.conversation_manager = ConversationManager(
@@ -134,10 +148,17 @@ class OllamaChat(QMainWindow):
         self.chat_tab = ChatTab(self, self.conversation_manager)
         self.model_tab = ModelTab(self)
         self.personality_tab = PersonalityTab(self)
-        
         self.tabs.addTab(self.chat_tab, "Chat")
         self.tabs.addTab(self.model_tab, "Model Manager")
         self.tabs.addTab(self.personality_tab, "Personalities")
+        
+        # Conditionally add memory tab
+        if self.memory_enabled:
+            self.memory_tab = MemoryTab(self.memory_service)
+            self.memory_tab.set_conversation_service(self.conversation_service)
+            self.tabs.addTab(self.memory_tab, "Memory")
+        else:
+            self.memory_tab = None
         
         # Setup status bar
         self.status_bar = QStatusBar(self)
@@ -295,11 +316,15 @@ class OllamaChat(QMainWindow):
         
         logger.debug(f"DEBUG: Messages before sending: {messages}",print_to_terminal=True)
         
+        # Get memory-enhanced context messages (includes relevant memories from previous conversations)
+        context_messages = self.conversation_service.get_context_messages()
+        logger.debug(f"DEBUG: Context messages with memory: {len(context_messages)} total messages",print_to_terminal=True)
+        
         # Add system prompt if needed (at the start)
-        if messages:
+        if context_messages:
             system_prompt = self.personality_tab.personality_model.build_comprehensive_system_prompt()
-            if system_prompt and (not messages or messages[0].get("role") != "system"):
-                messages = [{"role": "system", "content": system_prompt}] + messages
+            if system_prompt and (not context_messages or context_messages[0].get("role") != "system"):
+                context_messages = [{"role": "system", "content": system_prompt}] + context_messages
         
         # Get current model
         model = self.chat_tab.get_current_model()
@@ -311,13 +336,13 @@ class OllamaChat(QMainWindow):
             from SRC.complexity_analyzer import RequestComplexityAnalyzer
             analyzer = RequestComplexityAnalyzer()
             # Use only the last user message for complexity
-            complexity_metrics = analyzer.analyze_complexity(message, messages)
+            complexity_metrics = analyzer.analyze_complexity(message, context_messages)
             chosen_model = analyzer.get_model_recommendation(complexity_metrics, available_models)
             # Insert a system message about the chosen model (after user message, before AI response)
             system_info = f"Using model {chosen_model} (auto-selected based on request complexity)"
             self.conversation_service.add_message("system", system_info)
             self.chat_tab.append_to_chat("System", system_info)
-            messages = self.conversation_service.get_messages()
+            context_messages = self.conversation_service.get_context_messages()
         
         # Create worker thread for async communication
         self.worker_thread = QThread()
@@ -335,7 +360,7 @@ class OllamaChat(QMainWindow):
         # Connect thread signals
         self.worker_thread.started.connect(
             lambda: self.worker.run_stream(
-                messages,
+                context_messages,
                 chosen_model,
                 self.chat_tab.get_temperature(),
                 self.config_manager.get_ollama_url(),
@@ -547,27 +572,23 @@ class OllamaChat(QMainWindow):
         self.chat_tab.load_chat()
     
     def open_settings(self):
-        """Open the settings dialog"""
-        try:
-            # Get available models and personalities for the settings dialog
-            models = self.ollama_service.get_models() or ["llama2"]
-            personalities = self.personality_tab.get_available_personalities() or ["assistant"]
-            
-            settings_dialog = SettingsDialog(
-                self.config_manager, 
-                models, 
-                personalities, 
-                self
-            )
-            
-            if settings_dialog.exec() == SettingsDialog.Accepted:
-                # Refresh models if settings changed
+        """Open the settings dialog and update memory features if changed"""
+        # Always fetch the latest lists before opening the dialog
+        models = self.ollama_service.get_models() or ["llama2"]
+        personalities = self.personality_tab.personality_model.get_available_personalities() or ["assistant"]
+        dialog = SettingsDialog(self.config_manager, models, personalities, self)
+        if dialog.exec():
+            memory_enabled_now = self.config_manager.get("memory_enabled", True)
+            if memory_enabled_now != self.memory_enabled:
+                self.memory_enabled = memory_enabled_now
+                self.setup_services()
+                self.setup_ui()
+                self.setup_connections()
                 self.refresh_models()
-                self.status_var = "Settings updated"
-                self.status_bar.showMessage(self.status_var)
-                
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to open settings: {str(e)}")
+            else:
+                self.setup_services()
+                self.setup_connections()
+                self.refresh_models()
     
     def show_about(self):
         """Show about dialog"""

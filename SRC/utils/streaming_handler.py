@@ -87,6 +87,7 @@ class StreamingHandler:
             if msg['is_streaming']:
                 msg['is_streaming'] = False
                 found_streaming = True
+                logger.debug(f"[DEBUG][finalize_streaming_message] Final AI response content: {msg['content']}", print_to_terminal=True)
                 break
         logger.debug("[DEBUG][finalize_streaming_message] after finalize messages: %s", ', '.join(f"{m['sender']} streaming={m['is_streaming']} len={len(m['content'])}" for m in self.messages))
         self._render_chat_display()
@@ -215,7 +216,7 @@ class StreamingHandler:
             self.chat_display.insertHtml("<br>")
             prev_was_thinking = False
         self.chat_display.ensureCursorVisible()
-        logger.debug(f"[DEBUG] _render_chat_display finished. Message count: {len(self.messages)}", print_to_terminal=True)
+        logger.debug(f"[DEBUG] _render_chat_display finished. Message count: {len(self.messages)}", print_to_terminal=False)
 
     def remove_streaming_placeholder(self):
         """Remove the last streaming message (if any) and re-render chat display"""

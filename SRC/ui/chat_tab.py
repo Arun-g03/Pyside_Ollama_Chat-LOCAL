@@ -515,6 +515,7 @@ class ChatTab(QWidget):
             self.current_response, label, None, False, tag="ai"
         )
         
+        
     def start_streaming(self):
         """Start streaming state"""
         if not self.is_streaming:  # Only change state if not already streaming

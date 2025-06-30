@@ -1,0 +1,186 @@
+[
+  {
+    "id": "a9e1d8af627d",
+    "content": "my name is bob",
+    "conversation_id": "conv_20250630_174623",
+    "timestamp": "2025-06-30T17:46:23.903818",
+    "importance": 0.307,
+    "tags": [],
+    "memory_type": "user_input",
+    "metadata": {}
+  },
+  {
+    "id": "2deb4eecf03a",
+    "content": "",
+    "conversation_id": "conv_20250630_174623",
+    "timestamp": "2025-06-30T17:46:25.685493",
+    "importance": 0.2,
+    "tags": [],
+    "memory_type": "assistant_response",
+    "metadata": {}
+  },
+  {
+    "id": "a4d24c93b203",
+    "content": "whats my name",
+    "conversation_id": "conv_20250630_174623",
+    "timestamp": "2025-06-30T17:46:46.954188",
+    "importance": 0.3065,
+    "tags": [],
+    "memory_type": "user_input",
+    "metadata": {}
+  },
+  {
+    "id": "9e1987d030d4",
+    "content": "<think>\nOkay, the user just said, \"My name is Bob.\" Let me start by acknowledging their name. It's straightforward, so a simple response would be to confirm. Then, I should offer help in case they have any questions. I need to keep it friendly and open-ended. Maybe ask them to share more about themselves or their interests. That way, they feel comfortable sharing any information they want. Let me make sure the response is positive and inviting.\n</think>\n\nHello! My name is Bob. How can I help you today? 😊",
+    "conversation_id": "conv_20250630_174623",
+    "timestamp": "2025-06-30T17:46:47.683316",
+    "importance": 0.32725000000000004,
+    "tags": [
+      "assistance"
+    ],
+    "memory_type": "assistant_response",
+    "metadata": {}
+  },
+  {
+    "id": "70aade1e777e",
+    "content": "my name is just bob",
+    "conversation_id": "conv_20250630_174623",
+    "timestamp": "2025-06-30T17:47:26.264481",
+    "importance": 0.3095,
+    "tags": [],
+    "memory_type": "user_input",
+    "metadata": {}
+  },
+  {
+    "id": "1dd2df44e146",
+    "content": "<think>\nOkay, the user just asked, \"whats my name?\" and I responded with \"my name is bob.\" Now, they're asking again. I need to check if there's any previous context or if they want to confirm their name. Since the previous message was a simple confirmation, maybe they want to verify their own name. I should respond with the same information, making sure to be clear and friendly. Also, keep it concise as per the model's instructions.\n</think>\n\nMy name is Bob.",
+    "conversation_id": "conv_20250630_174623",
+    "timestamp": "2025-06-30T17:47:26.936665",
+    "importance": 0.31575000000000003,
+    "tags": [],
+    "memory_type": "assistant_response",
+    "metadata": {}
+  },
+  {
+    "id": "7dc0fee8de84",
+    "content": "whats my name",
+    "conversation_id": "conv_20250630_174623",
+    "timestamp": "2025-06-30T17:47:33.626019",
+    "importance": 0.3065,
+    "tags": [],
+    "memory_type": "user_input",
+    "metadata": {}
+  },
+  {
+    "id": "80da203273c5",
+    "content": "<think>\nOkay, the user just said, \"My name is just Bob.\" Let me start by acknowledging their name. It's straightforward, so a simple response would be to confirm. Then, I should offer help in case they have any questions. I need to keep it friendly and open-ended. Maybe ask them to share more about themselves or their interests. That way, they feel comfortable sharing any information they want. Let me make sure the response is positive and inviting.\n</think>\n\nHello! My name is Bob. How can I help you today? 😊",
+    "conversation_id": "conv_20250630_174623",
+    "timestamp": "2025-06-30T17:47:34.438445",
+    "importance": 0.3285,
+    "tags": [
+      "assistance"
+    ],
+    "memory_type": "assistant_response",
+    "metadata": {}
+  },
+  {
+    "id": "73adf48199eb",
+    "content": "what is my name?",
+    "conversation_id": "conv_20250630_174850",
+    "timestamp": "2025-06-30T17:48:50.438648",
+    "importance": 0.308,
+    "tags": [],
+    "memory_type": "user_input",
+    "metadata": {}
+  },
+  {
+    "id": "5166f06c475f",
+    "content": "<think>\nOkay, the user just asked, \"whats my name\" again. Let me check the previous messages to make sure I'm consistent. The user initially said, \"My name is just Bob,\" then asked, \"whats my name,\" and I replied with \"My name is Bob.\" Now, they're repeating the question. Since the previous response was a confirmation, I should acknowledge their name again. Keep it friendly and open-ended to encourage them to share more if they have questions. Avoid any markdown and keep the response simple. Let me make sure I'm using the correct model and tone. Alright, time to respond.\n",
+    "conversation_id": "conv_20250630_174850",
+    "timestamp": "2025-06-30T17:48:50.973402",
+    "importance": 0.34450000000000003,
+    "tags": [],
+    "memory_type": "assistant_response",
+    "metadata": {}
+  },
+  {
+    "id": "a7af07596250",
+    "content": "hi",
+    "conversation_id": "conv_20250630_185102",
+    "timestamp": "2025-06-30T18:51:02.157737",
+    "importance": 0.301,
+    "tags": [],
+    "memory_type": "user_input",
+    "metadata": {}
+  },
+  {
+    "id": "bd15f7362f35",
+    "content": "",
+    "conversation_id": "conv_20250630_185102",
+    "timestamp": "2025-06-30T18:51:06.505653",
+    "importance": 0.2,
+    "tags": [],
+    "memory_type": "assistant_response",
+    "metadata": {}
+  },
+  {
+    "id": "fc5385d2ae60",
+    "content": "hello",
+    "conversation_id": "conv_20250630_185138",
+    "timestamp": "2025-06-30T18:51:38.992786",
+    "importance": 0.3025,
+    "tags": [],
+    "memory_type": "user_input",
+    "metadata": {}
+  },
+  {
+    "id": "8d1f193dd8e3",
+    "content": "",
+    "conversation_id": "conv_20250630_185138",
+    "timestamp": "2025-06-30T18:51:39.714760",
+    "importance": 0.2,
+    "tags": [],
+    "memory_type": "assistant_response",
+    "metadata": {}
+  },
+  {
+    "id": "4367a96251c6",
+    "content": "hello",
+    "conversation_id": "conv_20250630_185314",
+    "timestamp": "2025-06-30T18:53:14.573297",
+    "importance": 0.3025,
+    "tags": [],
+    "memory_type": "user_input",
+    "metadata": {}
+  },
+  {
+    "id": "d35d584149f2",
+    "content": "",
+    "conversation_id": "conv_20250630_185314",
+    "timestamp": "2025-06-30T18:53:15.132233",
+    "importance": 0.2,
+    "tags": [],
+    "memory_type": "assistant_response",
+    "metadata": {}
+  },
+  {
+    "id": "f3dc7248e967",
+    "content": "hello",
+    "conversation_id": "conv_20250630_185600",
+    "timestamp": "2025-06-30T18:56:00.741904",
+    "importance": 0.3025,
+    "tags": [],
+    "memory_type": "user_input",
+    "metadata": {}
+  },
+  {
+    "id": "8202d317f5f5",
+    "content": "",
+    "conversation_id": "conv_20250630_185600",
+    "timestamp": "2025-06-30T18:56:01.619992",
+    "importance": 0.2,
+    "tags": [],
+    "memory_type": "assistant_response",
+    "metadata": {}
+  }
+]
