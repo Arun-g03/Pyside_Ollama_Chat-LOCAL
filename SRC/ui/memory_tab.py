@@ -65,10 +65,10 @@ class MemoryTab(QWidget):
         context_hbox = QHBoxLayout()
         self.context_slider = QSlider(Qt.Horizontal)
         self.context_slider.setRange(5, 100)
-        self.context_slider.setValue(self.memory_service.max_context_messages)
+        self.context_slider.setValue(self.memory_service.stm.max_messages)
         self.context_spinbox = QSpinBox()
         self.context_spinbox.setRange(5, 100)
-        self.context_spinbox.setValue(self.memory_service.max_context_messages)
+        self.context_spinbox.setValue(self.memory_service.stm.max_messages)
         
         context_hbox.addWidget(self.context_slider)
         context_hbox.addWidget(self.context_spinbox)
@@ -94,11 +94,13 @@ class MemoryTab(QWidget):
         # Buttons
         self.summarize_btn = QPushButton("Summarize Current Conversation")
         self.clear_memory_btn = QPushButton("Clear All Memories")
+        self.cleanup_memory_btn = QPushButton("Cleanup Memory Entries")
         self.export_memory_btn = QPushButton("Export Memories")
         self.import_memory_btn = QPushButton("Import Memories")
         
         actions_layout.addWidget(self.summarize_btn)
         actions_layout.addWidget(self.clear_memory_btn)
+        actions_layout.addWidget(self.cleanup_memory_btn)
         actions_layout.addWidget(self.export_memory_btn)
         actions_layout.addWidget(self.import_memory_btn)
         
@@ -162,12 +164,22 @@ class MemoryTab(QWidget):
         widget = QWidget()
         layout = QVBoxLayout()
         
+        # Filter dropdown for STM/LTM
+        filter_layout = QHBoxLayout()
+        self.memory_scope_filter = QComboBox()
+        self.memory_scope_filter.addItems(["Short-Term Memory", "Long-Term Memory"])
+        self.memory_scope_filter.currentIndexChanged.connect(self.refresh_memories)
+        filter_layout.addWidget(QLabel("Show:"))
+        filter_layout.addWidget(self.memory_scope_filter)
+        filter_layout.addStretch()
+        layout.addLayout(filter_layout)
+        
         # Search and filter
         search_layout = QHBoxLayout()
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("Search memories...")
         self.memory_type_filter = QComboBox()
-        self.memory_type_filter.addItems(["All Types", "conversation", "summary", "fact", "preference"])
+        self.memory_type_filter.addItems(["All Types", "conversation", "summary", "fact", "preference", "skill", "relationship"])
         self.search_btn = QPushButton("Search")
         
         search_layout.addWidget(self.search_input)
@@ -178,9 +190,9 @@ class MemoryTab(QWidget):
         
         # Memories table
         self.memories_table = QTableWidget()
-        self.memories_table.setColumnCount(6)
+        self.memories_table.setColumnCount(7)
         self.memories_table.setHorizontalHeaderLabels([
-            "ID", "Content", "Type", "Importance", "Tags", "Date"
+            "ID", "Content", "Type", "Importance", "Tags", "Access Count", "Date"
         ])
         self.memories_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         
@@ -256,6 +268,7 @@ class MemoryTab(QWidget):
         # Button connections
         self.summarize_btn.clicked.connect(self.summarize_current_conversation)
         self.clear_memory_btn.clicked.connect(self.clear_all_memories)
+        self.cleanup_memory_btn.clicked.connect(self.cleanup_memory_entries)
         self.search_btn.clicked.connect(self.search_memories)
         
         # Table connections
@@ -303,18 +316,35 @@ class MemoryTab(QWidget):
             self.recent_activity_list.addItem(item)
     
     def refresh_memories(self):
-        """Refresh the memories table"""
-        self.memories_table.setRowCount(len(self.memory_service.memories))
-        
-        for i, memory in enumerate(self.memory_service.memories):
-            date = datetime.fromisoformat(memory.timestamp).strftime("%Y-%m-%d %H:%M")
-            
-            self.memories_table.setItem(i, 0, QTableWidgetItem(memory.id))
-            self.memories_table.setItem(i, 1, QTableWidgetItem(memory.content[:50] + "..."))
-            self.memories_table.setItem(i, 2, QTableWidgetItem(memory.memory_type))
-            self.memories_table.setItem(i, 3, QTableWidgetItem(f"{memory.importance:.2f}"))
-            self.memories_table.setItem(i, 4, QTableWidgetItem(", ".join(memory.tags)))
-            self.memories_table.setItem(i, 5, QTableWidgetItem(date))
+        """Refresh the memories table based on STM/LTM filter"""
+        scope = self.memory_scope_filter.currentText() if hasattr(self, 'memory_scope_filter') else "Short-Term Memory"
+        if scope == "Short-Term Memory":
+            memories = self.memory_service.stm.get_messages()
+            self.memories_table.setRowCount(len(memories))
+            # Only fill columns that make sense for STM
+            for i, memory in enumerate(memories):
+                self.memories_table.setItem(i, 0, QTableWidgetItem(str(i+1)))
+                self.memories_table.setItem(i, 1, QTableWidgetItem(memory.get("content", "")))
+                self.memories_table.setItem(i, 2, QTableWidgetItem(memory.get("role", "")))
+                self.memories_table.setItem(i, 3, QTableWidgetItem("-"))
+                self.memories_table.setItem(i, 4, QTableWidgetItem("-"))
+                self.memories_table.setItem(i, 5, QTableWidgetItem("-"))
+                self.memories_table.setItem(i, 6, QTableWidgetItem("-"))
+        else:
+            # LTM: fill all columns
+            ltm_entries = self.memory_service.ltm.get_entries()
+            self.memories_table.setRowCount(len(ltm_entries))
+            for i, entry in enumerate(ltm_entries):
+                self.memories_table.setItem(i, 0, QTableWidgetItem(str(i+1)))
+                content = entry.summary if entry.type == "summary" else entry.value
+                self.memories_table.setItem(i, 1, QTableWidgetItem(content or ""))
+                self.memories_table.setItem(i, 2, QTableWidgetItem(entry.type))
+                self.memories_table.setItem(i, 3, QTableWidgetItem(str(entry.importance)))
+                # Handle potential None tags
+                tags = entry.tags if entry.tags is not None else []
+                self.memories_table.setItem(i, 4, QTableWidgetItem(", ".join(tags)))
+                self.memories_table.setItem(i, 5, QTableWidgetItem(str(entry.access_count)))
+                self.memories_table.setItem(i, 6, QTableWidgetItem(entry.timestamp))
     
     def refresh_summaries(self):
         """Refresh the summaries list"""
@@ -346,7 +376,8 @@ class MemoryTab(QWidget):
             self.memories_table.setItem(i, 2, QTableWidgetItem(memory.memory_type))
             self.memories_table.setItem(i, 3, QTableWidgetItem(f"{memory.importance:.2f}"))
             self.memories_table.setItem(i, 4, QTableWidgetItem(", ".join(memory.tags)))
-            self.memories_table.setItem(i, 5, QTableWidgetItem(date))
+            self.memories_table.setItem(i, 5, QTableWidgetItem("-"))  # Access count not available for old memories
+            self.memories_table.setItem(i, 6, QTableWidgetItem(date))
     
     def show_memory_details(self):
         """Show details for selected memory"""
@@ -418,14 +449,33 @@ class MemoryTab(QWidget):
             QMessageBox.warning(self, "Error", "Conversation service not connected.")
     
     def clear_all_memories(self):
-        """Clear all memories with confirmation"""
-        reply = QMessageBox.question(self, "Confirm Clear", 
-                                   "Are you sure you want to clear all memories? This cannot be undone.",
-                                   QMessageBox.Yes | QMessageBox.No)
+        """Clear all memories"""
+        reply = QMessageBox.question(
+            self, "Confirm Clear", 
+            "Are you sure you want to clear all memories? This action cannot be undone.",
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.No
+        )
         
         if reply == QMessageBox.Yes:
             self.memory_service.clear_memory()
             self.refresh_data()
+            QMessageBox.information(self, "Success", "All memories cleared successfully!")
+    
+    def cleanup_memory_entries(self):
+        """Clean up duplicate and conflicting memory entries"""
+        reply = QMessageBox.question(
+            self, "Confirm Cleanup", 
+            "This will remove duplicate and conflicting memory entries. Continue?",
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes
+        )
+        
+        if reply == QMessageBox.Yes:
+            try:
+                self.memory_service.cleanup_memory_entries()
+                self.refresh_data()
+                QMessageBox.information(self, "Success", "Memory entries cleaned up successfully!")
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"Failed to cleanup memory entries: {str(e)}")
     
     def delete_selected_memory(self):
         """Delete the selected memory"""

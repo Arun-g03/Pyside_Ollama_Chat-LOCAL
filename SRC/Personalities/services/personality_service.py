@@ -286,13 +286,84 @@ class PersonalityService:
         # Save to file
         return self.loader.save_personality_to_file(name, personality)
     
-    def build_comprehensive_system_prompt(self) -> str:
+    def build_comprehensive_system_prompt(self, memory_service=None) -> str:
         """Build a comprehensive system prompt with pronoun guidance"""
         current_personality = self.get_current_personality()
         if not current_personality:
             return ""
         
-        return self.formatter.build_comprehensive_system_prompt(current_personality)
+        # Get base system prompt from formatter
+        base_prompt = self.formatter.build_comprehensive_system_prompt(current_personality)
+        
+        return base_prompt
+    
+    def get_user_context_messages(self, memory_service=None, is_new_conversation=False) -> List[Dict]:
+        """Get dynamic user context messages that should be added to conversation"""
+        context_messages = []
+        
+        # Get current personality for AI name
+        current_personality = self.get_current_personality()
+        ai_name = "AI Assistant"
+        if current_personality and "traits" in current_personality:
+            ai_name = current_personality["traits"].get("name", "AI Assistant")
+        
+        if memory_service:
+            try:
+                user_info = memory_service.get_user_info()
+                if user_info:
+                    # Create context messages for user information
+                    context_text = "USER CONTEXT:\n"
+                    
+                    # Add conversation context
+                    if is_new_conversation:
+                        context_text += "CONVERSATION STATUS: This is a NEW conversation.\n"
+                        context_text += f"- Introduce yourself as '{ai_name}' and greet the user\n"
+                    else:
+                        context_text += "CONVERSATION STATUS: Continuing existing conversation.\n"
+                    
+                    context_text += "\nUSER INFORMATION:\n"
+                    
+                    if "name" in user_info:
+                        context_text += f"- Name: {user_info['name']}\n"
+                    
+                    if "location" in user_info:
+                        context_text += f"- Location: {user_info['location']}\n"
+                    
+                    # Add preferences
+                    preferences = {k: v for k, v in user_info.items() if k.startswith('favorite_') or k.startswith('preference_')}
+                    if preferences:
+                        context_text += "- Preferences:\n"
+                        for key, value in preferences.items():
+                            if key.startswith('favorite_'):
+                                category = key.replace('favorite_', '')
+                                context_text += f"  * Favorite {category}: {value}\n"
+                            elif key.startswith('preference_'):
+                                category = key.replace('preference_', '')
+                                context_text += f"  * {category}: {value}\n"
+                    
+                    context_text += "\nINSTRUCTIONS:"
+                    context_text += "\n- Use this information to personalize responses"
+                    context_text += f"\n- When asked about your name, say 'My name is {ai_name}'"
+                    context_text += f"\n- When asked about the user's name, say 'Your name is {user_info.get('name', 'unknown')}'"
+                    context_text += f"\n- Never say you don't have a name or that you're just an AI assistant"
+                    context_text += f"\n- Always identify yourself as '{ai_name}'"
+                    
+                    if is_new_conversation:
+                        context_text += f"\n- Introduce yourself as '{ai_name}' and be welcoming"
+                    
+                    context_messages.append({
+                        "role": "system", 
+                        "content": context_text.strip()
+                    })
+                    
+                    logger.debug(f"Generated user context messages: {user_info}", print_to_terminal=True)
+                    logger.debug(f"New conversation: {is_new_conversation}", print_to_terminal=True)
+                    logger.debug(f"User context content: {context_text.strip()}", print_to_terminal=True)
+                        
+            except Exception as e:
+                logger.debug(f"Error generating user context: {e}", print_to_terminal=True)
+        
+        return context_messages
     
     def get_personality_categories(self) -> List[str]:
         """Get list of all personality categories"""
@@ -359,4 +430,11 @@ class PersonalityService:
     
     def get_selected_model(self) -> str:
         """Get the currently selected personality name"""
-        return self.current_personality or "" 
+        return self.current_personality or ""
+    
+    def get_ai_name(self) -> str:
+        """Get the AI's name from the current personality"""
+        current_personality = self.get_current_personality()
+        if current_personality and "traits" in current_personality:
+            return current_personality["traits"].get("name", "AI Assistant")
+        return "AI Assistant" 

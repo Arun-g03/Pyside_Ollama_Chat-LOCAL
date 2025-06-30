@@ -86,7 +86,7 @@ class ConversationService(QObject):
     def get_context_messages(self) -> List[Dict]:
         """Get messages for context window, including relevant memories"""
         if self.memory_service:
-            return self.memory_service.get_context_messages(self.conversation)
+            return self.memory_service.get_context_messages()
         else:
             return self.conversation.copy()
     

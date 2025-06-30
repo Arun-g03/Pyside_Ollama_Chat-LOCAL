@@ -65,19 +65,28 @@ class PersonalityFormatter:
         # Build comprehensive prompt
         comprehensive_prompt = []
         
-        # 1. Main system prompt
+        # 1. AI Identity
+        ai_name = traits.get('name', 'AI Assistant')
+        comprehensive_prompt.append(f"You are {ai_name}.")
+        comprehensive_prompt.append(f"Your name is {ai_name}.")
+        comprehensive_prompt.append(f"Use 'I' and 'my' when referring to yourself.")
+        comprehensive_prompt.append(f"Use 'you' and 'your' when referring to the user.")
+        comprehensive_prompt.append(f"Never say you don't have a name or that you're just an AI assistant.")
+        comprehensive_prompt.append(f"Always use your name '{ai_name}' when asked about your identity.")
+        
+        # 2. Main system prompt
         main_prompt = prompt_data.get('system_prompt', '')
         if main_prompt:
             # Format the main prompt with user references if any placeholders exist
             main_prompt = pronouns.format_user_reference(main_prompt)
-            comprehensive_prompt.append(main_prompt)
+            comprehensive_prompt.append(f"\n{main_prompt}")
         
-        # 2. Add comprehensive pronoun guide
+        # 3. Add comprehensive pronoun guide
         pronoun_guide = pronouns.get_pronoun_guide()
         if pronoun_guide:
             comprehensive_prompt.append("\n\n" + pronoun_guide)
         
-        # 3. Add personality traits
+        # 4. Add personality traits
         if traits:
             comprehensive_prompt.append("\n\nPERSONALITY TRAITS:")
             comprehensive_prompt.append(f"• Name: {traits.get('name', 'Unknown')}")
@@ -107,7 +116,7 @@ class PersonalityFormatter:
             if features:
                 comprehensive_prompt.append(f"• Features: {', '.join(features)}")
         
-        # 4. Add examples if available
+        # 5. Add examples if available
         examples = prompt_data.get('examples', [])
         if examples:
             comprehensive_prompt.append("\n\nEXAMPLE RESPONSES:")
@@ -116,7 +125,7 @@ class PersonalityFormatter:
                 formatted_example = pronouns.format_user_reference(example)
                 comprehensive_prompt.append(f"{i}. {formatted_example}")
         
-        # 5. Add constraints
+        # 6. Add constraints
         constraints = prompt_data.get('constraints', [])
         if constraints:
             comprehensive_prompt.append("\n\nCONSTRAINTS:")

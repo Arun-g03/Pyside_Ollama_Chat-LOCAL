@@ -15,13 +15,14 @@ logger = CustomLogger.get_logger(__name__)
 class StreamingHandler:
     """Handles streaming response processing and display updates"""
     
-    def __init__(self, chat_display: QTextEdit):
+    def __init__(self, chat_display: QTextEdit, ai_name: str = "Assistant"):
         self.chat_display = chat_display
         self.messages = []  # List of dicts: {sender, content, is_code, is_streaming, tag}
         self._stream_buffer = None
         self._stream_timer = QTimer()
         self._stream_timer.setInterval(50)  # ms
         self._stream_timer.timeout.connect(self._flush_stream_buffer)
+        self.ai_name = ai_name
         #global incrementor
         #self.incrementor = 0
 
@@ -143,7 +144,7 @@ class StreamingHandler:
                             <table width='100%' cellspacing='0' cellpadding='0'><tr>
                               <td align='left'>
                                 <div style='background-color: #23272e; color: #aaa; border-radius: 8px; padding: 10px 16px; margin: 8px 0 4px 0; max-width: 500px; min-width: 60px; display: inline-block; word-break: break-word; border: 2px dashed #888; font-style: italic;'>
-                                  <b style='color: #aaa;'>Assistant Thoughts💭:</b><br> {MessageFormatter.handle_html_tags(thoughts)}
+                                  <b style='color: #aaa;'>{self.ai_name} Thoughts💭:</b><br> {MessageFormatter.handle_html_tags(thoughts)}
                                 </div>
                               </td>
                               <td></td>
@@ -166,7 +167,7 @@ class StreamingHandler:
                         <table width='100%' cellspacing='0' cellpadding='0'><tr>
                           <td align='left'>
                             <div style='background-color: #23272e; color: #aaa; border-radius: 8px; padding: 10px 16px; margin: 8px 0 4px 0; max-width: 500px; min-width: 60px; display: inline-block; word-break: break-word; border: 2px dashed #888; font-style: italic;'>
-                              <b style='color: #aaa;'>Assistant Thoughts💭:</b><br> {MessageFormatter.handle_html_tags(thoughts)}
+                              <b style='color: #aaa;'>{self.ai_name} Thoughts💭:</b><br> {MessageFormatter.handle_html_tags(thoughts)}
                             </div>
                           </td>
                           <td></td>
@@ -228,4 +229,8 @@ class StreamingHandler:
 
     def cleanup(self):
         self.messages.clear()
-        self._render_chat_display() 
+        self._render_chat_display()
+    
+    def update_ai_name(self, ai_name: str):
+        """Update the AI name used for thoughts display"""
+        self.ai_name = ai_name 

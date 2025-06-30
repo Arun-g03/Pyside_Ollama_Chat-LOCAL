@@ -122,9 +122,13 @@ class PersonalityModel:
         """Update metadata for a personality"""
         return self.service.update_personality_metadata(name, **kwargs)
     
-    def build_comprehensive_system_prompt(self) -> str:
-        """Build a comprehensive system prompt with pronoun guidance"""
-        return self.service.build_comprehensive_system_prompt()
+    def build_comprehensive_system_prompt(self, memory_service=None) -> str:
+        """Build a comprehensive system prompt with pronoun guidance and user information from memory"""
+        return self.service.build_comprehensive_system_prompt(memory_service)
+    
+    def get_user_context_messages(self, memory_service=None, is_new_conversation=False) -> List[Dict]:
+        """Get dynamic user context messages that should be added to conversation"""
+        return self.service.get_user_context_messages(memory_service, is_new_conversation)
     
     def get_custom_personalities(self) -> Dict[str, Dict[str, Any]]:
         """Get custom personalities - for backward compatibility"""
@@ -173,6 +177,10 @@ class PersonalityModel:
     def get_selected_model(self) -> str:
         """Get the currently selected personality name"""
         return self.service.get_selected_model()
+    
+    def get_ai_name(self) -> str:
+        """Get the AI's name from the current personality"""
+        return self.service.get_ai_name()
     
     def get_personality_loader(self):
         """Get access to the personality loader for advanced operations"""

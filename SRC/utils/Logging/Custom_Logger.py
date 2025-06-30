@@ -60,7 +60,7 @@ class PrintOnLogMixin:
         if print_to_terminal:
             self._print(clean_msg)
 
-class CustomLogger:
+class CustomLogger(logging.Logger):
     _instance = None
     _loggers = {}
     _cleared_files = set()
@@ -111,3 +111,18 @@ class CustomLogger:
         logger.__class__ = PrintLogger
         cls._loggers[name] = logger
         return logger
+
+    def info(self, msg, *args, **kwargs):
+        clean_msg = self._filter_non_ascii(str(msg))
+        super().info(clean_msg, *args, **kwargs)
+    def debug(self, msg, *args, **kwargs):
+        clean_msg = self._filter_non_ascii(str(msg))
+        super().debug(clean_msg, *args, **kwargs)
+    def warning(self, msg, *args, **kwargs):
+        clean_msg = self._filter_non_ascii(str(msg))
+        super().warning(clean_msg, *args, **kwargs)
+    def error(self, msg, *args, **kwargs):
+        clean_msg = self._filter_non_ascii(str(msg))
+        super().error(clean_msg, *args, **kwargs)
+    def _filter_non_ascii(self, s):
+        return re.sub(r'[^\x00-\x7F]+', '', s)
