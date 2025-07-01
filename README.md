@@ -6,7 +6,7 @@ A sophisticated desktop chat application built with PySide6 that provides an int
 
 ### 🤖 **AI Chat Interface**
 - Seamless integration with Ollama AI models
-- Real-time chat with customizable AI personalities
+- Real-time chat with customisable AI personalities
 - Support for multiple AI models and configurations
 - Conversation history management
 
@@ -31,7 +31,7 @@ A sophisticated desktop chat application built with PySide6 that provides an int
 - Toggle on/off functionality
 
 ### ⚙️ **Advanced Configuration**
-- Customizable chat settings (temperature, max tokens, etc.)
+- Customisable chat settings (temperature, max tokens, etc.)
 - Window size and layout preferences
 - Feature toggles for various enhancements
 - Persistent configuration management

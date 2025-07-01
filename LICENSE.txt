@@ -52,4 +52,4 @@ By contributing to this project, you agree that:
    of the project maintainer
 
 This license is designed to protect the original developer's work while encouraging
-open collaboration and preventing unauthorized commercial exploitation. 
+open collaboration and preventing unauthorised commercial exploitation. 
