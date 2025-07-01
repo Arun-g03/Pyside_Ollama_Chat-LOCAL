@@ -314,7 +314,7 @@ The project follows Python best practices with:
 
 ## 📝 License
 
-[Licence] (LICENSE.txt)
+[License](LICENSE.txt)
 ## 🤝 Contributing
 
 1. Fork the repository
