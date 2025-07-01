@@ -8,7 +8,8 @@ from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                                QFormLayout, QGroupBox, QCheckBox, QSpinBox,
                                QMessageBox, QListWidget, QSplitter, QTabWidget)
 from PySide6.QtCore import Signal, Qt
-from SRC.Personalities.personality_model_refactored import PersonalityModel, PersonalityTraits, PersonalityPrompt, PersonalityConfig, PersonalityMetadata
+from SRC.Personalities.personality_model import PersonalityModel, PersonalityTraits, PersonalityPrompt, PersonalityConfig, PersonalityMetadata
+from typing import List, Dict
 
 class PersonalityWidget(QWidget):
     """Widget for managing AI personalities"""
@@ -595,10 +596,14 @@ Ask Questions: {'Yes' if info['questions_usage'] else 'No'}"""
         """Get list of available personality names"""
         return self.personality_model.get_available_personalities()
 
-    def get_comprehensive_system_prompt(self) -> str:
-        """Get a comprehensive system prompt that includes all personality components."""
+    def get_comprehensive_system_prompt(self, memory_service=None, is_new_conversation=False) -> str:
+        """Get a comprehensive system prompt that includes all personality components and user information from memory."""
         # Use the personality model's comprehensive system prompt method
-        return self.personality_model.build_comprehensive_system_prompt()
+        return self.personality_model.build_comprehensive_system_prompt(memory_service)
+
+    def get_user_context_messages(self, memory_service=None, is_new_conversation=False) -> List[Dict]:
+        """Get dynamic user context messages that should be added to conversation"""
+        return self.personality_model.get_user_context_messages(memory_service, is_new_conversation)
 
     def refresh_personalities(self):
         """Refresh personalities from disk"""

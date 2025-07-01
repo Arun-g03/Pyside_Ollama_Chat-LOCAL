@@ -5,7 +5,7 @@
   "auto_save_enabled": true,
   "spellcheck_enabled": true,
   "window_size": {
-    "width": 1554,
+    "width": 1200,
     "height": 800
   },
   "chat_settings": {
@@ -20,5 +20,6 @@
   "json_format_enabled": false,
   "verbose_enabled": true,
   "think_enabled": true,
-  "theme": "Dark"
+  "theme": "Dark",
+  "memory_enabled": true
 }

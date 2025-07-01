@@ -168,7 +168,7 @@ class ConfigManager:
     
     def get_history_directory(self) -> str:
         """Get the chat history directory"""
-        return self.get("history_directory", "chat_history")
+        return self.get("history_directory", "User_history/Chat_history")
     
     def set_history_directory(self, directory: str) -> bool:
         """Set the chat history directory"""
@@ -232,4 +232,13 @@ class ConfigManager:
         return self.config.get('chat_settings', {}).get('frequency_penalty', 0.0)
     
     def get_presence_penalty(self):
-        return self.config.get('chat_settings', {}).get('presence_penalty', 0.0) 
+        """Get the presence penalty setting"""
+        return self.get("chat_settings.presence_penalty", 0.0)
+    
+    def get_max_context_messages(self) -> int:
+        """Get the maximum number of context messages for memory management"""
+        return self.get("max_context_messages", 20)
+    
+    def set_max_context_messages(self, max_messages: int) -> bool:
+        """Set the maximum number of context messages for memory management"""
+        return self.set("max_context_messages", max_messages) 

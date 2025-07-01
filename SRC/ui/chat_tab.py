@@ -427,8 +427,9 @@ class ChatTab(QWidget):
         parent.addWidget(controls_widget)
         
     def setup_streaming_handler(self):
-        """Setup the streaming response handler"""
-        self.streaming_handler = StreamingHandler(self.chat_display)
+        """Setup the streaming handler"""
+        ai_name = self.get_ai_name()
+        self.streaming_handler = StreamingHandler(self.chat_display, ai_name)
         
     def setup_connections(self):
         """Setup signal connections"""
@@ -510,10 +511,12 @@ class ChatTab(QWidget):
         if not self.is_streaming:
             self.start_streaming()
         self.current_response += chunk  # accumulate here only!
-        label = f"Assistant ({model_name})" if model_name else "Assistant"
+        ai_name = self.get_ai_name()
+        label = f"{ai_name} ({model_name})" if model_name else ai_name
         self.streaming_handler.update_streaming_message(
             self.current_response, label, None, False, tag="ai"
         )
+        
         
     def start_streaming(self):
         """Start streaming state"""
@@ -522,7 +525,8 @@ class ChatTab(QWidget):
             self.current_response = ""
             self.send_button.setEnabled(False)
             self.cancel_button.setVisible(True)
-            self.streaming_handler.start_streaming_message("Assistant", tag="ai")
+            ai_name = self.get_ai_name()
+            self.streaming_handler.start_streaming_message(ai_name, tag="ai")
         
     def stop_streaming(self):
         """Stop streaming state"""
@@ -581,7 +585,11 @@ class ChatTab(QWidget):
             
     def on_personality_changed(self, personality_name: str):
         """Handle personality change"""
-        self.append_to_chat("System", f"Switched to {personality_name} personality")
+        ai_name = self.get_ai_name()
+        self.append_to_chat("System", f"Switched to {personality_name} personality - {ai_name}")
+        # Update streaming handler's AI name
+        if hasattr(self, 'streaming_handler'):
+            self.streaming_handler.update_ai_name(ai_name)
         
     def get_current_model(self) -> str:
         """Get the currently selected model"""
@@ -598,6 +606,15 @@ class ChatTab(QWidget):
     def get_current_personality(self) -> str:
         """Get the currently selected personality"""
         return self.personality_combo.currentText()
+        
+    def get_ai_name(self) -> str:
+        """Get the AI's name from the current personality"""
+        try:
+            if hasattr(self.parent, 'personality_model') and self.parent.personality_model:
+                return self.parent.personality_model.get_ai_name()
+        except Exception as e:
+            logger.debug(f"Error getting AI name: {e}", print_to_terminal=True)
+        return "Assistant"  # Fallback
         
     def clear_chat(self):
         """Clear the chat display"""
@@ -668,7 +685,8 @@ class ChatTab(QWidget):
                     if role == "user":
                         self.append_to_chat("You", content)
                     elif role == "assistant":
-                        self.append_to_chat("Assistant", content)
+                        ai_name = self.get_ai_name()
+                        self.append_to_chat(ai_name, content)
                     elif role == "system":
                         self.append_to_chat("System", content)
                 

@@ -20,7 +20,7 @@ logger = CustomLogger.get_logger(__name__)
 class PersonalityLoader:
     """Handles loading and saving personality data from/to files"""
     
-    def __init__(self, personalities_dir: str = "personality_Profiles"):
+    def __init__(self, personalities_dir: str = "SRC/Personalities/personality_Profiles"):
         self.personalities_dir = personalities_dir
         
         # Create personalities directory if it doesn't exist
