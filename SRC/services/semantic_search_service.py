@@ -34,11 +34,7 @@ class SemanticSearchService(QObject):
     embeddings_updated = Signal()  # Emitted when embeddings are updated
     search_completed = Signal(list)  # Emitted when search completes
     
-<<<<<<< HEAD
     def __init__(self, model_name: str = "all-MiniLM-L6-v2", cache_dir: str = "User_history/memory/embeddings"):
-=======
-    def __init__(self, model_name: str = "all-MiniLM-L6-v2", cache_dir: str = "memory/embeddings"):
->>>>>>> ef31c6b8256c52f13eef98a2d34e6443fb8a7f4b
         super().__init__()
         self.model_name = model_name
         self.cache_dir = cache_dir
