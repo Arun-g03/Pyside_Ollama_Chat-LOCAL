@@ -1,6 +1,6 @@
 MIT License with Attribution and Non-Commercial Restrictions
 
-Copyright (c) 2024 Arun (Pyside_Chat Developer)
+Copyright (c) 2025 Arun G (Pyside_Chat Developer)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -12,7 +12,7 @@ subject to the following conditions:
 
 2. Attribution Requirement: Any use, modification, or distribution of this Software
    must prominently display the original author's name and a link to the original
-   repository.
+   repository: https://github.com/Arun-g03/Pyside_Ollama_Chat-LOCAL
 
 3. Non-Commercial Use Only: This Software may not be used for commercial purposes,
    including but not limited to:
@@ -22,7 +22,7 @@ subject to the following conditions:
    - Using the Software to generate revenue
 
 4. Commercial Use: For commercial use, explicit written permission must be obtained
-   from the copyright holder.
+   from the copyright holder. Contact: arun.g.dev@icloud.com
 
 5. Contributions: Contributors retain copyright to their contributions but grant
    the same license terms to the original project.
