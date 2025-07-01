@@ -407,12 +407,22 @@ class MemoryService(QObject):
         self.stm = ShortTermMemoryService(max_messages=max_context_messages)
         self.ltm = LongTermMemoryService()
         self.memories: List[MemoryEntry] = []
+<<<<<<< HEAD
         self.memory_file = os.path.join("SRC", "User_history", "memory", "memories.json")
+=======
+        self.memory_file = os.path.join("memory", "memories.json")
+>>>>>>> ef31c6b8256c52f13eef98a2d34e6443fb8a7f4b
         
         # Initialize classifiers and normalizers
         self.classifier = MemoryClassifier()
         self.retriever = MemoryRetriever()
         self.pronoun_normalizer = PronounNormalizer()
+<<<<<<< HEAD
+=======
+        
+        # Initialize semantic search service
+        self.semantic_search = SemanticSearchService()
+>>>>>>> ef31c6b8256c52f13eef98a2d34e6443fb8a7f4b
         
         # Initialize semantic search service
         self.semantic_search = SemanticSearchService()
