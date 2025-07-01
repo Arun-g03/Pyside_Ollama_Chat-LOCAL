@@ -314,13 +314,7 @@ The project follows Python best practices with:
 
 ## 📝 License
 
-This project is licensed under the MIT License with the following conditions:
-
-- You are free to use, modify, and distribute this software
-- You must include the original copyright notice and license
-- You cannot redistribute this as a standalone product
-- You cannot claim this work as your own
-
+[Licence] (LICENSE)
 ## 🤝 Contributing
 
 1. Fork the repository
