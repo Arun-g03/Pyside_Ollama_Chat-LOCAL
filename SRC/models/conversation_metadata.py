@@ -119,7 +119,7 @@ class ConversationManager(QObject):
     # Signals
     metadata_updated = Signal()  # Emitted when metadata is updated
     
-    def __init__(self, history_dir: str = "chat_history"):
+    def __init__(self, history_dir: str = "User_history/Chat_history"):
         super().__init__()
         self.history_dir = history_dir
         self.metadata = ConversationMetadata()

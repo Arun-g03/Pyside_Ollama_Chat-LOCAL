@@ -105,6 +105,21 @@ QScrollBar::add-line, QScrollBar::sub-line {
     background: none;
     border: none;
 }
+
+QHeaderView::section {
+    background-color: #232323;
+    color: #fff;
+    border: 1px solid #444;
+    font-weight: bold;
+    padding: 6px;
+}
+
+QListWidget, QWidget#Sidebar {
+    background-color: #1e1e1e;
+    color: #fff;
+    border: 1px solid #444;
+}
+
 """
 
 light_stylesheet = """
@@ -214,4 +229,19 @@ QScrollBar::add-line, QScrollBar::sub-line {
     background: none;
     border: none;
 }
+
+QHeaderView::section {
+    background-color: #232323;
+    color: #fff;
+    border: 1px solid #444;
+    font-weight: bold;
+    padding: 6px;
+}
+
+QListWidget, QWidget#Sidebar {
+    background-color: #1e1e1e;
+    color: #fff;
+    border: 1px solid #444;
+}
+
 """

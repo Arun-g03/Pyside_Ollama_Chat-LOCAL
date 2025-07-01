@@ -5,7 +5,7 @@ This shows how the main window would look after extracting functionality into se
 
 from PySide6.QtWidgets import (QMainWindow, QTabWidget, QVBoxLayout, QWidget, QStatusBar,
                                QMenuBar, QMenu, QToolBar, QMessageBox)
-from PySide6.QtCore import QTimer, QThread
+from PySide6.QtCore import QTimer, QThread, Qt
 from PySide6.QtGui import QIcon, QAction
 import os
 
@@ -19,11 +19,17 @@ from SRC.services.conversation_service import ConversationService
 from SRC.services.enhancement_service import EnhancementService
 from SRC.services.memory_service import MemoryService
 from SRC.models.conversation_metadata import ConversationManager
-from SRC.config_manager import ConfigManager
-from SRC.settings_dialog import SettingsDialog
-from SRC.worker import Worker
-from SRC.styles import dark_stylesheet, light_stylesheet
+from SRC.config.config_manager import ConfigManager
+from SRC.ui.Widgets.settings_dialog import SettingsDialog
+from SRC.services.worker.worker import Worker
+from SRC.ui.styles.styles import dark_stylesheet, light_stylesheet
 from SRC.utils.Logging.Custom_Logger import CustomLogger
+
+# Import new refactored modules
+from SRC.controllers.chat_controller import ChatController
+from SRC.utils.prompts import PromptFormatter
+from SRC.utils.logging_helpers import LoggingHelpers
+from SRC.ui.styles.tab_styles import TabStyles
 
 logger = CustomLogger.get_logger(__name__)
 
@@ -31,37 +37,46 @@ class OllamaChat(QMainWindow):
     """Main application window - simplified after refactoring"""
     
     def __init__(self):
-        super().__init__()
-        
-        # Initialize configuration
-        self.config_manager = ConfigManager()
-        
-        # Initialize services
-        self.setup_services()
-        
-        # Setup UI
-        self.setup_ui()
-        self.setup_menu_bar()
-        
-        # Setup connections
-        self.setup_connections()
-        
-        # Apply styling
-        self.apply_dark_theme()
-        
-        # Initialize state
-        self.initialization_complete = False
-        self.model_change_in_progress = False
-        self.is_new_conversation = False  # Track new conversation state
-        
-        # Setup timers
-        self.setup_timers()
-        
-        # Mark initialization as complete
-        self.initialization_complete = True
-        
-        # Initial model refresh
-        self.refresh_models()
+        try:
+            super().__init__()
+            
+            # Initialize configuration
+            self.config_manager = ConfigManager()
+            
+            # Initialize services
+            self.setup_services()
+            
+            # Initialize controller
+            self.setup_controller()
+            
+            # Setup UI
+            self.setup_ui()
+            self.setup_menu_bar()
+            
+            # Setup connections
+            self.setup_connections()
+            
+            # Apply styling
+            self.apply_dark_theme()
+            
+            # Initialize state
+            self.initialization_complete = False
+            self.model_change_in_progress = False
+            self.ollama_error_shown = False  # Track if error dialog has been shown
+            
+            # Setup timers
+            self.setup_timers()
+            
+            # Mark initialization as complete
+            self.initialization_complete = True
+            
+            # Initial model refresh
+            self.refresh_models()
+        except Exception as e:
+            import traceback
+            print('❌ Exception in OllamaChat.__init__:', e)
+            traceback.print_exc()
+            raise
     
     def setup_services(self):
         """Initialize all services"""
@@ -90,6 +105,16 @@ class OllamaChat(QMainWindow):
             'think': self.config_manager.is_think_enabled()
         }
     
+    def setup_controller(self):
+        """Initialize the chat controller"""
+        self.chat_controller = ChatController(
+            ollama_service=self.ollama_service,
+            conversation_service=self.conversation_service,
+            enhancement_service=self.enhancement_service,
+            memory_service=self.memory_service,
+            conversation_manager=self.conversation_manager
+        )
+    
     def setup_ui(self):
         """Setup the main UI"""
         # Set window properties
@@ -103,47 +128,23 @@ class OllamaChat(QMainWindow):
         # Create main layout
         main_layout = QVBoxLayout(central_widget)
         
-        # Create tab widget
+        # Create tab widget with external styling
         self.tabs = QTabWidget()
-        self.tabs.setStyleSheet("""
-            QTabWidget::pane {
-                border: 1px solid #444;
-                background-color: #1e1e1e;
-            }
-            QTabBar::tab {
-                background: #2d2d2d;
-                color: #ffffff;
-                border: 1px solid #555;
-                border-bottom: none;
-                border-top-left-radius: 5px;
-                border-top-right-radius: 5px;
-                padding: 8px 24px;
-                margin-right: 2px;
-                font-family: 'Segoe UI', Arial, sans-serif;
-                font-size: 15px;
-            }
-            QTabBar::tab:selected {
-                background: #0078d4;
-                color: #ffffff;
-            }
-            QTabBar::tab:hover {
-                background: #3d3d3d;
-                color: #ffffff;
-            }
-        """)
+        self.tabs.setStyleSheet(TabStyles.get_tab_style())
         main_layout.addWidget(self.tabs)
         
-        # Create and add tabs
-        self.chat_tab = ChatTab(self, self.conversation_manager)
-        self.model_tab = ModelTab(self)
-        self.personality_tab = PersonalityTab(self)
+        # Create and add tabs with reduced coupling
+        self.chat_tab = ChatTab(conversation_manager=self.conversation_manager)
+        self.model_tab = ModelTab()
+        self.personality_tab = PersonalityTab()
+        
         self.tabs.addTab(self.chat_tab, "Chat")
         self.tabs.addTab(self.model_tab, "Model Manager")
         self.tabs.addTab(self.personality_tab, "Personalities")
         
         # Conditionally add memory tab
         if self.memory_enabled:
-            self.memory_tab = MemoryTab(self.memory_service)
+            self.memory_tab = MemoryTab(memory_service=self.memory_service)
             self.memory_tab.set_conversation_service(self.conversation_service)
             self.tabs.addTab(self.memory_tab, "Memory")
         else:
@@ -152,7 +153,7 @@ class OllamaChat(QMainWindow):
         # Setup status bar
         self.status_bar = QStatusBar(self)
         self.setStatusBar(self.status_bar)
-        self.status_var = "Ready"
+        self.status_var = PromptFormatter.format_status_message("ready")
         self.status_bar.showMessage(self.status_var)
     
     def setup_menu_bar(self):
@@ -231,6 +232,11 @@ class OllamaChat(QMainWindow):
     
     def setup_connections(self):
         """Setup signal connections between components"""
+        # Connect controller signals
+        self.chat_controller.status_updated.connect(self.update_status)
+        self.chat_controller.error_occurred.connect(self.show_error)
+        self.chat_controller.conversation_updated.connect(self.on_conversation_updated)
+        
         # Connect Ollama service signals
         self.ollama_service.model_list_updated.connect(self.on_models_updated)
         self.ollama_service.model_operation_progress.connect(self.on_model_operation_progress)
@@ -263,10 +269,18 @@ class OllamaChat(QMainWindow):
     
     def refresh_models(self):
         """Refresh the list of available models"""
-        models = self.ollama_service.get_models()
-        if models:
-            self.chat_tab.update_model_list(models)
-            self.model_tab.update_model_list(models)
+        try:
+            models = self.ollama_service.get_models()
+            if models:
+                self.ollama_error_shown = False  # Reset error flag on success
+                self.chat_tab.update_model_list(models)
+                self.model_tab.update_model_list(models)
+            else:
+                # No models returned - likely Ollama is not running
+                self.show_ollama_connection_error("startup")
+        except Exception as e:
+            logger.error(f"Error refreshing models: {e}")
+            self.show_ollama_connection_error("startup")
         
         # Also refresh personalities
         self.refresh_personalities()
@@ -278,198 +292,57 @@ class OllamaChat(QMainWindow):
             if personalities:
                 self.chat_tab.update_personality_list(personalities)
         except Exception as e:
-            logger.debug(f"Error refreshing personalities: {e}",print_to_terminal=True)
+            LoggingHelpers.log_error("refresh_personalities", e)
     
     def on_models_updated(self, models):
         """Handle model list updates"""
         self.chat_tab.update_model_list(models)
         self.model_tab.update_model_list(models)
-        self.status_var = f"Found {len(models)} models"
-        self.status_bar.showMessage(self.status_var)
+        status_msg = PromptFormatter.format_status_message("models_found", count=len(models))
+        self.update_status(status_msg)
     
     def on_message_sent(self, message):
         """Handle new message sent from chat tab"""
-        logger.debug(f"=== MESSAGE SENT START ===", print_to_terminal=True)
-        logger.debug(f"Processing message: '{message}'", print_to_terminal=True)
+        # Get current model and temperature from chat tab
+        model = self.chat_tab.get_current_model()
+        temperature = self.chat_tab.get_temperature()
         
-        self.conversation_service.add_message("user", message)
+        # Process message through controller
+        self.chat_controller.process_user_message(message, model, temperature)
         
-        if self.memory_enabled and self.memory_service:
-            # Use intelligent message addition
-            result = self.memory_service.intelligent_add_message({"role": "user", "content": message})
-            logger.debug(f"Memory addition result: {result}", print_to_terminal=True)
-            
-            # Only do LLM fact extraction for messages that didn't qualify for LTM storage
-            if not result.get("ltm_qualified", False):
-                logger.debug("Message didn't qualify for LTM, attempting LLM fact extraction", print_to_terminal=True)
-                self.extract_and_store_facts(message)
-            else:
-                logger.debug("Message already qualified for LTM storage, skipping LLM fact extraction", print_to_terminal=True)
-        
-        self.send_to_ollama(message)
-        logger.debug(f"=== MESSAGE SENT END ===", print_to_terminal=True)
+        # Send to Ollama for actual processing
+        self.send_to_ollama(message, model, temperature)
 
-    def extract_and_store_facts(self, message):
-        """Extract facts from the message using LLM and store in long-term memory"""
-        logger.debug(f"=== FACT STORAGE START ===", print_to_terminal=True)
-        logger.debug(f"Processing message for fact storage: '{message}'", print_to_terminal=True)
-        
-        try:
-            facts = self.extract_facts_with_llm(message)
-            logger.debug(f"Extracted facts: {facts}", print_to_terminal=True)
-            
-            if facts and isinstance(facts, dict):
-                logger.debug(f"Processing {len(facts)} facts for storage", print_to_terminal=True)
-                stored_count = 0
-                skipped_count = 0
-                
-                for key, value in facts.items():
-                    logger.debug(f"Processing fact: key='{key}', value='{value}'", print_to_terminal=True)
-                    
-                    # Validate key and value before storing
-                    if key and value and isinstance(key, str) and isinstance(value, str):
-                        # Clean up the key and value
-                        clean_key = key.strip()
-                        clean_value = value.strip()
-                        logger.debug(f"Cleaned fact: key='{clean_key}', value='{clean_value}'", print_to_terminal=True)
-                        
-                        if clean_key and clean_value:
-                            logger.debug(f"Storing fact: {clean_key} = {clean_value}", print_to_terminal=True)
-                            self.memory_service.add_fact(clean_key, clean_value)
-                            stored_count += 1
-                            logger.debug(f"Successfully stored fact #{stored_count}", print_to_terminal=True)
-                        else:
-                            logger.debug(f"Skipping fact - empty after cleaning", print_to_terminal=True)
-                            skipped_count += 1
-                    else:
-                        logger.debug(f"Skipping invalid fact: key='{key}' (type: {type(key)}), value='{value}' (type: {type(value)})", print_to_terminal=True)
-                        skipped_count += 1
-                
-                logger.debug(f"Fact storage complete: {stored_count} stored, {skipped_count} skipped", print_to_terminal=True)
-            else:
-                logger.debug("No valid facts extracted from message", print_to_terminal=True)
-                logger.debug(f"Facts type: {type(facts)}, Facts value: {facts}", print_to_terminal=True)
-        except Exception as e:
-            logger.debug(f"Error in extract_and_store_facts: {e}", print_to_terminal=True)
-            logger.debug(f"Exception type: {type(e)}", print_to_terminal=True)
-        finally:
-            logger.debug(f"=== FACT STORAGE END ===", print_to_terminal=True)
-
-    def extract_facts_with_llm(self, message):
-        """Use qwen3:0.6b to extract facts as key-value pairs from a message"""
-        import json
-        import re
-        
-        logger.debug(f"=== FACT EXTRACTION START ===", print_to_terminal=True)
-        logger.debug(f"Input message: '{message}'", print_to_terminal=True)
-        logger.debug(f"Message length: {len(message.strip())} characters", print_to_terminal=True)
-        
-        # Skip fact extraction for very short messages
-        if len(message.strip()) < 5:
-            logger.debug(f"Skipping fact extraction - message too short (< 10 chars)", print_to_terminal=True)
-            return {}
-            
-        prompt = (
-            "Extract any facts, preferences, or important information from the following message "
-            "that should be remembered for future conversations. Return ONLY a valid JSON object with key-value pairs. "
-            "If no facts are found, return an empty JSON object {}.\n\n"
-            f"Message: \"{message}\""
-        )
-        
-        logger.debug(f"Prompt sent to LLM: '{prompt}'", print_to_terminal=True)
-        
-        try:
-            # Use OllamaService to call qwen3:0.6b
-            logger.debug(f"Calling LLM with model: qwen3:0.6b", print_to_terminal=True)
-            response_chunks = self.ollama_service.send_chat_message(
-                model="qwen3:0.6b",
-                messages=[{"role": "system", "content": prompt}],
-                temperature=0.0,
-                stream=False
-            )
-            response = "".join(response_chunks).strip()
-            
-            # Log the raw response for debugging
-            logger.debug(f"Raw LLM response: '{response}'", print_to_terminal=True)
-            logger.debug(f"Response length: {len(response)} characters", print_to_terminal=True)
-            
-            # Handle empty response
-            if not response:
-                logger.debug("Fact extraction: Empty response from LLM", print_to_terminal=True)
-                return {}
-            
-            # Try to extract JSON from the response (in case LLM adds extra text)
-            logger.debug("Attempting to extract JSON from response...", print_to_terminal=True)
-            json_match = re.search(r'\{.*\}', response, re.DOTALL)
-            if json_match:
-                json_str = json_match.group(0)
-                logger.debug(f"JSON extracted using regex: '{json_str}'", print_to_terminal=True)
-            else:
-                # If no JSON found, try to parse the entire response
-                json_str = response
-                logger.debug(f"No JSON pattern found, using entire response: '{json_str}'", print_to_terminal=True)
-            
-            # Try to parse the JSON
-            try:
-                logger.debug("Attempting to parse JSON...", print_to_terminal=True)
-                facts = json.loads(json_str)
-                logger.debug(f"JSON parsed successfully, type: {type(facts)}", print_to_terminal=True)
-                
-                if isinstance(facts, dict):
-                    logger.debug(f"Fact extraction successful: {facts}", print_to_terminal=True)
-                    logger.debug(f"Number of facts extracted: {len(facts)}", print_to_terminal=True)
-                    if facts:
-                        for key, value in facts.items():
-                            logger.debug(f"  Fact: '{key}' = '{value}'", print_to_terminal=True)
-                    return facts
-                else:
-                    logger.debug(f"Fact extraction: Response is not a dict: {type(facts)}", print_to_terminal=True)
-                    logger.debug(f"Response value: {facts}", print_to_terminal=True)
-                    return {}
-            except json.JSONDecodeError as json_error:
-                logger.debug(f"Fact extraction JSON decode error: {json_error}", print_to_terminal=True)
-                logger.debug(f"Error position: {json_error.pos}", print_to_terminal=True)
-                logger.debug(f"Error line: {json_error.lineno}, column: {json_error.colno}", print_to_terminal=True)
-                logger.debug(f"Attempted to parse: '{json_str}'", print_to_terminal=True)
-                return {}
-                
-        except Exception as e:
-            logger.debug(f"Fact extraction failed with exception: {e}", print_to_terminal=True)
-            logger.debug(f"Exception type: {type(e)}", print_to_terminal=True)
-            return {}
-        finally:
-            logger.debug(f"=== FACT EXTRACTION END ===", print_to_terminal=True)
-
-    def send_to_ollama(self, message):
+    def send_to_ollama(self, message, model, temperature):
         """Send message to Ollama and handle response asynchronously"""
-        messages = self.conversation_service.get_messages()
-        if not messages or messages[-1].get("role") != "user" or messages[-1].get("content") != message:
-            self.conversation_service.add_message("user", message)
-            messages = self.conversation_service.get_messages()
+        # Always show error dialog if user tries to send a message and Ollama is not running
+        if not self.check_ollama_connection():
+            self.show_ollama_connection_error("message", force_show=True)
+            self.chat_tab.append_to_chat("System", "Failed to send: Could not connect to Ollama.\n Please check the Ollama connection and try again.")
+            
+            self.chat_tab.stop_streaming()
+            return
         
-        logger.debug(f"DEBUG: Messages before sending: {messages}",print_to_terminal=True)
+        messages = self.conversation_service.get_messages()
         
         # Use STM+LTM context if memory enabled
-        if self.memory_enabled and self.memory_service:
-            # Pass the current message as query for intelligent memory retrieval
+        if self.chat_controller.is_memory_active():
             context_messages = self.memory_service.get_context_messages(current_query=message)
         else:
             context_messages = messages
-        logger.debug(f"DEBUG: Context messages with memory: {len(context_messages)} total messages",print_to_terminal=True)
         
         # Detect if this is a new conversation
         is_new_conversation = False
         if context_messages:
-            # Check if this is the first user message in a conversation
             user_messages = [msg for msg in context_messages if msg.get("role") == "user"]
-            if len(user_messages) <= 1:  # Only current message or first message
+            if len(user_messages) <= 1:
                 is_new_conversation = True
-                logger.debug("Detected new conversation", print_to_terminal=True)
+                LoggingHelpers.log_conversation_detection(True, "message count")
         
         # Use the explicit new conversation flag if set
-        if self.is_new_conversation:
+        if self.chat_controller.is_new_conversation:
             is_new_conversation = True
-            logger.debug("Using explicit new conversation flag", print_to_terminal=True)
+            LoggingHelpers.log_conversation_detection(True, "explicit flag")
         
         # Build the system prompt (without hardcoded user info)
         system_prompt = ""
@@ -490,12 +363,12 @@ class OllamaChat(QMainWindow):
         # Add system prompt first
         if system_prompt:
             final_context.append({"role": "system", "content": system_prompt})
-            logger.debug(f"System prompt added (length: {len(system_prompt)} chars)", print_to_terminal=True)
+            LoggingHelpers.log_debug(f"System prompt added (length: {len(system_prompt)} chars)")
         
         # Add user context messages
         final_context.extend(user_context_messages)
         if user_context_messages:
-            logger.debug(f"Added {len(user_context_messages)} user context messages", print_to_terminal=True)
+            LoggingHelpers.log_debug(f"Added {len(user_context_messages)} user context messages")
         
         # Add conversation messages
         final_context.extend(filtered_context)
@@ -503,19 +376,14 @@ class OllamaChat(QMainWindow):
         context_messages = final_context
         
         # Reset new conversation flag after processing
-        if self.is_new_conversation:
-            self.is_new_conversation = False
-            logger.debug("Reset new conversation flag", print_to_terminal=True)
+        if self.chat_controller.is_new_conversation:
+            self.chat_controller.is_new_conversation = False
+            LoggingHelpers.log_debug("Reset new conversation flag")
         
         # Log the final context being sent to AI
-        logger.debug(f"Final context being sent to AI ({len(context_messages)} messages):", print_to_terminal=True)
-        for i, msg in enumerate(context_messages):
-            role = msg.get("role", "unknown")
-            content_preview = msg.get("content", "")[:100] + "..." if len(msg.get("content", "")) > 100 else msg.get("content", "")
-            logger.debug(f"  {i+1}. {role}: {content_preview}", print_to_terminal=True)
+        LoggingHelpers.log_context_messages(context_messages)
         
         # Get current model
-        model = self.chat_tab.get_current_model()
         available_models = self.ollama_service.get_models() or []
         chosen_model = model
         
@@ -523,11 +391,10 @@ class OllamaChat(QMainWindow):
         if model == "Auto":
             from SRC.utils.complexity_analyzer import RequestComplexityAnalyzer
             analyzer = RequestComplexityAnalyzer()
-            # Use only the last user message for complexity
             complexity_metrics = analyzer.analyze_complexity(message, context_messages)
             chosen_model = analyzer.get_model_recommendation(complexity_metrics, available_models)
-            # Insert a system message about the chosen model (after user message, before AI response)
-            system_info = f"Using model {chosen_model} (auto-selected based on request complexity)"
+            # Insert a system message about the chosen model
+            system_info = PromptFormatter.format_auto_model_selection_info(chosen_model)
             self.conversation_service.add_message("system", system_info)
             self.chat_tab.append_to_chat("System", system_info)
             context_messages = self.conversation_service.get_context_messages()
@@ -550,7 +417,7 @@ class OllamaChat(QMainWindow):
             lambda: self.worker.run_stream(
                 context_messages,
                 chosen_model,
-                self.chat_tab.get_temperature(),
+                temperature,
                 self.config_manager.get_ollama_url(),
                 self.config_manager.get_max_tokens(),
                 self.config_manager.get_top_p(),
@@ -564,20 +431,15 @@ class OllamaChat(QMainWindow):
     def on_worker_finished(self):
         """Handle worker completion"""
         final_response = self.chat_tab.get_current_response()
-        self.conversation_service.add_message("assistant", final_response)
-        if self.memory_enabled and self.memory_service:
-            # Use intelligent message addition for assistant responses
-            result = self.memory_service.intelligent_add_message({"role": "assistant", "content": final_response})
-            logger.debug(f"Assistant response memory addition result: {result}", print_to_terminal=True)
-        logger.info(f"AI: {final_response}")
-        saved_filepath = self.conversation_manager.auto_save_conversation(
-            self.conversation_service.get_messages()
-        )
-        if saved_filepath:
-            self.chat_tab.set_current_conversation_file(saved_filepath)
-            self.chat_tab.refresh_navigation()
+        
+        # Handle response through controller
+        self.chat_controller.handle_ai_response(final_response)
+        
+        # Update UI
         self.chat_tab.streaming_handler.finalize_streaming_message()
         self.on_message_finished()
+        
+        # Clean up worker
         if hasattr(self, 'worker_thread'):
             self.worker_thread.quit()
             self.worker_thread.wait()
@@ -592,9 +454,8 @@ class OllamaChat(QMainWindow):
 
     def on_message_finished(self):
         """Handle message finished"""
-        logger.debug("[DEBUG] on_message_finished called")
+        LoggingHelpers.log_debug("on_message_finished called")
         self.chat_tab.stop_streaming()
-        
     
     def on_message_cancelled(self):
         """Handle message cancellation"""
@@ -614,52 +475,19 @@ class OllamaChat(QMainWindow):
     
     def on_conversation_selected(self, filepath: str):
         """Handle conversation selection from navigation"""
-        try:
-            # Load the selected conversation
-            self.chat_tab.load_conversation(filepath)
-            
-            # Update conversation service with loaded messages
-            conversation, metadata = self.conversation_manager.load_conversation(filepath)
-            self.conversation_service.conversation = conversation.copy()
-            
-            # Update status
-            self.status_var = f"Loaded conversation: {metadata.get_display_info()}"
-            self.status_bar.showMessage(self.status_var)
-            
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to load conversation: {str(e)}")
+        self.chat_controller.load_conversation(filepath)
+        self.chat_tab.load_conversation(filepath)
     
     def on_conversation_deleted(self, filepath: str):
         """Handle conversation deletion from navigation"""
-        try:
-            # If the deleted conversation was the current one, clear the chat
-            if (self.conversation_manager.get_current_metadata().current_conversation_file == filepath):
-                self.conversation_service.clear_conversation()
-                self.chat_tab.clear_chat()
-                self.conversation_manager.clear_current_conversation()
-            
-            # Update status
-            self.status_var = "Conversation deleted"
-            self.status_bar.showMessage(self.status_var)
-            
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to handle conversation deletion: {str(e)}")
+        self.chat_controller.delete_conversation(filepath)
     
     def on_conversation_renamed(self, old_filepath: str, new_filepath: str):
         """Handle conversation rename from navigation"""
-        try:
-            # Update the current conversation file reference in the chat tab
-            if self.conversation_manager.get_current_metadata().current_conversation_file == new_filepath:
-                self.chat_tab.set_current_conversation_file(new_filepath)
-            
-            # Update status
-            old_name = os.path.basename(old_filepath)
-            new_name = os.path.basename(new_filepath)
-            self.status_var = f"Renamed conversation: {old_name} → {new_name}"
-            self.status_bar.showMessage(self.status_var)
-            
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to handle conversation rename: {str(e)}")
+        self.chat_controller.rename_conversation(old_filepath, new_filepath)
+        # Update the current conversation file reference in the chat tab
+        if self.conversation_manager.get_current_metadata().current_conversation_file == new_filepath:
+            self.chat_tab.set_current_conversation_file(new_filepath)
     
     def on_personality_changed(self, personality_name):
         """Handle personality changes"""
@@ -680,8 +508,8 @@ class OllamaChat(QMainWindow):
             self.chat_tab.personality_combo.setCurrentText(personality_name)
         
         # Show status
-        self.status_var = f"Switched to {personality_name} personality"
-        self.status_bar.showMessage(self.status_var)
+        status_msg = PromptFormatter.format_status_message("personality_switched", personality=personality_name)
+        self.update_status(status_msg)
     
     def on_model_operation_progress(self, message):
         """Handle model operation progress"""
@@ -690,14 +518,31 @@ class OllamaChat(QMainWindow):
     def on_model_operation_error(self, error):
         """Handle model operation errors"""
         self.model_tab.append_status(f"Error: {error}")
-        self.status_var = f"Error: {error}"
-        self.status_bar.showMessage(self.status_var)
+        status_msg = PromptFormatter.format_status_message("model_operation_error", error=error)
+        self.update_status(status_msg)
+        
+        # Show user-friendly error dialog for connection issues
+        if "Cannot connect to Ollama" in error or "connection" in error.lower():
+            self.show_ollama_connection_error("operation")
     
     def on_conversation_metadata_updated(self):
         """Handle conversation metadata updates"""
         metadata = self.conversation_manager.get_current_metadata()
-        self.status_var = metadata.get_display_info()
+        self.update_status(metadata.get_display_info())
+    
+    def on_conversation_updated(self):
+        """Handle conversation updates from controller"""
+        # Refresh navigation widget
+        self.chat_tab.refresh_navigation()
+    
+    def update_status(self, message: str):
+        """Update status bar message"""
+        self.status_var = message
         self.status_bar.showMessage(self.status_var)
+    
+    def show_error(self, error_message: str):
+        """Show error message"""
+        QMessageBox.critical(self, "Error", error_message)
     
     def _delayed_model_update(self):
         """Delayed model update to ensure UI is ready"""
@@ -712,42 +557,25 @@ class OllamaChat(QMainWindow):
     
     # Menu action handlers
     def new_conversation(self):
-        logger.debug(f"=== NEW CONVERSATION START ===", print_to_terminal=True)
         """Start a new conversation"""
-        # Set new conversation flag
-        self.is_new_conversation = True
-        
-        # Immediately start a new conversation without prompt
-        # Clear in-memory conversation and UI
-        self.conversation_service.clear_conversation()
+        LoggingHelpers.log_debug("=== NEW CONVERSATION START ===")
+        self.chat_controller.start_new_conversation()
         self.chat_tab.clear_chat()
-        # Forcefully reset conversation manager metadata and file reference
-        self.conversation_manager.clear_current_conversation()
-        # Double-check: forcibly clear any lingering messages
-        self.conversation_service.conversation = []
-        # Optionally, reset conversation manager metadata object
-        from SRC.models.conversation_metadata import ConversationMetadata
-        self.conversation_manager.metadata = ConversationMetadata()
-        
-        # Refresh navigation widget
         self.chat_tab.refresh_navigation()
         self.chat_tab.set_current_conversation_file(None)
-        
-        self.status_var = "Started new conversation"
-        self.status_bar.showMessage(self.status_var)
     
     def clear_chat(self):
         """Clear the chat display"""
+        question_text = PromptFormatter.get_menu_text("clear_chat_question")
         reply = QMessageBox.question(
-            self, "Clear Chat", 
-            "Clear the chat display? This will not affect the conversation history.",
+            self, "Clear Chat", question_text,
             QMessageBox.Yes | QMessageBox.No
         )
         
         if reply == QMessageBox.Yes:
             self.chat_tab.clear_chat()
-            self.status_var = "Chat display cleared"
-            self.status_bar.showMessage(self.status_var)
+            status_msg = PromptFormatter.format_status_message("chat_cleared")
+            self.update_status(status_msg)
     
     def save_chat(self):
         """Save the current chat to a file"""
@@ -768,29 +596,20 @@ class OllamaChat(QMainWindow):
             if memory_enabled_now != self.memory_enabled:
                 self.memory_enabled = memory_enabled_now
                 self.setup_services()
+                self.setup_controller()
                 self.setup_ui()
                 self.setup_connections()
                 self.refresh_models()
             else:
                 self.setup_services()
+                self.setup_controller()
                 self.setup_connections()
                 self.refresh_models()
     
     def show_about(self):
         """Show about dialog"""
-        QMessageBox.about(
-            self, 
-            "About Ollama Chat",
-            "Ollama Chat\n\n"
-            "A modern PySide6-based chat interface for Ollama.\n\n"
-            "Features:\n"
-            "• Multiple AI personalities\n"
-            "• Model management\n"
-            "• Conversation history\n"
-            "• Spell checking\n"
-            "• Dark theme\n\n"
-            "Version: 1.0.0"
-        )
+        about_text = PromptFormatter.get_menu_text("about_text")
+        QMessageBox.about(self, "About Ollama Chat", about_text)
     
     def apply_dark_theme(self):
         """Apply dark theme styling"""
@@ -811,14 +630,15 @@ class OllamaChat(QMainWindow):
             event.accept()
             
         except Exception as e:
-            logger.debug(f"Error during close: {e}",print_to_terminal=True)
+            error_msg = PromptFormatter.format_error_message("close_error", error=str(e))
+            LoggingHelpers.log_error("close", e)
             event.accept()
     
     def showEvent(self, event):
         """Handle application show event"""
         super().showEvent(event)
         
-        # Refresh models on first show
+        # Skip if initialization not complete
         if not self.initialization_complete:
             return
             
@@ -833,12 +653,46 @@ class OllamaChat(QMainWindow):
             self.setStyleSheet(light_stylesheet)
         else:
             self.setStyleSheet(dark_stylesheet)
-        
-        # Refresh models on first show
-        if not self.initialization_complete:
+
+    def show_ollama_connection_error(self, context="general", force_show=False):
+        """Show a user-friendly error dialog when Ollama is not running.
+        If force_show is True, always show the dialog (used for explicit user actions).
+        Otherwise, only show once per session (used for background/startup checks)."""
+        from PySide6.QtCore import Qt
+        if not force_show and self.ollama_error_shown:
             return
-            
-        # Update window size from config
-        width, height = self.config_manager.get_window_size()
-        if width > 0 and height > 0:
-            self.resize(width, height) 
+        if not force_show:
+            self.ollama_error_shown = True
+        download_link = "https://ollama.com/download"
+        if context == "startup":
+            title = "Ollama Not Running"
+            message = (
+                'Ollama is not running or not accessible.<br><br>'
+                'To fix this:<br>'
+                '1. Make sure Ollama is installed<br>'
+                "2. Start Ollama by running 'ollama serve' in a terminal<br>"
+                f'3. Or download from: <a href="{download_link}">{download_link}</a><br><br>'
+                "The application will continue to work, but you won't be able to send messages until Ollama is running."
+            )
+        else:
+            title = "Connection Error"
+            message = (
+                'Cannot connect to Ollama.<br><br>'
+                'Please make sure:<br>'
+                "1. Ollama is running (run 'ollama serve' in a terminal)<br>"
+                '2. Ollama is accessible at http://localhost:11434<br>'
+                '3. No firewall is blocking the connection<br>'
+                f'4. Download Ollama from: <a href="{download_link}">{download_link}</a><br><br>'
+                'Try sending your message again once Ollama is running.'
+            )
+        msg_box = QMessageBox(self)
+        msg_box.setWindowTitle(title)
+        msg_box.setIcon(QMessageBox.Warning)
+        msg_box.setTextFormat(Qt.RichText)
+        msg_box.setTextInteractionFlags(Qt.TextBrowserInteraction)
+        msg_box.setText(message)
+        msg_box.exec()
+    
+    def check_ollama_connection(self):
+        """Check if Ollama is running and accessible"""
+        return self.ollama_service.test_connection()

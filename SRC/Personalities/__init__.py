@@ -11,7 +11,7 @@ The package is organized into:
 """
 
 # Import the main classes for easy access
-from .personality_model_refactored import PersonalityModel
+from .personality_model import PersonalityModel
 from .models import (
     PersonalityType, PersonalityTraits, PersonalityConfig, 
     PersonalityMetadata, PersonalityPrompt, PersonalityPronouns

@@ -168,7 +168,7 @@ class ConfigManager:
     
     def get_history_directory(self) -> str:
         """Get the chat history directory"""
-        return self.get("history_directory", "chat_history")
+        return self.get("history_directory", "User_history/Chat_history")
     
     def set_history_directory(self, directory: str) -> bool:
         """Set the chat history directory"""

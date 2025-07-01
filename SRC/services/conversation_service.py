@@ -16,7 +16,7 @@ class ConversationService(QObject):
     
     conversation_updated = Signal(list)  # Emits the updated conversation
     
-    def __init__(self, history_dir: str = "chat_history", memory_service=None):
+    def __init__(self, history_dir: str = "User_history/Chat_history", memory_service=None):
         super().__init__()
         self.history_dir = history_dir
         self.memory_service = memory_service

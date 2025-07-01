@@ -20,7 +20,7 @@ logger = CustomLogger.get_logger(__name__)
 class PersonalityService:
     """Main service for managing AI personalities"""
     
-    def __init__(self, personalities_dir: str = "personality_Profiles"):
+    def __init__(self, personalities_dir: str = "SRC/Personalities/personality_Profiles"):
         self.personalities_dir = personalities_dir
         self.personalities: Dict[str, Dict[str, Any]] = {}
         self.personality_file_paths: Dict[str, str] = {}  # Track file paths for each personality

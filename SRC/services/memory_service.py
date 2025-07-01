@@ -11,6 +11,7 @@ from datetime import datetime, timedelta
 from dataclasses import dataclass, asdict
 from PySide6.QtCore import QObject, Signal
 from SRC.utils.Logging.Custom_Logger import CustomLogger
+from SRC.services.semantic_search_service import SemanticSearchService
 
 logger = CustomLogger.get_logger(__name__)
 
@@ -26,15 +27,7 @@ class MemoryEntry:
     memory_type: str  # 'conversation', 'summary', 'fact', 'preference'
     metadata: Dict
 
-@dataclass
-class MemorySummary:
-    """Represents a conversation summary"""
-    id: str
-    conversation_id: str
-    summary: str
-    key_points: List[str]
-    timestamp: str
-    message_count: int
+
 
 @dataclass
 class LongTermMemoryEntry:
@@ -154,6 +147,116 @@ class MemoryClassifier:
             "should_store_ltm": importance > 0.5 or memory_type != "conversation"
         }
 
+class PronounNormalizer:
+    """Normalizes pronouns in user messages to avoid AI confusion"""
+    
+    # First-person pronouns that should be converted to third-person
+    FIRST_PERSON_PRONOUNS = {
+        'i': 'the user',
+        'me': 'the user',
+        'my': 'the user\'s',
+        'myself': 'the user',
+        'mine': 'the user\'s',
+        'we': 'the users',
+        'us': 'the users',
+        'our': 'the users\'',
+        'ours': 'the users\'',
+        'ourselves': 'the users'
+    }
+    
+    # Contractions that need special handling
+    FIRST_PERSON_CONTRACTIONS = {
+        "i'm": "the user is",
+        "i'll": "the user will",
+        "i've": "the user has",
+        "i'd": "the user would",
+        "i'm not": "the user is not",
+        "i'll not": "the user will not",
+        "i've not": "the user has not",
+        "i'd not": "the user would not"
+    }
+    
+    @staticmethod
+    def normalize_pronouns(text: str, user_name: str = None) -> str:
+        """
+        Convert first-person pronouns to third-person references to avoid AI confusion
+        
+        Args:
+            text: The text to normalize
+            user_name: Optional user name to use instead of generic "the user"
+        
+        Returns:
+            Normalized text with pronouns converted
+        """
+        if not text or not isinstance(text, str):
+            return text
+        
+        # Use user name if provided, otherwise use "the user"
+        reference = user_name if user_name else "the user"
+        reference_possessive = f"{user_name}'s" if user_name else "the user's"
+        
+        normalized_text = text
+        
+        # Handle contractions first (before individual words)
+        for contraction, replacement in PronounNormalizer.FIRST_PERSON_CONTRACTIONS.items():
+            # Case-insensitive replacement
+            pattern = re.compile(re.escape(contraction), re.IGNORECASE)
+            if contraction.startswith("i'm"):
+                replacement = replacement.replace("the user", reference)
+            elif contraction.startswith("i'll"):
+                replacement = replacement.replace("the user", reference)
+            elif contraction.startswith("i've"):
+                replacement = replacement.replace("the user", reference)
+            elif contraction.startswith("i'd"):
+                replacement = replacement.replace("the user", reference)
+            
+            normalized_text = pattern.sub(replacement, normalized_text)
+        
+        # Handle individual pronouns
+        for pronoun, replacement in PronounNormalizer.FIRST_PERSON_PRONOUNS.items():
+            # Use word boundaries to avoid partial matches
+            pattern = re.compile(r'\b' + re.escape(pronoun) + r'\b', re.IGNORECASE)
+            
+            if pronoun == 'my':
+                replacement = reference_possessive
+            elif pronoun == 'mine':
+                replacement = reference_possessive
+            elif pronoun in ['we', 'us', 'our', 'ours', 'ourselves']:
+                # Keep plural forms as is for now, could be enhanced later
+                continue
+            else:
+                replacement = reference
+            
+            normalized_text = pattern.sub(replacement, normalized_text)
+        
+        # Handle sentence case - capitalize "the user" at the beginning of sentences
+        normalized_text = re.sub(r'^the user', 'The user', normalized_text, flags=re.IGNORECASE)
+        normalized_text = re.sub(r'\. the user', '. The user', normalized_text, flags=re.IGNORECASE)
+        normalized_text = re.sub(r'\? the user', '? The user', normalized_text, flags=re.IGNORECASE)
+        normalized_text = re.sub(r'! the user', '! The user', normalized_text, flags=re.IGNORECASE)
+        
+        return normalized_text
+    
+    @staticmethod
+    def should_normalize(text: str) -> bool:
+        """Check if text contains first-person pronouns that should be normalized"""
+        if not text:
+            return False
+        
+        text_lower = text.lower()
+        
+        # Check for first-person pronouns
+        for pronoun in PronounNormalizer.FIRST_PERSON_PRONOUNS.keys():
+            if re.search(r'\b' + re.escape(pronoun) + r'\b', text_lower):
+                return True
+        
+        # Check for contractions
+        for contraction in PronounNormalizer.FIRST_PERSON_CONTRACTIONS.keys():
+            if contraction in text_lower:
+                return True
+        
+        return False
+
 class MemoryRetriever:
     """Intelligent retriever for finding relevant memories"""
     
@@ -200,7 +303,7 @@ class MemoryRetriever:
         return scored_memories[:max_results]
 
 class ShortTermMemoryService:
-    def __init__(self, max_messages: int = 16, stm_file: str = "memory/short_term_memory.json"):
+    def __init__(self, max_messages: int = 16, stm_file: str = "User_history/memory/short_term_memory.json"):
         self.max_messages = max_messages
         self.stm_file = stm_file
         self.messages: List[Dict] = []
@@ -231,7 +334,7 @@ class ShortTermMemoryService:
             logger.error(f"Error saving STM file: {e}", print_to_terminal=True)
 
 class LongTermMemoryService:
-    def __init__(self, ltm_file: str = "memory/long_term_memory.json"):
+    def __init__(self, ltm_file: str = "User_history/memory/long_term_memory.json"):
         self.ltm_file = ltm_file
         self.entries: List[LongTermMemoryEntry] = []
         self._load()
@@ -304,16 +407,21 @@ class MemoryService(QObject):
         self.stm = ShortTermMemoryService(max_messages=max_context_messages)
         self.ltm = LongTermMemoryService()
         self.memories: List[MemoryEntry] = []
-        self.summaries: List[MemorySummary] = []
-        self.memory_file = os.path.join("memory", "memories.json")
-        self.summaries_file = os.path.join("memory", "summaries.json")
+        self.memory_file = os.path.join("SRC", "User_history", "memory", "memories.json")
         
-        # Initialize classifiers
+        # Initialize classifiers and normalizers
         self.classifier = MemoryClassifier()
         self.retriever = MemoryRetriever()
+        self.pronoun_normalizer = PronounNormalizer()
         
-        os.makedirs("memory", exist_ok=True)
+        # Initialize semantic search service
+        self.semantic_search = SemanticSearchService()
+        
+        os.makedirs("User_history/memory", exist_ok=True)
         self._load_memory()
+        
+        # Connect semantic search signals
+        self.semantic_search.embeddings_updated.connect(self._on_embeddings_updated)
     
     def _load_memory(self):
         """Load memory from disk"""
@@ -322,11 +430,6 @@ class MemoryService(QObject):
                 with open(self.memory_file, 'r', encoding='utf-8') as f:
                     data = json.load(f)
                     self.memories = [MemoryEntry(**entry) for entry in data]
-            
-            if os.path.exists(self.summaries_file):
-                with open(self.summaries_file, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-                    self.summaries = [MemorySummary(**summary) for summary in data]
         except Exception as e:
             logger.error(f"Error loading memory: {e}", print_to_terminal=True)
     
@@ -335,11 +438,13 @@ class MemoryService(QObject):
         try:
             with open(self.memory_file, 'w', encoding='utf-8') as f:
                 json.dump([asdict(memory) for memory in self.memories], f, indent=2, ensure_ascii=False)
-            
-            with open(self.summaries_file, 'w', encoding='utf-8') as f:
-                json.dump([asdict(summary) for summary in self.summaries], f, indent=2, ensure_ascii=False)
         except Exception as e:
             logger.error(f"Error saving memory: {e}", print_to_terminal=True)
+    
+    def _on_embeddings_updated(self):
+        """Handle embeddings updates from semantic search service"""
+        logger.debug("Semantic search embeddings updated", print_to_terminal=True)
+        # Could emit a signal here if needed for UI updates
     
     def add_memory(self, content: str, conversation_id: str, importance: float = 0.5, 
                    tags: List[str] = None, memory_type: str = "conversation", metadata: Dict = None) -> str:
@@ -359,54 +464,106 @@ class MemoryService(QObject):
         
         self.memories.append(memory)
         self._save_memory()
+        
+        # Add to semantic search service
+        self.semantic_search.add_memory(
+            memory_id=memory_id,
+            content=content,
+            memory_type=memory_type,
+            importance=importance,
+            tags=tags or [],
+            metadata=metadata or {}
+        )
+        
         self.memory_updated.emit(self.memories)
         logger.debug(f"Added memory: {memory_id}")
         return memory_id
     
     def add_summary(self, summary: str, importance: float = 0.5, tags: List[str] = None):
-        """Add a conversation summary"""
-        summary_id = hashlib.md5(f"{summary}{datetime.now().isoformat()}".encode()).hexdigest()[:12]
+        """Add a conversation summary to long-term memory"""
+        logger.debug(f"=== ADD SUMMARY START ===", print_to_terminal=True)
+        logger.debug(f"Adding summary: '{summary[:50]}...'", print_to_terminal=True)
         
-        memory_summary = MemorySummary(
-            id=summary_id,
-            conversation_id=summary,
-            summary=summary,
-            key_points=tags or [],
-            timestamp=datetime.now().isoformat(),
-            message_count=0
-        )
-        
-        self.summaries.append(memory_summary)
-        self._save_memory()
-        self.summary_updated.emit(self.summaries)
-        logger.debug(f"Added summary: {summary_id}")
-        return summary_id
+        try:
+            # Normalize pronouns in the summary to avoid AI confusion
+            normalized_summary = summary
+            if self.pronoun_normalizer.should_normalize(summary):
+                user_name = self.get_user_name()
+                normalized_summary = self.pronoun_normalizer.normalize_pronouns(summary, user_name)
+                logger.debug(f"Normalized summary pronouns: '{summary[:50]}...' -> '{normalized_summary[:50]}...'", print_to_terminal=True)
+            
+            # Create LTM entry for summary
+            entry = LongTermMemoryEntry(
+                type='summary', 
+                summary=normalized_summary, 
+                timestamp=datetime.now().isoformat(), 
+                importance=importance, 
+                tags=tags or [],
+                context_keywords=tags or []
+            )
+            
+            self.ltm.add_entry(entry)
+            logger.debug(f"Summary added to LTM", print_to_terminal=True)
+            
+            # Emit signal for UI updates
+            self.summary_updated.emit(self.ltm.get_entries('summary'))
+            
+        except Exception as e:
+            logger.error(f"Error adding summary: {e}", print_to_terminal=True)
+        finally:
+            logger.debug(f"=== ADD SUMMARY END ===", print_to_terminal=True)
     
-    def get_relevant_memories(self, query: str, limit: int = 10) -> List[MemoryEntry]:
-        """Get memories relevant to the current query (simple keyword matching for now)"""
-        query_words = set(query.lower().split())
-        scored_memories = []
-        
-        for memory in self.memories:
-            score = 0
-            content_words = set(memory.content.lower().split())
+    def get_relevant_memories(self, query: str, limit: int = 10, use_semantic: bool = True) -> List[MemoryEntry]:
+        """Get memories relevant to the current query using semantic search or keyword matching"""
+        if use_semantic and self.semantic_search.is_ready():
+            logger.debug(f"Using semantic search for query: '{query}'", print_to_terminal=True)
             
-            # Simple relevance scoring
-            word_overlap = len(query_words.intersection(content_words))
-            score += word_overlap * 0.3
-            score += memory.importance * 0.7
+            # Use hybrid search for better results
+            semantic_results = self.semantic_search.search_hybrid(
+                query=query,
+                max_results=limit,
+                min_similarity=0.2,
+                keyword_weight=0.3,
+                semantic_weight=0.7
+            )
             
-            # Recency bonus
-            memory_time = datetime.fromisoformat(memory.timestamp)
-            days_old = (datetime.now() - memory_time).days
-            recency_bonus = max(0, 1 - (days_old / 30))  # Decay over 30 days
-            score += recency_bonus * 0.2
+            # Convert semantic results back to MemoryEntry objects
+            relevant_memories = []
+            for memory_id, similarity, memory_data in semantic_results:
+                # Find the original memory entry
+                memory = next((m for m in self.memories if m.id == memory_id), None)
+                if memory:
+                    relevant_memories.append(memory)
+                    logger.debug(f"Found relevant memory via semantic search: {memory_id} (similarity: {similarity:.3f})", print_to_terminal=True)
             
-            scored_memories.append((memory, score))
-        
-        # Sort by score and return top results
-        scored_memories.sort(key=lambda x: x[1], reverse=True)
-        return [memory for memory, score in scored_memories[:limit]]
+            return relevant_memories
+        else:
+            logger.debug(f"Using keyword-based search for query: '{query}'", print_to_terminal=True)
+            
+            # Fallback to original keyword-based search
+            query_words = set(query.lower().split())
+            scored_memories = []
+            
+            for memory in self.memories:
+                score = 0
+                content_words = set(memory.content.lower().split())
+                
+                # Simple relevance scoring
+                word_overlap = len(query_words.intersection(content_words))
+                score += word_overlap * 0.3
+                score += memory.importance * 0.7
+                
+                # Recency bonus
+                memory_time = datetime.fromisoformat(memory.timestamp)
+                days_old = (datetime.now() - memory_time).days
+                recency_bonus = max(0, 1 - (days_old / 30))  # Decay over 30 days
+                score += recency_bonus * 0.2
+                
+                scored_memories.append((memory, score))
+            
+            # Sort by score and return top results
+            scored_memories.sort(key=lambda x: x[1], reverse=True)
+            return [memory for memory, score in scored_memories[:limit]]
     
     def intelligent_add_message(self, message: Dict) -> Dict:
         """Intelligently add a message and determine if it should go to LTM"""
@@ -540,7 +697,18 @@ class MemoryService(QObject):
                         facts[f"preference_{action}"] = item
                         logger.debug(f"Extracted preference {action}: {item}", print_to_terminal=True)
         
-        return facts
+        # Normalize pronouns in extracted facts to avoid AI confusion
+        normalized_facts = {}
+        for key, value in facts.items():
+            if self.pronoun_normalizer.should_normalize(value):
+                user_name = self.get_user_name()
+                normalized_value = self.pronoun_normalizer.normalize_pronouns(value, user_name)
+                logger.debug(f"Normalized fact '{key}': '{value}' -> '{normalized_value}'", print_to_terminal=True)
+                normalized_facts[key] = normalized_value
+            else:
+                normalized_facts[key] = value
+        
+        return normalized_facts
     
     def get_user_info(self) -> Dict[str, str]:
         """Get user information for personality pronouns system"""
@@ -562,6 +730,14 @@ class MemoryService(QObject):
         
         logger.debug(f"Retrieved user info: {user_info}", print_to_terminal=True)
         return user_info
+    
+    def get_user_name(self) -> Optional[str]:
+        """Get the user's name from memory if available"""
+        facts = self.ltm.get_entries('fact')
+        for fact in facts:
+            if fact.key in ["name", "user_name"] and fact.value:
+                return fact.value
+        return None
     
     def get_context_messages(self, current_query: str = "") -> List[Dict]:
         """Get messages for context window, including relevant memories"""
@@ -651,9 +827,11 @@ class MemoryService(QObject):
         else:
             # Clear all memory data structures
             self.memories = []
-            self.summaries = []
             self.stm.clear()
             self.ltm.entries = []
+            
+            # Clear semantic search
+            self.semantic_search.clear_all()
             
             # Clear all memory files
             try:
@@ -669,11 +847,7 @@ class MemoryService(QObject):
                         json.dump([], f, indent=2, ensure_ascii=False)
                     logger.debug(f"Cleared long-term memory file: {self.ltm.ltm_file}", print_to_terminal=True)
                 
-                # Clear summaries file
-                if os.path.exists(self.summaries_file):
-                    with open(self.summaries_file, 'w', encoding='utf-8') as f:
-                        json.dump([], f, indent=2, ensure_ascii=False)
-                    logger.debug(f"Cleared summaries file: {self.summaries_file}", print_to_terminal=True)
+
                 
                 # Clear memories file
                 if os.path.exists(self.memory_file):
@@ -714,14 +888,7 @@ class MemoryService(QObject):
                     else:
                         logger.debug("Long-term memory file verified as empty", print_to_terminal=True)
             
-            # Check summaries file
-            if os.path.exists(self.summaries_file):
-                with open(self.summaries_file, 'r', encoding='utf-8') as f:
-                    summaries_data = json.load(f)
-                    if summaries_data:
-                        logger.warning(f"Summaries file not empty after clearing: {len(summaries_data)} entries", print_to_terminal=True)
-                    else:
-                        logger.debug("Summaries file verified as empty", print_to_terminal=True)
+
             
             # Check memories file
             if os.path.exists(self.memory_file):
@@ -739,25 +906,36 @@ class MemoryService(QObject):
         """Delete a specific memory entry"""
         self.memories = [m for m in self.memories if m.id != memory_id]
         self._save_memory()
+        
+        # Remove from semantic search
+        self.semantic_search.remove_memory(memory_id)
+        
         self.memory_updated.emit(self.memories)
     
     def get_memory_stats(self) -> Dict:
         """Get memory statistics"""
         total_memories = len(self.memories)
-        total_summaries = len(self.summaries)
+        total_summaries = len(self.ltm.get_entries('summary'))
         
         memory_types = {}
         for memory in self.memories:
             memory_types[memory.memory_type] = memory_types.get(memory.memory_type, 0) + 1
         
-        avg_importance = sum(m.importance for m in self.memories) / total_memories if total_memories > 0 else 0
+        # Add LTM types
+        for entry in self.ltm.entries:
+            memory_types[entry.type] = memory_types.get(entry.type, 0) + 1
+        
+        # Calculate average importance from both memories and LTM entries
+        all_entries = self.memories + self.ltm.entries
+        avg_importance = sum(m.importance for m in all_entries) / len(all_entries) if all_entries else 0
         
         return {
             "total_memories": total_memories,
             "total_summaries": total_summaries,
             "memory_types": memory_types,
             "average_importance": avg_importance,
-            "max_context_messages": self.stm.max_messages
+            "max_context_messages": self.stm.max_messages,
+            "semantic_search": self.semantic_search.get_memory_stats()
         }
     
     def add_message(self, message: Dict):
@@ -783,6 +961,13 @@ class MemoryService(QObject):
             clean_key = key.strip()
             clean_value = value.strip()
             logger.debug(f"Cleaned inputs: key='{clean_key}', value='{clean_value}'", print_to_terminal=True)
+            
+            # Normalize pronouns in the value to avoid AI confusion
+            if self.pronoun_normalizer.should_normalize(clean_value):
+                user_name = self.get_user_name()
+                normalized_value = self.pronoun_normalizer.normalize_pronouns(clean_value, user_name)
+                logger.debug(f"Normalized pronouns: '{clean_value}' -> '{normalized_value}'", print_to_terminal=True)
+                clean_value = normalized_value
             
             if not clean_key or not clean_value:
                 logger.debug("Fact key or value is empty after cleaning", print_to_terminal=True)
@@ -823,9 +1008,7 @@ class MemoryService(QObject):
         finally:
             logger.debug(f"=== MEMORY SERVICE ADD FACT END ===", print_to_terminal=True)
     
-    def add_summary(self, summary: str, importance: float = 0.5, tags: List[str] = None):
-        entry = LongTermMemoryEntry(type='summary', summary=summary, timestamp=datetime.now().isoformat(), importance=importance, tags=tags or [])
-        self.ltm.add_entry(entry)
+
     
     def set_max_context_messages(self, max_messages: int):
         """Set the maximum number of context messages"""

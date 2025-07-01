@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                                QFormLayout, QGroupBox, QCheckBox, QSpinBox,
                                QMessageBox, QListWidget, QSplitter, QTabWidget)
 from PySide6.QtCore import Signal, Qt
-from SRC.Personalities.personality_model_refactored import PersonalityModel, PersonalityTraits, PersonalityPrompt, PersonalityConfig, PersonalityMetadata
+from SRC.Personalities.personality_model import PersonalityModel, PersonalityTraits, PersonalityPrompt, PersonalityConfig, PersonalityMetadata
 from typing import List, Dict
 
 class PersonalityWidget(QWidget):

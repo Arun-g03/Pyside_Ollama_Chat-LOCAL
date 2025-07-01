@@ -23,7 +23,7 @@ class PersonalityModel:
     maintaining the same interface as the original PersonalityModel.
     """
     
-    def __init__(self, personalities_dir: str = "personality_Profiles"):
+    def __init__(self, personalities_dir: str = "SRC/Personalities/personality_Profiles"):
         self.personalities_dir = personalities_dir
         self.service = PersonalityService(personalities_dir)
         

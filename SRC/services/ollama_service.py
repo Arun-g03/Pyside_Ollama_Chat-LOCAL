@@ -35,7 +35,7 @@ class OllamaService(QObject):
         """Get list of available models from Ollama"""
         try:
             logger.debug(f" DEBUG: Attempting to connect to Ollama at: {self.base_url}/tags")
-            response = requests.get(f"{self.base_url}/tags")
+            response = requests.get(f"{self.base_url}/tags", timeout=5)  # Add timeout
             logger.debug(f" DEBUG: Response status: {response.status_code}")
             
             if response.status_code == 200:
@@ -46,18 +46,33 @@ class OllamaService(QObject):
                 return model_names
             else:
                 logger.debug(f" DEBUG: Error response: {response.text}")
-                self.model_operation_error.emit("Error fetching models. Is Ollama running?")
+                error_msg = f"Error fetching models (HTTP {response.status_code}). Is Ollama running?"
+                self.model_operation_error.emit(error_msg)
                 return []
                 
         except requests.exceptions.ConnectionError as e:
-            logger.debug (f" DEBUG: Connection error: {e}",print_to_terminal=True)
-            self.model_operation_error.emit("Cannot connect to Ollama. Make sure it's running on localhost:11434")
+            logger.debug(f" DEBUG: Connection error: {e}", print_to_terminal=True)
+            error_msg = "Cannot connect to Ollama. Make sure it's running on localhost:11434"
+            self.model_operation_error.emit(error_msg)
+            return []
+        except requests.exceptions.Timeout as e:
+            logger.debug(f" DEBUG: Timeout error: {e}", print_to_terminal=True)
+            error_msg = "Connection to Ollama timed out. Is it running and responding?"
+            self.model_operation_error.emit(error_msg)
             return []
         except Exception as e:
-            
-            logger.debug(f" DEBUG: Unexpected error: {e}",print_to_terminal=True)
-            self.model_operation_error.emit(f"Unexpected error: {e}")
+            logger.debug(f" DEBUG: Unexpected error: {e}", print_to_terminal=True)
+            error_msg = f"Unexpected error connecting to Ollama: {e}"
+            self.model_operation_error.emit(error_msg)
             return []
+    
+    def test_connection(self) -> bool:
+        """Test if Ollama is running and accessible without emitting signals"""
+        try:
+            response = requests.get(f"{self.base_url}/tags", timeout=3)
+            return response.status_code == 200
+        except:
+            return False
     
     def send_chat_message(self, model: str, messages: List[Dict], 
                          temperature: float = 0.7, stream: bool = True,

@@ -3,7 +3,7 @@ from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel,
                                QFormLayout, QGroupBox, QMessageBox, QTabWidget,
                                QWidget)
 from PySide6.QtCore import Qt, QTimer
-from SRC.config_manager import ConfigManager
+from SRC.config.config_manager import ConfigManager
 from SRC.utils.Logging.Custom_Logger import CustomLogger
 
 logger = CustomLogger.get_logger(__name__)

@@ -51,7 +51,7 @@ A sophisticated desktop chat application built with PySide6 that provides an int
 ### Prerequisites
 - Python 3.9 or higher
 - Ollama installed and running locally
-- Virtual environment (recommended)
+- Virtual environment (recommended) - [Virtual Environment setup](DOCUMENTATION\env_commands.md)
 
 ### Quick Start
 
@@ -62,28 +62,15 @@ A sophisticated desktop chat application built with PySide6 that provides an int
    ```
 
 2. **Create and activate virtual environment**:
-   ```bash
-   python -m venv chat_env
-   # Windows
-   chat_env\Scripts\activate
-   # macOS/Linux
-   source chat_env/bin/activate
-   ```
+    [Virtual Environment setup](DOCUMENTATION\env_commands.md)
 
-3. **Install dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
 
-4. **Install spellchecker** (optional):
-   ```bash
-   python utils/install_spellchecker.py
-   ```
-
-5. **Run the application**:
+3. **Run the application**:
    ```bash
    python main.py
    ```
+   
+   The application will automatically check for missing dependencies and install them if needed.
 
 ### Minimal Installation
 For basic functionality with just Edge TTS:
@@ -95,6 +82,36 @@ pip install PySide6 requests pygments edge-tts pygame keyboard
 For all features including Coqui TTS and spellchecker:
 ```bash
 pip install -r requirements.txt
+```
+
+### Dependency Management
+
+The application includes automatic dependency checking and installation:
+
+**Automatic Dependency Check**:
+- `main.py` automatically checks for missing dependencies before starting
+- Automatically runs `install_dependencies.py` if issues are found
+- Provides detailed reports of missing packages and version conflicts
+
+**Command Line Options**:
+```bash
+# Normal startup with dependency checking
+python main.py
+
+# Skip dependency checking
+python main.py --skip-deps
+
+# Check dependencies but don't auto-install
+python main.py --no-auto-install
+```
+
+**Manual Dependency Management**:
+```bash
+# Check dependencies manually
+python check_dependencies.py
+
+# Install dependencies manually
+python install_dependencies.py
 ```
 
 ## 📖 Usage

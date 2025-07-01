@@ -130,6 +130,87 @@ class MessageFormatter:
         return formatted_message
     
     @staticmethod
+    def format_markdown(message: str) -> str:
+        """
+        Enhanced markdown formatting for better AI output presentation.
+        Handles headers, lists, emphasis, and other markdown elements.
+        """
+        # First, identify and protect code blocks
+        code_blocks = []
+        
+        def protect_code_blocks(match):
+            code_blocks.append(match.group(0))
+            return f"__CODE_BLOCK_{len(code_blocks)-1}__"
+        
+        # Protect code blocks
+        protected_message = re.sub(r'<code[^>]*>.*?</code>', protect_code_blocks, message, flags=re.DOTALL)
+        protected_message = re.sub(r'<pre[^>]*>.*?</pre>', protect_code_blocks, protected_message, flags=re.DOTALL)
+        protected_message = re.sub(r'<div[^>]*style="background-color: #2d2d2d[^>]*>.*?</div>', protect_code_blocks, protected_message, flags=re.DOTALL)
+        
+        # Clean up excessive horizontal rules and separators
+        protected_message = re.sub(r'---\s*---\s*---', '---', protected_message)
+        protected_message = re.sub(r'---\s*###', '###', protected_message)
+        
+        # Format headers with consistent styling
+        protected_message = re.sub(r'^###\s+(.+)$', r'<h3 style="font-size: 18px; font-weight: bold; color: #4a9eff; margin: 20px 0 10px 0; padding: 8px 0; border-bottom: 1px solid #444;">\1</h3>', protected_message, flags=re.MULTILINE)
+        protected_message = re.sub(r'^##\s+(.+)$', r'<h2 style="font-size: 20px; font-weight: bold; color: #ffffff; margin: 25px 0 15px 0; padding: 10px 0; border-bottom: 2px solid #555;">\1</h2>', protected_message, flags=re.MULTILINE)
+        protected_message = re.sub(r'^#\s+(.+)$', r'<h1 style="font-size: 24px; font-weight: bold; color: #ffffff; margin: 30px 0 20px 0; padding: 12px 0; border-bottom: 3px solid #666;">\1</h1>', protected_message, flags=re.MULTILINE)
+        
+        # Format horizontal rules
+        protected_message = re.sub(r'^---$', '<hr style="border: none; border-top: 1px solid #444; margin: 20px 0;">', protected_message, flags=re.MULTILINE)
+        
+        # Format unordered lists with better styling
+        protected_message = re.sub(r'^\s*[-*•]\s+(.+)$', r'<li style="margin: 8px 0; padding-left: 5px; color: #e0e0e0;">\1</li>', protected_message, flags=re.MULTILINE)
+        
+        # Group consecutive list items into proper lists
+        lines = protected_message.split('\n')
+        formatted_lines = []
+        in_list = False
+        list_items = []
+        
+        for line in lines:
+            if line.strip().startswith('<li'):
+                if not in_list:
+                    in_list = True
+                    list_items = []
+                list_items.append(line)
+            else:
+                if in_list and list_items:
+                    # Close the previous list
+                    formatted_lines.append('<ul style="list-style-type: none; padding-left: 20px; margin: 15px 0; border-left: 2px solid #444;">')
+                    formatted_lines.extend(list_items)
+                    formatted_lines.append('</ul>')
+                    list_items = []
+                    in_list = False
+                formatted_lines.append(line)
+        
+        # Handle any remaining list items
+        if in_list and list_items:
+            formatted_lines.append('<ul style="list-style-type: none; padding-left: 20px; margin: 15px 0; border-left: 2px solid #444;">')
+            formatted_lines.extend(list_items)
+            formatted_lines.append('</ul>')
+        
+        protected_message = '\n'.join(formatted_lines)
+        
+        # Format bold text (reduce excessive bold usage)
+        protected_message = re.sub(r'\*\*(.+?)\*\*', r'<strong style="color: #ffd700; font-weight: 600;">\1</strong>', protected_message)
+        
+        # Format italic text
+        protected_message = re.sub(r'\*(.+?)\*', r'<em style="color: #cccccc; font-style: italic;">\1</em>', protected_message)
+        
+        # Format inline code
+        protected_message = re.sub(r'`([^`]+)`', r'<code style="background-color: #2d2d2d; color: #dcdcaa; padding: 2px 6px; border-radius: 3px; font-family: monospace; font-size: 12px; border: 1px solid #444;">\1</code>', protected_message)
+        
+        # Add paragraph spacing for better readability
+        protected_message = re.sub(r'\n\n+', '</p><p style="margin: 12px 0; line-height: 1.6;">', protected_message)
+        protected_message = '<p style="margin: 12px 0; line-height: 1.6;">' + protected_message + '</p>'
+        
+        # Clean up empty paragraphs
+        protected_message = re.sub(r'<p[^>]*>\s*</p>', '', protected_message)
+        
+        return protected_message
+    
+    @staticmethod
     def handle_html_tags(message: str) -> str:
         """
         Properly handle HTML tags in messages - escape them for display when they're part of discussions
@@ -187,9 +268,11 @@ class MessageFormatter:
                 # Wrap in code block styling
                 message = f'<div style="background-color: #2d2d2d; border-radius: 5px; overflow: hidden; margin: 10px 0; border: 1px solid #444;"><div style="padding: 10px; color: #dcdcdc; font-family: \'Consolas\', \'Monaco\', \'Courier New\', monospace; font-size: 13px; line-height: 1.4; overflow-x: auto;">{message}</div></div>'
             else:
-                # For regular assistant messages, detect and format code blocks first
+                # For regular assistant messages, apply enhanced markdown formatting first
+                message = MessageFormatter.format_markdown(message)
+                # Then detect and format code blocks
                 message = MessageFormatter.detect_and_format_code(message)
-                # Then handle any remaining HTML tags
+                # Finally handle any remaining HTML tags
                 message = MessageFormatter.handle_html_tags(message)
 
         return message
