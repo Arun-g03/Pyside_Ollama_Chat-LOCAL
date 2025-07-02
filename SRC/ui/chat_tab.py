@@ -30,10 +30,12 @@ class ChatTab(QWidget):
     new_conversation_requested = Signal() # Emitted when new conversation is requested
     append_response_signal = Signal(str, object)  # chunk, model_name
     
-    def __init__(self, parent=None, conversation_manager=None):
+    def __init__(self, parent=None, conversation_manager=None, summarization_service=None):
         super().__init__(parent)
         self.parent = parent
         self.conversation_manager = conversation_manager
+        self.summarization_service = summarization_service
+        self.current_conversation_file = None
         self.setup_ui()
         self.setup_streaming_handler()
         self.setup_connections()
@@ -70,7 +72,11 @@ class ChatTab(QWidget):
         
         # Navigation panel (left side)
         if self.conversation_manager:
-            self.navigation_widget = ChatNavigationWidget(self.conversation_manager, self)
+            self.navigation_widget = ChatNavigationWidget(
+                self.conversation_manager, 
+                self.summarization_service,
+                self
+            )
             self.navigation_widget.setMaximumWidth(300)
             self.navigation_widget.setMinimumWidth(200)
             main_splitter.addWidget(self.navigation_widget)
@@ -693,6 +699,9 @@ class ChatTab(QWidget):
                 # Update navigation widget
                 if hasattr(self, 'navigation_widget'):
                     self.navigation_widget.set_current_conversation(filepath)
+                
+                # Update current conversation file reference
+                self.current_conversation_file = filepath
                 
                 # Update model and personality if available in metadata
                 if metadata.model and metadata.model in [self.model_combo.itemText(i) for i in range(self.model_combo.count())]:

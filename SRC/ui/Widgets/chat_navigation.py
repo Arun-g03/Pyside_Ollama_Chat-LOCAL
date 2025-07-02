@@ -9,10 +9,12 @@ from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QListWidget,
 from PySide6.QtCore import Signal, Qt, QTimer
 from PySide6.QtGui import QFont, QIcon, QCursor
 import os
+import time
 from datetime import datetime
 from typing import List, Tuple, Optional
 
 from SRC.models.conversation_metadata import ConversationManager, ConversationMetadata
+from SRC.services.summarization_service import SummarizationService
 
 
 class ChatNavigationWidget(QWidget):
@@ -24,10 +26,13 @@ class ChatNavigationWidget(QWidget):
     conversation_renamed = Signal(str, str)  # Emitted when a conversation is renamed (old_path, new_path)
     new_conversation_requested = Signal() # Emitted when new conversation is requested
     
-    def __init__(self, conversation_manager: ConversationManager, parent=None):
+    def __init__(self, conversation_manager: ConversationManager, summarization_service: SummarizationService = None, parent=None):
         super().__init__(parent)
         self.conversation_manager = conversation_manager
+        self.summarization_service = summarization_service
         self.current_conversation_file = None
+        self.name_generation_cooldown = {}  # Track last generation time per file
+        self.cooldown_duration = 30  # 30 seconds cooldown between attempts
         self.setup_ui()
         self.setup_connections()
         self.refresh_conversations()
@@ -153,6 +158,11 @@ class ChatNavigationWidget(QWidget):
         self.conversations_list.itemDoubleClicked.connect(self.on_conversation_double_clicked)
         self.conversations_list.customContextMenuRequested.connect(self.show_context_menu)
         
+        # Connect summarization service signals if available
+        if self.summarization_service:
+            self.summarization_service.summarization_completed.connect(self.on_summarization_completed)
+            self.summarization_service.summarization_failed.connect(self.on_summarization_failed)
+        
     def refresh_conversations(self):
         """Refresh the list of conversations"""
         self.conversations_list.clear()
@@ -174,6 +184,9 @@ class ChatNavigationWidget(QWidget):
                 # Mark current conversation
                 if filepath == self.current_conversation_file:
                     item.setSelected(True)
+                
+                # Note: Name generation is now triggered manually or when conversation is actively used
+                # to avoid premature naming of short conversations
             
             self.status_label.setText(f"{len(conversations)} conversation(s)")
             
@@ -182,17 +195,22 @@ class ChatNavigationWidget(QWidget):
     
     def create_conversation_item(self, filepath: str, metadata: ConversationMetadata) -> QListWidgetItem:
         """Create a list item for a conversation"""
-        # Create display text
-        filename = os.path.basename(filepath)
+        # Use the display name method
+        display_name = metadata.get_display_name()
+        
         created_time = metadata.get_formatted_created_time()
         model = metadata.model or "Unknown"
         message_count = metadata.message_count
         
-        display_text = f"{os.path.basename(filepath)}\n{created_time} | {model} ({message_count} messages)"
+        display_text = f"{display_name}\n{created_time} | {model} ({message_count} messages)"
         
         item = QListWidgetItem(display_text)
         item.setData(Qt.UserRole, filepath)
-        item.setToolTip(f"File: {filename}\nModel: {model}\nMessages: {message_count}\nCreated: {created_time}")
+        
+        # Show actual filename in tooltip for reference, but display name for user
+        actual_filename = os.path.basename(filepath)
+        tooltip_name = metadata.get_display_name()
+        item.setToolTip(f"Name: {tooltip_name}\nFile: {actual_filename}\nModel: {model}\nMessages: {message_count}\nCreated: {created_time}")
         
         return item
     
@@ -221,6 +239,15 @@ class ChatNavigationWidget(QWidget):
         # Rename action
         rename_action = menu.addAction("Rename")
         rename_action.triggered.connect(lambda: self.rename_conversation(filepath))
+        
+        # Generate AI name action (only show if no AI name exists)
+        try:
+            _, metadata = self.conversation_manager.load_conversation(filepath)
+            if not metadata.ai_generated_name:
+                generate_name_action = menu.addAction("Generate AI Name")
+                generate_name_action.triggered.connect(lambda: self.trigger_name_generation(filepath))
+        except Exception as e:
+            print(f"Error loading conversation metadata for context menu: {e}")
         
         menu.addSeparator()
         
@@ -270,10 +297,16 @@ class ChatNavigationWidget(QWidget):
     def delete_conversation(self, filepath: str):
         """Delete a conversation"""
         try:
-            filename = os.path.basename(filepath)
+            # Get the display name for the confirmation dialog
+            try:
+                _, metadata = self.conversation_manager.load_conversation(filepath)
+                display_name = metadata.get_display_name()
+            except:
+                display_name = "New Chat"
+            
             reply = QMessageBox.question(
                 self, "Delete Conversation",
-                f"Are you sure you want to delete '{filename}'?\n\nThis action cannot be undone.",
+                f"Are you sure you want to delete '{display_name}'?\n\nThis action cannot be undone.",
                 QMessageBox.Yes | QMessageBox.No,
                 QMessageBox.No
             )
@@ -315,4 +348,69 @@ class ChatNavigationWidget(QWidget):
                     self.conversation_manager.delete_conversation(filepath)
                 self.refresh_conversations()
             except Exception as e:
-                QMessageBox.warning(self, "Error", f"Failed to clear all conversations: {str(e)}") 
+                QMessageBox.warning(self, "Error", f"Failed to clear all conversations: {str(e)}")
+    
+    def trigger_name_generation(self, filepath: str) -> None:
+        """Trigger AI name generation for a conversation"""
+        if not self.summarization_service:
+            print("No summarization service available")
+            return
+        
+        try:
+            print(f"Triggering name generation for: {filepath}")
+            
+            # Check cooldown
+            current_time = time.time()
+            if filepath in self.name_generation_cooldown:
+                time_since_last = current_time - self.name_generation_cooldown[filepath]
+                if time_since_last < self.cooldown_duration:
+                    print(f"Name generation on cooldown for {filepath} ({self.cooldown_duration - time_since_last:.1f}s remaining)")
+                    return
+            
+            # Load the conversation
+            conversation, metadata = self.conversation_manager.load_conversation(filepath)
+            print(f"Loaded conversation with {len(conversation)} messages")
+            
+            # Only generate name if we don't already have one
+            if not metadata.ai_generated_name:
+                print("No AI name exists, generating...")
+                self.name_generation_cooldown[filepath] = current_time
+                self.summarization_service.generate_chat_name(conversation, filepath)
+            else:
+                print(f"AI name already exists: {metadata.ai_generated_name}")
+                
+        except Exception as e:
+            print(f"Error triggering name generation: {str(e)}")
+    
+    def on_summarization_completed(self, filepath: str, generated_name: str) -> None:
+        """Handle successful summarization"""
+        try:
+            print(f"Summarization completed for {filepath}: {generated_name}")
+            
+            # Update the conversation with the new name (this will rename the file)
+            if self.conversation_manager.update_conversation_name(filepath, generated_name):
+                # Get the new filepath from the conversation manager
+                new_filepath = self.conversation_manager.get_current_metadata().current_conversation_file
+                print(f"File renamed from {filepath} to {new_filepath}")
+                
+                # Update current conversation reference if this was the current one
+                if self.current_conversation_file == filepath:
+                    self.current_conversation_file = new_filepath
+                
+                # Refresh the display
+                self.refresh_conversations()
+                
+                # Emit conversation renamed signal if the filepath changed
+                if new_filepath != filepath:
+                    self.conversation_renamed.emit(filepath, new_filepath)
+            else:
+                print(f"Failed to update conversation name for {filepath}")
+                
+        except Exception as e:
+            print(f"Error handling summarization completion: {str(e)}")
+    
+    def on_summarization_failed(self, filepath: str, error_message: str) -> None:
+        """Handle summarization failure"""
+        print(f"Summarization failed for {filepath}: {error_message}")
+        print(f"Check the logs for detailed information about the failure")
+        # Could show a notification here if desired 

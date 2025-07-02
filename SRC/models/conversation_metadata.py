@@ -25,6 +25,7 @@ class ConversationMetadata:
     message_count: int = 0
     current_conversation_file: Optional[str] = None
     auto_save_enabled: bool = True
+    ai_generated_name: Optional[str] = None  # AI-generated name for the conversation
     
     def __post_init__(self):
         """Initialize default values after object creation"""
@@ -52,6 +53,11 @@ class ConversationMetadata:
         self.personality = personality
         self.update_timestamp()
     
+    def update_ai_generated_name(self, name: str) -> None:
+        """Update the AI-generated name"""
+        self.ai_generated_name = name
+        self.update_timestamp()
+    
     def to_dict(self) -> Dict[str, Any]:
         """Convert metadata to dictionary for JSON serialization"""
         return {
@@ -60,7 +66,8 @@ class ConversationMetadata:
             "model": self.model,
             "personality": self.personality,
             "message_count": self.message_count,
-            "auto_save_enabled": self.auto_save_enabled
+            "auto_save_enabled": self.auto_save_enabled,
+            "ai_generated_name": self.ai_generated_name
         }
     
     @classmethod
@@ -72,7 +79,8 @@ class ConversationMetadata:
             model=data.get("model"),
             personality=data.get("personality"),
             message_count=data.get("message_count", 0),
-            auto_save_enabled=data.get("auto_save_enabled", True)
+            auto_save_enabled=data.get("auto_save_enabled", True),
+            ai_generated_name=data.get("ai_generated_name")
         )
     
     def reset(self) -> None:
@@ -83,6 +91,7 @@ class ConversationMetadata:
         self.personality = None
         self.message_count = 0
         self.current_conversation_file = None
+        self.ai_generated_name = None
     
     def get_formatted_created_time(self) -> str:
         """Get formatted creation time for display"""
@@ -111,6 +120,10 @@ class ConversationMetadata:
         personality_str = self.personality or "Unknown"
         
         return f"Messages: {self.message_count} | Model: {model_str} | Personality: {personality_str} | Created: {created_str}"
+    
+    def get_display_name(self) -> str:
+        """Get the display name for the conversation"""
+        return self.ai_generated_name if self.ai_generated_name else "New Chat"
 
 
 class ConversationManager(QObject):
@@ -164,6 +177,105 @@ class ConversationManager(QObject):
         self.metadata_updated.emit()
         return filepath
     
+    def update_conversation_name(self, filepath: str, ai_generated_name: str) -> bool:
+        """
+        Update the AI-generated name for a conversation and rename the file
+        
+        Args:
+            filepath: Path to the conversation file
+            ai_generated_name: The AI-generated name
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            # Load the conversation
+            conversation, metadata = self.load_conversation(filepath)
+            
+            # Update the AI-generated name
+            metadata.update_ai_generated_name(ai_generated_name)
+            
+            # Create a safe filename from the AI-generated name
+            safe_filename = self._create_safe_filename(ai_generated_name)
+            
+            # Generate new filepath
+            new_filepath = os.path.join(self.history_dir, safe_filename)
+            
+            # Check if new filename already exists
+            if os.path.exists(new_filepath) and new_filepath != filepath:
+                # Add timestamp to make it unique
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                name_without_ext = os.path.splitext(safe_filename)[0]
+                safe_filename = f"{name_without_ext}_{timestamp}.json"
+                new_filepath = os.path.join(self.history_dir, safe_filename)
+            
+            # Save the updated conversation to the new file
+            save_data = {
+                "metadata": metadata.to_dict(),
+                "conversation": conversation
+            }
+            
+            with open(new_filepath, 'w', encoding='utf-8') as f:
+                json.dump(save_data, f, indent=2, ensure_ascii=False)
+            
+            # Delete the old file if it's different from the new one
+            if new_filepath != filepath:
+                try:
+                    os.remove(filepath)
+                except Exception as e:
+                    logger.warning(f"Failed to remove old file {filepath}: {e}")
+            
+            # Update current conversation file reference if this was the current one
+            if self.metadata.current_conversation_file == filepath:
+                self.metadata.current_conversation_file = new_filepath
+            
+            self.metadata_updated.emit()
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to update conversation name: {str(e)}")
+            return False
+    
+    def _create_safe_filename(self, ai_generated_name: str) -> str:
+        """
+        Create a safe filename from the AI-generated name
+        
+        Args:
+            ai_generated_name: The AI-generated name
+            
+        Returns:
+            Safe filename with .json extension and timestamp
+        """
+        # Remove or replace invalid characters
+        import re
+        
+        # Replace invalid filename characters with underscores
+        safe_name = re.sub(r'[<>:"/\\|?*]', '_', ai_generated_name)
+        
+        # Replace multiple spaces/underscores with single underscore
+        safe_name = re.sub(r'[_\s]+', '_', safe_name)
+        
+        # Remove leading/trailing underscores and spaces
+        safe_name = safe_name.strip('_ ')
+        
+        # Limit length to avoid filesystem issues (leave room for timestamp)
+        if len(safe_name) > 80:
+            safe_name = safe_name[:80]
+        
+        # Ensure it's not empty
+        if not safe_name:
+            safe_name = "unnamed_conversation"
+        
+        # Add timestamp to ensure uniqueness
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        safe_name = f"{safe_name}_{timestamp}"
+        
+        # Add .json extension
+        if not safe_name.endswith('.json'):
+            safe_name += '.json'
+        
+        return safe_name
+    
     def load_conversation(self, filepath: str) -> tuple[list, ConversationMetadata]:
         """
         Load conversation and metadata from file
@@ -214,10 +326,17 @@ class ConversationManager(QObject):
         
         # Create filename if not exists
         if not self.metadata.current_conversation_file:
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            self.metadata.current_conversation_file = os.path.join(
-                self.history_dir, f"conversation_{timestamp}.json"
-            )
+            # Use AI-generated name if available, otherwise use timestamp
+            if self.metadata.ai_generated_name:
+                safe_filename = self._create_safe_filename(self.metadata.ai_generated_name)
+                self.metadata.current_conversation_file = os.path.join(
+                    self.history_dir, safe_filename
+                )
+            else:
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                self.metadata.current_conversation_file = os.path.join(
+                    self.history_dir, f"conversation_{timestamp}.json"
+                )
         
         # Save conversation with metadata
         try:

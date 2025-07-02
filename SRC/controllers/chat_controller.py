@@ -27,6 +27,7 @@ class ChatController(QObject):
     conversation_updated = Signal()
     status_updated = Signal(str)
     error_occurred = Signal(str)
+    name_generation_requested = Signal(str)  # Emitted when name generation is requested (filepath)
     
     def __init__(self, 
                  ollama_service: OllamaService,
@@ -268,10 +269,19 @@ class ChatController(QObject):
             self.conversation_service.get_messages()
         )
         
+        # Trigger name generation if we have a saved filepath
+        if saved_filepath:
+            self._trigger_name_generation(saved_filepath)
+        
         # Emit signals for UI updates
         self.message_received.emit(response)
         self.conversation_updated.emit()
         self.status_updated.emit("Ready")
+    
+    def _trigger_name_generation(self, filepath: str) -> None:
+        """Trigger AI name generation for a conversation"""
+        # Emit signal for UI to handle name generation
+        self.name_generation_requested.emit(filepath)
     
     def start_new_conversation(self) -> None:
         """Start a new conversation"""

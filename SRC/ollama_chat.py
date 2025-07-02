@@ -18,6 +18,7 @@ from SRC.services.ollama_service import OllamaService
 from SRC.services.conversation_service import ConversationService
 from SRC.services.enhancement_service import EnhancementService
 from SRC.services.memory_service import MemoryService
+from SRC.services.summarization_service import SummarizationService
 from SRC.models.conversation_metadata import ConversationManager
 from SRC.config.config_manager import ConfigManager
 from SRC.ui.Widgets.settings_dialog import SettingsDialog
@@ -85,6 +86,10 @@ class OllamaChat(QMainWindow):
             self.config_manager.get_history_directory()
         )
         self.enhancement_service = EnhancementService(self.ollama_service)
+        
+        # Initialize summarization service
+        self.summarization_service = SummarizationService(self.ollama_service)
+        
         self.memory_enabled = self.config_manager.get("memory_enabled", True)
         if self.memory_enabled:
             self.memory_service = MemoryService(
@@ -134,7 +139,10 @@ class OllamaChat(QMainWindow):
         main_layout.addWidget(self.tabs)
         
         # Create and add tabs with reduced coupling
-        self.chat_tab = ChatTab(conversation_manager=self.conversation_manager)
+        self.chat_tab = ChatTab(
+            conversation_manager=self.conversation_manager,
+            summarization_service=self.summarization_service
+        )
         self.model_tab = ModelTab()
         self.personality_tab = PersonalityTab()
         
@@ -236,6 +244,7 @@ class OllamaChat(QMainWindow):
         self.chat_controller.status_updated.connect(self.update_status)
         self.chat_controller.error_occurred.connect(self.show_error)
         self.chat_controller.conversation_updated.connect(self.on_conversation_updated)
+        self.chat_controller.name_generation_requested.connect(self.on_name_generation_requested)
         
         # Connect Ollama service signals
         self.ollama_service.model_list_updated.connect(self.on_models_updated)
@@ -534,6 +543,44 @@ class OllamaChat(QMainWindow):
         """Handle conversation updates from controller"""
         # Refresh navigation widget
         self.chat_tab.refresh_navigation()
+    
+    def on_name_generation_requested(self, filepath: str):
+        """Handle name generation request from controller"""
+        logger.info(f"Name generation requested for: {filepath}")
+        
+        if self.summarization_service:
+            try:
+                # Load the conversation
+                conversation, metadata = self.conversation_manager.load_conversation(filepath)
+                logger.info(f"Loaded conversation with {len(conversation)} messages")
+                
+                # Only generate name if we don't already have one
+                if not metadata.ai_generated_name:
+                    logger.info("No AI name exists, triggering generation...")
+                    self.summarization_service.generate_chat_name(conversation, filepath)
+                else:
+                    logger.info(f"AI name already exists: {metadata.ai_generated_name}")
+                    
+            except Exception as e:
+                logger.error(f"Error triggering name generation: {str(e)}")
+        else:
+            logger.warning("No summarization service available")
+    
+    def on_conversation_renamed(self, old_filepath: str, new_filepath: str):
+        """Handle conversation rename from AI naming"""
+        try:
+            # Update the chat tab's current conversation file reference
+            if self.chat_tab.current_conversation_file == old_filepath:
+                self.chat_tab.set_current_conversation_file(new_filepath)
+            
+            # Update the conversation manager's current file reference
+            if self.conversation_manager.get_current_metadata().current_conversation_file == old_filepath:
+                self.conversation_manager.get_current_metadata().current_conversation_file = new_filepath
+            
+            logger.info(f"Conversation renamed: {old_filepath} -> {new_filepath}")
+            
+        except Exception as e:
+            logger.error(f"Error handling conversation rename: {str(e)}")
     
     def update_status(self, message: str):
         """Update status bar message"""
