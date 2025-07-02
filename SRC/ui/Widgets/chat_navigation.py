@@ -347,6 +347,12 @@ class ChatNavigationWidget(QWidget):
                 for filepath, _ in conversations:
                     self.conversation_manager.delete_conversation(filepath)
                 self.refresh_conversations()
+                # Also clear the current chat window if possible
+                parent = self.parent()
+                while parent is not None and not hasattr(parent, 'clear_chat'):
+                    parent = parent.parent()
+                if parent and hasattr(parent, 'clear_chat'):
+                    parent.clear_chat()
             except Exception as e:
                 QMessageBox.warning(self, "Error", f"Failed to clear all conversations: {str(e)}")
     
