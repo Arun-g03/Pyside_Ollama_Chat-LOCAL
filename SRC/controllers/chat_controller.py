@@ -252,8 +252,13 @@ class ChatController(QObject):
             system_info = PromptFormatter.format_auto_model_selection_info(chosen_model)
             self.conversation_service.add_message("system", system_info)
             
+            # Update conversation metadata with the chosen model
+            self.conversation_manager.get_current_metadata().update_model(chosen_model)
+            
             return chosen_model
         
+        # Update conversation metadata with the requested model
+        self.conversation_manager.get_current_metadata().update_model(requested_model)
         return requested_model
     
     def handle_ai_response(self, response: str) -> None:

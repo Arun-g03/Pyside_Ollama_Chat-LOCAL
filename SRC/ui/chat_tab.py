@@ -533,6 +533,14 @@ class ChatTab(QWidget):
             self.cancel_button.setVisible(True)
             ai_name = self.get_ai_name()
             self.streaming_handler.start_streaming_message(ai_name, tag="ai")
+            
+            # Double-check that the button is actually disabled
+            if self.send_button.isEnabled():
+                logger.warning("Send button was not disabled, forcing disable")
+                self.send_button.setEnabled(False)
+                self.send_button.update()
+                from PySide6.QtWidgets import QApplication
+                QApplication.processEvents()
         
     def stop_streaming(self):
         """Stop streaming state"""
@@ -547,6 +555,13 @@ class ChatTab(QWidget):
         self.chat_display.update()
         from PySide6.QtWidgets import QApplication
         QApplication.processEvents()
+        
+        # Double-check that the button is actually enabled
+        if not self.send_button.isEnabled():
+            logger.warning("Send button was not enabled, forcing enable")
+            self.send_button.setEnabled(True)
+            self.send_button.update()
+            QApplication.processEvents()
         
     def on_temperature_changed(self, value):
         """Handle temperature slider change"""
@@ -727,5 +742,17 @@ class ChatTab(QWidget):
         """Handle message cancellation"""
         self.stop_streaming()
         self.streaming_handler.remove_streaming_placeholder()
+    
+    def force_enable_send_button(self):
+        """Force enable the send button and ensure UI is updated"""
+        logger.debug("Force enabling send button")
+        self.is_streaming = False
+        self.send_button.setEnabled(True)
+        self.cancel_button.setVisible(False)
+        self.send_button.update()
+        self.cancel_button.update()
+        from PySide6.QtWidgets import QApplication
+        QApplication.processEvents()
+        logger.debug(f"Send button enabled: {self.send_button.isEnabled()}")
 
    

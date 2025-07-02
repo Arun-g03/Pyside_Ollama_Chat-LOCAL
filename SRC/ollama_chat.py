@@ -396,6 +396,10 @@ class OllamaChat(QMainWindow):
         available_models = self.ollama_service.get_models() or []
         chosen_model = model
         
+        # Update conversation metadata with the requested model (before auto selection)
+        if model != "Auto":
+            self.conversation_manager.get_current_metadata().update_model(chosen_model)
+        
         # Auto model selection using complexity checker
         if model == "Auto":
             from SRC.utils.complexity_analyzer import RequestComplexityAnalyzer
@@ -407,6 +411,9 @@ class OllamaChat(QMainWindow):
             self.conversation_service.add_message("system", system_info)
             self.chat_tab.append_to_chat("System", system_info)
             context_messages = self.conversation_service.get_context_messages()
+        
+        # Update conversation metadata with the chosen model
+        self.conversation_manager.get_current_metadata().update_model(chosen_model)
         
         # Create worker thread for async communication
         self.worker_thread = QThread()
@@ -448,6 +455,9 @@ class OllamaChat(QMainWindow):
         self.chat_tab.streaming_handler.finalize_streaming_message()
         self.on_message_finished()
         
+        # Force enable send button to ensure it's re-enabled
+        self.chat_tab.force_enable_send_button()
+        
         # Clean up worker
         if hasattr(self, 'worker_thread'):
             self.worker_thread.quit()
@@ -460,6 +470,9 @@ class OllamaChat(QMainWindow):
         """Handle worker error"""
         self.chat_tab.append_to_chat("System", f"Error: {error_message}")
         self.on_worker_finished()
+        
+        # Force enable send button to ensure it's re-enabled
+        self.chat_tab.force_enable_send_button()
 
     def on_message_finished(self):
         """Handle message finished"""
@@ -481,6 +494,9 @@ class OllamaChat(QMainWindow):
         
         # Update the chat tab
         self.chat_tab.on_message_cancelled()
+        
+        # Force enable send button to ensure it's re-enabled
+        self.chat_tab.force_enable_send_button()
     
     def on_conversation_selected(self, filepath: str):
         """Handle conversation selection from navigation"""
