@@ -210,7 +210,7 @@ class ChatNavigationWidget(QWidget):
         # Show actual filename in tooltip for reference, but display name for user
         actual_filename = os.path.basename(filepath)
         tooltip_name = metadata.get_display_name()
-        item.setToolTip(f"Name: {tooltip_name}\nFile: {actual_filename}\nModel: {model}\nMessages: {message_count}\nCreated: {created_time}")
+        item.setToolTip(f"Right click for more options.\n\nName: {tooltip_name}\nFile: {actual_filename}\nModel: {model}\nMessages: {message_count}\nCreated: {created_time}")
         
         return item
     

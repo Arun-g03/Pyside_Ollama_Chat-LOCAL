@@ -84,11 +84,15 @@ class StreamingHandler:
         self._flush_stream_buffer()
         # Always re-render, even if no message was streaming
         found_streaming = False
-        for msg in reversed(self.messages):
+        for i in range(len(self.messages) - 1, -1, -1):
+            msg = self.messages[i]
             if msg['is_streaming']:
                 msg['is_streaming'] = False
                 found_streaming = True
                 logger.debug(f"[DEBUG][finalize_streaming_message] Final AI response content: {msg['content']}", print_to_terminal=True)
+                # Remove the message if its content is empty or only whitespace
+                if not msg['content'] or msg['content'].strip() == '':
+                    del self.messages[i]
                 break
         logger.debug("[DEBUG][finalize_streaming_message] after finalize messages: %s", ', '.join(f"{m['sender']} streaming={m['is_streaming']} len={len(m['content'])}" for m in self.messages))
         self._render_chat_display()

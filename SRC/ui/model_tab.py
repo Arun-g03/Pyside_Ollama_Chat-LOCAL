@@ -345,6 +345,13 @@ class ModelTab(QWidget):
             }
         """)
         status_layout.addWidget(self.status_text)
+        self.clear_status_button = QPushButton("Clear Output")
+        self.clear_status_button.setToolTip("Clear the status terminal")
+        self.clear_status_button.setFixedWidth(120)
+        status_layout.addWidget(self.clear_status_button, alignment=Qt.AlignmentFlag.AlignLeft)
+
+        # Connect clear button
+        self.clear_status_button.clicked.connect(self.clear_status)
         
         operations_layout.addWidget(status_group)
         parent.addWidget(operations_widget)
