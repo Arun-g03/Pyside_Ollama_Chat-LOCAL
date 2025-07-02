@@ -42,6 +42,8 @@ class ConversationService(QObject):
         
         self.conversation_updated.emit(self.conversation)
         logger.debug(f"DEBUG: Added message to conversation: {message}")
+        logger.debug(f"DEBUG: Total conversation length: {len(self.conversation)}")
+        logger.debug(f"DEBUG: Conversation contents: {[msg.get('role', 'unknown') for msg in self.conversation]}")
 
     def _add_to_memory(self, role: str, content: str):
         """Add message to memory service"""
@@ -81,6 +83,8 @@ class ConversationService(QObject):
     
     def get_messages(self) -> List[Dict]:
         """Get the current conversation messages"""
+        logger.debug(f"DEBUG: get_messages called, returning {len(self.conversation)} messages")
+        logger.debug(f"DEBUG: Message roles: {[msg.get('role', 'unknown') for msg in self.conversation]}")
         return self.conversation.copy()
     
     def get_context_messages(self) -> List[Dict]:

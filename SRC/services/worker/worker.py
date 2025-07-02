@@ -68,7 +68,8 @@ class Worker(QObject):
                         chunk = json.loads(line)
                         content = chunk.get("message", {}).get("content", "")
                         #logger.debug("STREAM CHUNK:", content,print_to_terminal=True)
-                        self.stream_chunk_signal.emit(content)
+                        if content:
+                            self.stream_chunk_signal.emit(content)
                         if chunk.get("done", False):
                             break
         except Exception as e:

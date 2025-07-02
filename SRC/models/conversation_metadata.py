@@ -318,15 +318,26 @@ class ConversationManager(QObject):
         Returns:
             Path to saved file if saved, None otherwise
         """
-        if not self.metadata.auto_save_enabled or not conversation:
+        logger.debug(f"Auto-save attempt - enabled: {self.metadata.auto_save_enabled}, conversation length: {len(conversation) if conversation else 0}")
+        
+        if not self.metadata.auto_save_enabled:
+            logger.debug("Auto-save skipped: auto_save_enabled is False")
             return None
-        
-        # Update metadata
-        self.metadata.update_message_count(len(conversation))
-        
-        # Create filename if not exists
+            
+        # Skip saving if conversation is empty and we already have a file with content
+        if not conversation and self.metadata.current_conversation_file and os.path.exists(self.metadata.current_conversation_file):
+            try:
+                with open(self.metadata.current_conversation_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    existing_conversation = data.get("conversation", []) if isinstance(data, dict) else data
+                    if len(existing_conversation) > 0:
+                        logger.debug("Auto-save skipped: conversation is empty and existing file has content")
+                        return None
+            except:
+                pass  # If we can't read the file, proceed with saving
+
+        # Create filename if not exists (new conversation)
         if not self.metadata.current_conversation_file:
-            # Use AI-generated name if available, otherwise use timestamp
             if self.metadata.ai_generated_name:
                 safe_filename = self._create_safe_filename(self.metadata.ai_generated_name)
                 self.metadata.current_conversation_file = os.path.join(
@@ -338,6 +349,9 @@ class ConversationManager(QObject):
                     self.history_dir, f"conversation_{timestamp}.json"
                 )
         
+        # Update metadata
+        self.metadata.update_message_count(len(conversation))
+        
         # Save conversation with metadata
         try:
             save_data = {
@@ -348,6 +362,7 @@ class ConversationManager(QObject):
                 json.dump(save_data, f, indent=2, ensure_ascii=False)
             
             self.metadata_updated.emit()
+            logger.debug(f"Auto-save successful: {self.metadata.current_conversation_file}")
             return self.metadata.current_conversation_file
             
         except Exception as e:

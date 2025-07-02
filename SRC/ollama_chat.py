@@ -424,7 +424,7 @@ class OllamaChat(QMainWindow):
         self._current_response_model = chosen_model
 
         # Connect worker signals
-        self.worker.stream_chunk_signal.connect(lambda chunk: self.chat_tab.append_response_signal.emit(chunk, self._current_response_model if model == "Auto" else None))
+        self.worker.stream_chunk_signal.connect(lambda chunk: (self.chat_controller.accumulate_assistant_response(chunk), self.chat_tab.append_response_signal.emit(chunk, self._current_response_model if model == "Auto" else None)))
         self.worker.finished_signal.connect(self.on_worker_finished)
         self.worker.update_message_signal.connect(self.on_worker_error)
         
@@ -446,18 +446,12 @@ class OllamaChat(QMainWindow):
 
     def on_worker_finished(self):
         """Handle worker completion"""
-        final_response = self.chat_tab.get_current_response()
-        
-        # Handle response through controller
-        self.chat_controller.handle_ai_response(final_response)
-        
+        self.chat_controller.handle_ai_response()
         # Update UI
         self.chat_tab.streaming_handler.finalize_streaming_message()
         self.on_message_finished()
-        
         # Force enable send button to ensure it's re-enabled
         self.chat_tab.force_enable_send_button()
-        
         # Clean up worker
         if hasattr(self, 'worker_thread'):
             self.worker_thread.quit()
@@ -508,11 +502,21 @@ class OllamaChat(QMainWindow):
         self.chat_controller.delete_conversation(filepath)
     
     def on_conversation_renamed(self, old_filepath: str, new_filepath: str):
-        """Handle conversation rename from navigation"""
-        self.chat_controller.rename_conversation(old_filepath, new_filepath)
-        # Update the current conversation file reference in the chat tab
-        if self.conversation_manager.get_current_metadata().current_conversation_file == new_filepath:
-            self.chat_tab.set_current_conversation_file(new_filepath)
+        """Handle conversation rename from AI naming"""
+        try:
+            # Update the chat tab's current conversation file reference
+            if self.chat_tab.current_conversation_file == old_filepath:
+                self.chat_tab.set_current_conversation_file(new_filepath)
+            
+            # Update the conversation manager's current file reference
+            if self.conversation_manager.get_current_metadata().current_conversation_file == old_filepath:
+                self.conversation_manager.get_current_metadata().current_conversation_file = new_filepath
+            
+            logger.info(f"Conversation renamed: {old_filepath} -> {new_filepath}")
+            # Refresh navigation to show updated AI-generated name
+            self.chat_tab.refresh_navigation()
+        except Exception as e:
+            logger.error(f"Error handling conversation rename: {str(e)}")
     
     def on_personality_changed(self, personality_name):
         """Handle personality changes"""
@@ -581,22 +585,6 @@ class OllamaChat(QMainWindow):
                 logger.error(f"Error triggering name generation: {str(e)}")
         else:
             logger.warning("No summarization service available")
-    
-    def on_conversation_renamed(self, old_filepath: str, new_filepath: str):
-        """Handle conversation rename from AI naming"""
-        try:
-            # Update the chat tab's current conversation file reference
-            if self.chat_tab.current_conversation_file == old_filepath:
-                self.chat_tab.set_current_conversation_file(new_filepath)
-            
-            # Update the conversation manager's current file reference
-            if self.conversation_manager.get_current_metadata().current_conversation_file == old_filepath:
-                self.conversation_manager.get_current_metadata().current_conversation_file = new_filepath
-            
-            logger.info(f"Conversation renamed: {old_filepath} -> {new_filepath}")
-            
-        except Exception as e:
-            logger.error(f"Error handling conversation rename: {str(e)}")
     
     def update_status(self, message: str):
         """Update status bar message"""

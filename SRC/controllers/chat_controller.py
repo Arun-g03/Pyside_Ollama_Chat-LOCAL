@@ -5,6 +5,7 @@ This module implements the mediator pattern to separate business logic from UI c
 It handles communication between different services and UI components.
 """
 
+import os
 from typing import Dict, Any, Optional, List
 from PySide6.QtCore import QObject, Signal
 
@@ -16,6 +17,9 @@ from SRC.models.conversation_metadata import ConversationManager
 from SRC.utils.prompts import PromptFormatter
 from SRC.utils.logging_helpers import LoggingHelpers
 from SRC.utils.complexity_analyzer import RequestComplexityAnalyzer
+from SRC.utils.Logging.Custom_Logger import CustomLogger
+
+logger = CustomLogger.get_logger(__name__)
 
 
 class ChatController(QObject):
@@ -47,6 +51,7 @@ class ChatController(QObject):
         self.is_new_conversation = False
         self.current_model = None
         self.current_temperature = 0.7
+        self._pending_assistant_response = ""  # Accumulate assistant response here
         
     def is_memory_active(self) -> bool:
         """Check if memory is enabled and available"""
@@ -60,6 +65,13 @@ class ChatController(QObject):
             # Update current settings
             self.current_model = model
             self.current_temperature = temperature
+            
+            # Check if this is the first message in a new conversation
+            messages = self.conversation_service.get_messages()
+            if len(messages) == 0:
+                # This is the first message, start a new conversation
+                self.start_new_conversation()
+                LoggingHelpers.log_debug("Auto-started new conversation for first message")
             
             # Add message to conversation
             self.conversation_service.add_message("user", message)
@@ -261,24 +273,31 @@ class ChatController(QObject):
         self.conversation_manager.get_current_metadata().update_model(requested_model)
         return requested_model
     
-    def handle_ai_response(self, response: str) -> None:
-        """Handle AI response completion"""
+    def accumulate_assistant_response(self, chunk: str):
+        """Accumulate assistant response chunk."""
+        self._pending_assistant_response += chunk
+
+    def clear_pending_assistant_response(self):
+        self._pending_assistant_response = ""
+
+    def handle_ai_response(self) -> None:
+        """Handle AI response completion using accumulated response."""
+        response = self._pending_assistant_response
+        logger.debug(f"DEBUG: handle_ai_response called with response length: {len(response)}")
         self.conversation_service.add_message("assistant", response)
-        
+        self.clear_pending_assistant_response()
         if self.is_memory_active():
             result = self.memory_service.intelligent_add_message({"role": "assistant", "content": response})
             LoggingHelpers.log_memory_result(result)
-        
-        # Auto-save conversation
-        saved_filepath = self.conversation_manager.auto_save_conversation(
-            self.conversation_service.get_messages()
-        )
-        
-        # Trigger name generation if we have a saved filepath
+        messages = self.conversation_service.get_messages()
+        logger.debug(f"DEBUG: About to auto-save conversation with {len(messages)} messages")
+        logger.debug(f"DEBUG: Current conversation file: {self.conversation_manager.get_current_metadata().current_conversation_file}")
+        saved_filepath = self.conversation_manager.auto_save_conversation(messages)
         if saved_filepath:
+            logger.debug(f"DEBUG: Conversation saved to: {saved_filepath}")
             self._trigger_name_generation(saved_filepath)
-        
-        # Emit signals for UI updates
+        else:
+            logger.debug("DEBUG: Auto-save returned None - conversation not saved")
         self.message_received.emit(response)
         self.conversation_updated.emit()
         self.status_updated.emit("Ready")
@@ -290,9 +309,28 @@ class ChatController(QObject):
     
     def start_new_conversation(self) -> None:
         """Start a new conversation"""
+        logger.debug("DEBUG: start_new_conversation called")
         self.is_new_conversation = True
         self.conversation_service.clear_conversation()
         self.conversation_manager.clear_current_conversation()
+        
+        # Initialize a new conversation file for auto-saving
+        from datetime import datetime
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        new_filepath = os.path.join(
+            self.conversation_manager.history_dir, 
+            f"conversation_{timestamp}.json"
+        )
+        self.conversation_manager.get_current_metadata().current_conversation_file = new_filepath
+        logger.debug(f"DEBUG: Set new conversation file: {new_filepath}")
+        
+        # Create the initial empty conversation file
+        saved_filepath = self.conversation_manager.auto_save_conversation([])
+        if saved_filepath:
+            logger.debug(f"DEBUG: Initial conversation file created: {saved_filepath}")
+        else:
+            logger.debug("DEBUG: Failed to create initial conversation file")
+        
         self.conversation_updated.emit()
         self.status_updated.emit("Started new conversation")
     
