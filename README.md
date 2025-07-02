@@ -46,6 +46,30 @@ A sophisticated desktop chat application built with PySide6 that provides an int
 - Semantic search capabilities
 - Memory tab for managing conversation history
 
+## 📸 Application Screenshots
+
+Here are some screenshots showcasing the key features of Pyside_Chat:
+
+### Main Chat Interface
+![Main Chat Interface](DOCUMENTATION/App_Images/Main%20chat_blank.png)
+*Clean and intuitive main chat interface with conversation history*
+
+### Model Management
+![Model Management](DOCUMENTATION/App_Images/Model_Management.png)
+*Easy model selection and configuration with Ollama integration*
+
+### Personality Selection
+![Personality Selection](DOCUMENTATION/App_Images/Personality_Selection.png)
+*Browse and select from a wide variety of pre-built personalities*
+
+### Personality Creation
+![Personality Creation](DOCUMENTATION/App_Images/Personality_Creation.png)
+*Create custom personalities with comprehensive trait configuration*
+
+### Chat Interaction
+![Chat Interaction](DOCUMENTATION/App_Images/Chat_Hello.png)
+*Engage in natural conversations with AI personalities*
+
 ## 🚀 Installation
 
 ### Prerequisites
