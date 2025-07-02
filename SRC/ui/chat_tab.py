@@ -643,6 +643,10 @@ class ChatTab(QWidget):
         # Also clear the streaming handler's internal messages list
         if hasattr(self, 'streaming_handler'):
             self.streaming_handler.cleanup()
+        # Show a non-persistent intro message as a placeholder
+        intro_message = "<span style='color:#aaa;font-style:italic;'>What would you like to talk about?</span>"
+        self.chat_display.insertHtml(intro_message)
+        self.chat_display.insertHtml("<br>")
         
     def save_chat(self):
         """Save the current chat to a file"""
