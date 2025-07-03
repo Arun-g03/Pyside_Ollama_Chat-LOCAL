@@ -317,6 +317,26 @@ class ChatController(QObject):
     def start_new_conversation(self) -> None:
         """Start a new conversation"""
         logger.debug("DEBUG: start_new_conversation called")
+        
+        # Check if there's already a blank conversation we can reuse
+        existing_blank = self.conversation_manager.find_blank_conversation()
+        if existing_blank:
+            logger.debug(f"DEBUG: Found existing blank conversation: {existing_blank}")
+            # Use the existing blank conversation instead of creating a new one
+            self.is_new_conversation = True
+            self.conversation_service.clear_conversation()
+            
+            # Set the current conversation file to the existing blank one
+            self.conversation_manager.get_current_metadata().current_conversation_file = existing_blank
+            logger.debug(f"DEBUG: Reusing existing blank conversation: {existing_blank}")
+            
+            # Emit signals to update UI
+            self.conversation_updated.emit()
+            self.status_updated.emit("Reused existing blank conversation")
+            return
+        
+        # No blank conversation found, create a new one
+        logger.debug("DEBUG: No blank conversation found, creating new one")
         self.is_new_conversation = True
         self.conversation_service.clear_conversation()
         self.conversation_manager.clear_current_conversation()

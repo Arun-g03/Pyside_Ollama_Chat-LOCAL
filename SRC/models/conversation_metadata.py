@@ -478,4 +478,25 @@ class ConversationManager(QObject):
     def set_auto_save_enabled(self, enabled: bool) -> None:
         """Enable or disable auto-save"""
         self.metadata.auto_save_enabled = enabled
-        self.metadata_updated.emit() 
+        self.metadata_updated.emit()
+    
+    def find_blank_conversation(self) -> Optional[str]:
+        """
+        Find the most recent blank conversation (0 messages)
+        
+        Returns:
+            Filepath of the most recent blank conversation, or None if none found
+        """
+        conversations = self.list_conversations()
+        
+        # Look for conversations with 0 messages
+        blank_conversations = [
+            (filepath, metadata) for filepath, metadata in conversations 
+            if metadata.message_count == 0
+        ]
+        
+        if blank_conversations:
+            # Return the most recent blank conversation (first in the sorted list)
+            return blank_conversations[0][0]
+        
+        return None 

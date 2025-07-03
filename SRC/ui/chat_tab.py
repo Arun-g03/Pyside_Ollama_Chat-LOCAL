@@ -3,6 +3,7 @@ Chat Tab - Extracted from ollama_chat.py
 Handles the main chat interface, message display, and user input.
 """
 
+import random
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QTextEdit, 
                                QPushButton, QComboBox, QSlider, QLabel, QSplitter,
                                QScrollArea, QFrame, QMenuBar, QMenu,
@@ -643,8 +644,30 @@ class ChatTab(QWidget):
         # Also clear the streaming handler's internal messages list
         if hasattr(self, 'streaming_handler'):
             self.streaming_handler.cleanup()
-        # Show a non-persistent intro message as a placeholder
-        intro_message = "<span style='color:#aaa;font-style:italic;'>What would you like to talk about?</span>"
+        
+        # List of intro messages to randomly choose from
+        intro_messages = [
+            "What can I help you with today?",
+            "What's on your mind?",
+            "What's your top priority right now?",
+            "Where would you like to begin?",
+            "Ready to dive in?",
+            "How can I support you today?",
+            "What’s one thing I can take off your plate?",
+            "Need help figuring something out?",
+            "Is there anything you're stuck on?",
+            "What are we working on today?",
+            "What goal are we aiming for right now?",
+            "Let's get started — where should we begin?",
+            "What direction are you thinking of taking?",
+            "What would be most useful to you right now?",
+            "Tell me what you're working on today."
+        ]
+
+        
+        # Select a random intro message
+        selected_message = random.choice(intro_messages)
+        intro_message = f"<span style='color:#aaa;font-style:italic;'>{selected_message}</span>"
         self.chat_display.insertHtml(intro_message)
         self.chat_display.insertHtml("<br>")
         

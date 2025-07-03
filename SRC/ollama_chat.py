@@ -614,7 +614,10 @@ class OllamaChat(QMainWindow):
         self.chat_controller.start_new_conversation()
         self.chat_tab.clear_chat()
         self.chat_tab.refresh_navigation()
-        self.chat_tab.set_current_conversation_file(None)
+        
+        # Set the current conversation file to the one from the controller
+        current_file = self.conversation_manager.get_current_metadata().current_conversation_file
+        self.chat_tab.set_current_conversation_file(current_file)
     
     def clear_chat(self):
         """Clear the chat display"""
