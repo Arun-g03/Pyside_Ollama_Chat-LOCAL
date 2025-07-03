@@ -411,9 +411,25 @@ class VoiceSettingsDialog(QDialog):
             }
         """)
         silence_threshold_layout.addWidget(self.silence_threshold_spinbox)
+        
+        # Add sensitivity indicator
+        self.sensitivity_label = QLabel("(Balanced)")
+        self.sensitivity_label.setStyleSheet("color: #00ff00; font-style: italic;")
+        silence_threshold_layout.addWidget(self.sensitivity_label)
+        
         silence_threshold_layout.addStretch()
         
         audio_gate_layout.addLayout(silence_threshold_layout)
+        
+        # Add description for silence threshold
+        threshold_description = QLabel(
+            "Lower values = more sensitive (detects quieter sounds)\n"
+            "Higher values = less sensitive (only detects louder sounds)\n"
+            "Recommended: 0.001-0.01 for quiet environments, 0.01-0.05 for normal use"
+        )
+        threshold_description.setWordWrap(True)
+        threshold_description.setStyleSheet("color: #ccc; font-size: 11px; margin-top: 5px;")
+        audio_gate_layout.addWidget(threshold_description)
         
         layout.addWidget(audio_gate_group)
         
@@ -427,6 +443,7 @@ class VoiceSettingsDialog(QDialog):
         self.stt_api_combo.currentTextChanged.connect(self.on_stt_api_changed)
         self.tts_api_combo.currentTextChanged.connect(self.on_tts_api_changed)
         self.voice_combo.currentTextChanged.connect(self.on_voice_changed)
+        self.silence_threshold_spinbox.valueChanged.connect(self.on_silence_threshold_changed)
         self.refresh_internet_button.clicked.connect(self.check_internet_connection)
         self.test_button.clicked.connect(self.test_settings)
         self.cancel_button.clicked.connect(self.reject)
@@ -510,6 +527,24 @@ class VoiceSettingsDialog(QDialog):
     def on_voice_changed(self, voice: str):
         """Handle voice selection change"""
         pass  # Can be used for voice preview
+        
+    def on_silence_threshold_changed(self, value: float):
+        """Handle silence threshold value change"""
+        if value <= 0.001:
+            self.sensitivity_label.setText("(Very Sensitive)")
+            self.sensitivity_label.setStyleSheet("color: #ff0000; font-style: italic;")
+        elif value <= 0.005:
+            self.sensitivity_label.setText("(Sensitive)")
+            self.sensitivity_label.setStyleSheet("color: #ff6600; font-style: italic;")
+        elif value <= 0.01:
+            self.sensitivity_label.setText("(Balanced)")
+            self.sensitivity_label.setStyleSheet("color: #00ff00; font-style: italic;")
+        elif value <= 0.05:
+            self.sensitivity_label.setText("(Less Sensitive)")
+            self.sensitivity_label.setStyleSheet("color: #ffff00; font-style: italic;")
+        else:
+            self.sensitivity_label.setText("(Not Sensitive)")
+            self.sensitivity_label.setStyleSheet("color: #00ffff; font-style: italic;")
         
     def test_settings(self):
         """Test the current voice settings"""
@@ -616,4 +651,6 @@ class VoiceSettingsDialog(QDialog):
             self.silence_duration_spinbox.setValue(int(settings["silence_duration"]))
             
         if "silence_threshold" in settings:
-            self.silence_threshold_spinbox.setValue(float(settings["silence_threshold"])) 
+            self.silence_threshold_spinbox.setValue(float(settings["silence_threshold"]))
+            # Update sensitivity indicator
+            self.on_silence_threshold_changed(float(settings["silence_threshold"])) 

@@ -39,6 +39,8 @@ class VoiceService(QObject):
     recording_started = Signal()        # Emitted when recording starts
     recording_stopped = Signal()        # Emitted when recording stops
     recording_error = Signal(str)       # Emitted when recording fails
+    voice_processing_started = Signal() # Emitted when voice processing starts
+    voice_processing_finished = Signal() # Emitted when voice processing finishes
     
     def __init__(self):
         super().__init__()
@@ -47,23 +49,25 @@ class VoiceService(QObject):
         self.recording_service = RecordingService()
         
         # Connect signals
-        self.stt_service.text_received.connect(self.voice_input_received.emit)
-        self.stt_service.error_occurred.connect(self.voice_input_error.emit)
+        self.stt_service.text_received.connect(self._on_stt_text_received)
+        self.stt_service.error_occurred.connect(self._on_stt_error)
         self.tts_service.tts_started.connect(self.tts_started.emit)
         self.tts_service.tts_finished.connect(self.tts_finished.emit)
         self.tts_service.tts_error.connect(self.tts_error.emit)
         self.recording_service.recording_started.connect(self.recording_started.emit)
         self.recording_service.recording_stopped.connect(self.recording_stopped.emit)
         self.recording_service.recording_error.connect(self.recording_error.emit)
+        self.recording_service.recording_auto_stopped.connect(self._on_recording_auto_stopped)
         
         # State tracking
         self.is_recording = False
         self.is_playing_tts = False
+        self.is_processing_voice = False  # Track if voice processing is in progress
         
         # Recording settings
         self.recording_timeout = 10.0  # Default 10 seconds (fallback)
         self.silence_threshold = 0.01  # Audio level threshold for silence detection
-        self.silence_duration = 2.0    # Seconds of silence before stopping
+        self.silence_duration = 4.0    # Seconds of silence before stopping
         self.recording_timer = QTimer()
         self.recording_timer.setSingleShot(True)
         self.recording_timer.timeout.connect(self._on_recording_timeout)
@@ -84,6 +88,10 @@ class VoiceService(QObject):
         """Start voice recording and convert to text"""
         if self.is_recording:
             logger.warning("Voice recording already in progress")
+            return
+            
+        if self.is_processing_voice:
+            logger.warning("Voice processing already in progress, please wait")
             return
             
         try:
@@ -111,6 +119,10 @@ class VoiceService(QObject):
             logger.warning("No voice recording in progress")
             return
             
+        if self.is_processing_voice:
+            logger.warning("Voice processing already in progress")
+            return
+            
         try:
             # Stop the timeout timer
             self.recording_timer.stop()
@@ -119,6 +131,10 @@ class VoiceService(QObject):
             self.is_recording = False
             
             if audio_file and os.path.exists(audio_file):
+                # Set processing state
+                self.is_processing_voice = True
+                self.voice_processing_started.emit()
+                
                 # Convert audio to text
                 self.stt_service.convert_audio_to_text(audio_file)
             else:
@@ -127,6 +143,7 @@ class VoiceService(QObject):
                 
         except Exception as e:
             self.is_recording = False
+            self.is_processing_voice = False
             logger.error(f"Failed to stop voice input: {e}")
             self.voice_input_error.emit(f"Failed to process voice input: {str(e)}")
     
@@ -135,6 +152,24 @@ class VoiceService(QObject):
         if self.is_recording:
             logger.debug("Recording timeout reached, stopping automatically")
             self.stop_voice_input()
+    
+    def _on_recording_auto_stopped(self):
+        """Handle recording auto-stopped due to silence detection"""
+        if self.is_recording:
+            logger.debug("Recording auto-stopped due to silence, processing voice input")
+            self.stop_voice_input()
+    
+    def _on_stt_text_received(self, text: str):
+        """Handle STT text received"""
+        self.is_processing_voice = False
+        self.voice_processing_finished.emit()
+        self.voice_input_received.emit(text)
+    
+    def _on_stt_error(self, error: str):
+        """Handle STT error"""
+        self.is_processing_voice = False
+        self.voice_processing_finished.emit()
+        self.voice_input_error.emit(error)
     
     def speak_text(self, text: str):
         """Convert text to speech and play it"""
@@ -604,6 +639,7 @@ class RecordingService(QObject):
     recording_stopped = Signal()
     recording_error = Signal(str)
     audio_level_changed = Signal(float)  # Emitted when audio level changes
+    recording_auto_stopped = Signal()    # Emitted when recording stops due to silence detection
     
     def __init__(self):
         super().__init__()
@@ -720,6 +756,12 @@ class RecordingService(QObject):
                         elif time.time() - silence_start_time >= self.silence_duration:
                             # Silence duration reached, stop recording
                             logger.debug("Silence timeout reached, stopping recording automatically")
+                            # Emit signal that recording was auto-stopped
+                            try:
+                                self.recording_auto_stopped.emit()
+                            except Exception as e:
+                                # Ignore signal emission errors from non-main thread
+                                pass
                             self.is_recording = False
                             break
                             
