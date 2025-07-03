@@ -41,6 +41,23 @@ class ChatTab(QWidget):
         self.conversation_manager = conversation_manager
         self.summarization_service = summarization_service
         self.current_conversation_file = None
+
+        # Initialize voice service and settings FIRST
+        self.voice_service = VoiceService()
+        self.voice_settings = {
+            "stt_api": "Google Speech Recognition",
+            "tts_api": "Google TTS",
+            "tts_voice": "en",
+            "auto_speak": True,
+            "voice_speed": 1.0,
+            "recording_timeout": 10.0,
+            "silence_duration": 2.0,
+            "silence_threshold": 0.005
+        }
+        
+        # Update voice service with initial settings
+        self.voice_service.update_settings(self.voice_settings)
+
         self.setup_ui()
         self.setup_streaming_handler()
         
@@ -52,18 +69,6 @@ class ChatTab(QWidget):
         self.last_message_type = None  # Track last message type
         self.last_system_message_widget = None  # Track last system message widget (if using custom widgets)
         self.voice_mode = False  # Track voice mode state
-        
-        # Initialize voice service
-        self.voice_service = VoiceService()
-        
-        # Voice settings
-        self.voice_settings = {
-            "stt_api": "Google Speech API",
-            "tts_api": "Google TTS",
-            "tts_voice": "en",
-            "auto_speak": True,
-            "voice_speed": 1.0
-        }
         
         self.setup_connections()
         
@@ -225,6 +230,8 @@ class ChatTab(QWidget):
                 line-height: 1.4;
             }
         """)
+
+        self.input_layout = QHBoxLayout()
         
         # Scroll area for chat display
         scroll_area = QScrollArea()
@@ -380,7 +387,40 @@ class ChatTab(QWidget):
         controls_layout.addLayout(settings_layout)
         
         # Input area
-        input_layout = QHBoxLayout()
+        self.input_layout = QHBoxLayout()
+        
+        # Mode selector dropdown
+        self.mode_combo = QComboBox()
+        self.mode_combo.addItems(["Chat", "Voice"])
+        self.mode_combo.setMinimumWidth(80)
+        self.mode_combo.setToolTip("Select input mode: Chat (text) or Voice")
+        self.mode_combo.setStyleSheet("""
+            QComboBox {
+                background-color: #2d2d2d;
+                color: #ffffff;
+                border: 1px solid #555;
+                border-radius: 5px;
+                padding: 8px;
+                font-family: 'Segoe UI', Arial, sans-serif;
+                font-size: 14px;
+            }
+            QComboBox::drop-down {
+                border: none;
+            }
+            QComboBox::down-arrow {
+                image: none;
+                border-left: 5px solid transparent;
+                border-right: 5px solid transparent;
+                border-top: 5px solid #ffffff;
+            }
+            QComboBox QAbstractItemView {
+                background-color: #2d2d2d;
+                color: #ffffff;
+                border: 1px solid #555;
+                selection-background-color: #0078d4;
+            }
+        """)
+        self.input_layout.addWidget(self.mode_combo)
         
         # Message input
         self.message_input = SpellCheckerTextEdit()
@@ -398,7 +438,7 @@ class ChatTab(QWidget):
                 font-size: 14px;
             }
         """)
-        input_layout.addWidget(self.message_input)
+        self.input_layout.addWidget(self.message_input)
         
         # Send button
         self.send_button = QPushButton("Send")
@@ -423,12 +463,12 @@ class ChatTab(QWidget):
                 color: #888;
             }
         """)
-        input_layout.addWidget(self.send_button)
+        self.input_layout.addWidget(self.send_button)
         
         # Voice mode button
-        self.voice_button = QPushButton("🎤 Voice")
+        self.voice_button = QPushButton("🎤 Start Voice")
         self.voice_button.setMinimumHeight(40)
-        self.voice_button.setCheckable(True)  # Make it toggleable
+        self.voice_button.setCheckable(False)  # Not checkable since we handle state manually
         self.voice_button.setStyleSheet("""
             QPushButton {
                 background-color: #2d2d2d;
@@ -452,7 +492,7 @@ class ChatTab(QWidget):
                 background-color: #b02e01;
             }
         """)
-        input_layout.addWidget(self.voice_button)
+        self.input_layout.addWidget(self.voice_button)
         
         # Audio level meter (hidden by default)
         self.audio_level_widget = QWidget()
@@ -497,7 +537,7 @@ class ChatTab(QWidget):
         audio_level_layout.addWidget(self.audio_level_meter)
         
         self.audio_level_widget.setVisible(False)
-        input_layout.addWidget(self.audio_level_widget)
+        self.input_layout.addWidget(self.audio_level_widget)
         
         # Voice settings button
         self.voice_settings_button = QPushButton("⚙️")
@@ -521,7 +561,7 @@ class ChatTab(QWidget):
                 background-color: #1d1d1d;
             }
         """)
-        input_layout.addWidget(self.voice_settings_button)
+        self.input_layout.addWidget(self.voice_settings_button)
         
         # Cancel button (hidden by default)
         self.cancel_button = QPushButton("Cancel")
@@ -543,11 +583,15 @@ class ChatTab(QWidget):
                 background-color: #8a2301;
             }
         """)
-        input_layout.addWidget(self.cancel_button)
+        self.input_layout.addWidget(self.cancel_button)
         
-        controls_layout.addLayout(input_layout)
+        controls_layout.addLayout(self.input_layout)
         
         parent.addWidget(controls_widget)
+        
+        # Set initial mode
+        self.set_input_mode("Chat")
+        self.mode_combo.currentTextChanged.connect(self.set_input_mode)
         
     def setup_streaming_handler(self):
         """Setup the streaming handler"""
@@ -577,6 +621,8 @@ class ChatTab(QWidget):
         self.voice_service.recording_started.connect(self.on_recording_started)
         self.voice_service.recording_stopped.connect(self.on_recording_stopped)
         self.voice_service.recording_error.connect(self.on_recording_error)
+        self.voice_service.voice_processing_started.connect(self.on_voice_processing_started)
+        self.voice_service.voice_processing_finished.connect(self.on_voice_processing_finished)
         
         # Connect audio level signal
         self.voice_service.recording_service.audio_level_changed.connect(self.on_audio_level_changed)
@@ -637,29 +683,29 @@ class ChatTab(QWidget):
         self.message_cancelled.emit()
         
     def toggle_voice_mode(self):
-        """Toggle between text and voice input modes"""
-        self.voice_mode = not self.voice_mode
-        
-        if self.voice_mode:
-            # Switch to voice mode
-            self.message_input.setVisible(False)
-            self.send_button.setVisible(False)
-            self.voice_button.setText("⏹️ Stop Recording")
-            self.voice_button.setToolTip(f"Click to stop voice recording\nSTT: {self.voice_settings.get('stt_api', 'Unknown')}")
-            # Start voice recording
+        if not self.voice_mode:
+            # Start voice input
             self.voice_service.start_voice_input()
-            logger.debug("Voice mode activated")
+            self.voice_button.setText("🎤 Stop Voice")
+            self.voice_mode = True
+            self.enforce_voice_mode_ui()
         else:
-            # Switch to text mode
-            self.message_input.setVisible(True)
-            self.send_button.setVisible(True)
-            stt_api = self.voice_settings.get('stt_api', 'Unknown')
-            tts_api = self.voice_settings.get('tts_api', 'Unknown')
-            self.voice_button.setText("🎤 Voice")
-            self.voice_button.setToolTip(f"Switch to voice input mode\nSTT: {stt_api}\nTTS: {tts_api}")
-            # Stop voice recording
+            # Stop voice input
             self.voice_service.stop_voice_input()
-            logger.debug("Text mode activated")
+            self.voice_button.setText("🎤 Start Voice")
+            self.voice_mode = False
+            self.enforce_voice_mode_ui()
+    
+    def _reset_voice_button(self):
+        """Reset voice button to ready state"""
+        self.voice_mode = False
+        self.message_input.setVisible(False)
+        self.send_button.setVisible(False)
+        stt_api = self.voice_settings.get('stt_api', 'Unknown')
+        tts_api = self.voice_settings.get('tts_api', 'Unknown')
+        self.voice_button.setText("🎤 Start Voice")
+        self.voice_button.setToolTip(f"Start voice recording\nSTT: {stt_api}\nTTS: {tts_api}")
+        self.voice_button.setEnabled(True)
     
     def on_voice_input_received(self, text: str):
         """Handle voice input converted to text"""
@@ -670,12 +716,20 @@ class ChatTab(QWidget):
         
         # Send the message through the normal flow
         self.message_sent.emit(text)
+        
+        # Reset voice button state
+        self.voice_button.setText("🎤 Start Voice")
+        self.voice_mode = False
+        self.audio_level_widget.setVisible(False)
     
     def on_voice_input_error(self, error: str):
         """Handle voice input error"""
         logger.error(f"Voice input error: {error}")
-        # TODO: Show error message to user
         self.append_to_chat("System", f"Voice input error: {error}")
+        self.voice_button.setText("🎤 Start Voice")
+        self.voice_mode = False
+        self.audio_level_widget.setVisible(False)
+        # TODO: Show error message to user
     
     def on_tts_started(self):
         """Handle TTS started"""
@@ -761,7 +815,21 @@ class ChatTab(QWidget):
     def on_recording_error(self, error: str):
         """Handle recording error"""
         logger.error(f"Recording error: {error}")
+        self.voice_button.setText("🎤 Start Voice")
+        self.voice_mode = False
+        self.audio_level_widget.setVisible(False)
         # TODO: Show error message to user
+    
+    def on_voice_processing_started(self):
+        """Handle voice processing started"""
+        logger.debug("Voice processing started")
+        # Keep button as "Stop Voice" during processing
+        self.voice_button.setToolTip("Processing voice input...")
+    
+    def on_voice_processing_finished(self):
+        """Handle voice processing finished"""
+        logger.debug("Voice processing finished")
+        # Button will be reset to "Start Voice" when voice input is received or error occurs
     
     def speak_ai_response(self, text: str):
         """Trigger TTS for AI response"""
@@ -1067,4 +1135,42 @@ class ChatTab(QWidget):
         QApplication.processEvents()
         logger.debug(f"Send button enabled: {self.send_button.isEnabled()}")
 
+    def set_input_mode(self, mode):
+        if mode == "Chat":
+            # If any voice process is running, stop it
+            if hasattr(self, "voice_service") and (self.voice_service.is_recording or self.voice_service.is_processing_voice):
+                self.voice_service.stop_voice_input()
+            # Re-add widgets if not present
+            if self.input_layout.indexOf(self.message_input) == -1:
+                self.input_layout.insertWidget(1, self.message_input)
+            if self.input_layout.indexOf(self.send_button) == -1:
+                self.input_layout.insertWidget(2, self.send_button)
+            self.message_input.show()
+            self.send_button.show()
+            self.voice_button.hide()
+            self.audio_level_widget.hide()
+            self.voice_settings_button.hide()
+            self.voice_mode = False
+        elif mode == "Voice":
+            # Remove chat widgets from layout
+            self.input_layout.removeWidget(self.message_input)
+            self.input_layout.removeWidget(self.send_button)
+            self.message_input.hide()
+            self.send_button.hide()
+            self.voice_button.show()
+            self.audio_level_widget.show()
+            self.voice_settings_button.show()
+            self.voice_mode = True
+        # Force layout update
+        self.input_layout.update()
+        self.update()
+        self.enforce_voice_mode_ui()
    
+    def enforce_voice_mode_ui(self):
+        """Ensure chat input and send button are always hidden in Voice mode."""
+        if self.voice_mode:
+            self.message_input.hide()
+            self.send_button.hide()
+            if hasattr(self.input_layout, 'removeWidget'):
+                self.input_layout.removeWidget(self.message_input)
+                self.input_layout.removeWidget(self.send_button)
