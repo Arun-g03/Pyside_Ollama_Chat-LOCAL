@@ -23,7 +23,7 @@ class SummarizationService(QObject):
         super().__init__()
         self.ollama_service = ollama_service
         self.summarization_model = "Auto"  # Use auto mode to select smallest model
-        self.min_messages_for_summarization = 6   # Increased minimum messages for meaningful summarization
+        self.min_messages_for_summarization = 3   # Reduced minimum messages for testing
         
     def generate_chat_name(self, conversation: List[Dict], filepath: str) -> None:
         """
@@ -35,6 +35,7 @@ class SummarizationService(QObject):
         """
         try:
             logger.info(f"Starting name generation for conversation: {filepath}")
+            logger.info(f"Conversation has {len(conversation)} messages, minimum required: {self.min_messages_for_summarization}")
             
             # Check if we have enough messages to summarize
             if len(conversation) < self.min_messages_for_summarization:

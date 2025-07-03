@@ -177,7 +177,7 @@ class ConversationManager(QObject):
         self.metadata_updated.emit()
         return filepath
     
-    def update_conversation_name(self, filepath: str, ai_generated_name: str) -> bool:
+    def update_conversation_name(self, filepath: str, ai_generated_name: str) -> Optional[str]:
         """
         Update the AI-generated name for a conversation and rename the file
         
@@ -186,20 +186,27 @@ class ConversationManager(QObject):
             ai_generated_name: The AI-generated name
             
         Returns:
-            True if successful, False otherwise
+            New filepath if successful, None otherwise
         """
         try:
+            logger.debug(f"Updating conversation name for {filepath} to '{ai_generated_name}'")
+            
             # Load the conversation
             conversation, metadata = self.load_conversation(filepath)
+            logger.debug(f"Loaded conversation with {len(conversation)} messages")
+            logger.debug(f"Original metadata ai_generated_name: {metadata.ai_generated_name}")
             
             # Update the AI-generated name
             metadata.update_ai_generated_name(ai_generated_name)
+            logger.debug(f"Updated metadata ai_generated_name: {metadata.ai_generated_name}")
             
             # Create a safe filename from the AI-generated name
             safe_filename = self._create_safe_filename(ai_generated_name)
+            logger.debug(f"Created safe filename: {safe_filename}")
             
             # Generate new filepath
             new_filepath = os.path.join(self.history_dir, safe_filename)
+            logger.debug(f"New filepath: {new_filepath}")
             
             # Check if new filename already exists
             if os.path.exists(new_filepath) and new_filepath != filepath:
@@ -208,12 +215,15 @@ class ConversationManager(QObject):
                 name_without_ext = os.path.splitext(safe_filename)[0]
                 safe_filename = f"{name_without_ext}_{timestamp}.json"
                 new_filepath = os.path.join(self.history_dir, safe_filename)
+                logger.debug(f"File exists, using timestamped filename: {new_filepath}")
             
             # Save the updated conversation to the new file
             save_data = {
                 "metadata": metadata.to_dict(),
                 "conversation": conversation
             }
+            
+            logger.debug(f"Saving with metadata: {save_data['metadata']}")
             
             with open(new_filepath, 'w', encoding='utf-8') as f:
                 json.dump(save_data, f, indent=2, ensure_ascii=False)
@@ -222,19 +232,22 @@ class ConversationManager(QObject):
             if new_filepath != filepath:
                 try:
                     os.remove(filepath)
+                    logger.debug(f"Deleted old file: {filepath}")
                 except Exception as e:
                     logger.warning(f"Failed to remove old file {filepath}: {e}")
             
             # Update current conversation file reference if this was the current one
             if self.metadata.current_conversation_file == filepath:
                 self.metadata.current_conversation_file = new_filepath
+                logger.debug(f"Updated current conversation file reference to: {new_filepath}")
             
             self.metadata_updated.emit()
-            return True
+            logger.debug(f"Successfully updated conversation name, returning: {new_filepath}")
+            return new_filepath
             
         except Exception as e:
             logger.error(f"Failed to update conversation name: {str(e)}")
-            return False
+            return None
     
     def _create_safe_filename(self, ai_generated_name: str) -> str:
         """
@@ -348,6 +361,19 @@ class ConversationManager(QObject):
                 self.metadata.current_conversation_file = os.path.join(
                     self.history_dir, f"conversation_{timestamp}.json"
                 )
+        
+        # Preserve existing AI-generated name if the file already exists
+        if self.metadata.current_conversation_file and os.path.exists(self.metadata.current_conversation_file):
+            try:
+                with open(self.metadata.current_conversation_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    if isinstance(data, dict) and "metadata" in data:
+                        existing_ai_name = data["metadata"].get("ai_generated_name")
+                        if existing_ai_name and not self.metadata.ai_generated_name:
+                            logger.debug(f"Preserving existing AI name: {existing_ai_name}")
+                            self.metadata.update_ai_generated_name(existing_ai_name)
+            except Exception as e:
+                logger.debug(f"Could not read existing file for AI name preservation: {e}")
         
         # Update metadata
         self.metadata.update_message_count(len(conversation))

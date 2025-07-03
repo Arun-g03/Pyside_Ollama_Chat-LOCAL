@@ -394,9 +394,8 @@ class ChatNavigationWidget(QWidget):
             print(f"Summarization completed for {filepath}: {generated_name}")
             
             # Update the conversation with the new name (this will rename the file)
-            if self.conversation_manager.update_conversation_name(filepath, generated_name):
-                # Get the new filepath from the conversation manager
-                new_filepath = self.conversation_manager.get_current_metadata().current_conversation_file
+            new_filepath = self.conversation_manager.update_conversation_name(filepath, generated_name)
+            if new_filepath:
                 print(f"File renamed from {filepath} to {new_filepath}")
                 
                 # Update current conversation reference if this was the current one

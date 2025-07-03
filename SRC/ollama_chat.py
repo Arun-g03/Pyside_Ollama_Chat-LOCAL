@@ -573,6 +573,7 @@ class OllamaChat(QMainWindow):
                 # Load the conversation
                 conversation, metadata = self.conversation_manager.load_conversation(filepath)
                 logger.info(f"Loaded conversation with {len(conversation)} messages")
+                logger.info(f"Current AI name: {metadata.ai_generated_name}")
                 
                 # Only generate name if we don't already have one
                 if not metadata.ai_generated_name:

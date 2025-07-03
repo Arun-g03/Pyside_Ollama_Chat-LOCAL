@@ -68,13 +68,18 @@ class ChatController(QObject):
             
             # Check if this is the first message in a new conversation
             messages = self.conversation_service.get_messages()
-            if len(messages) == 0:
-                # This is the first message, start a new conversation
+            if len(messages) == 0 and not self.is_new_conversation:
+                # This is the first message and we haven't explicitly started a new conversation
                 self.start_new_conversation()
                 LoggingHelpers.log_debug("Auto-started new conversation for first message")
             
             # Add message to conversation
             self.conversation_service.add_message("user", message)
+            
+            # Reset the new conversation flag after adding the first message
+            if self.is_new_conversation:
+                self.is_new_conversation = False
+                LoggingHelpers.log_debug("Reset is_new_conversation flag after first message")
             
             # Handle memory operations
             if self.is_memory_active():
@@ -304,8 +309,10 @@ class ChatController(QObject):
     
     def _trigger_name_generation(self, filepath: str) -> None:
         """Trigger AI name generation for a conversation"""
+        logger.debug(f"DEBUG: Triggering name generation for: {filepath}")
         # Emit signal for UI to handle name generation
         self.name_generation_requested.emit(filepath)
+        
     
     def start_new_conversation(self) -> None:
         """Start a new conversation"""
@@ -345,6 +352,17 @@ class ChatController(QObject):
         try:
             conversation, metadata = self.conversation_manager.load_conversation(filepath)
             self.conversation_service.conversation = conversation.copy()
+            
+            # Update current metadata with loaded metadata
+            current_metadata = self.conversation_manager.get_current_metadata()
+            current_metadata.created = metadata.created
+            current_metadata.last_modified = metadata.last_modified
+            current_metadata.model = metadata.model
+            current_metadata.personality = metadata.personality
+            current_metadata.message_count = metadata.message_count
+            current_metadata.current_conversation_file = filepath
+            current_metadata.ai_generated_name = metadata.ai_generated_name
+            
             self.conversation_updated.emit()
             self.status_updated.emit(f"Loaded conversation: {metadata.get_display_info()}")
         except Exception as e:
