@@ -5,7 +5,7 @@ To use the custom logger in any file, follow these steps:
 1. **Import the logger:**
 
     ```python
-    from SRC.utils.Logging.Custom_Logger import CustomLogger
+    from pyside_chat.utils.Logging.Custom_Logger import CustomLogger
     ```
 
 2. **Create a logger instance (usually at the top of your file):**

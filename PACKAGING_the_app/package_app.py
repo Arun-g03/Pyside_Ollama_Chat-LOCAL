@@ -80,8 +80,8 @@ author_email = "author@example.com"
 [tool.briefcase.app.{self.app_name.lower().replace('_', '-')}]
 formal_name = "{self.app_name}"
 description = "PySide Chat Application with AI personalities and TTS"
-icon = "src/{self.app_name.lower().replace('_', '-')}/resources/{self.app_name.lower().replace('_', '-')}"
-sources = ["src/{self.app_name.lower().replace('_', '-')}"]
+icon = "pyside_chat/{self.app_name.lower().replace('_', '-')}/resources/{self.app_name.lower().replace('_', '-')}"
+sources = ["pyside_chat/{self.app_name.lower().replace('_', '-')}"]
 requires = [
     "PySide6>=6.5.0",
     "requests>=2.31.0",
@@ -183,35 +183,35 @@ requires = [
         print("  📁 Setting up Briefcase project structure...")
         
         try:
-            # Create src directory structure
-            src_dir = self.project_root / "src" / self.app_name.lower().replace('_', '-')
-            src_dir.mkdir(parents=True, exist_ok=True)
+            # Create pyside_chat directory structure
+            pyside_chat_dir = self.project_root / "pyside_chat" / self.app_name.lower().replace('_', '-')
+            pyside_chat_dir.mkdir(parents=True, exist_ok=True)
             
-            # Copy main.py to src
-            main_src = src_dir / "main.py"
-            shutil.copy2(self.main_script, main_src)
+            # Copy main.py to pyside_chat
+            main_pyside_chat = pyside_chat_dir / "main.py"
+            shutil.copy2(self.main_script, main_pyside_chat)
             
-            # Copy SRC directory
-            src_src = self.project_root / "SRC"
-            if src_src.exists():
-                src_dst = src_dir / "SRC"
-                shutil.copytree(src_src, src_dst, dirs_exist_ok=True)
+            # Copy pyside_chat directory
+            pyside_chat_pyside_chat = self.project_root / "pyside_chat"
+            if pyside_chat_pyside_chat.exists():
+                pyside_chat_dst = pyside_chat_dir / "pyside_chat"
+                shutil.copytree(pyside_chat_pyside_chat, pyside_chat_dst, dirs_exist_ok=True)
             
             # Copy other necessary files
             files_to_copy = ["config.json"]
             for file_path in files_to_copy:
-                src_file = self.project_root / file_path
-                if src_file.exists():
-                    dst_file = src_dir / file_path
-                    shutil.copy2(src_file, dst_file)
+                pyside_chat_file = self.project_root / file_path
+                if pyside_chat_file.exists():
+                    dst_file = pyside_chat_dir / file_path
+                    shutil.copy2(pyside_chat_file, dst_file)
             
             # Copy directories
             dirs_to_copy = ["personality_Profiles", "DOCUMENTATION"]
             for dir_path in dirs_to_copy:
-                src_dir_path = self.project_root / dir_path
-                if src_dir_path.exists():
-                    dst_dir_path = src_dir / dir_path
-                    shutil.copytree(src_dir_path, dst_dir_path, dirs_exist_ok=True)
+                pyside_chat_dir_path = self.project_root / dir_path
+                if pyside_chat_dir_path.exists():
+                    dst_dir_path = pyside_chat_dir / dir_path
+                    shutil.copytree(pyside_chat_dir_path, dst_dir_path, dirs_exist_ok=True)
             
             print("  ✅ Briefcase project structure created")
             return True
@@ -252,7 +252,7 @@ requires = [
             result = subprocess.run(cmd_create_app, check=True, capture_output=True, text=True)
             
             # Check output
-            build_dir = self.project_root / "windows" / app_name / "src"
+            build_dir = self.project_root / "windows" / app_name / "pyside_chat"
             if build_dir.exists():
                 print(f"  ✅ Success! Briefcase app created in: {build_dir.parent}")
                 return True
@@ -282,7 +282,7 @@ a = Analysis(
     datas=[
         ('config.json', '.'),
         ('personality_Profiles', 'personality_Profiles'),
-        ('SRC', 'SRC'),
+        ('pyside_chat', 'pyside_chat'),
         ('DOCUMENTATION', 'DOCUMENTATION'),
     ],
     hiddenimports=[
@@ -403,7 +403,7 @@ build_exe_options = {{
     "include_files": [
         ("config.json", "config.json"),
         ("personality_Profiles", "personality_Profiles"),
-        ("SRC", "SRC"),
+        ("pyside_chat", "pyside_chat"),
         ("DOCUMENTATION", "DOCUMENTATION"),
     ],
     "include_msvcr": True,
@@ -491,16 +491,16 @@ setup(
             
             # Copy directories
             dirs_to_copy = [
-                "SRC",
+                "pyside_chat",
                 "personality_Profiles", 
                 "DOCUMENTATION"
             ]
             
             for dir_path in dirs_to_copy:
-                src_dir = self.project_root / dir_path
-                if src_dir.exists():
+                pyside_chat_dir = self.project_root / dir_path
+                if pyside_chat_dir.exists():
                     dst_dir = dist_dir / dir_path
-                    shutil.copytree(src_dir, dst_dir, dirs_exist_ok=True)
+                    shutil.copytree(pyside_chat_dir, dst_dir, dirs_exist_ok=True)
                     print(f"  📁 Copied: {dir_path}")
             
             # Create run script

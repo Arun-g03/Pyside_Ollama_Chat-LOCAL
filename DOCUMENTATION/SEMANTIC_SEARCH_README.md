@@ -30,7 +30,7 @@ This implementation enhances the memory retrieval system with semantic search ca
 
 ### Core Components
 
-#### 1. **SemanticSearchService** (`SRC/services/semantic_search_service.py`)
+#### 1. **SemanticSearchService** (`pyside_chat/services/semantic_search_service.py`)
 - Main service for semantic search operations
 - Manages sentence transformer model
 - Handles embedding creation and storage
@@ -50,7 +50,7 @@ class VectorizedMemory:
     metadata: Dict
 ```
 
-#### 3. **Enhanced MemoryService** (`SRC/services/memory_service.py`)
+#### 3. **Enhanced MemoryService** (`pyside_chat/services/memory_service.py`)
 - Integrates semantic search with existing memory system
 - Maintains backward compatibility
 - Provides unified memory management interface
@@ -99,7 +99,7 @@ pip install sentence-transformers scikit-learn
 The semantic search is automatically integrated into the existing memory system:
 
 ```python
-from SRC.services.memory_service import MemoryService
+from pyside_chat.services.memory_service import MemoryService
 
 # Initialize memory service (includes semantic search)
 memory_service = MemoryService()
@@ -125,7 +125,7 @@ relevant_memories = memory_service.get_relevant_memories(
 
 #### Direct Semantic Search Service
 ```python
-from SRC.services.semantic_search_service import SemanticSearchService
+from pyside_chat.services.semantic_search_service import SemanticSearchService
 
 # Initialize service
 semantic_search = SemanticSearchService()
@@ -250,7 +250,7 @@ No results found for semantic search
 Enable debug logging to see detailed information:
 ```python
 import logging
-logging.getLogger('SRC.services.semantic_search_service').setLevel(logging.DEBUG)
+logging.getLogger('pyside_chat.services.semantic_search_service').setLevel(logging.DEBUG)
 ```
 
 ## Future Enhancements

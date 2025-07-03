@@ -112,7 +112,7 @@ If you prefer to install dependencies manually:
 pip install PySide6 requests pygments edge-tts pygame keyboard
 
 # For full functionality including Coqui TTS and spellchecker
-python SRC/services/start_up/install_dependencies.py
+python pyside_chat/services/start_up/install_dependencies.py
 ```
 
 ### Dependency Management
@@ -139,10 +139,10 @@ python main.py --no-auto-install
 **Manual Dependency Management**:
 ```bash
 # Check dependencies manually
-python SRC/services/start_up/check_dependencies.py
+python pyside_chat/services/start_up/check_dependencies.py
 
 # Install dependencies manually
-python SRC/services/start_up/install_dependencies.py
+python pyside_chat/services/start_up/install_dependencies.py
 ```
 
 ## 📖 Usage
@@ -252,7 +252,7 @@ Download models from Ollama's official site: https://ollama.com/search
 Pyside_Chat/
 ├── main.py                 # Application entry point
 ├── config.json            # Default configuration
-├── SRC/                   # Source code
+├── pyside_chat/                   # Source code
 │   ├── ollama_chat.py     # Main chat interface
 │   ├── config/            # Configuration management
 │   │   ├── __init__.py
@@ -359,7 +359,7 @@ The project follows Python best practices with:
 ### Common Issues
 
 **Spellchecker Not Working**:
-- Install system libraries: `python SRC/services/start_up/install_dependencies.py`
+- Install system libraries: `python pyside_chat/services/start_up/install_dependencies.py`
 - Check console for error messages
 - Ensure pyenchant is properly installed
 
@@ -376,8 +376,8 @@ The project follows Python best practices with:
 - Close unnecessary tabs
 
 **Dependency Issues**:
-- Run dependency checker: `python SRC/services/start_up/check_dependencies.py`
-- Install missing dependencies: `python SRC/services/start_up/install_dependencies.py`
+- Run dependency checker: `python pyside_chat/services/start_up/check_dependencies.py`
+- Install missing dependencies: `python pyside_chat/services/start_up/install_dependencies.py`
 - Check Python version (3.8+ required)
 
 ## 📝 License

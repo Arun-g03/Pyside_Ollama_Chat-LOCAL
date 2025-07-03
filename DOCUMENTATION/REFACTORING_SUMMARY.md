@@ -14,22 +14,22 @@ This document summarizes the refactoring changes made to address coupling and ma
 - Reduced coupling by passing specific service objects: `conversation_manager`, `ollama_service`, `config_manager`
 
 **Files Changed**:
-- `SRC/ollama_chat.py` - Modified tab instantiation
-- `SRC/controllers/chat_controller.py` - New controller class
+- `pyside_chat/ollama_chat.py` - Modified tab instantiation
+- `pyside_chat/controllers/chat_controller.py` - New controller class
 
 ### 2. Hardcoded Prompt Strings
 
 **Problem**: Prompts were defined directly inside methods, making them hard to maintain and localize.
 
 **Solution**:
-- Created `SRC/utils/prompts.py` module with centralized prompt templates
+- Created `pyside_chat/utils/prompts.py` module with centralized prompt templates
 - Implemented `PromptTemplates` class with categorized prompts
 - Added `PromptFormatter` utility class for dynamic prompt formatting
 - Moved all hardcoded strings to the prompts module
 
 **Files Changed**:
-- `SRC/utils/prompts.py` - New prompts module
-- `SRC/ollama_chat.py` - Replaced hardcoded strings with prompt formatter calls
+- `pyside_chat/utils/prompts.py` - New prompts module
+- `pyside_chat/ollama_chat.py` - Replaced hardcoded strings with prompt formatter calls
 
 ### 3. Lack of Separation Between View and Logic
 
@@ -42,22 +42,22 @@ This document summarizes the refactoring changes made to address coupling and ma
 - Controller handles communication between services and UI
 
 **Files Changed**:
-- `SRC/controllers/chat_controller.py` - New controller with business logic
-- `SRC/ollama_chat.py` - Simplified to focus on UI coordination
+- `pyside_chat/controllers/chat_controller.py` - New controller with business logic
+- `pyside_chat/ollama_chat.py` - Simplified to focus on UI coordination
 
 ### 4. Inline Logging Logic
 
 **Problem**: Verbose logging code was scattered throughout the main file, making it hard to read.
 
 **Solution**:
-- Created `SRC/utils/logging_helpers.py` with centralized logging utilities
+- Created `pyside_chat/utils/logging_helpers.py` with centralized logging utilities
 - Implemented `LoggingHelpers` class with standardized logging methods
 - Moved all debug logging to helper methods
 - Standardized log formats and reduced code duplication
 
 **Files Changed**:
-- `SRC/utils/logging_helpers.py` - New logging helpers module
-- `SRC/ollama_chat.py` - Replaced inline logging with helper calls
+- `pyside_chat/utils/logging_helpers.py` - New logging helpers module
+- `pyside_chat/ollama_chat.py` - Replaced inline logging with helper calls
 
 ### 5. Repetitive Memory Checks
 
@@ -69,26 +69,26 @@ This document summarizes the refactoring changes made to address coupling and ma
 - Reduced code duplication and improved readability
 
 **Files Changed**:
-- `SRC/controllers/chat_controller.py` - Added memory check method
-- `SRC/ollama_chat.py` - Replaced repetitive checks with method calls
+- `pyside_chat/controllers/chat_controller.py` - Added memory check method
+- `pyside_chat/ollama_chat.py` - Replaced repetitive checks with method calls
 
 ### 6. UI Style Hardcoding
 
 **Problem**: Tab styles were hardcoded directly in the Python file.
 
 **Solution**:
-- Created `SRC/ui/styles/tab_styles.py` module
+- Created `pyside_chat/ui/styles/tab_styles.py` module
 - Moved all tab-specific styling to the new module
 - Made styling configurable and maintainable
 
 **Files Changed**:
-- `SRC/ui/styles/tab_styles.py` - New tab styles module
-- `SRC/ollama_chat.py` - Replaced hardcoded styles with external style calls
+- `pyside_chat/ui/styles/tab_styles.py` - New tab styles module
+- `pyside_chat/ollama_chat.py` - Replaced hardcoded styles with external style calls
 
 ## New Module Structure
 
 ```
-SRC/
+pyside_chat/
 ├── controllers/
 │   ├── __init__.py
 │   └── chat_controller.py          # Business logic mediator
