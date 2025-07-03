@@ -12,7 +12,7 @@ import os
 from typing import Dict, List, Optional
 from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, 
                                QComboBox, QPushButton, QGroupBox, QCheckBox,
-                               QMessageBox, QProgressBar, QTextEdit, QTabWidget, QWidget, QSpinBox)
+                               QMessageBox, QProgressBar, QTextEdit, QTabWidget, QWidget, QSpinBox, QDoubleSpinBox)
 from PySide6.QtCore import Qt, Signal, QThread
 from PySide6.QtGui import QFont
 
@@ -104,7 +104,7 @@ class VoiceSettingsDialog(QDialog):
             "voice_speed": 1.0,
             "recording_timeout": 10.0,
             "silence_duration": 2.0,
-            "silence_threshold": 0.01
+            "silence_threshold": 0.005
         }
         
         # Internet status
@@ -393,12 +393,14 @@ class VoiceSettingsDialog(QDialog):
         silence_threshold_layout = QHBoxLayout()
         silence_threshold_layout.addWidget(QLabel("Silence Threshold:"))
         
-        self.silence_threshold_spinbox = QSpinBox()
-        self.silence_threshold_spinbox.setRange(1, 100)
-        self.silence_threshold_spinbox.setValue(1)
-        self.silence_threshold_spinbox.setToolTip("Audio level threshold for silence detection (1-100)")
+        self.silence_threshold_spinbox = QDoubleSpinBox()
+        self.silence_threshold_spinbox.setRange(0.0001, 1)
+        self.silence_threshold_spinbox.setSingleStep(0.001)
+        self.silence_threshold_spinbox.setDecimals(4)
+        self.silence_threshold_spinbox.setValue(0.005)
+        self.silence_threshold_spinbox.setToolTip("Audio level threshold for silence detection (0.0001–1, lower = more sensitive)")
         self.silence_threshold_spinbox.setStyleSheet("""
-            QSpinBox {
+            QDoubleSpinBox {
                 background-color: #2d2d2d;
                 color: #ffffff;
                 border: 1px solid #555;

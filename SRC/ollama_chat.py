@@ -679,6 +679,10 @@ class OllamaChat(QMainWindow):
                     self.conversation_service.get_messages()
                 )
             
+            # Clean up voice service audio files
+            if hasattr(self.chat_tab, 'voice_service'):
+                self.chat_tab.voice_service.cleanup_on_exit()
+            
             # Save window state
             self.config_manager.set_window_size(self.width(), self.height())
             

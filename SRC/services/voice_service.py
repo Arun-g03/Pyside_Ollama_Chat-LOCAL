@@ -10,6 +10,7 @@ Handles voice input/output functionality including:
 import os
 import tempfile
 import threading
+import time
 import wave
 import pyaudio
 import speech_recognition as sr
@@ -66,6 +67,18 @@ class VoiceService(QObject):
         self.recording_timer = QTimer()
         self.recording_timer.setSingleShot(True)
         self.recording_timer.timeout.connect(self._on_recording_timeout)
+        
+        # Clean up all audio files on startup (since they're only for STT processing)
+        QTimer.singleShot(1000, lambda: self.cleanup_all_audio_files())
+    
+    def __del__(self):
+        """Cleanup when voice service is destroyed"""
+        try:
+            self.cleanup_all_audio_files()
+            if hasattr(self, 'recording_service'):
+                self.recording_service.cleanup()
+        except:
+            pass  # Ignore errors during cleanup
         
     def start_voice_input(self):
         """Start voice recording and convert to text"""
@@ -206,6 +219,103 @@ class VoiceService(QObject):
         """Set silence threshold (0-1)"""
         self.silence_threshold = max(0.001, min(0.1, threshold))  # Clamp between 0.001-0.1
         logger.debug(f"Silence threshold set to {self.silence_threshold}")
+    
+    def set_audio_gate_enabled(self, enabled: bool):
+        """Enable or disable audio gate detection"""
+        self.recording_service.set_audio_gate_enabled(enabled)
+        logger.debug(f"Audio gate {'enabled' if enabled else 'disabled'} for voice service")
+    
+    def get_current_audio_level(self) -> float:
+        """Get current audio level for debugging"""
+        return self.recording_service.get_current_audio_level()
+    
+    def cleanup_on_exit(self):
+        """Clean up audio files on application exit"""
+        logger.info("Cleaning up audio files on application exit")
+        self.cleanup_all_audio_files()
+        
+        # Clean up recording service
+        if hasattr(self, 'recording_service'):
+            self.recording_service.cleanup()
+    
+    def get_audio_folder_path(self) -> str:
+        """Get the path to the audio folder"""
+        return os.path.join(os.getcwd(), "User_history", "audio")
+    
+    def list_audio_files(self) -> list:
+        """List all audio files in the audio folder"""
+        audio_folder = self.get_audio_folder_path()
+        if not os.path.exists(audio_folder):
+            return []
+        
+        audio_files = []
+        for filename in os.listdir(audio_folder):
+            if filename.endswith(('.wav', '.mp3')):
+                file_path = os.path.join(audio_folder, filename)
+                file_info = {
+                    'filename': filename,
+                    'path': file_path,
+                    'size': os.path.getsize(file_path),
+                    'modified': os.path.getmtime(file_path)
+                }
+                audio_files.append(file_info)
+        
+        # Sort by modification time (newest first)
+        audio_files.sort(key=lambda x: x['modified'], reverse=True)
+        return audio_files
+    
+    def cleanup_old_audio_files(self, max_files: int = 100, max_age_days: int = 7):
+        """Clean up old audio files to prevent folder from getting too large"""
+        audio_files = self.list_audio_files()
+        
+        if len(audio_files) <= max_files:
+            return
+        
+        # Calculate cutoff time for age-based cleanup
+        import time
+        cutoff_time = time.time() - (max_age_days * 24 * 60 * 60)
+        
+        files_to_delete = []
+        
+        # Mark files for deletion based on age
+        for file_info in audio_files:
+            if file_info['modified'] < cutoff_time:
+                files_to_delete.append(file_info)
+        
+        # If we still have too many files, delete the oldest ones
+        if len(audio_files) - len(files_to_delete) > max_files:
+            remaining_files = [f for f in audio_files if f not in files_to_delete]
+            files_to_delete.extend(remaining_files[max_files:])
+        
+        # Delete the marked files
+        for file_info in files_to_delete:
+            try:
+                os.remove(file_info['path'])
+                logger.debug(f"Deleted old audio file: {file_info['filename']}")
+            except Exception as e:
+                logger.error(f"Failed to delete audio file {file_info['filename']}: {e}")
+        
+        if files_to_delete:
+            logger.info(f"Cleaned up {len(files_to_delete)} old audio files")
+    
+    def cleanup_all_audio_files(self):
+        """Clean up all audio files (since they're only for STT processing)"""
+        audio_files = self.list_audio_files()
+        
+        if not audio_files:
+            return
+        
+        deleted_count = 0
+        for file_info in audio_files:
+            try:
+                os.remove(file_info['path'])
+                deleted_count += 1
+                logger.debug(f"Deleted audio file: {file_info['filename']}")
+            except Exception as e:
+                logger.error(f"Failed to delete audio file {file_info['filename']}: {e}")
+        
+        if deleted_count > 0:
+            logger.info(f"Cleaned up {deleted_count} audio files on startup")
 
 
 class STTService(QObject):
@@ -401,19 +511,25 @@ class TTSService(QObject):
             from gtts import gTTS
             import playsound
             
-            # Create temporary file for audio
-            temp_file = tempfile.NamedTemporaryFile(suffix=".mp3", delete=False)
-            temp_file.close()
+            # Create audio folder if it doesn't exist
+            audio_folder = os.path.join(os.getcwd(), "User_history", "audio")
+            os.makedirs(audio_folder, exist_ok=True)
+            
+            # Generate timestamped filename
+            import datetime
+            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"tts_output_{timestamp}.mp3"
+            audio_file_path = os.path.join(audio_folder, filename)
             
             # Convert text to speech with selected voice
             tts = gTTS(text=text, lang=self.current_voice, slow=False)
-            tts.save(temp_file.name)
+            tts.save(audio_file_path)
             
             # Play the audio
-            playsound.playsound(temp_file.name, block=False)
+            playsound.playsound(audio_file_path, block=False)
             
             # Clean up the file after a delay
-            QTimer.singleShot(5000, lambda: self._cleanup_audio_file(temp_file.name))
+            QTimer.singleShot(5000, lambda: self._cleanup_audio_file(audio_file_path))
             
             # Emit finished signal after a short delay
             QTimer.singleShot(1000, self.tts_finished.emit)
@@ -491,19 +607,33 @@ class RecordingService(QObject):
     
     def __init__(self):
         super().__init__()
-        self.available = self._check_availability()
         self.is_recording = False
         self.recording_thread = None
         self.audio_file = None
-        self.audio = pyaudio.PyAudio()
+        self.audio = None
         self.frames = []
         self.stream = None
         
         # Audio gate settings
-        self.silence_threshold = 0.01
+        self.silence_threshold = 0.005  # Balanced threshold for good sensitivity
         self.silence_duration = 2.0
         self.silence_timer = None
         self.last_audio_level = 0.0
+        
+        # Initialize PyAudio and check availability
+        try:
+            self.audio = pyaudio.PyAudio()
+            self.available = self._check_availability()
+        except Exception as e:
+            logger.error(f"Failed to initialize PyAudio: {e}")
+            self.available = False
+    
+    def __del__(self):
+        """Cleanup when recording service is destroyed"""
+        try:
+            self.cleanup()
+        except:
+            pass  # Ignore errors during cleanup
         
     def _check_availability(self) -> bool:
         """Check if recording service is available"""
@@ -574,7 +704,11 @@ class RecordingService(QObject):
                     self.last_audio_level = audio_level
                     
                     # Emit audio level for UI updates
-                    self.audio_level_changed.emit(audio_level)
+                    try:
+                        self.audio_level_changed.emit(audio_level)
+                    except Exception as e:
+                        # Ignore signal emission errors from non-main thread
+                        pass
                     
                     if audio_level > self.silence_threshold:
                         # Audio detected, reset silence tracking
@@ -615,6 +749,9 @@ class RecordingService(QObject):
                 rms = math.sqrt(sum(sample * sample for sample in samples) / len(samples))
                 # Normalize to 0-1 range (16-bit audio has range -32768 to 32767)
                 normalized_rms = rms / 32768.0
+                
+
+                    
                 return normalized_rms
             return 0.0
         except Exception as e:
@@ -633,6 +770,30 @@ class RecordingService(QObject):
         except Exception as e:
             logger.error(f"Error converting to dB: {e}")
             return -60.0
+    
+    def get_current_audio_level(self) -> float:
+        """Get the current audio level (for debugging)"""
+        return self.last_audio_level
+    
+
+    
+    def set_audio_gate_enabled(self, enabled: bool):
+        """Enable or disable audio gate detection"""
+        if enabled:
+            self.silence_threshold = 0.005  # Restore normal threshold
+        else:
+            self.silence_threshold = 0.0    # Disable by setting threshold to 0
+        logger.debug(f"Audio gate {'enabled' if enabled else 'disabled'}")
+    
+    def cleanup(self):
+        """Clean up PyAudio resources"""
+        try:
+            if self.audio:
+                self.audio.terminate()
+                self.audio = None
+            logger.debug("PyAudio resources cleaned up")
+        except Exception as e:
+            logger.error(f"Error cleaning up PyAudio: {e}")
     
     def stop_recording(self) -> Optional[str]:
         """Stop audio recording and return the audio file path"""
@@ -653,18 +814,24 @@ class RecordingService(QObject):
                 logger.warning("No audio frames recorded")
                 return None
             
-            # Create temporary WAV file
-            temp_file = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
-            temp_file.close()
+            # Create audio folder if it doesn't exist
+            audio_folder = os.path.join(os.getcwd(), "User_history", "audio")
+            os.makedirs(audio_folder, exist_ok=True)
+            
+            # Generate timestamped filename
+            import datetime
+            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"voice_input_{timestamp}.wav"
+            audio_file_path = os.path.join(audio_folder, filename)
             
             # Save audio to WAV file
-            with wave.open(temp_file.name, 'wb') as wf:
+            with wave.open(audio_file_path, 'wb') as wf:
                 wf.setnchannels(1)
                 wf.setsampwidth(self.audio.get_sample_size(pyaudio.paInt16))
                 wf.setframerate(16000)
                 wf.writeframes(b''.join(self.frames))
             
-            self.audio_file = temp_file.name
+            self.audio_file = audio_file_path
             logger.debug(f"Audio saved to: {self.audio_file}")
             
             return self.audio_file
