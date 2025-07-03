@@ -4,6 +4,7 @@ Handles the main chat interface, message display, and user input.
 """
 
 import random
+import time
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QTextEdit, 
                                QPushButton, QComboBox, QSlider, QLabel, QSplitter,
                                QScrollArea, QFrame, QMenuBar, QMenu,
@@ -13,9 +14,11 @@ from PySide6.QtGui import QTextCursor, QFont, QAction
 
 from SRC.ui.spellchecker_widget import SpellCheckerTextEdit
 from SRC.ui.Widgets.chat_navigation import ChatNavigationWidget
+from SRC.ui.Widgets.voice_settings_dialog import VoiceSettingsDialog
 from SRC.utils.message_formatter import MessageFormatter
 from SRC.utils.streaming_handler import StreamingHandler
 from SRC.utils.Logging.Custom_Logger import CustomLogger
+from SRC.services.voice_service import VoiceService
 
 logger = CustomLogger.get_logger(__name__)
 
@@ -30,6 +33,7 @@ class ChatTab(QWidget):
     conversation_renamed = Signal(str, str)  # Emitted when a conversation is renamed (old_path, new_path)
     new_conversation_requested = Signal() # Emitted when new conversation is requested
     append_response_signal = Signal(str, object)  # chunk, model_name
+    speak_text_requested = Signal(str)  # Emitted when TTS is requested
     
     def __init__(self, parent=None, conversation_manager=None, summarization_service=None):
         super().__init__(parent)
@@ -39,7 +43,6 @@ class ChatTab(QWidget):
         self.current_conversation_file = None
         self.setup_ui()
         self.setup_streaming_handler()
-        self.setup_connections()
         
         # State variables
         self.current_model = None
@@ -48,6 +51,21 @@ class ChatTab(QWidget):
         self.current_response = ""
         self.last_message_type = None  # Track last message type
         self.last_system_message_widget = None  # Track last system message widget (if using custom widgets)
+        self.voice_mode = False  # Track voice mode state
+        
+        # Initialize voice service
+        self.voice_service = VoiceService()
+        
+        # Voice settings
+        self.voice_settings = {
+            "stt_api": "Google Speech API",
+            "tts_api": "Google TTS",
+            "tts_voice": "en",
+            "auto_speak": True,
+            "voice_speed": 1.0
+        }
+        
+        self.setup_connections()
         
         # Apply sleek style to all QSplitters in this tab
         self.setStyleSheet("""
@@ -407,6 +425,104 @@ class ChatTab(QWidget):
         """)
         input_layout.addWidget(self.send_button)
         
+        # Voice mode button
+        self.voice_button = QPushButton("🎤 Voice")
+        self.voice_button.setMinimumHeight(40)
+        self.voice_button.setCheckable(True)  # Make it toggleable
+        self.voice_button.setStyleSheet("""
+            QPushButton {
+                background-color: #2d2d2d;
+                color: white;
+                border: 1px solid #555;
+                border-radius: 5px;
+                padding: 8px 16px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #3d3d3d;
+            }
+            QPushButton:pressed {
+                background-color: #1d1d1d;
+            }
+            QPushButton:checked {
+                background-color: #d83b01;
+                border-color: #d83b01;
+            }
+            QPushButton:checked:hover {
+                background-color: #b02e01;
+            }
+        """)
+        input_layout.addWidget(self.voice_button)
+        
+        # Audio level meter (hidden by default)
+        self.audio_level_widget = QWidget()
+        audio_level_layout = QVBoxLayout(self.audio_level_widget)
+        audio_level_layout.setContentsMargins(0, 0, 0, 0)
+        
+        # Audio level label
+        self.audio_level_label = QLabel("🎤 Ready")
+        self.audio_level_label.setAlignment(Qt.AlignCenter)
+        self.audio_level_label.setStyleSheet("""
+            QLabel {
+                color: #ffffff;
+                font-family: 'Segoe UI', Arial, sans-serif;
+                font-size: 14px;
+                font-weight: bold;
+                padding: 5px;
+                background-color: #2d2d2d;
+                border: 1px solid #555;
+                border-radius: 5px;
+            }
+        """)
+        audio_level_layout.addWidget(self.audio_level_label)
+        
+        # Audio level meter
+        self.audio_level_meter = QProgressBar()
+        self.audio_level_meter.setRange(0, 100)
+        self.audio_level_meter.setValue(0)
+        self.audio_level_meter.setTextVisible(False)
+        self.audio_level_meter.setStyleSheet("""
+            QProgressBar {
+                border: 1px solid #555;
+                border-radius: 3px;
+                background-color: #1a1a1a;
+                height: 8px;
+            }
+            QProgressBar::chunk {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #00ff00, stop:0.5 #ffff00, stop:1 #ff0000);
+                border-radius: 2px;
+            }
+        """)
+        audio_level_layout.addWidget(self.audio_level_meter)
+        
+        self.audio_level_widget.setVisible(False)
+        input_layout.addWidget(self.audio_level_widget)
+        
+        # Voice settings button
+        self.voice_settings_button = QPushButton("⚙️")
+        self.voice_settings_button.setMinimumHeight(40)
+        self.voice_settings_button.setMaximumWidth(50)
+        self.voice_settings_button.setToolTip("Voice Settings")
+        self.voice_settings_button.setStyleSheet("""
+            QPushButton {
+                background-color: #2d2d2d;
+                color: white;
+                border: 1px solid #555;
+                border-radius: 5px;
+                padding: 8px;
+                font-weight: bold;
+                font-size: 16px;
+            }
+            QPushButton:hover {
+                background-color: #3d3d3d;
+            }
+            QPushButton:pressed {
+                background-color: #1d1d1d;
+            }
+        """)
+        input_layout.addWidget(self.voice_settings_button)
+        
         # Cancel button (hidden by default)
         self.cancel_button = QPushButton("Cancel")
         self.cancel_button.setMinimumHeight(40)
@@ -446,6 +562,25 @@ class ChatTab(QWidget):
         # Connect cancel button
         self.cancel_button.clicked.connect(self.cancel_message)
         
+        # Connect voice mode button
+        self.voice_button.clicked.connect(self.toggle_voice_mode)
+        
+        # Connect voice settings button
+        self.voice_settings_button.clicked.connect(self.open_voice_settings)
+        
+        # Connect voice service signals
+        self.voice_service.voice_input_received.connect(self.on_voice_input_received)
+        self.voice_service.voice_input_error.connect(self.on_voice_input_error)
+        self.voice_service.tts_started.connect(self.on_tts_started)
+        self.voice_service.tts_finished.connect(self.on_tts_finished)
+        self.voice_service.tts_error.connect(self.on_tts_error)
+        self.voice_service.recording_started.connect(self.on_recording_started)
+        self.voice_service.recording_stopped.connect(self.on_recording_stopped)
+        self.voice_service.recording_error.connect(self.on_recording_error)
+        
+        # Connect audio level signal
+        self.voice_service.recording_service.audio_level_changed.connect(self.on_audio_level_changed)
+        
         # Connect enter key in message input
         self.message_input.installEventFilter(self)
         
@@ -460,6 +595,9 @@ class ChatTab(QWidget):
             self.navigation_widget.new_conversation_requested.connect(self.new_conversation_requested.emit)
         # Thread-safe response appending
         self.append_response_signal.connect(self.append_response_chunk)
+        
+        # Connect TTS signal
+        self.speak_text_requested.connect(self.voice_service.speak_text)
         
     def eventFilter(self, obj, event):
         """Handle key events in message input"""
@@ -497,6 +635,153 @@ class ChatTab(QWidget):
         """Cancel the current message"""
         self.stop_streaming()
         self.message_cancelled.emit()
+        
+    def toggle_voice_mode(self):
+        """Toggle between text and voice input modes"""
+        self.voice_mode = not self.voice_mode
+        
+        if self.voice_mode:
+            # Switch to voice mode
+            self.message_input.setVisible(False)
+            self.send_button.setVisible(False)
+            self.voice_button.setText("⏹️ Stop Recording")
+            self.voice_button.setToolTip(f"Click to stop voice recording\nSTT: {self.voice_settings.get('stt_api', 'Unknown')}")
+            # Start voice recording
+            self.voice_service.start_voice_input()
+            logger.debug("Voice mode activated")
+        else:
+            # Switch to text mode
+            self.message_input.setVisible(True)
+            self.send_button.setVisible(True)
+            stt_api = self.voice_settings.get('stt_api', 'Unknown')
+            tts_api = self.voice_settings.get('tts_api', 'Unknown')
+            self.voice_button.setText("🎤 Voice")
+            self.voice_button.setToolTip(f"Switch to voice input mode\nSTT: {stt_api}\nTTS: {tts_api}")
+            # Stop voice recording
+            self.voice_service.stop_voice_input()
+            logger.debug("Text mode activated")
+    
+    def on_voice_input_received(self, text: str):
+        """Handle voice input converted to text"""
+        logger.debug(f"Voice input received: {text}")
+        
+        # Add the voice input to the chat
+        self.append_to_chat("You", f"[Voice] {text}")
+        
+        # Send the message through the normal flow
+        self.message_sent.emit(text)
+    
+    def on_voice_input_error(self, error: str):
+        """Handle voice input error"""
+        logger.error(f"Voice input error: {error}")
+        # TODO: Show error message to user
+        self.append_to_chat("System", f"Voice input error: {error}")
+    
+    def on_tts_started(self):
+        """Handle TTS started"""
+        logger.debug("TTS started")
+        # TODO: Show TTS indicator in UI
+    
+    def on_tts_finished(self):
+        """Handle TTS finished"""
+        logger.debug("TTS finished")
+        # TODO: Hide TTS indicator in UI
+    
+    def on_tts_error(self, error: str):
+        """Handle TTS error"""
+        logger.error(f"TTS error: {error}")
+        # TODO: Show error message to user
+    
+    def on_recording_started(self):
+        """Handle recording started"""
+        logger.debug("Voice recording started")
+        
+        # Show audio level meter
+        self.audio_level_widget.setVisible(True)
+        self.audio_level_label.setText("🎤 Recording...")
+        self.audio_level_meter.setValue(0)
+        
+        # Record start time
+        self.recording_start_time = time.time()
+        silence_duration = self.voice_service.get_silence_duration()
+        self.audio_level_label.setToolTip(f"Silence timeout: {silence_duration:.1f}s")
+    
+    def on_recording_stopped(self):
+        """Handle recording stopped"""
+        logger.debug("Voice recording stopped")
+        
+        # Hide audio level meter
+        self.audio_level_widget.setVisible(False)
+        self.audio_level_label.setText("🎤 Ready")
+        self.audio_level_meter.setValue(0)
+    
+    def on_audio_level_changed(self, audio_level: float):
+        """Handle audio level changes"""
+        try:
+            # Convert to dB
+            db_level = self.voice_service.recording_service.audio_level_to_db(audio_level)
+            
+            # Update meter (0-100 range)
+            meter_value = min(100, max(0, int((db_level + 60) * 1.67)))  # Convert -60dB to 0dB range to 0-100
+            self.audio_level_meter.setValue(meter_value)
+            
+            # Update label with dB level
+            if audio_level > self.voice_service.get_silence_threshold():
+                self.audio_level_label.setText(f"🎤 Recording... {db_level:.1f} dB")
+                self.audio_level_label.setStyleSheet("""
+                    QLabel {
+                        color: #00ff00;
+                        font-family: 'Segoe UI', Arial, sans-serif;
+                        font-size: 14px;
+                        font-weight: bold;
+                        padding: 5px;
+                        background-color: #2d2d2d;
+                        border: 1px solid #00ff00;
+                        border-radius: 5px;
+                    }
+                """)
+            else:
+                self.audio_level_label.setText(f"🎤 Listening... {db_level:.1f} dB")
+                self.audio_level_label.setStyleSheet("""
+                    QLabel {
+                        color: #ffff00;
+                        font-family: 'Segoe UI', Arial, sans-serif;
+                        font-size: 14px;
+                        font-weight: bold;
+                        padding: 5px;
+                        background-color: #2d2d2d;
+                        border: 1px solid #ffff00;
+                        border-radius: 5px;
+                    }
+                """)
+                
+        except Exception as e:
+            logger.error(f"Error updating audio level: {e}")
+    
+    def on_recording_error(self, error: str):
+        """Handle recording error"""
+        logger.error(f"Recording error: {error}")
+        # TODO: Show error message to user
+    
+    def speak_ai_response(self, text: str):
+        """Trigger TTS for AI response"""
+        if self.voice_mode and self.voice_settings.get("auto_speak", True):
+            logger.debug(f"Speaking AI response: {text[:50]}...")
+            self.speak_text_requested.emit(text)
+    
+    def open_voice_settings(self):
+        """Open the voice settings dialog"""
+        dialog = VoiceSettingsDialog(self)
+        dialog.set_settings(self.voice_settings)
+        
+        if dialog.exec():
+            # Settings were saved
+            new_settings = dialog.get_settings()
+            self.voice_settings = new_settings
+            logger.debug(f"Voice settings updated: {new_settings}")
+            
+            # Update voice service with new settings
+            self.voice_service.update_settings(new_settings)
         
     def append_to_chat(self, sender: str, message: str, is_code: bool = False):
         """Add a message to the chat display"""
@@ -653,7 +938,7 @@ class ChatTab(QWidget):
             "Where would you like to begin?",
             "Ready to dive in?",
             "How can I support you today?",
-            "What’s one thing I can take off your plate?",
+            "What's one thing I can take off your plate?",
             "Need help figuring something out?",
             "Is there anything you're stuck on?",
             "What are we working on today?",
