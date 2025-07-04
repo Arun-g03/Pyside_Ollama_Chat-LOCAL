@@ -1,6 +1,7 @@
 import logging
 import os
 import re
+import json
 
 LOG_FORMAT = "%(asctime)s [%(levelname)s] [%(name)s]: %(message)s"
 LOG_LEVEL = logging.DEBUG
@@ -75,11 +76,31 @@ class CustomLogger(logging.Logger):
     _instance = None
     _loggers = {}
     _cleared_files = set()
+    logging_enabled = True
+    _config_checked = False
+
+    @classmethod
+    def _check_config_for_logging(cls):
+        if cls._config_checked:
+            return
+        config_path = os.path.join(os.path.dirname(__file__), '../../../config.json')
+        try:
+            with open(config_path, 'r') as f:
+                config = json.load(f)
+            cls.logging_enabled = config.get("logging_enabled", True)
+        except Exception:
+            cls.logging_enabled = True
+        cls._config_checked = True
 
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
+        cls._check_config_for_logging()
         return cls._instance
+
+    @classmethod
+    def set_logging_enabled(cls, enabled: bool):
+        cls.logging_enabled = enabled
 
     @classmethod
     def _clear_log_file(cls, filepath):
@@ -90,6 +111,16 @@ class CustomLogger(logging.Logger):
 
     @classmethod
     def get_logger(cls, name: str = None):
+        cls._check_config_for_logging()
+        if not cls.logging_enabled:
+            # Return a dummy logger that does nothing
+            class DummyLogger:
+                def info(self, *a, **k): pass
+                def debug(self, *a, **k): pass
+                def warning(self, *a, **k): pass
+                def error(self, *a, **k): pass
+                def critical(self, *a, **k): pass
+            return DummyLogger()
         global _warned_about_default
         if not name:
             name = "PyChat"
@@ -124,15 +155,23 @@ class CustomLogger(logging.Logger):
         return logger
 
     def info(self, msg, *args, **kwargs):
+        if not self.logging_enabled:
+            return
         clean_msg = self._filter_non_ascii(str(msg))
         super().info(clean_msg, *args, **kwargs)
     def debug(self, msg, *args, **kwargs):
+        if not self.logging_enabled:
+            return
         clean_msg = self._filter_non_ascii(str(msg))
         super().debug(clean_msg, *args, **kwargs)
     def warning(self, msg, *args, **kwargs):
+        if not self.logging_enabled:
+            return
         clean_msg = self._filter_non_ascii(str(msg))
         super().warning(clean_msg, *args, **kwargs)
     def error(self, msg, *args, **kwargs):
+        if not self.logging_enabled:
+            return
         clean_msg = self._filter_non_ascii(str(msg))
         super().error(clean_msg, *args, **kwargs)
     def _filter_non_ascii(self, s):

@@ -21,5 +21,6 @@
   "verbose_enabled": true,
   "think_enabled": true,
   "theme": "Dark",
-  "memory_enabled": true
+  "memory_enabled": true,
+  "logging_enabled": true
 }

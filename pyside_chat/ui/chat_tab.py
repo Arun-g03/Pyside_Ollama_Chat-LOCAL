@@ -18,7 +18,7 @@ from pyside_chat.ui.Widgets.voice_settings_dialog import VoiceSettingsDialog
 from pyside_chat.utils.message_formatter import MessageFormatter
 from pyside_chat.utils.streaming_handler import StreamingHandler
 from pyside_chat.utils.Logging.Custom_Logger import CustomLogger
-from pyside_chat.services.voice_service import VoiceService
+from pyside_chat.services.Voice_STT_TTS_SERVICES.voice_service import VoiceService
 
 logger = CustomLogger.get_logger(__name__)
 

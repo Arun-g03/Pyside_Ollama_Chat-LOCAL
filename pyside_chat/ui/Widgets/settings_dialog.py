@@ -45,6 +45,10 @@ class SettingsDialog(QDialog):
         session_tab = self.create_session_tab()
         tabs.addTab(session_tab, "Session Variables")
         
+        # Developer tab
+        developer_tab = self.create_developer_tab()
+        tabs.addTab(developer_tab, "Developer")
+        
         # Buttons
         button_layout = QHBoxLayout()
         
@@ -213,6 +217,24 @@ class SettingsDialog(QDialog):
         layout.addStretch()
         return widget
     
+    def create_developer_tab(self):
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        self.logging_checkbox = QCheckBox("Enable Logging")
+        self.logging_checkbox.setToolTip(
+            "Enable or disable all application logging. "
+            "Requires a full application restart to take effect."
+        )
+        layout.addWidget(self.logging_checkbox)
+        explanation = QLabel(
+            "Note: Changes to logging require a full restart of the application to take effect."
+        )
+        explanation.setWordWrap(True)
+        explanation.setStyleSheet("color: #888; font-style: italic;")
+        layout.addWidget(explanation)
+        layout.addStretch()
+        return widget
+    
     def _delayed_load_settings(self):
         """Load settings after UI is fully ready"""
         self.ui_ready = True
@@ -270,6 +292,9 @@ class SettingsDialog(QDialog):
             self.max_tokens_spin.setValue(chat_settings.get("max_tokens", 2048))
             self.top_p_spin.setValue(int(chat_settings.get("top_p", 0.9) * 100))
             
+            # Load developer settings
+            self.logging_checkbox.setChecked(self.config_manager.get("logging_enabled", True))
+            
         except Exception as e:
             logger.debug(f" SETTINGS: Error loading settings: {e}",print_to_terminal=True)
             QMessageBox.warning(self, "Warning", f"Some settings could not be loaded: {str(e)}")
@@ -314,6 +339,9 @@ class SettingsDialog(QDialog):
                 "presence_penalty": 0.0
             }
             self.config_manager.set("chat_settings", chat_settings)
+            
+            # Save developer settings
+            self.config_manager.set("logging_enabled", self.logging_checkbox.isChecked())
             
             QMessageBox.information(self, "Success", "Settings saved successfully!")
             self.accept()
