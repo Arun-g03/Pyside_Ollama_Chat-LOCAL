@@ -231,10 +231,6 @@ class VoiceService(QObject):
         """Update voice service settings"""
         logger.debug(f"Updating voice service settings: {settings}")
         
-        # Update STT service settings
-        if "stt_api" in settings:
-            self.stt_service.update_api(settings["stt_api"])
-            
         # Update TTS service settings
         if "tts_api" in settings:
             self.tts_service.update_api(settings["tts_api"])

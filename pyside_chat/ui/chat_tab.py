@@ -45,11 +45,11 @@ class ChatTab(QWidget):
         # Initialize voice service and settings FIRST
         self.voice_service = VoiceService()
         self.voice_settings = {
-            "stt_api": "Google Speech Recognition",
+            "stt_api": "Vosk",  # Only Vosk is supported
             "tts_api": "Google TTS",
             "tts_voice": "en",
             "auto_speak": True,
-            "voice_speed": 15,  # Faster default speed
+            "voice_speed": 2,  # Faster default speed
             "recording_timeout": 10.0,
             "silence_duration": 2.0,
             "silence_threshold": 0.005

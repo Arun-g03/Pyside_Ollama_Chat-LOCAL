@@ -1,7 +1,6 @@
 import os
 import wave
 import json
-import speech_recognition as sr
 from PySide6.QtCore import QObject, Signal
 from pyside_chat.utils.Logging.Custom_Logger import CustomLogger
 
@@ -15,15 +14,12 @@ class STTService(QObject):
 
     def __init__(self):
         super().__init__()
-        self.current_api = "Google Speech Recognition"
+        self.current_api = "Vosk"
         self.vosk_model = None
-        self.recognizer = sr.Recognizer()
         self.available = self._check_availability()
 
     def _check_availability(self) -> bool:
         try:
-            import speech_recognition
-            import pyaudio
             try:
                 from vosk import Model
                 model_path = os.path.join(os.getcwd(), "models", "vosk-model-small-en-us-0.15")
@@ -49,37 +45,10 @@ class STTService(QObject):
 
     def convert_audio_to_text(self, audio_file: str):
         try:
-            logger.debug(f"Converting audio file to text using {self.current_api}: {audio_file}")
-            if self.current_api == "Google Speech Recognition":
-                self._convert_with_google(audio_file)
-            elif self.current_api == "Vosk (Offline)":
-                self._convert_with_vosk(audio_file)
-            else:
-                self._convert_with_google(audio_file)
+            self._convert_with_vosk(audio_file)
         except Exception as e:
             logger.error(f"STT conversion failed: {e}")
             self.error_occurred.emit(f"STT conversion failed: {str(e)}")
-
-    def _convert_with_google(self, audio_file: str):
-        try:
-            with sr.AudioFile(audio_file) as source:
-                audio = self.recognizer.record(source)
-            text = self.recognizer.recognize_google(audio)
-            logger.debug(f"Google STT result: {text}")
-            self.text_received.emit(text)
-        except sr.UnknownValueError:
-            logger.warning("Google Speech Recognition could not understand audio")
-            self.error_occurred.emit("Could not understand audio. Please try again.")
-        except sr.RequestError as e:
-            logger.error(f"Google Speech Recognition request failed: {e}")
-            if self.vosk_model:
-                logger.info("Falling back to Vosk for offline recognition")
-                self._convert_with_vosk(audio_file)
-            else:
-                self.error_occurred.emit(f"Speech recognition failed: {str(e)}")
-        except Exception as e:
-            logger.error(f"Google STT failed: {e}")
-            self.error_occurred.emit(f"Speech recognition failed: {str(e)}")
 
     def _convert_with_vosk(self, audio_file: str):
         try:
