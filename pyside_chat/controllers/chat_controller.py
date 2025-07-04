@@ -8,6 +8,7 @@ It handles communication between different services and UI components.
 import os
 from typing import Dict, Any, Optional, List
 from PySide6.QtCore import QObject, Signal
+import re
 
 from pyside_chat.services.ollama_service import OllamaService
 from pyside_chat.services.conversation_service import ConversationService
@@ -21,6 +22,21 @@ from pyside_chat.utils.Logging.Custom_Logger import CustomLogger
 
 logger = CustomLogger.get_logger(__name__)
 
+def remove_emojis(text):
+    # This regex matches most emojis, including symbols and pictographs
+    emoji_pattern = re.compile(
+        "["
+        "\U0001F600-\U0001F64F"  # emoticons
+        "\U0001F300-\U0001F5FF"  # symbols & pictographs
+        "\U0001F680-\U0001F6FF"  # transport & map symbols
+        "\U0001F1E0-\U0001F1FF"  # flags (iOS)
+        "\U00002700-\U000027BF"  # Dingbats
+        "\U0001F900-\U0001F9FF"  # Supplemental Symbols and Pictographs
+        "\U00002600-\U000026FF"  # Misc symbols
+        "\U00002B50-\U00002B55"  # Stars
+        "\U00002300-\U000023FF"  # Misc technical
+        "]+", flags=re.UNICODE)
+    return emoji_pattern.sub(r'', text)
 
 class ChatController(QObject):
     """Controller class that mediates between UI components and business logic"""
@@ -306,6 +322,28 @@ class ChatController(QObject):
         self.message_received.emit(response)
         self.conversation_updated.emit()
         self.status_updated.emit("Ready")
+        
+        # Trigger TTS for AI response if voice mode is active
+        self._trigger_tts_for_response(response)
+    
+    def _trigger_tts_for_response(self, response: str) -> None:
+        """Trigger TTS for AI response if voice mode is active"""
+        try:
+            # Remove all <think>...</think> blocks
+            spoken_text = re.sub(r'<think>.*?</think>', '', response, flags=re.DOTALL).strip()
+            # Remove emojis
+            spoken_text = remove_emojis(spoken_text)
+            if hasattr(self, '_chat_tab_reference') and self._chat_tab_reference:
+                self._chat_tab_reference.speak_ai_response(spoken_text)
+                logger.debug(f"TTS triggered for AI response (length: {len(spoken_text)})")
+            else:
+                logger.debug("No chat tab reference available for TTS")
+        except Exception as e:
+            logger.error(f"Error triggering TTS for AI response: {e}")
+    
+    def set_chat_tab_reference(self, chat_tab):
+        """Set reference to chat tab for TTS functionality"""
+        self._chat_tab_reference = chat_tab
     
     def _trigger_name_generation(self, filepath: str) -> None:
         """Trigger AI name generation for a conversation"""

@@ -21,6 +21,7 @@ class TTSService(QObject):
         self.current_audio_file = None
         self.current_voice = "en"
         self.current_api = "Google TTS"
+        self.speech_speed = 1.0  # Speed multiplier (1.0 = normal, 1.5 = faster, 0.5 = slower)
 
     def _check_availability(self) -> bool:
         try:
@@ -53,11 +54,25 @@ class TTSService(QObject):
             timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"tts_output_{timestamp}.mp3"
             audio_file_path = os.path.join(audio_folder, filename)
+            
+            # Use faster speech settings
             tts = gTTS(text=text, lang=self.current_voice, slow=False)
             tts.save(audio_file_path)
+            
+            # Play the audio and emit finished signal immediately after starting playback
             playsound.playsound(audio_file_path, block=False)
-            QTimer.singleShot(5000, lambda: self._cleanup_audio_file(audio_file_path))
-            QTimer.singleShot(1000, self.tts_finished.emit)
+            
+            # Calculate estimated duration based on text length and speed setting
+            word_count = len(text.split())
+            base_duration_per_word = 0.24  # Base duration per word
+            estimated_duration = max(0.5, word_count * base_duration_per_word / self.speech_speed)
+            
+            # Clean up file after estimated duration + buffer
+            QTimer.singleShot(int(estimated_duration * 1000) + 3000, lambda: self._cleanup_audio_file(audio_file_path))
+            # Emit finished signal after estimated duration
+            QTimer.singleShot(int(estimated_duration * 1000) + 200, self.tts_finished.emit)
+            
+            logger.debug(f"TTS started with estimated duration: {estimated_duration:.1f}s for {word_count} words")
         except ImportError:
             logger.error("gTTS or playsound not available, falling back to eSpeak")
             self._speak_with_espeak(text)
@@ -72,8 +87,16 @@ class TTSService(QObject):
             else:
                 cmd = ["espeak", text]
             process = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            process.wait()
-            self.tts_finished.emit()
+            
+            # Calculate estimated duration for eSpeak as well
+            word_count = len(text.split())
+            base_duration_per_word = 0.24  # Base duration per word
+            estimated_duration = max(0.5, word_count * base_duration_per_word / self.speech_speed)
+            
+            # Use a timer to emit finished signal after estimated duration
+            QTimer.singleShot(int(estimated_duration * 1000) + 500, self.tts_finished.emit)
+            
+            logger.debug(f"eSpeak TTS started with estimated duration: {estimated_duration:.1f}s for {word_count} words")
         except Exception as e:
             logger.error(f"eSpeak failed: {e}")
             self.tts_finished.emit()
@@ -102,5 +125,6 @@ class TTSService(QObject):
         self.current_voice = voice_name
 
     def update_speed(self, speed: float):
-        logger.debug(f"TTS speed updated to: {speed}")
-        # TODO: Implement speed adjustment logic
+        """Update speech speed (1.0 = normal, 1.5 = faster, 0.5 = slower)"""
+        self.speech_speed = max(0.5, min(3.0, speed))  # Clamp between 0.5x and 3.0x speed
+        logger.debug(f"TTS speed updated to: {self.speech_speed}x")

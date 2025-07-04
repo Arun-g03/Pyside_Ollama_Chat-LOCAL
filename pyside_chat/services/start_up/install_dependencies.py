@@ -64,6 +64,12 @@ class DependencyInstaller:
                 "skip_if_failed": False
             },
             {
+                "name": "playsound",
+                "description": "Audio playback for TTS",
+                "command": ["pip", "install", "playsound>=1.3.0"],
+                "skip_if_failed": False
+            },
+            {
                 "name": "pyttsx3",
                 "description": "Local TTS engine",
                 "command": ["pip", "install", "pyttsx3>=2.90"],

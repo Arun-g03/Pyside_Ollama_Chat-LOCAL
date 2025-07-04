@@ -49,7 +49,7 @@ class ChatTab(QWidget):
             "tts_api": "Google TTS",
             "tts_voice": "en",
             "auto_speak": True,
-            "voice_speed": 1.0,
+            "voice_speed": 15,  # Faster default speed
             "recording_timeout": 10.0,
             "silence_duration": 2.0,
             "silence_threshold": 0.005
@@ -809,7 +809,7 @@ class ChatTab(QWidget):
             # Update label with dB level
             if audio_level > self.voice_service.get_silence_threshold():
                 if self.voice_service.is_continuous_voice_mode():
-                    self.audio_level_label.setText(f"🎤 Continuous Recording... {db_level:.1f} dB")
+                    self.audio_level_label.setText(f"🎤 Recording... {db_level:.1f} dB")
                 else:
                     self.audio_level_label.setText(f"🎤 Recording... {db_level:.1f} dB")
                 self.audio_level_label.setStyleSheet("""
@@ -826,7 +826,7 @@ class ChatTab(QWidget):
                 """)
             else:
                 if self.voice_service.is_continuous_voice_mode():
-                    self.audio_level_label.setText(f"🎤 Continuous Listening... {db_level:.1f} dB")
+                    self.audio_level_label.setText(f"🎤 Listening... {db_level:.1f} dB")
                 else:
                     self.audio_level_label.setText(f"🎤 Listening... {db_level:.1f} dB")
                 self.audio_level_label.setStyleSheet("""

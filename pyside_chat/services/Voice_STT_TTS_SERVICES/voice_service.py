@@ -55,8 +55,8 @@ class VoiceService(QObject):
         self.stt_service.text_received.connect(self._on_stt_text_received)
         self.stt_service.error_occurred.connect(self._on_stt_error)
         self.tts_service.tts_started.connect(self.tts_started.emit)
-        self.tts_service.tts_finished.connect(self.tts_finished.emit)
-        self.tts_service.tts_error.connect(self.tts_error.emit)
+        self.tts_service.tts_finished.connect(self._on_tts_finished)
+        self.tts_service.tts_error.connect(self._on_tts_error)
         self.recording_service.recording_started.connect(self.recording_started.emit)
         self.recording_service.recording_stopped.connect(self.recording_stopped.emit)
         self.recording_service.recording_error.connect(self.recording_error.emit)
@@ -189,6 +189,18 @@ class VoiceService(QObject):
             logger.debug("Continuous voice mode enabled, restarting recording after error")
             QTimer.singleShot(100, self.start_voice_input)  # Small delay to ensure processing is complete
     
+    def _on_tts_finished(self):
+        """Handle TTS finished"""
+        self.is_playing_tts = False
+        logger.debug("TTS finished, resetting playing flag")
+        self.tts_finished.emit()
+    
+    def _on_tts_error(self, error: str):
+        """Handle TTS error"""
+        self.is_playing_tts = False
+        logger.error(f"TTS error: {error}")
+        self.tts_error.emit(error)
+    
     def speak_text(self, text: str):
         """Convert text to speech and play it"""
         if self.is_playing_tts:
@@ -231,7 +243,15 @@ class VoiceService(QObject):
             self.tts_service.update_voice(settings["tts_voice"])
             
         if "voice_speed" in settings:
-            self.tts_service.update_speed(settings["voice_speed"])
+            # Convert speed setting to TTS speed (1.0 = normal, higher = faster)
+            speed = settings["voice_speed"]
+            if speed < 1.0:
+                # Slower than normal
+                tts_speed = 1.0 / speed
+            else:
+                # Faster than normal
+                tts_speed = speed
+            self.tts_service.update_speed(tts_speed)
             
         # Update recording settings
         if "recording_timeout" in settings:
