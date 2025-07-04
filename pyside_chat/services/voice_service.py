@@ -63,6 +63,7 @@ class VoiceService(QObject):
         self.is_recording = False
         self.is_playing_tts = False
         self.is_processing_voice = False  # Track if voice processing is in progress
+        self.continuous_voice_mode = False  # Track if continuous voice mode is enabled
         
         # Recording settings
         self.recording_timeout = 10.0  # Default 10 seconds (fallback)
@@ -115,7 +116,7 @@ class VoiceService(QObject):
     
     def stop_voice_input(self):
         """Stop voice recording and process the audio"""
-        if not self.is_recording:
+        if not self.is_recording and not self.recording_service.frames:
             logger.warning("No voice recording in progress")
             return
             
@@ -124,25 +125,24 @@ class VoiceService(QObject):
             return
             
         try:
-            # Stop the timeout timer
             self.recording_timer.stop()
-            
-            audio_file = self.recording_service.stop_recording()
+            result = self.recording_service.stop_recording()
             self.is_recording = False
-            
-            if audio_file and os.path.exists(audio_file):
-                # Set processing state
-                self.is_processing_voice = True
-                self.voice_processing_started.emit()
-                
-                # Convert audio to text
-                self.stt_service.convert_audio_to_text(audio_file)
-            else:
+            if result is None:
                 logger.warning("No audio file generated")
                 self.voice_input_error.emit("No audio recorded")
-                
+                return
+            audio_file, speech_detected = result
+            if audio_file and os.path.exists(audio_file) and speech_detected:
+                self.is_processing_voice = True
+                self.voice_processing_started.emit()
+                self.stt_service.convert_audio_to_text(audio_file)
+            else:
+                logger.info("No speech detected during recording. Doing nothing.")
+                return
         except Exception as e:
-            self.is_recording = False
+            if self.is_recording:
+                self.is_recording = False
             self.is_processing_voice = False
             logger.error(f"Failed to stop voice input: {e}")
             self.voice_input_error.emit(f"Failed to process voice input: {str(e)}")
@@ -163,13 +163,28 @@ class VoiceService(QObject):
         """Handle STT text received"""
         self.is_processing_voice = False
         self.voice_processing_finished.emit()
-        self.voice_input_received.emit(text)
+        
+        # Only emit if text is not empty or whitespace
+        if text.strip():
+            self.voice_input_received.emit(text)
+        else:
+            logger.info("STT result was empty, skipping message emission.")
+        
+        # If continuous voice mode is enabled, restart recording automatically
+        if self.continuous_voice_mode:
+            logger.debug("Continuous voice mode enabled, restarting recording")
+            QTimer.singleShot(100, self.start_voice_input)  # Small delay to ensure processing is complete
     
     def _on_stt_error(self, error: str):
         """Handle STT error"""
         self.is_processing_voice = False
         self.voice_processing_finished.emit()
         self.voice_input_error.emit(error)
+        
+        # If continuous voice mode is enabled, restart recording even after error
+        if self.continuous_voice_mode:
+            logger.debug("Continuous voice mode enabled, restarting recording after error")
+            QTimer.singleShot(100, self.start_voice_input)  # Small delay to ensure processing is complete
     
     def speak_text(self, text: str):
         """Convert text to speech and play it"""
@@ -263,6 +278,15 @@ class VoiceService(QObject):
     def get_current_audio_level(self) -> float:
         """Get current audio level for debugging"""
         return self.recording_service.get_current_audio_level()
+    
+    def set_continuous_voice_mode(self, enabled: bool):
+        """Enable or disable continuous voice mode"""
+        self.continuous_voice_mode = enabled
+        logger.debug(f"Continuous voice mode {'enabled' if enabled else 'disabled'}")
+    
+    def is_continuous_voice_mode(self) -> bool:
+        """Check if continuous voice mode is enabled"""
+        return self.continuous_voice_mode
     
     def cleanup_on_exit(self):
         """Clean up audio files on application exit"""
@@ -649,6 +673,7 @@ class RecordingService(QObject):
         self.audio = None
         self.frames = []
         self.stream = None
+        self.speech_detected = False  # Track if speech was detected
         
         # Audio gate settings
         self.silence_threshold = 0.005  # Balanced threshold for good sensitivity
@@ -701,6 +726,7 @@ class RecordingService(QObject):
         try:
             self.is_recording = True
             self.frames = []
+            self.speech_detected = False  # Reset at start
             
             # Start recording in a separate thread
             self.recording_thread = threading.Thread(target=self._record_audio)
@@ -724,51 +750,41 @@ class RecordingService(QObject):
                 input=True,
                 frames_per_buffer=1024
             )
-            
             logger.debug("Recording audio with audio gate...")
-            
-            # Track silence duration manually since QTimer can't be used in thread
+            speech_detection_threshold = max(0.001, self.silence_threshold * 0.5)
+            speech_started = False
             silence_start_time = None
-            
             while self.is_recording:
                 try:
                     data = self.stream.read(1024, exception_on_overflow=False)
                     self.frames.append(data)
-                    
-                    # Check audio level for silence detection
                     audio_level = self._calculate_audio_level(data)
                     self.last_audio_level = audio_level
-                    
-                    # Emit audio level for UI updates
                     try:
                         self.audio_level_changed.emit(audio_level)
-                    except Exception as e:
-                        # Ignore signal emission errors from non-main thread
+                    except Exception:
                         pass
-                    
-                    if audio_level > self.silence_threshold:
-                        # Audio detected, reset silence tracking
-                        silence_start_time = None
+                    if not speech_started:
+                        if audio_level > speech_detection_threshold:
+                            speech_started = True
+                            self.speech_detected = True
+                            silence_start_time = None
                     else:
-                        # Silence detected, start tracking silence duration
-                        if silence_start_time is None:
-                            silence_start_time = time.time()
-                        elif time.time() - silence_start_time >= self.silence_duration:
-                            # Silence duration reached, stop recording
-                            logger.debug("Silence timeout reached, stopping recording automatically")
-                            # Emit signal that recording was auto-stopped
-                            try:
-                                self.recording_auto_stopped.emit()
-                            except Exception as e:
-                                # Ignore signal emission errors from non-main thread
-                                pass
-                            self.is_recording = False
-                            break
-                            
+                        if audio_level > self.silence_threshold:
+                            silence_start_time = None
+                        else:
+                            if silence_start_time is None:
+                                silence_start_time = time.time()
+                            elif time.time() - silence_start_time >= self.silence_duration:
+                                logger.debug("Silence timeout reached after speech, stopping recording automatically")
+                                try:
+                                    self.recording_auto_stopped.emit()
+                                except Exception:
+                                    pass
+                                break
                 except Exception as e:
                     logger.error(f"Error reading audio data: {e}")
                     break
-                    
         except Exception as e:
             logger.error(f"Recording thread error: {e}")
             self.recording_error.emit(f"Recording error: {str(e)}")
@@ -817,8 +833,6 @@ class RecordingService(QObject):
         """Get the current audio level (for debugging)"""
         return self.last_audio_level
     
-
-    
     def set_audio_gate_enabled(self, enabled: bool):
         """Enable or disable audio gate detection"""
         if enabled:
@@ -837,49 +851,40 @@ class RecordingService(QObject):
         except Exception as e:
             logger.error(f"Error cleaning up PyAudio: {e}")
     
-    def stop_recording(self) -> Optional[str]:
+    def stop_recording(self) -> Optional[tuple]:
         """Stop audio recording and return the audio file path"""
-        if not self.is_recording:
+        if not self.is_recording and not self.frames:
             logger.warning("No recording in progress")
             return None
-            
         try:
-            self.is_recording = False
-            
-            # Wait for recording thread to finish
-            if self.recording_thread and self.recording_thread.is_alive():
-                self.recording_thread.join(timeout=2.0)
-            
+            if self.is_recording:
+                self.is_recording = False
+                if self.recording_thread and self.recording_thread.is_alive():
+                    self.recording_thread.join(timeout=2.0)
             self.recording_stopped.emit()
-            
             if not self.frames:
                 logger.warning("No audio frames recorded")
                 return None
-            
-            # Create audio folder if it doesn't exist
+            if not self.speech_detected:
+                logger.info("No speech detected, not saving audio file.")
+                return (None, False)
             audio_folder = os.path.join(os.getcwd(), "User_history", "audio")
             os.makedirs(audio_folder, exist_ok=True)
-            
-            # Generate timestamped filename
             import datetime
             timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"voice_input_{timestamp}.wav"
             audio_file_path = os.path.join(audio_folder, filename)
-            
-            # Save audio to WAV file
             with wave.open(audio_file_path, 'wb') as wf:
                 wf.setnchannels(1)
                 wf.setsampwidth(self.audio.get_sample_size(pyaudio.paInt16))
                 wf.setframerate(16000)
                 wf.writeframes(b''.join(self.frames))
-            
             self.audio_file = audio_file_path
             logger.debug(f"Audio saved to: {self.audio_file}")
-            
-            return self.audio_file
-            
+            return (self.audio_file, self.speech_detected)
         except Exception as e:
-            self.is_recording = False
+            if self.is_recording:
+                self.is_recording = False
             logger.error(f"Failed to stop recording: {e}")
             self.recording_error.emit(f"Failed to stop recording: {str(e)}")
             return None 

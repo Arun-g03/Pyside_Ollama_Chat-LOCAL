@@ -684,13 +684,15 @@ class ChatTab(QWidget):
         
     def toggle_voice_mode(self):
         if not self.voice_mode:
-            # Start voice input
+            # Start voice input with continuous mode enabled
+            self.voice_service.set_continuous_voice_mode(True)
             self.voice_service.start_voice_input()
             self.voice_button.setText("🎤 Stop Voice")
             self.voice_mode = True
             self.enforce_voice_mode_ui()
         else:
-            # Stop voice input
+            # Stop voice input and disable continuous mode
+            self.voice_service.set_continuous_voice_mode(False)
             self.voice_service.stop_voice_input()
             self.voice_button.setText("🎤 Start Voice")
             self.voice_mode = False
@@ -699,6 +701,7 @@ class ChatTab(QWidget):
     def _reset_voice_button(self):
         """Reset voice button to ready state"""
         self.voice_mode = False
+        self.voice_service.set_continuous_voice_mode(False)  # Disable continuous mode
         self.message_input.setVisible(False)
         self.send_button.setVisible(False)
         stt_api = self.voice_settings.get('stt_api', 'Unknown')
@@ -717,18 +720,30 @@ class ChatTab(QWidget):
         # Send the message through the normal flow
         self.message_sent.emit(text)
         
-        # Reset voice button state
-        self.voice_button.setText("🎤 Start Voice")
-        self.voice_mode = False
-        self.audio_level_widget.setVisible(False)
+        # Only reset voice button state if not in continuous mode
+        if not self.voice_service.is_continuous_voice_mode():
+            self.voice_button.setText("🎤 Start Voice")
+            self.voice_mode = False
+            self.audio_level_widget.setVisible(False)
+        else:
+            # Keep the button as "Stop Voice" for continuous mode
+            self.voice_button.setText("🎤 Stop Voice")
+            self.voice_button.setToolTip("Continuous voice mode active - click to stop")
     
     def on_voice_input_error(self, error: str):
         """Handle voice input error"""
         logger.error(f"Voice input error: {error}")
         self.append_to_chat("System", f"Voice input error: {error}")
-        self.voice_button.setText("🎤 Start Voice")
-        self.voice_mode = False
-        self.audio_level_widget.setVisible(False)
+        
+        # Only reset voice button state if not in continuous mode
+        if not self.voice_service.is_continuous_voice_mode():
+            self.voice_button.setText("🎤 Start Voice")
+            self.voice_mode = False
+            self.audio_level_widget.setVisible(False)
+        else:
+            # Keep the button as "Stop Voice" for continuous mode
+            self.voice_button.setText("🎤 Stop Voice")
+            self.voice_button.setToolTip("Continuous voice mode active - click to stop")
         # TODO: Show error message to user
     
     def on_tts_started(self):
@@ -752,22 +767,34 @@ class ChatTab(QWidget):
         
         # Show audio level meter
         self.audio_level_widget.setVisible(True)
-        self.audio_level_label.setText("🎤 Recording...")
+        
+        # Show different message for continuous mode
+        if self.voice_service.is_continuous_voice_mode():
+            self.audio_level_label.setText("🎤 Continuous Recording...")
+            self.audio_level_label.setToolTip("Continuous voice mode - recording will restart automatically")
+        else:
+            self.audio_level_label.setText("🎤 Recording...")
+            silence_duration = self.voice_service.get_silence_duration()
+            self.audio_level_label.setToolTip(f"Silence timeout: {silence_duration:.1f}s")
+        
         self.audio_level_meter.setValue(0)
         
         # Record start time
         self.recording_start_time = time.time()
-        silence_duration = self.voice_service.get_silence_duration()
-        self.audio_level_label.setToolTip(f"Silence timeout: {silence_duration:.1f}s")
     
     def on_recording_stopped(self):
         """Handle recording stopped"""
         logger.debug("Voice recording stopped")
         
-        # Hide audio level meter
-        self.audio_level_widget.setVisible(False)
-        self.audio_level_label.setText("🎤 Ready")
-        self.audio_level_meter.setValue(0)
+        # Only hide audio level meter if not in continuous mode
+        if not self.voice_service.is_continuous_voice_mode():
+            self.audio_level_widget.setVisible(False)
+            self.audio_level_label.setText("🎤 Ready")
+            self.audio_level_meter.setValue(0)
+        else:
+            # Keep audio level widget visible for continuous mode
+            self.audio_level_label.setText("🎤 Processing...")
+            self.audio_level_meter.setValue(0)
     
     def on_audio_level_changed(self, audio_level: float):
         """Handle audio level changes"""
@@ -781,7 +808,10 @@ class ChatTab(QWidget):
             
             # Update label with dB level
             if audio_level > self.voice_service.get_silence_threshold():
-                self.audio_level_label.setText(f"🎤 Recording... {db_level:.1f} dB")
+                if self.voice_service.is_continuous_voice_mode():
+                    self.audio_level_label.setText(f"🎤 Continuous Recording... {db_level:.1f} dB")
+                else:
+                    self.audio_level_label.setText(f"🎤 Recording... {db_level:.1f} dB")
                 self.audio_level_label.setStyleSheet("""
                     QLabel {
                         color: #00ff00;
@@ -795,7 +825,10 @@ class ChatTab(QWidget):
                     }
                 """)
             else:
-                self.audio_level_label.setText(f"🎤 Listening... {db_level:.1f} dB")
+                if self.voice_service.is_continuous_voice_mode():
+                    self.audio_level_label.setText(f"🎤 Continuous Listening... {db_level:.1f} dB")
+                else:
+                    self.audio_level_label.setText(f"🎤 Listening... {db_level:.1f} dB")
                 self.audio_level_label.setStyleSheet("""
                     QLabel {
                         color: #ffff00;
@@ -815,9 +848,16 @@ class ChatTab(QWidget):
     def on_recording_error(self, error: str):
         """Handle recording error"""
         logger.error(f"Recording error: {error}")
-        self.voice_button.setText("🎤 Start Voice")
-        self.voice_mode = False
-        self.audio_level_widget.setVisible(False)
+        
+        # Only reset voice button state if not in continuous mode
+        if not self.voice_service.is_continuous_voice_mode():
+            self.voice_button.setText("🎤 Start Voice")
+            self.voice_mode = False
+            self.audio_level_widget.setVisible(False)
+        else:
+            # Keep the button as "Stop Voice" for continuous mode
+            self.voice_button.setText("🎤 Stop Voice")
+            self.voice_button.setToolTip("Continuous voice mode active - click to stop")
         # TODO: Show error message to user
     
     def on_voice_processing_started(self):
