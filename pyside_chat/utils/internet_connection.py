@@ -28,14 +28,14 @@ class InternetConnectionTester:
         """
         self.timeout = timeout
         self.test_endpoints = [
-            ("8.8.8.8", 53),      # Google DNS
             ("1.1.1.1", 53),      # Cloudflare DNS
             ("208.67.222.222", 53),  # OpenDNS
+            ("8.8.8.8", 53),      # Google DNS (fallback)
         ]
         self.http_endpoints = [
-            "http://www.google.com",
             "http://www.cloudflare.com",
             "http://www.github.com",
+            "http://www.microsoft.com",
         ]
     
     def test_socket_connection(self, host: str, port: int) -> bool:

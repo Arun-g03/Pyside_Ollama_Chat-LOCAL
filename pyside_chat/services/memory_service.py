@@ -796,7 +796,7 @@ class MemoryService(QObject):
             filtered_stm.append(msg)
         
         context.extend(filtered_stm)
-        logger.debug(f"Context messages: {context}", print_to_terminal=True)
+        logger.debug(f"Context messages: {context}", print_to_terminal=False)
         logger.debug(f"=== CONTEXT RETRIEVAL END ===", print_to_terminal=True)
         return context
     

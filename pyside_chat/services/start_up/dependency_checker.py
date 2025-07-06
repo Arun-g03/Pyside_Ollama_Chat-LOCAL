@@ -51,7 +51,7 @@ class DependencyChecker:
         # Optional core dependencies - app can start without these
         optional_core_modules = [
             ("edge_tts", "Edge TTS"),
-            ("gtts", "Google TTS"),
+    
             ("pyttsx3", "Local TTS"),
             ("pygame", "Audio Playback"),
             ("keyboard", "Keyboard Input"),

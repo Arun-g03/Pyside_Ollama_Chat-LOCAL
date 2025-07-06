@@ -50,11 +50,6 @@ class VoiceSettingsDialog(QDialog):
         
         # Voice API configurations
         self.stt_apis = {
-            "Google Speech Recognition": {
-                "requires_internet": True,
-                "description": "High accuracy, free tier available (60 min/month)",
-                "voices": []
-            },
             "Vosk (Offline)": {
                 "requires_internet": False,
                 "description": "Offline speech recognition, good accuracy",
@@ -63,12 +58,10 @@ class VoiceSettingsDialog(QDialog):
         }
         
         self.tts_apis = {
-            "Google TTS": {
-                "requires_internet": True,
-                "description": "High quality, many voices",
-                "voices": [
-                    "en", "en-US", "en-GB", "en-AU", "en-CA", "en-IN", "en-IE", "en-ZA"
-                ]
+            "Coqui TTS": {
+                "requires_internet": False,
+                "description": "High-quality local TTS with emotion control and multi-speaker support",
+                "voices": ["default"]
             },
             "Azure Speech": {
                 "requires_internet": True,
@@ -97,18 +90,28 @@ class VoiceSettingsDialog(QDialog):
         
         # Current settings
         self.current_settings = {
-            "stt_api": "Google Speech Recognition",
-            "tts_api": "Google TTS",
-            "tts_voice": "en",
+            "stt_api": "Vosk (Offline)",
+            "tts_api": "Coqui TTS",
+            "tts_voice": "default",
             "auto_speak": True,
             "voice_speed": 1.0,
             "recording_timeout": 10.0,
             "silence_duration": 2.0,
-            "silence_threshold": 0.005
+            "silence_threshold": 0.005,
+            "coqui_model": None,
+            "coqui_speaker": None,
+            "eq_visualizer": "None",
+            "tts_streaming": True  # Enable streaming by default
         }
         
         # Internet status
         self.internet_available = False
+        
+        # Add EQ visualizer selection to General tab
+        self.eq_types = ["None", "Circle EQ", "Bar EQ", "Waveform EQ", "Waveform Gradient", "Waveform Blue Gradient"]
+        self.eq_selector = QComboBox(self)
+        self.eq_selector.addItems(self.eq_types)
+        self.eq_selector.setCurrentIndex(0)
         
         self.setup_ui()
         self.setup_connections()
@@ -313,13 +316,75 @@ class VoiceSettingsDialog(QDialog):
         voice_group = QGroupBox("Voice Selection")
         voice_layout = QVBoxLayout(voice_group)
         
-        voice_layout.addWidget(QLabel("Select Voice:"))
+        # Coqui TTS specific controls
+        self.coqui_controls = QWidget()
+        coqui_layout = QVBoxLayout(self.coqui_controls)
+        
+        # Model selection for Coqui TTS
+        model_layout = QHBoxLayout()
+        model_layout.addWidget(QLabel("Model:"))
+        self.model_combo = QComboBox()
+        self.model_combo.currentTextChanged.connect(self.on_coqui_model_changed)
+        model_layout.addWidget(self.model_combo)
+        
+        # Download button for selected model
+        self.download_button = QPushButton("Download")
+        self.download_button.clicked.connect(self.download_selected_model)
+        self.download_button.setVisible(False)
+        model_layout.addWidget(self.download_button)
+        
+        coqui_layout.addLayout(model_layout)
+        
+        # Speaker selection for Coqui TTS
+        speaker_layout = QHBoxLayout()
+        speaker_layout.addWidget(QLabel("Speaker:"))
+        self.speaker_combo = QComboBox()
+        self.speaker_combo.currentTextChanged.connect(self.on_coqui_speaker_changed)
+        speaker_layout.addWidget(self.speaker_combo)
+        
+        coqui_layout.addLayout(speaker_layout)
+        
+        # Model info label
+        self.model_info_label = QLabel("")
+        self.model_info_label.setWordWrap(True)
+        self.model_info_label.setStyleSheet("color: #ccc; font-style: italic;")
+        coqui_layout.addWidget(self.model_info_label)
+        
+        self.coqui_controls.setVisible(False)
+        voice_layout.addWidget(self.coqui_controls)
+        
+        # Standard voice selection (for other TTS APIs)
+        self.standard_voice_widget = QWidget()
+        self.standard_voice_layout = QVBoxLayout(self.standard_voice_widget)
+        self.standard_voice_layout.addWidget(QLabel("Select Voice:"))
         
         self.voice_combo = QComboBox()
-        voice_layout.addWidget(self.voice_combo)
+        self.standard_voice_layout.addWidget(self.voice_combo)
+        
+        voice_layout.addWidget(self.standard_voice_widget)
+        
+        # TTS Streaming Settings
+        streaming_group = QGroupBox("TTS Streaming Settings")
+        streaming_layout = QVBoxLayout(streaming_group)
+        
+        self.streaming_checkbox = QCheckBox("Enable streaming synthesis")
+        self.streaming_checkbox.setChecked(True)
+        self.streaming_checkbox.setToolTip("Enable real-time streaming TTS synthesis for faster response")
+        streaming_layout.addWidget(self.streaming_checkbox)
+        
+        # Streaming description
+        streaming_description = QLabel(
+            "Streaming synthesis starts playing audio immediately as text is processed, "
+            "rather than waiting for the entire audio to be generated first. "
+            "This provides faster response times, especially for longer texts."
+        )
+        streaming_description.setWordWrap(True)
+        streaming_description.setStyleSheet("color: #ccc; font-size: 11px; margin-top: 5px;")
+        streaming_layout.addWidget(streaming_description)
         
         layout.addWidget(tts_group)
         layout.addWidget(voice_group)
+        layout.addWidget(streaming_group)
         layout.addStretch()
         
         return widget
@@ -433,6 +498,11 @@ class VoiceSettingsDialog(QDialog):
         
         layout.addWidget(audio_gate_group)
         
+        # Add EQ visualizer dropdown
+        layout.addWidget(QLabel("EQ Visualizer:"))
+        layout.addWidget(self.eq_selector)
+        layout.addStretch()
+        
         layout.addWidget(general_group)
         layout.addStretch()
         
@@ -520,13 +590,164 @@ class VoiceSettingsDialog(QDialog):
         
         # Update voice options
         self.voice_combo.clear()
-        voices = api_info.get("voices", [])
-        for voice in voices:
-            self.voice_combo.addItem(voice)
+        
+        if clean_name == "Coqui TTS":
+            # Show Coqui TTS controls and hide standard voice selection
+            self.coqui_controls.setVisible(True)
+            self.standard_voice_widget.setVisible(False)
+            
+            # Load Coqui TTS models
+            self.load_coqui_models()
+        else:
+            # Hide Coqui TTS controls and show standard voice selection
+            self.coqui_controls.setVisible(False)
+            self.standard_voice_widget.setVisible(True)
+            
+            # Use predefined voices for other APIs
+            voices = api_info.get("voices", [])
+            for voice in voices:
+                self.voice_combo.addItem(voice)
             
     def on_voice_changed(self, voice: str):
         """Handle voice selection change"""
         pass  # Can be used for voice preview
+    
+    def load_coqui_models(self):
+        """Load available Coqui TTS models"""
+        try:
+            from pyside_chat.services.Voice_STT_TTS_SERVICES.coqui_tts_service import CoquiTTSService
+            
+            self.coqui_service = CoquiTTSService()
+            self.available_models = self.coqui_service.get_available_models()
+            
+            self.model_combo.clear()
+            for model in self.available_models:
+                # Check if model is downloaded
+                if self.coqui_service.is_model_downloaded(model):
+                    self.model_combo.addItem(f"✅ {model}")
+                else:
+                    size = self.coqui_service.get_model_download_size(model)
+                    self.model_combo.addItem(f"⬇️ {model} ({size})")
+            
+            if self.available_models:
+                self.model_combo.setCurrentIndex(0)
+                self.on_coqui_model_changed(self.model_combo.currentText())
+            
+            logger.info(f"Loaded {len(self.available_models)} Coqui TTS models")
+            
+        except Exception as e:
+            logger.error(f"Failed to load Coqui TTS models: {e}")
+            self.model_info_label.setText(f"Failed to load models: {str(e)}")
+    
+    def on_coqui_model_changed(self, model_text: str):
+        """Handle Coqui TTS model selection"""
+        try:
+            # Extract model name from display text
+            model_name = model_text.replace("✅ ", "").replace("⬇️ ", "").split(" (")[0]
+            
+            # Check if model is downloaded
+            is_downloaded = self.coqui_service.is_model_downloaded(model_name)
+            
+            if is_downloaded:
+                self.model_info_label.setText(f"✅ Model '{model_name}' is downloaded and ready to use")
+                self.download_button.setVisible(False)
+                
+                # Load speakers for this model
+                self.load_coqui_speakers(model_name)
+            else:
+                size = self.coqui_service.get_model_download_size(model_name)
+                self.model_info_label.setText(f"⬇️ Model '{model_name}' needs to be downloaded ({size})")
+                self.download_button.setVisible(True)
+                
+                # Clear speakers
+                self.speaker_combo.clear()
+            
+            # Store selected model
+            self.selected_coqui_model = model_name
+            
+        except Exception as e:
+            logger.error(f"Failed to handle Coqui model change: {e}")
+            self.model_info_label.setText(f"Error: {str(e)}")
+    
+    def load_coqui_speakers(self, model_name: str):
+        """Load available speakers for the selected model"""
+        try:
+            if self.coqui_service.load_model(model_name):
+                self.speaker_combo.clear()
+                if self.coqui_service.is_multi_speaker():
+                    speakers = self.coqui_service.available_voices
+                    for speaker in speakers:
+                        self.speaker_combo.addItem(speaker)
+                    self.speaker_combo.setCurrentIndex(0)
+                    self.model_info_label.setText(f"Found {len(speakers)} speakers for model '{model_name}'")
+                else:
+                    # Single-speaker model
+                    self.speaker_combo.addItem("default")
+                    self.model_info_label.setText(f"Model '{model_name}' has no multiple speakers (single voice)")
+                logger.info(f"Loaded {len(self.coqui_service.available_voices) if self.coqui_service.available_voices else 1} speakers for model '{model_name}'")
+            else:
+                self.speaker_combo.clear()
+                self.model_info_label.setText(f"Failed to load model '{model_name}'")
+        except Exception as e:
+            logger.error(f"Failed to load Coqui speakers: {e}")
+            self.model_info_label.setText(f"Error loading speakers: {str(e)}")
+    
+    def on_coqui_speaker_changed(self, speaker_name: str):
+        """Handle Coqui TTS speaker selection"""
+        self.selected_coqui_speaker = speaker_name
+        logger.info(f"Selected Coqui TTS speaker: {speaker_name}")
+    
+    def download_selected_model(self):
+        """Download the selected Coqui TTS model"""
+        if not hasattr(self, 'selected_coqui_model') or not self.selected_coqui_model:
+            return
+        
+        model_name = self.selected_coqui_model
+        
+        reply = QMessageBox.question(
+            self, 
+            "Download Model", 
+            f"Download model '{model_name}'?\n\n"
+            "This may take several minutes depending on your internet connection.",
+            QMessageBox.Yes | QMessageBox.No
+        )
+        
+        if reply == QMessageBox.Yes:
+            self.start_coqui_download(model_name)
+    
+    def start_coqui_download(self, model_name: str):
+        """Start downloading a Coqui TTS model"""
+        try:
+            from pyside_chat.ui.Widgets.coqui_model_dialog import ModelDownloadThread
+            
+            self.download_button.setEnabled(False)
+            self.download_button.setText("Downloading...")
+            
+            self.download_thread = ModelDownloadThread(model_name)
+            self.download_thread.download_completed.connect(self.on_coqui_download_completed)
+            self.download_thread.start()
+            
+            self.model_info_label.setText(f"Downloading {model_name}...")
+            
+        except Exception as e:
+            logger.error(f"Failed to start Coqui download: {e}")
+            QMessageBox.critical(self, "Download Error", f"Failed to start download:\n{str(e)}")
+            self.download_button.setEnabled(True)
+            self.download_button.setText("Download")
+    
+    def on_coqui_download_completed(self, success: bool, message: str):
+        """Handle Coqui TTS download completion"""
+        self.download_button.setEnabled(True)
+        self.download_button.setText("Download")
+        
+        if success:
+            self.model_info_label.setText(f"✅ {message}")
+            # Reload models to update download status
+            self.load_coqui_models()
+            QMessageBox.information(self, "Download Complete", message)
+        else:
+            self.model_info_label.setText(f"❌ {message}")
+            QMessageBox.critical(self, "Download Failed", message)
         
     def on_silence_threshold_changed(self, value: float):
         """Handle silence threshold value change"""
@@ -610,12 +831,23 @@ class VoiceSettingsDialog(QDialog):
             "voice_speed": 1.0,  # TODO: Add speed control
             "recording_timeout": self.timeout_spinbox.value(),
             "silence_duration": self.silence_duration_spinbox.value(),
-            "silence_threshold": self.silence_threshold_spinbox.value()
+            "silence_threshold": self.silence_threshold_spinbox.value(),
+            "coqui_model": getattr(self, "selected_coqui_model", self.model_combo.currentText() if hasattr(self, "model_combo") else None),
+            "coqui_speaker": getattr(self, "selected_coqui_speaker", self.speaker_combo.currentText() if hasattr(self, "speaker_combo") else None),
+            "eq_visualizer": self.eq_selector.currentText(),
+            "tts_streaming": self.streaming_checkbox.isChecked()
         }
         
         self.current_settings = settings
         self.settings_changed.emit(settings)
         self.accept()
+        
+        # --- NEW: Lock in model and speaker ---
+        # Assuming you have access to your TTS service here:
+        if hasattr(self, "coqui_service") and self.selected_coqui_model:
+            self.coqui_service.load_model(self.selected_coqui_model)
+            if self.selected_coqui_speaker:
+                self.coqui_service.set_voice(self.selected_coqui_speaker)
         
     def get_settings(self) -> dict:
         """Get current settings"""
@@ -653,4 +885,16 @@ class VoiceSettingsDialog(QDialog):
         if "silence_threshold" in settings:
             self.silence_threshold_spinbox.setValue(float(settings["silence_threshold"]))
             # Update sensitivity indicator
-            self.on_silence_threshold_changed(float(settings["silence_threshold"])) 
+            self.on_silence_threshold_changed(float(settings["silence_threshold"]))
+            
+        if "tts_streaming" in settings:
+            self.streaming_checkbox.setChecked(settings["tts_streaming"])
+
+    def on_tts_settings_changed(self, settings):
+        # ... other settings ...
+        model = settings.get("coqui_model")
+        speaker = settings.get("coqui_speaker")
+        if model:
+            self.main_tts_service.load_model(model)
+            if speaker:
+                self.main_tts_service.set_voice(speaker) 

@@ -19,6 +19,7 @@ from pyside_chat.utils.message_formatter import MessageFormatter
 from pyside_chat.utils.streaming_handler import StreamingHandler
 from pyside_chat.utils.Logging.Custom_Logger import CustomLogger
 from pyside_chat.services.Voice_STT_TTS_SERVICES.voice_service import VoiceService
+from Testing.voice_ring_animation import CircleEQWidget  # or BarEQWidget, etc.
 
 logger = CustomLogger.get_logger(__name__)
 
@@ -34,6 +35,7 @@ class ChatTab(QWidget):
     new_conversation_requested = Signal() # Emitted when new conversation is requested
     append_response_signal = Signal(str, object)  # chunk, model_name
     speak_text_requested = Signal(str)  # Emitted when TTS is requested
+    message_edited = Signal(int, str)  # Emitted when a message is edited
     
     def __init__(self, parent=None, conversation_manager=None, summarization_service=None):
         super().__init__(parent)
@@ -43,10 +45,11 @@ class ChatTab(QWidget):
         self.current_conversation_file = None
 
         # Initialize voice service and settings FIRST
-        self.voice_service = VoiceService()
+        from pyside_chat.services.Voice_STT_TTS_SERVICES.voice_service_wrapper import VoiceServiceWrapper
+        self.voice_service = VoiceServiceWrapper(use_separate_process=True)
         self.voice_settings = {
             "stt_api": "Vosk",  # Only Vosk is supported
-            "tts_api": "Google TTS",
+            "tts_api": "Coqui TTS",
             "tts_voice": "en",
             "auto_speak": True,
             "voice_speed": 2,  # Faster default speed
@@ -218,6 +221,8 @@ class ChatTab(QWidget):
         self.chat_display = QTextEdit()
         self.chat_display.setReadOnly(True)
         self.chat_display.setLineWrapMode(QTextEdit.WidgetWidth)
+        self.chat_display.setMouseTracking(True)  # Enable mouse tracking for hover events
+        self.chat_display.mouseMoveEvent = self.chat_display_mouse_move_event
         self.chat_display.setStyleSheet("""
             QTextEdit {
                 background-color: #1e1e1e;
@@ -241,6 +246,109 @@ class ChatTab(QWidget):
         scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         
         parent.addWidget(scroll_area)
+        
+        # Initialize hover state
+        self.hover_message_index = None
+        self.edit_button_widget = None
+        
+    def chat_display_mouse_move_event(self, event):
+        """Handle mouse move events to show/hide edit buttons"""
+        # Call the original mouseMoveEvent
+        super(self.chat_display.__class__, self.chat_display).mouseMoveEvent(event)
+        
+        # Check if we're hovering over a user message
+        cursor = self.chat_display.cursorForPosition(event.pos())
+        block = cursor.block()
+        block_text = block.text()
+        
+        print(f"Mouse position: {event.pos()}")
+        print(f"Block text: {block_text[:100]}...")  # First 100 chars
+        
+        # Check if this block contains a user message by looking for "You:" at the start
+        if block_text.strip().startswith("You:"):
+            print("Found user message block")
+            # Find the corresponding message index by counting user messages
+            if hasattr(self, 'streaming_handler'):
+                user_message_count = 0
+                target_message_index = None
+                
+                for i, msg in enumerate(self.streaming_handler.messages):
+                    if msg['sender'] == 'You' and not msg['is_streaming']:
+                        # Check if this is the message we're hovering over
+                        # We'll use a simple approach: count user messages from the start
+                        if user_message_count == 0:  # First user message
+                            target_message_index = i
+                            break
+                        user_message_count += 1
+                
+                if target_message_index is not None:
+                    print(f"Found user message at index {target_message_index}")
+                    if self.hover_message_index != target_message_index:
+                        self.hover_message_index = target_message_index
+                        self.show_edit_button(event.pos(), target_message_index)
+                else:
+                    print("Could not determine message index")
+                    self.hide_edit_button()
+            else:
+                print("No streaming handler available")
+                self.hide_edit_button()
+        else:
+            print("Not a user message block")
+            self.hide_edit_button()
+            
+    def show_edit_button(self, pos, message_index):
+        """Show edit button at the right edge of the chat area, aligned with the mouse Y position"""
+        print(f"Creating edit button for message {message_index}")
+        self.hide_edit_button()  # Hide any existing button
+        
+        from PySide6.QtWidgets import QPushButton
+        from PySide6.QtCore import Qt
+        
+        self.edit_button_widget = QPushButton("✏️", self.chat_display)
+        self.edit_button_widget.setFixedSize(30, 30)
+        self.edit_button_widget.setToolTip("Edit message")
+        self.edit_button_widget.setStyleSheet("""
+            QPushButton {
+                background-color: #0078d4;
+                color: #ffffff;
+                border: none;
+                border-radius: 15px;
+                font-size: 14px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #106ebe;
+            }
+            QPushButton:pressed {
+                background-color: #005a9e;
+            }
+        """)
+        self.edit_button_widget.clicked.connect(lambda: self.edit_message_at_index(message_index))
+        
+        # Position the button at the right edge, aligned with the mouse Y position
+        button_x = self.chat_display.viewport().width() - self.edit_button_widget.width() - 10
+        button_y = pos.y() - self.edit_button_widget.height() // 2
+        print(f"Positioning button at ({button_x}, {button_y}) (right edge, mouse y)")
+        self.edit_button_widget.move(button_x, button_y)
+        self.edit_button_widget.show()
+        self.edit_button_widget.raise_()
+        print("Edit button should now be visible at the right edge, aligned with mouse")
+        
+    def hide_edit_button(self):
+        """Hide the edit button"""
+        if self.edit_button_widget:
+            print("Hiding edit button")
+            self.edit_button_widget.hide()
+            self.edit_button_widget.deleteLater()
+            self.edit_button_widget = None
+        self.hover_message_index = None
+        
+    def edit_message_at_index(self, message_index):
+        """Edit the message at the specified index"""
+        if hasattr(self, 'streaming_handler') and 0 <= message_index < len(self.streaming_handler.messages):
+            message = self.streaming_handler.messages[message_index]
+            if message['sender'] == 'You':
+                self.show_message_edit_dialog(message_index, message['content'])
         
     def setup_controls(self, parent):
         """Setup the controls area"""
@@ -624,8 +732,9 @@ class ChatTab(QWidget):
         self.voice_service.voice_processing_started.connect(self.on_voice_processing_started)
         self.voice_service.voice_processing_finished.connect(self.on_voice_processing_finished)
         
-        # Connect audio level signal
-        self.voice_service.recording_service.audio_level_changed.connect(self.on_audio_level_changed)
+        # Connect audio level signal (only if recording service is available)
+        if hasattr(self.voice_service, 'recording_service') and self.voice_service.recording_service:
+            self.voice_service.recording_service.audio_level_changed.connect(self.on_audio_level_changed)
         
         # Connect enter key in message input
         self.message_input.installEventFilter(self)
@@ -644,6 +753,9 @@ class ChatTab(QWidget):
         
         # Connect TTS signal
         self.speak_text_requested.connect(self.voice_service.speak_text)
+        
+        # Connect message edited signal
+        self.message_edited.connect(self.on_message_edited)
         
     def eventFilter(self, obj, event):
         """Handle key events in message input"""
@@ -747,14 +859,12 @@ class ChatTab(QWidget):
         # TODO: Show error message to user
     
     def on_tts_started(self):
-        """Handle TTS started"""
-        logger.debug("TTS started")
-        # TODO: Show TTS indicator in UI
+        if hasattr(self, 'chat_display'):
+            self.chat_display.hide()
     
     def on_tts_finished(self):
-        """Handle TTS finished"""
-        logger.debug("TTS finished")
-        # TODO: Hide TTS indicator in UI
+        if hasattr(self, 'chat_display'):
+            self.chat_display.show()
     
     def on_tts_error(self, error: str):
         """Handle TTS error"""
@@ -799,6 +909,13 @@ class ChatTab(QWidget):
     def on_audio_level_changed(self, audio_level: float):
         """Handle audio level changes"""
         try:
+            # Check if recording service is available
+            if not hasattr(self.voice_service, 'recording_service') or not self.voice_service.recording_service:
+                # Fallback for process manager mode
+                self.audio_level_label.setText("🎤 Recording...")
+                self.audio_level_meter.setValue(int(audio_level * 100))
+                return
+            
             # Convert to dB
             db_level = self.voice_service.recording_service.audio_level_to_db(audio_level)
             
@@ -874,8 +991,10 @@ class ChatTab(QWidget):
     def speak_ai_response(self, text: str):
         """Trigger TTS for AI response"""
         if self.voice_mode and self.voice_settings.get("auto_speak", True):
-            logger.debug(f"Speaking AI response: {text[:50]}...")
-            self.speak_text_requested.emit(text)
+            from pyside_chat.utils.message_formatter import MessageFormatter
+            plain_text = MessageFormatter.to_plain_text(text)
+            logger.debug(f"Speaking AI response (plain): {plain_text[:50]}...")
+            self.speak_text_requested.emit(plain_text)
     
     def open_voice_settings(self):
         """Open the voice settings dialog"""
@@ -1214,3 +1333,130 @@ class ChatTab(QWidget):
             if hasattr(self.input_layout, 'removeWidget'):
                 self.input_layout.removeWidget(self.message_input)
                 self.input_layout.removeWidget(self.send_button)
+
+    def open_tts_settings(self):
+        from pyside_chat.ui.Widgets.voice_settings_dialog import VoiceSettingsDialog
+        dialog = VoiceSettingsDialog(self)
+        # Connect the settings_changed signal to a handler that updates the main TTS service
+        dialog.settings_changed.connect(self.on_tts_settings_changed)
+        dialog.exec()
+
+    def on_tts_settings_changed(self, settings):
+        # Update the main TTS service with the selected model and speaker
+        model = settings.get("coqui_model")
+        speaker = settings.get("coqui_speaker")
+        if hasattr(self, "tts_service") and model:
+            self.tts_service.load_model(model)
+            if speaker:
+                self.tts_service.set_voice(speaker)
+
+    def show_message_edit_dialog(self, message_index: int, current_content: str):
+        """Show dialog to edit a message"""
+        from PySide6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QTextEdit, QPushButton, QLabel
+        
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Edit Message")
+        dialog.setModal(True)
+        dialog.setMinimumSize(400, 200)
+        
+        layout = QVBoxLayout(dialog)
+        
+        # Label
+        label = QLabel("Edit your message:")
+        layout.addWidget(label)
+        
+        # Text editor
+        text_edit = QTextEdit()
+        text_edit.setPlainText(current_content)
+        text_edit.setMaximumHeight(100)
+        layout.addWidget(text_edit)
+        
+        # Buttons
+        button_layout = QHBoxLayout()
+        
+        save_button = QPushButton("Save")
+        save_button.clicked.connect(lambda: self.save_message_edit(dialog, message_index, text_edit.toPlainText()))
+        button_layout.addWidget(save_button)
+        
+        cancel_button = QPushButton("Cancel")
+        cancel_button.clicked.connect(dialog.reject)
+        button_layout.addWidget(cancel_button)
+        
+        layout.addLayout(button_layout)
+        
+        # Style the dialog
+        dialog.setStyleSheet("""
+            QDialog {
+                background-color: #2d2d2d;
+                color: #ffffff;
+            }
+            QLabel {
+                color: #ffffff;
+                font-size: 14px;
+            }
+            QTextEdit {
+                background-color: #1e1e1e;
+                color: #ffffff;
+                border: 1px solid #555;
+                border-radius: 5px;
+                padding: 8px;
+                font-family: 'Segoe UI', Arial, sans-serif;
+                font-size: 14px;
+            }
+            QPushButton {
+                background-color: #0078d4;
+                color: #ffffff;
+                border: none;
+                border-radius: 4px;
+                padding: 8px 16px;
+                font-size: 12px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #106ebe;
+            }
+            QPushButton:pressed {
+                background-color: #005a9e;
+            }
+        """)
+        
+        cancel_button.setStyleSheet("""
+            QPushButton {
+                background-color: #555;
+                color: #ffffff;
+                border: none;
+                border-radius: 4px;
+                padding: 8px 16px;
+                font-size: 12px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #666;
+            }
+            QPushButton:pressed {
+                background-color: #444;
+            }
+        """)
+        
+        dialog.exec()
+        
+    def save_message_edit(self, dialog, message_index: int, new_content: str):
+        """Save the edited message"""
+        if new_content.strip():
+            if hasattr(self, 'streaming_handler'):
+                success = self.streaming_handler.edit_message(message_index, new_content.strip())
+                if success:
+                    # Emit signal to notify parent about the edit
+                    self.message_edited.emit(message_index, new_content.strip())
+                    dialog.accept()
+                else:
+                    from PySide6.QtWidgets import QMessageBox
+                    QMessageBox.warning(self, "Error", "Failed to edit message.")
+        else:
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.warning(self, "Error", "Message cannot be empty.")
+
+    def on_message_edited(self, message_index: int, new_content: str):
+        """Handle message edit"""
+        if hasattr(self, 'streaming_handler'):
+            self.streaming_handler.edit_message(message_index, new_content)

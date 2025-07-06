@@ -57,12 +57,7 @@ class DependencyInstaller:
                 "command": ["pip", "install", "edge-tts>=6.1.9"],
                 "skip_if_failed": False
             },
-            {
-                "name": "gtts",
-                "description": "Google Text-to-Speech",
-                "command": ["pip", "install", "gtts>=2.4.0"],
-                "skip_if_failed": False
-            },
+
             {
                 "name": "playsound",
                 "description": "Audio playback for TTS",
@@ -546,7 +541,7 @@ class DependencyInstaller:
             print(f"   • Core functionality is ready! You can run the application.")
             if "Coqui TTS" in self.failed_stages:
                 print(f"   • Coqui TTS failed - run: python fix_coqui_tts.py")
-                print(f"   • Other TTS options (Edge TTS, Google TTS) work but require internet")
+                print(f"   • Other TTS options (Edge TTS) work but require internet")
             if "spellchecker-setup" in self.failed_stages:
                 print(f"   • Spellchecker: Download enchant from https://www.abisource.com/projects/enchant/")
                 print(f"   • Spellchecker will use fallback mode until enchant is installed")

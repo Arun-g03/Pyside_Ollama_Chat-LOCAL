@@ -6,6 +6,13 @@ from pyside_chat.utils.Logging.Custom_Logger import CustomLogger
 
 logger = CustomLogger.get_logger(__name__)
 
+# Import Coqui TTS service
+try:
+    from .coqui_tts_service import CoquiTTSService
+    COQUI_AVAILABLE = True
+except ImportError:
+    COQUI_AVAILABLE = False
+
 class TTSService(QObject):
     """Text-to-Speech service for converting text to speech"""
     # Signals
@@ -20,8 +27,20 @@ class TTSService(QObject):
         self.audio_output = None
         self.current_audio_file = None
         self.current_voice = "en"
-        self.current_api = "Google TTS"
+        self.current_api = "Coqui TTS"
         self.speech_speed = 1.0  # Speed multiplier (1.0 = normal, 1.5 = faster, 0.5 = slower)
+        
+        # Initialize Coqui TTS service if available
+        self.coqui_service = None
+        if COQUI_AVAILABLE:
+            try:
+                self.coqui_service = CoquiTTSService()
+                # Connect Coqui TTS signals
+                self.coqui_service.tts_started.connect(self.tts_started.emit)
+                self.coqui_service.tts_finished.connect(self.tts_finished.emit)
+                self.coqui_service.tts_error.connect(self.tts_error.emit)
+            except Exception as e:
+                logger.error(f"Failed to initialize Coqui TTS service: {e}")
 
     def _check_availability(self) -> bool:
         try:
@@ -39,46 +58,49 @@ class TTSService(QObject):
         try:
             logger.debug(f"Converting text to speech: {text[:50]}...")
             self.tts_started.emit()
-            self._speak_with_gtts(text)
+            
+            # Use Coqui TTS if available
+            if self.coqui_service and self.coqui_service.is_available():
+                # Use streaming by default for Coqui TTS
+                self.coqui_service.speak_text(text, use_streaming=True)
+            else:
+                self._speak_with_espeak(text)
         except Exception as e:
             logger.error(f"TTS conversion failed: {e}")
             self.tts_error.emit(f"TTS conversion failed: {str(e)}")
 
-    def _speak_with_gtts(self, text: str):
+    def speak_text_streaming(self, text: str):
+        """Convert text to speech using streaming synthesis (Coqui TTS only)"""
         try:
-            from gtts import gTTS
-            import playsound
-            audio_folder = os.path.join(os.getcwd(), "User_history", "audio")
-            os.makedirs(audio_folder, exist_ok=True)
-            import datetime
-            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"tts_output_{timestamp}.mp3"
-            audio_file_path = os.path.join(audio_folder, filename)
+            logger.debug(f"Converting text to speech with streaming: {text[:50]}...")
+            self.tts_started.emit()
             
-            # Use faster speech settings
-            tts = gTTS(text=text, lang=self.current_voice, slow=False)
-            tts.save(audio_file_path)
-            
-            # Play the audio and emit finished signal immediately after starting playback
-            playsound.playsound(audio_file_path, block=False)
-            
-            # Calculate estimated duration based on text length and speed setting
-            word_count = len(text.split())
-            base_duration_per_word = 0.24  # Base duration per word
-            estimated_duration = max(0.5, word_count * base_duration_per_word / self.speech_speed)
-            
-            # Clean up file after estimated duration + buffer
-            QTimer.singleShot(int(estimated_duration * 1000) + 3000, lambda: self._cleanup_audio_file(audio_file_path))
-            # Emit finished signal after estimated duration
-            QTimer.singleShot(int(estimated_duration * 1000) + 200, self.tts_finished.emit)
-            
-            logger.debug(f"TTS started with estimated duration: {estimated_duration:.1f}s for {word_count} words")
-        except ImportError:
-            logger.error("gTTS or playsound not available, falling back to eSpeak")
-            self._speak_with_espeak(text)
+            # Use Coqui TTS with streaming if available
+            if self.coqui_service and self.coqui_service.is_available():
+                self.coqui_service.speak_text(text, use_streaming=True)
+            else:
+                # Fall back to non-streaming for other TTS providers
+                self.speak_text(text)
         except Exception as e:
-            logger.error(f"Google TTS failed: {e}")
-            self._speak_with_espeak(text)
+            logger.error(f"Streaming TTS conversion failed: {e}")
+            self.tts_error.emit(f"Streaming TTS conversion failed: {str(e)}")
+    
+    def speak_text_non_streaming(self, text: str):
+        """Convert text to speech using non-streaming synthesis"""
+        try:
+            logger.debug(f"Converting text to speech (non-streaming): {text[:50]}...")
+            self.tts_started.emit()
+            
+            # Use Coqui TTS if available
+            if self.coqui_service and self.coqui_service.is_available():
+                self.coqui_service.speak_text(text, use_streaming=False)
+            else:
+                self._speak_with_espeak(text)
+        except Exception as e:
+            logger.error(f"TTS conversion failed: {e}")
+            self.tts_error.emit(f"TTS conversion failed: {str(e)}")
+
+
 
     def _speak_with_espeak(self, text: str):
         try:
@@ -112,19 +134,72 @@ class TTSService(QObject):
         self.tts_finished.emit()
 
     def stop_playback(self):
-        if self.media_player:
-            self.media_player.stop()
-        self.tts_finished.emit()
+        # Stop Coqui TTS if using it
+        if self.coqui_service:
+            self.coqui_service.stop_playback()
+        else:
+            if self.media_player:
+                self.media_player.stop()
+            self.tts_finished.emit()
 
     def update_api(self, api_name: str):
         logger.debug(f"TTS API updated to: {api_name}")
-        # TODO: Implement API switching logic
+        self.current_api = api_name
+        
+        # Update Coqui TTS settings if available
+        if self.coqui_service:
+            self.coqui_service.set_speed(self.speech_speed)
 
     def update_voice(self, voice_name: str):
         logger.debug(f"TTS voice updated to: {voice_name}")
         self.current_voice = voice_name
+        
+        # Update Coqui TTS voice if available
+        if self.coqui_service:
+            self.coqui_service.set_voice(voice_name)
 
     def update_speed(self, speed: float):
         """Update speech speed (1.0 = normal, 1.5 = faster, 0.5 = slower)"""
         self.speech_speed = max(0.5, min(3.0, speed))  # Clamp between 0.5x and 3.0x speed
         logger.debug(f"TTS speed updated to: {self.speech_speed}x")
+        
+        # Update Coqui TTS speed if using Coqui
+        if self.current_api == "Coqui TTS" and self.coqui_service:
+            self.coqui_service.set_speed(self.speech_speed)
+    
+    def is_coqui_available(self) -> bool:
+        """Check if Coqui TTS is available"""
+        return COQUI_AVAILABLE and self.coqui_service and self.coqui_service.is_available()
+    
+    def get_coqui_models(self) -> list:
+        """Get available Coqui TTS models"""
+        if self.coqui_service:
+            return self.coqui_service.get_available_models()
+        return []
+    
+    def get_coqui_voices(self) -> list:
+        """Get available Coqui TTS voices for current model"""
+        if self.coqui_service:
+            return self.coqui_service.get_available_voices()
+        return []
+    
+    def get_coqui_model_info(self) -> dict:
+        """Get information about the current Coqui TTS model"""
+        if self.coqui_service:
+            return self.coqui_service.get_current_model_info()
+        return {}
+    
+    def load_coqui_model(self, model_name: str) -> bool:
+        """Load a specific Coqui TTS model"""
+        if self.coqui_service:
+            return self.coqui_service.load_model(model_name)
+        return False
+    
+    def set_coqui_model(self, model_name: str) -> bool:
+        """Set the Coqui TTS model to use"""
+        if self.coqui_service and self.current_api == "Coqui TTS":
+            success = self.coqui_service.load_model(model_name)
+            if success:
+                logger.info(f"Set Coqui TTS model to: {model_name}")
+            return success
+        return False

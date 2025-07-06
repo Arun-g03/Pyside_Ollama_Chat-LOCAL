@@ -4,7 +4,7 @@ Handles message formatting, code highlighting, and HTML processing.
 """
 
 import re
-from html import escape
+from html import escape, unescape
 from pygments import highlight
 from pygments.lexers import guess_lexer, get_lexer_by_name
 from pygments.formatters import HtmlFormatter
@@ -328,4 +328,35 @@ class MessageFormatter:
             main_answer = re.sub(r'<think>.*?</think>', '', message, flags=re.DOTALL | re.IGNORECASE).strip()
             return thoughts, main_answer
         else:
-            return None, message 
+            return None, message
+    
+    @staticmethod
+    def to_plain_text(message: str) -> str:
+        """
+        Convert a message with markdown, code, and HTML to plain text for TTS.
+        Removes formatting, code blocks, and HTML tags.
+        """
+        import re
+        # Remove code blocks (```...```)
+        message = re.sub(r'```[\s\S]*?```', '', message)
+        # Remove inline code (`...`)
+        message = re.sub(r'`[^`]+`', '', message)
+        # Remove markdown bold/italic/strikethrough
+        message = re.sub(r'\*\*([^*]+)\*\*', r'\1', message)
+        message = re.sub(r'\*([^*]+)\*', r'\1', message)
+        message = re.sub(r'__([^_]+)__', r'\1', message)
+        message = re.sub(r'_([^_]+)_', r'\1', message)
+        message = re.sub(r'~~([^~]+)~~', r'\1', message)
+        # Remove markdown headers, lists, blockquotes
+        message = re.sub(r'^#+\s*', '', message, flags=re.MULTILINE)
+        message = re.sub(r'^\s*[-*•]\s+', '', message, flags=re.MULTILINE)
+        message = re.sub(r'^>\s*', '', message, flags=re.MULTILINE)
+        # Remove horizontal rules
+        message = re.sub(r'^---$', '', message, flags=re.MULTILINE)
+        # Remove HTML tags
+        message = re.sub(r'<[^>]+>', '', message)
+        # Unescape HTML entities
+        message = unescape(message)
+        # Collapse multiple newlines and strip
+        message = re.sub(r'\n+', '\n', message)
+        return message.strip() 

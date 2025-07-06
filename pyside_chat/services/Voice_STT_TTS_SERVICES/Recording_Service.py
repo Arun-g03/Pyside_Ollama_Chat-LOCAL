@@ -28,9 +28,18 @@ class RecordingService(QObject):
         self.stream = None
         self.speech_detected = False  # Track if speech was detected
         self.silence_threshold = 0.005  # Balanced threshold for good sensitivity
-        self.silence_duration = 2.0
+        self.silence_duration = 3.0  # Increased from 2.0 to 3.0 seconds
         self.silence_timer = None
         self.last_audio_level = 0.0
+        
+        # Improved speech detection parameters
+        self.speech_detection_threshold = 0.001  # Lower threshold for initial speech detection
+        self.min_speech_duration = 0.5  # Minimum speech duration before considering it valid
+        self.speech_start_time = None
+        self.last_speech_time = None
+        self.consecutive_silence_frames = 0
+        self.max_consecutive_silence_frames = 50  # Allow more silence frames before stopping
+        
         try:
             self.audio = pyaudio.PyAudio()
             self.available = self._check_availability()
@@ -88,38 +97,75 @@ class RecordingService(QObject):
                 input=True,
                 frames_per_buffer=1024
             )
-            logger.debug("Recording audio with audio gate...")
-            speech_detection_threshold = max(0.001, self.silence_threshold * 0.5)
+            logger.debug("Recording audio with improved speech detection...")
+            
             speech_started = False
             silence_start_time = None
+            frame_count = 0
+            
             while self.is_recording:
                 try:
                     data = self.stream.read(1024, exception_on_overflow=False)
                     self.frames.append(data)
                     audio_level = self._calculate_audio_level(data)
                     self.last_audio_level = audio_level
+                    frame_count += 1
+                    
                     try:
                         self.audio_level_changed.emit(audio_level)
                     except Exception:
                         pass
+                    
+                    # Improved speech detection logic
                     if not speech_started:
-                        if audio_level > speech_detection_threshold:
+                        # Wait for initial speech detection
+                        if audio_level > self.speech_detection_threshold:
                             speech_started = True
                             self.speech_detected = True
+                            self.speech_start_time = time.time()
+                            self.last_speech_time = time.time()
                             silence_start_time = None
+                            self.consecutive_silence_frames = 0
+                            logger.debug("Speech detected, starting recording")
                     else:
+                        # Speech has been detected, now monitor for continuation
                         if audio_level > self.silence_threshold:
+                            # Speech is continuing
+                            self.last_speech_time = time.time()
                             silence_start_time = None
+                            self.consecutive_silence_frames = 0
                         else:
+                            # Potential silence
+                            self.consecutive_silence_frames += 1
+                            
                             if silence_start_time is None:
                                 silence_start_time = time.time()
-                            elif time.time() - silence_start_time >= self.silence_duration:
-                                logger.debug("Silence timeout reached after speech, stopping recording automatically")
+                            
+                            # Check if we should stop recording
+                            silence_duration = time.time() - silence_start_time
+                            speech_duration = time.time() - self.speech_start_time
+                            
+                            # Only stop if:
+                            # 1. We have enough speech (minimum duration)
+                            # 2. Silence has been continuous for the required duration
+                            # 3. We haven't had recent speech activity
+                            if (speech_duration >= self.min_speech_duration and 
+                                silence_duration >= self.silence_duration and
+                                self.consecutive_silence_frames >= 30):  # At least 30 frames of silence
+                                
+                                logger.debug(f"Stopping recording: speech={speech_duration:.1f}s, silence={silence_duration:.1f}s")
                                 try:
                                     self.recording_auto_stopped.emit()
                                 except Exception:
                                     pass
                                 break
+                            
+                            # Reset silence counter if we detect any speech activity
+                            if audio_level > self.speech_detection_threshold:
+                                silence_start_time = None
+                                self.consecutive_silence_frames = 0
+                                self.last_speech_time = time.time()
+                                
                 except Exception as e:
                     logger.error(f"Error reading audio data: {e}")
                     break
@@ -165,6 +211,25 @@ class RecordingService(QObject):
         else:
             self.silence_threshold = 0.0
         logger.debug(f"Audio gate {'enabled' if enabled else 'disabled'}")
+    
+    def set_speech_detection_parameters(self, silence_duration: float = 3.0, 
+                                      silence_threshold: float = 0.005,
+                                      min_speech_duration: float = 0.5):
+        """Configure speech detection parameters for better user experience"""
+        self.silence_duration = max(1.0, silence_duration)  # Minimum 1 second
+        self.silence_threshold = max(0.001, silence_threshold)  # Minimum threshold
+        self.min_speech_duration = max(0.2, min_speech_duration)  # Minimum 0.2 seconds
+        logger.debug(f"Speech detection parameters updated: silence_duration={self.silence_duration}s, "
+                    f"silence_threshold={self.silence_threshold}, min_speech_duration={self.min_speech_duration}s")
+    
+    def get_speech_detection_parameters(self) -> dict:
+        """Get current speech detection parameters"""
+        return {
+            'silence_duration': self.silence_duration,
+            'silence_threshold': self.silence_threshold,
+            'min_speech_duration': self.min_speech_duration,
+            'speech_detection_threshold': self.speech_detection_threshold
+        }
 
     def cleanup(self):
         try:

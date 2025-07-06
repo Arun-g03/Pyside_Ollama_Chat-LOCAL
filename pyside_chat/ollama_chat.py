@@ -163,7 +163,7 @@ class OllamaChat(QMainWindow):
         self.setStatusBar(self.status_bar)
         self.status_var = PromptFormatter.format_status_message("ready")
         self.status_bar.showMessage(self.status_var)
-        
+    
         # Set chat tab reference in controller for TTS functionality
         self.chat_controller.set_chat_tab_reference(self.chat_tab)
     

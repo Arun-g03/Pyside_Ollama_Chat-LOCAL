@@ -45,11 +45,12 @@ class VoiceService(QObject):
     voice_processing_started = Signal() # Emitted when voice processing starts
     voice_processing_finished = Signal() # Emitted when voice processing finishes
     
-    def __init__(self):
+    def __init__(self, response_queue=None):
         super().__init__()
         self.stt_service = STTService()
         self.tts_service = TTSService()
         self.recording_service = RecordingService()
+        self.response_queue = response_queue
         
         # Connect signals
         self.stt_service.text_received.connect(self._on_stt_text_received)
@@ -62,6 +63,12 @@ class VoiceService(QObject):
         self.recording_service.recording_error.connect(self.recording_error.emit)
         self.recording_service.recording_auto_stopped.connect(self._on_recording_auto_stopped)
         
+        # Connect recording signals to response queue forwarding
+        if self.response_queue:
+            self.recording_service.recording_started.connect(self._forward_recording_started)
+            self.recording_service.recording_stopped.connect(self._forward_recording_stopped)
+            self.recording_service.recording_error.connect(self._forward_recording_error)
+        
         # State tracking
         self.is_recording = False
         self.is_playing_tts = False
@@ -69,9 +76,10 @@ class VoiceService(QObject):
         self.continuous_voice_mode = False  # Track if continuous voice mode is enabled
         
         # Recording settings
-        self.recording_timeout = 10.0  # Default 10 seconds (fallback)
-        self.silence_threshold = 0.01  # Audio level threshold for silence detection
-        self.silence_duration = 4.0    # Seconds of silence before stopping
+        self.recording_timeout = 15.0  # Increased from 10.0 to 15.0 seconds (fallback)
+        self.silence_threshold = 0.005  # Lowered from 0.01 for better sensitivity
+        self.silence_duration = 3.0    # Reduced from 4.0 to 3.0 seconds for better responsiveness
+        self.min_speech_duration = 0.5  # Minimum speech duration before considering valid
         self.recording_timer = QTimer()
         self.recording_timer.setSingleShot(True)
         self.recording_timer.timeout.connect(self._on_recording_timeout)
@@ -101,9 +109,12 @@ class VoiceService(QObject):
         try:
             self.is_recording = True
             
-            # Update recording service with audio gate settings
-            self.recording_service.silence_threshold = self.silence_threshold
-            self.recording_service.silence_duration = self.silence_duration
+            # Update recording service with improved speech detection settings
+            self.recording_service.set_speech_detection_parameters(
+                silence_duration=self.silence_duration,
+                silence_threshold=self.silence_threshold,
+                min_speech_duration=self.min_speech_duration
+            )
             
             self.recording_service.start_recording()
             
@@ -139,6 +150,14 @@ class VoiceService(QObject):
             if audio_file and os.path.exists(audio_file) and speech_detected:
                 self.is_processing_voice = True
                 self.voice_processing_started.emit()
+                
+                # Forward to response queue if in separate process
+                if self.response_queue:
+                    self.response_queue.put({
+                        "type": "voice_processing_started",
+                        "data": None
+                    })
+                
                 self.stt_service.convert_audio_to_text(audio_file)
             else:
                 logger.info("No speech detected during recording. Doing nothing.")
@@ -167,9 +186,22 @@ class VoiceService(QObject):
         self.is_processing_voice = False
         self.voice_processing_finished.emit()
         
+        # Forward to response queue if in separate process
+        if self.response_queue:
+            self.response_queue.put({
+                "type": "voice_processing_finished",
+                "data": None
+            })
+        
         # Only emit if text is not empty or whitespace
         if text.strip():
             self.voice_input_received.emit(text)
+            # Forward to response queue if in separate process
+            if self.response_queue:
+                self.response_queue.put({
+                    "type": "voice_input_received",
+                    "data": text
+                })
         else:
             logger.info("STT result was empty, skipping message emission.")
         
@@ -184,6 +216,17 @@ class VoiceService(QObject):
         self.voice_processing_finished.emit()
         self.voice_input_error.emit(error)
         
+        # Forward to response queue if in separate process
+        if self.response_queue:
+            self.response_queue.put({
+                "type": "voice_processing_finished",
+                "data": None
+            })
+            self.response_queue.put({
+                "type": "voice_input_error",
+                "data": error
+            })
+        
         # If continuous voice mode is enabled, restart recording even after error
         if self.continuous_voice_mode:
             logger.debug("Continuous voice mode enabled, restarting recording after error")
@@ -194,27 +237,80 @@ class VoiceService(QObject):
         self.is_playing_tts = False
         logger.debug("TTS finished, resetting playing flag")
         self.tts_finished.emit()
+        
+        # Forward to response queue if in separate process
+        if self.response_queue:
+            self.response_queue.put({
+                "type": "tts_finished",
+                "data": None
+            })
     
     def _on_tts_error(self, error: str):
         """Handle TTS error"""
         self.is_playing_tts = False
         logger.error(f"TTS error: {error}")
         self.tts_error.emit(error)
+        
+        # Forward to response queue if in separate process
+        if self.response_queue:
+            self.response_queue.put({
+                "type": "tts_error",
+                "data": error
+            })
     
     def speak_text(self, text: str):
         """Convert text to speech and play it"""
         if self.is_playing_tts:
-            logger.warning("TTS already in progress")
-            return
-            
+            logger.warning("TTS already in progress, stopping current playback")
+            self.stop_tts()
+        
         try:
             self.is_playing_tts = True
-            self.tts_service.speak_text(text)
-            logger.debug(f"TTS started for text: {text[:50]}...")
+            
+            # Check if streaming is enabled in settings
+            streaming_enabled = getattr(self, 'voice_settings', {}).get('tts_streaming', True)
+            
+            if streaming_enabled:
+                self.tts_service.speak_text_streaming(text)
+                logger.debug(f"Started streaming TTS for text: {text[:50]}...")
+            else:
+                self.tts_service.speak_text_non_streaming(text)
+                logger.debug(f"Started non-streaming TTS for text: {text[:50]}...")
+                
         except Exception as e:
             self.is_playing_tts = False
             logger.error(f"Failed to start TTS: {e}")
             self.tts_error.emit(f"Failed to start TTS: {str(e)}")
+    
+    def speak_text_streaming(self, text: str):
+        """Convert text to speech using streaming synthesis"""
+        if self.is_playing_tts:
+            logger.warning("TTS already in progress, stopping current playback")
+            self.stop_tts()
+        
+        try:
+            self.is_playing_tts = True
+            self.tts_service.speak_text_streaming(text)
+            logger.debug(f"Started streaming TTS for text: {text[:50]}...")
+        except Exception as e:
+            self.is_playing_tts = False
+            logger.error(f"Failed to start streaming TTS: {e}")
+            self.tts_error.emit(f"Failed to start streaming TTS: {str(e)}")
+    
+    def speak_text_non_streaming(self, text: str):
+        """Convert text to speech using non-streaming synthesis"""
+        if self.is_playing_tts:
+            logger.warning("TTS already in progress, stopping current playback")
+            self.stop_tts()
+        
+        try:
+            self.is_playing_tts = True
+            self.tts_service.speak_text_non_streaming(text)
+            logger.debug(f"Started non-streaming TTS for text: {text[:50]}...")
+        except Exception as e:
+            self.is_playing_tts = False
+            logger.error(f"Failed to start non-streaming TTS: {e}")
+            self.tts_error.emit(f"Failed to start non-streaming TTS: {str(e)}")
     
     def stop_tts(self):
         """Stop current TTS playback"""
@@ -231,12 +327,21 @@ class VoiceService(QObject):
         """Update voice service settings"""
         logger.debug(f"Updating voice service settings: {settings}")
         
+        # Store settings for later use
+        self.voice_settings = settings.copy()
+        
         # Update TTS service settings
         if "tts_api" in settings:
             self.tts_service.update_api(settings["tts_api"])
             
         if "tts_voice" in settings:
             self.tts_service.update_voice(settings["tts_voice"])
+            
+        # Handle Coqui TTS model and speaker settings
+        if "coqui_model" in settings and settings.get("tts_api") == "Coqui TTS":
+            self.tts_service.set_coqui_model(settings["coqui_model"])
+            if "coqui_speaker" in settings:
+                self.tts_service.update_voice(settings["coqui_speaker"])
             
         if "voice_speed" in settings:
             # Convert speed setting to TTS speed (1.0 = normal, higher = faster)
@@ -288,6 +393,46 @@ class VoiceService(QObject):
         """Set silence threshold (0-1)"""
         self.silence_threshold = max(0.001, min(0.1, threshold))  # Clamp between 0.001-0.1
         logger.debug(f"Silence threshold set to {self.silence_threshold}")
+    
+    def set_min_speech_duration(self, duration: float):
+        """Set minimum speech duration before considering valid"""
+        self.min_speech_duration = max(0.2, duration)
+        logger.debug(f"Minimum speech duration set to: {self.min_speech_duration}s")
+    
+    def get_min_speech_duration(self) -> float:
+        """Get minimum speech duration setting"""
+        return self.min_speech_duration
+    
+    def set_speech_detection_sensitivity(self, sensitivity: str):
+        """Set speech detection sensitivity (low, medium, high)"""
+        if sensitivity == "low":
+            self.silence_threshold = 0.008
+            self.silence_duration = 4.0
+            self.min_speech_duration = 0.8
+        elif sensitivity == "medium":
+            self.silence_threshold = 0.005
+            self.silence_duration = 3.0
+            self.min_speech_duration = 0.5
+        elif sensitivity == "high":
+            self.silence_threshold = 0.003
+            self.silence_duration = 2.5
+            self.min_speech_duration = 0.3
+        else:
+            logger.warning(f"Unknown sensitivity level: {sensitivity}, using medium")
+            self.silence_threshold = 0.005
+            self.silence_duration = 3.0
+            self.min_speech_duration = 0.5
+        
+        logger.debug(f"Speech detection sensitivity set to: {sensitivity}")
+    
+    def get_speech_detection_sensitivity(self) -> str:
+        """Get current speech detection sensitivity"""
+        if self.silence_threshold >= 0.008:
+            return "low"
+        elif self.silence_threshold <= 0.003:
+            return "high"
+        else:
+            return "medium"
     
     def set_audio_gate_enabled(self, enabled: bool):
         """Enable or disable audio gate detection"""
@@ -393,4 +538,36 @@ class VoiceService(QObject):
                 logger.error(f"Failed to delete audio file {file_info['filename']}: {e}")
         
         if deleted_count > 0:
-            logger.info(f"Cleaned up {deleted_count} audio files on startup") 
+            logger.info(f"Cleaned up {deleted_count} audio files on startup")
+    
+    def _forward_recording_started(self):
+        """Forward recording started signal to response queue"""
+        if self.response_queue:
+            self.response_queue.put({
+                "type": "recording_started",
+                "data": None
+            })
+    
+    def _forward_recording_stopped(self):
+        """Forward recording stopped signal to response queue"""
+        if self.response_queue:
+            self.response_queue.put({
+                "type": "recording_stopped",
+                "data": None
+            })
+    
+    def _forward_recording_error(self, error: str):
+        """Forward recording error signal to response queue"""
+        if self.response_queue:
+            self.response_queue.put({
+                "type": "recording_error",
+                "data": error
+            })
+    
+    def _forward_voice_processing_started(self):
+        """Forward voice processing started signal to response queue"""
+        if self.response_queue:
+            self.response_queue.put({
+                "type": "voice_processing_started",
+                "data": None
+            }) 

@@ -45,7 +45,7 @@ class STTService(QObject):
 
     def convert_audio_to_text(self, audio_file: str):
         try:
-            self._convert_with_vosk(audio_file)
+                self._convert_with_vosk(audio_file)
         except Exception as e:
             logger.error(f"STT conversion failed: {e}")
             self.error_occurred.emit(f"STT conversion failed: {str(e)}")

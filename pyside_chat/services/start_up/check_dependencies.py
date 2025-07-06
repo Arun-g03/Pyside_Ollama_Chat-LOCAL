@@ -80,7 +80,7 @@ class DependencyManager:
             ("requests", "HTTP Client"),
             ("pygments", "Syntax Highlighting"),
             ("edge_tts", "Edge TTS"),
-            ("gtts", "Google TTS"),
+    
             ("playsound", "Audio Playback"),
             ("pyttsx3", "Local TTS"),
             ("pygame", "Audio Playback"),

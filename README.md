@@ -410,7 +410,7 @@ For detailed documentation, see the `DOCUMENTATION/` folder:
 ### 🔊 **Multi-Platform Text-to-Speech**
 - **Edge TTS** (Microsoft) - Fast and natural, recommended
 - **Coqui TTS** - Advanced emotion control and multi-speaker support
-- **Google TTS** - High quality but slower
+
 - **pyttsx3** - Fast local TTS (more robotic)
 - **Audio Playback Controls** - Skip, pause, and volume control
 - **Voice Selection** - Choose from multiple voices per TTS engine
