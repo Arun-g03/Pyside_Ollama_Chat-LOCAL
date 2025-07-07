@@ -29,7 +29,7 @@ from pyside_chat.utils.Logging.Custom_Logger import CustomLogger
 # Import new refactored modules
 from pyside_chat.controllers.chat_controller import ChatController
 from pyside_chat.utils.prompts import PromptFormatter
-from pyside_chat.utils.logging_helpers import LoggingHelpers
+from pyside_chat.utils.Logging.logging_helpers import LoggingHelpers
 from pyside_chat.ui.styles.tab_styles import TabStyles
 
 logger = CustomLogger.get_logger(__name__)
@@ -141,7 +141,8 @@ class OllamaChat(QMainWindow):
         # Create and add tabs with reduced coupling
         self.chat_tab = ChatTab(
             conversation_manager=self.conversation_manager,
-            summarization_service=self.summarization_service
+            summarization_service=self.summarization_service,
+            config_manager=self.config_manager
         )
         self.model_tab = ModelTab()
         self.personality_tab = PersonalityTab()

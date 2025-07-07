@@ -35,8 +35,9 @@ class StreamingAudioPlayer(QThread):
     audio_chunk_ready = Signal(bytes)
     playback_finished = Signal()
     playback_error = Signal(str)
+    audio_level_changed = Signal(float)  # Emit audio level for EQ visualization
     
-    def __init__(self, sample_rate=22050, channels=1, chunk_size=1024):
+    def __init__(self, sample_rate=22050, channels=1, chunk_size=512):
         super().__init__()
         self.sample_rate = sample_rate
         self.channels = channels
@@ -45,6 +46,7 @@ class StreamingAudioPlayer(QThread):
         self.is_playing = False
         self.should_stop = False
         self.volume = 0.5  # Volume control (0.0 to 1.0)
+        self.last_audio_level_time = 0  # For throttling audio level emissions
         
         # PyAudio setup
         self.pyaudio = pyaudio.PyAudio()
@@ -103,6 +105,39 @@ class StreamingAudioPlayer(QThread):
             # Ensure values are in valid range
             audio_chunk = np.clip(audio_chunk, -1.0, 1.0)
             
+            # Calculate audio level for EQ visualization with more granular updates
+            # Process smaller chunks for more frequent analysis
+            chunk_size = len(audio_chunk)
+            segment_size = max(1, chunk_size // 16)  # Split into 16 smaller segments for much more frequent updates
+            
+            print(f"[TTS DEBUG] Processing chunk size: {chunk_size}, segment size: {segment_size}")
+            
+            for i in range(0, chunk_size, segment_size):
+                segment = audio_chunk[i:i + segment_size]
+                if len(segment) > 0:
+                    # Calculate multiple audio level metrics for better wave analysis
+                    rms_level = np.sqrt(np.mean(segment**2))  # RMS level
+                    peak_level = np.max(np.abs(segment))  # Peak level
+                    # Combine RMS and peak for more complete wave representation
+                    combined_level = (rms_level * 0.7 + peak_level * 0.3)
+                    
+                    # Amplify the audio level for better EQ visualization
+                    # Use much smaller amplification to get reasonable values
+                    amplified_level = combined_level * 2.0  # Reduced amplification
+                    
+                    print(f"[TTS DEBUG] Segment {i//segment_size}: RMS={rms_level:.4f}, Peak={peak_level:.4f}, Combined={combined_level:.4f}, Amplified={amplified_level:.4f}")
+                    
+                    # Emit audio level for EQ visualization
+                    self.audio_level_changed.emit(amplified_level)
+                    
+                    # Throttle updates to prevent overwhelming the UI
+                    current_time = time.time()
+                    if current_time - self.last_audio_level_time >= 0.01:  # 100 FPS for TTS
+                        self.last_audio_level_time = current_time
+                    else:
+                        # Small delay to prevent overwhelming
+                        time.sleep(0.001)
+            
             return audio_chunk
             
         except Exception as e:
@@ -147,6 +182,7 @@ class CoquiTTSService(QObject):
     model_loaded = Signal(str)
     voices_loaded = Signal(list)
     streaming_progress = Signal(int)  # Progress percentage for streaming
+    audio_level_changed = Signal(float)  # Audio level for EQ visualization
     
     def __init__(self):
         super().__init__()
@@ -375,6 +411,7 @@ class CoquiTTSService(QObject):
             self.streaming_player = StreamingAudioPlayer()
             self.streaming_player.playback_finished.connect(self._on_streaming_finished)
             self.streaming_player.playback_error.connect(self._on_streaming_error)
+            self.streaming_player.audio_level_changed.connect(self.audio_level_changed.emit)
             
             # Set volume to a reasonable level (0.5 = 50%)
             self.streaming_player.set_volume(0.5)

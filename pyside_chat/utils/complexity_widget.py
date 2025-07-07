@@ -3,7 +3,7 @@ from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout,
                                 QPushButton, QTextEdit, QGroupBox)
 from PySide6.QtCore import Qt, Signal, QTimer
 from PySide6.QtGui import QColor, QPalette, QFont
-from pyside_chat.complexity_analyzer import RequestComplexityAnalyzer, ComplexityLevel
+from pyside_chat.utils.complexity_analyzer import RequestComplexityAnalyzer, ComplexityLevel
 
 class ComplexityWidget(QWidget):
     """Widget to display request complexity analysis"""

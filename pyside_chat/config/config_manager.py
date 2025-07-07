@@ -29,6 +29,20 @@ class ConfigManager:
                 "top_p": 0.9,
                 "frequency_penalty": 0.0,
                 "presence_penalty": 0.0
+            },
+            "voice_settings": {
+                "stt_api": "Vosk (Offline)",
+                "tts_api": "Coqui TTS",
+                "tts_voice": "default",
+                "auto_speak": True,
+                "voice_speed": 1.0,
+                "recording_timeout": 10.0,
+                "silence_duration": 2.0,
+                "silence_threshold": 0.005,
+                "coqui_model": "tts_models/en/vctk/vits",
+                "coqui_speaker": "ED",
+                "eq_visualizer": "None",
+                "tts_streaming": True
             }
         }
         
@@ -241,4 +255,25 @@ class ConfigManager:
     
     def set_max_context_messages(self, max_messages: int) -> bool:
         """Set the maximum number of context messages for memory management"""
-        return self.set("max_context_messages", max_messages) 
+        return self.set("max_context_messages", max_messages)
+    
+    def get_voice_settings(self) -> Dict[str, Any]:
+        """Get voice settings"""
+        return self.get("voice_settings", {
+            "stt_api": "Vosk (Offline)",
+            "tts_api": "Coqui TTS",
+            "tts_voice": "default",
+            "auto_speak": True,
+            "voice_speed": 1.0,
+            "recording_timeout": 10.0,
+            "silence_duration": 2.0,
+            "silence_threshold": 0.005,
+            "coqui_model": "tts_models/en/vctk/vits",
+            "coqui_speaker": "ED",
+            "eq_visualizer": "None",
+            "tts_streaming": True
+        })
+    
+    def set_voice_settings(self, settings: Dict[str, Any]) -> bool:
+        """Set voice settings"""
+        return self.set("voice_settings", settings) 

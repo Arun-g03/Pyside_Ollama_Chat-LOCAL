@@ -14,6 +14,20 @@
     "frequency_penalty": 0.0,
     "presence_penalty": 0.0
   },
+  "voice_settings": {
+    "stt_api": "Vosk",
+    "tts_api": "Coqui TTS",
+    "tts_voice": "",
+    "auto_speak": true,
+    "voice_speed": 1.0,
+    "recording_timeout": 10,
+    "silence_duration": 2,
+    "silence_threshold": 0.005,
+    "coqui_model": "tts_models/en/vctk/vits",
+    "coqui_speaker": "ED",
+    "eq_visualizer": "Bar EQ",
+    "tts_streaming": true
+  },
   "enhancement_enabled": false,
   "history_enabled": true,
   "wordwrap_enabled": true,

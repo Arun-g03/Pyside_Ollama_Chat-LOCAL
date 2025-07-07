@@ -16,7 +16,7 @@ from pyside_chat.services.enhancement_service import EnhancementService
 from pyside_chat.services.memory_service import MemoryService
 from pyside_chat.models.conversation_metadata import ConversationManager
 from pyside_chat.utils.prompts import PromptFormatter
-from pyside_chat.utils.logging_helpers import LoggingHelpers
+from pyside_chat.utils.Logging.logging_helpers import LoggingHelpers
 from pyside_chat.utils.complexity_analyzer import RequestComplexityAnalyzer
 from pyside_chat.utils.Logging.Custom_Logger import CustomLogger
 

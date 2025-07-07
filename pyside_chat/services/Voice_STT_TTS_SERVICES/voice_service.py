@@ -44,6 +44,7 @@ class VoiceService(QObject):
     recording_error = Signal(str)       # Emitted when recording fails
     voice_processing_started = Signal() # Emitted when voice processing starts
     voice_processing_finished = Signal() # Emitted when voice processing finishes
+    audio_level_changed = Signal(float) # Emitted when audio level changes (for EQ visualization)
     
     def __init__(self, response_queue=None):
         super().__init__()
@@ -58,6 +59,7 @@ class VoiceService(QObject):
         self.tts_service.tts_started.connect(self.tts_started.emit)
         self.tts_service.tts_finished.connect(self._on_tts_finished)
         self.tts_service.tts_error.connect(self._on_tts_error)
+        self.tts_service.audio_level_changed.connect(self.audio_level_changed.emit)
         self.recording_service.recording_started.connect(self.recording_started.emit)
         self.recording_service.recording_stopped.connect(self.recording_stopped.emit)
         self.recording_service.recording_error.connect(self.recording_error.emit)
@@ -83,6 +85,9 @@ class VoiceService(QObject):
         self.recording_timer = QTimer()
         self.recording_timer.setSingleShot(True)
         self.recording_timer.timeout.connect(self._on_recording_timeout)
+        
+        # EQ Visualizer setting
+        self.eq_visualizer = "None"  # Default to no EQ visualizer
         
         # Clean up all audio files on startup (since they're only for STT processing)
         QTimer.singleShot(1000, lambda: self.cleanup_all_audio_files())
@@ -366,6 +371,11 @@ class VoiceService(QObject):
         if "silence_threshold" in settings:
             self.silence_threshold = settings["silence_threshold"]
             logger.debug(f"Silence threshold updated to {self.silence_threshold}")
+            
+        # Handle EQ visualizer setting
+        if "eq_visualizer" in settings:
+            self.eq_visualizer = settings["eq_visualizer"]
+            logger.debug(f"EQ visualizer updated to: {self.eq_visualizer}")
     
     def get_recording_timeout(self) -> float:
         """Get current recording timeout in seconds"""
@@ -451,6 +461,10 @@ class VoiceService(QObject):
     def is_continuous_voice_mode(self) -> bool:
         """Check if continuous voice mode is enabled"""
         return self.continuous_voice_mode
+        
+    def get_eq_visualizer(self) -> str:
+        """Get current EQ visualizer setting"""
+        return getattr(self, 'eq_visualizer', 'None')
     
     def cleanup_on_exit(self):
         """Clean up audio files on application exit"""

@@ -97,6 +97,10 @@ class StreamingHandler(QObject):
                 })
         return editable
 
+    def get_messages(self):
+        """Get all messages as a list of dictionaries"""
+        return self.messages.copy()
+
     def update_streaming_message(self, content: str, sender: str, message_id: str = None, is_code: bool = False, tag: str = "ai"):
         """Update the last streaming message and re-render chat display (throttled)"""
         self._stream_buffer = (content, is_code, tag)
@@ -297,6 +301,11 @@ class StreamingHandler(QObject):
         self._render_chat_display()
 
     def cleanup(self):
+        self.messages.clear()
+        self._render_chat_display()
+    
+    def clear_chat(self):
+        """Clear all messages and re-render chat display"""
         self.messages.clear()
         self._render_chat_display()
     

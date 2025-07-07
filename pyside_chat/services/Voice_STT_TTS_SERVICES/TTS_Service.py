@@ -19,6 +19,7 @@ class TTSService(QObject):
     tts_started = Signal()
     tts_finished = Signal()
     tts_error = Signal(str)
+    audio_level_changed = Signal(float)  # Audio level for EQ visualization
 
     def __init__(self):
         super().__init__()
@@ -39,6 +40,7 @@ class TTSService(QObject):
                 self.coqui_service.tts_started.connect(self.tts_started.emit)
                 self.coqui_service.tts_finished.connect(self.tts_finished.emit)
                 self.coqui_service.tts_error.connect(self.tts_error.emit)
+                self.coqui_service.audio_level_changed.connect(self.audio_level_changed.emit)
             except Exception as e:
                 logger.error(f"Failed to initialize Coqui TTS service: {e}")
 

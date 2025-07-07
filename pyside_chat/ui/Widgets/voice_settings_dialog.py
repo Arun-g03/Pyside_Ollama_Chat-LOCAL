@@ -41,12 +41,13 @@ class VoiceSettingsDialog(QDialog):
     # Signals
     settings_changed = Signal(dict)  # Emitted when settings are changed
     
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, config_manager=None):
         super().__init__(parent)
         self.setWindowTitle("Voice Settings")
         self.setModal(True)
         self.setMinimumWidth(500)
         self.setMinimumHeight(400)
+        self.config_manager = config_manager
         
         # Voice API configurations
         self.stt_apis = {
@@ -98,8 +99,8 @@ class VoiceSettingsDialog(QDialog):
             "recording_timeout": 10.0,
             "silence_duration": 2.0,
             "silence_threshold": 0.005,
-            "coqui_model": None,
-            "coqui_speaker": None,
+            "coqui_model": "tts_models/en/vctk/vits",
+            "coqui_speaker": "ED",
             "eq_visualizer": "None",
             "tts_streaming": True  # Enable streaming by default
         }
@@ -116,6 +117,11 @@ class VoiceSettingsDialog(QDialog):
         self.setup_ui()
         self.setup_connections()
         self.check_internet_connection()
+        
+        # Load settings from config if available
+        if self.config_manager:
+            config_settings = self.config_manager.get_voice_settings()
+            self.current_settings.update(config_settings)
         
     def setup_ui(self):
         """Setup the dialog UI"""
@@ -498,11 +504,63 @@ class VoiceSettingsDialog(QDialog):
         
         layout.addWidget(audio_gate_group)
         
-        # Add EQ visualizer dropdown
-        layout.addWidget(QLabel("EQ Visualizer:"))
-        layout.addWidget(self.eq_selector)
-        layout.addStretch()
+        # EQ Visualizer Settings
+        eq_group = QGroupBox("EQ Visualizer Settings")
+        eq_layout = QVBoxLayout(eq_group)
         
+        # EQ Visualizer dropdown
+        eq_selector_layout = QHBoxLayout()
+        eq_selector_layout.addWidget(QLabel("EQ Visualizer:"))
+        
+        self.eq_selector.setStyleSheet("""
+            QComboBox {
+                background-color: #2d2d2d;
+                color: #ffffff;
+                border: 1px solid #555;
+                border-radius: 5px;
+                padding: 5px;
+                font-family: 'Segoe UI', Arial, sans-serif;
+                font-size: 14px;
+                min-width: 200px;
+            }
+            QComboBox::drop-down {
+                border: none;
+                width: 20px;
+            }
+            QComboBox::down-arrow {
+                image: none;
+                border-left: 5px solid transparent;
+                border-right: 5px solid transparent;
+                border-top: 5px solid #ffffff;
+                margin-right: 5px;
+            }
+            QComboBox QAbstractItemView {
+                background-color: #2d2d2d;
+                color: #ffffff;
+                border: 1px solid #555;
+                selection-background-color: #0078d4;
+            }
+        """)
+        eq_selector_layout.addWidget(self.eq_selector)
+        eq_selector_layout.addStretch()
+        
+        eq_layout.addLayout(eq_selector_layout)
+        
+        # Add description for EQ visualizer
+        eq_description = QLabel(
+            "Select an EQ visualizer to display during voice interactions.\n"
+            "• None: No visualizer\n"
+            "• Circle EQ: Circular frequency display\n"
+            "• Bar EQ: Traditional bar equalizer\n"
+            "• Waveform EQ: Connected points with audio reactivity\n"
+            "• Waveform Gradient: Smooth gradient fills\n"
+            "• Waveform Blue Gradient: Blue-themed gradient visualizer"
+        )
+        eq_description.setWordWrap(True)
+        eq_description.setStyleSheet("color: #ccc; font-size: 11px; margin-top: 5px;")
+        eq_layout.addWidget(eq_description)
+        
+        layout.addWidget(eq_group)
         layout.addWidget(general_group)
         layout.addStretch()
         
@@ -514,6 +572,7 @@ class VoiceSettingsDialog(QDialog):
         self.tts_api_combo.currentTextChanged.connect(self.on_tts_api_changed)
         self.voice_combo.currentTextChanged.connect(self.on_voice_changed)
         self.silence_threshold_spinbox.valueChanged.connect(self.on_silence_threshold_changed)
+        self.eq_selector.currentTextChanged.connect(self.on_eq_visualizer_changed)
         self.refresh_internet_button.clicked.connect(self.check_internet_connection)
         self.test_button.clicked.connect(self.test_settings)
         self.cancel_button.clicked.connect(self.reject)
@@ -610,7 +669,13 @@ class VoiceSettingsDialog(QDialog):
             
     def on_voice_changed(self, voice: str):
         """Handle voice selection change"""
-        pass  # Can be used for voice preview
+        pass
+        
+    def on_eq_visualizer_changed(self, eq_type: str):
+        """Handle EQ visualizer selection change"""
+        # Update the current settings
+        self.current_settings["eq_visualizer"] = eq_type
+        logger.info(f"EQ visualizer changed to: {eq_type}")  # Can be used for voice preview
     
     def load_coqui_models(self):
         """Load available Coqui TTS models"""
@@ -840,6 +905,11 @@ class VoiceSettingsDialog(QDialog):
         
         self.current_settings = settings
         self.settings_changed.emit(settings)
+        
+        # Save settings to config if config manager is available
+        if self.config_manager:
+            self.config_manager.set_voice_settings(settings)
+        
         self.accept()
         
         # --- NEW: Lock in model and speaker ---
@@ -889,6 +959,40 @@ class VoiceSettingsDialog(QDialog):
             
         if "tts_streaming" in settings:
             self.streaming_checkbox.setChecked(settings["tts_streaming"])
+            
+        if "eq_visualizer" in settings:
+            index = self.eq_selector.findText(settings["eq_visualizer"])
+            if index >= 0:
+                self.eq_selector.setCurrentIndex(index)
+            else:
+                # Default to "None" if the setting is not found
+                self.eq_selector.setCurrentIndex(0)
+        
+        # Handle Coqui TTS model and speaker settings
+        if "coqui_model" in settings and settings["coqui_model"]:
+            self.selected_coqui_model = settings["coqui_model"]
+            # Load models first if not already loaded
+            if not hasattr(self, "coqui_service"):
+                self.load_coqui_models()
+            
+            # Find and select the model in the combo box
+            if hasattr(self, "model_combo"):
+                for i in range(self.model_combo.count()):
+                    model_text = self.model_combo.itemText(i)
+                    model_name = model_text.replace("✅ ", "").replace("⬇️ ", "").split(" (")[0]
+                    if model_name == settings["coqui_model"]:
+                        self.model_combo.setCurrentIndex(i)
+                        self.on_coqui_model_changed(model_text)
+                        break
+        
+        if "coqui_speaker" in settings and settings["coqui_speaker"]:
+            self.selected_coqui_speaker = settings["coqui_speaker"]
+            # Find and select the speaker in the combo box
+            if hasattr(self, "speaker_combo"):
+                for i in range(self.speaker_combo.count()):
+                    if self.speaker_combo.itemText(i) == settings["coqui_speaker"]:
+                        self.speaker_combo.setCurrentIndex(i)
+                        break
 
     def on_tts_settings_changed(self, settings):
         # ... other settings ...

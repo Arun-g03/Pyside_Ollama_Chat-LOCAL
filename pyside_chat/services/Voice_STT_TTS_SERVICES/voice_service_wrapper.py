@@ -28,6 +28,7 @@ class VoiceServiceWrapper(QObject):
     recording_error = Signal(str)
     voice_processing_started = Signal()
     voice_processing_finished = Signal()
+    audio_level_changed = Signal(float)  # Audio level for EQ visualization
     
     def __init__(self, use_separate_process: bool = True):
         super().__init__()
@@ -88,6 +89,7 @@ class VoiceServiceWrapper(QObject):
             self.direct_service.recording_error.connect(self.recording_error.emit)
             self.direct_service.voice_processing_started.connect(self.voice_processing_started.emit)
             self.direct_service.voice_processing_finished.connect(self.voice_processing_finished.emit)
+            self.direct_service.audio_level_changed.connect(self.audio_level_changed.emit)
             
             logger.info("Voice service wrapper initialized with direct service")
             
