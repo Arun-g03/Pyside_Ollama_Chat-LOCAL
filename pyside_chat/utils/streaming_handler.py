@@ -6,7 +6,7 @@ Handles streaming response processing and display updates.
 from PySide6.QtWidgets import QTextEdit, QApplication
 from PySide6.QtCore import QTimer, Signal, QObject
 from PySide6.QtGui import QTextCursor, QTextCharFormat, QColor
-from pyside_chat.utils.message_formatter import MessageFormatter
+from pyside_chat.ui.styles.message_formatter import MessageFormatter
 from pyside_chat.utils.Logging.Custom_Logger import CustomLogger
 
 logger = CustomLogger.get_logger(__name__)

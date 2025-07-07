@@ -10,10 +10,10 @@ from PySide6.QtGui import QIcon, QAction
 import os
 
 # Import extracted components
-from pyside_chat.ui.chat_tab import ChatTab
-from pyside_chat.ui.model_tab import ModelTab
-from pyside_chat.ui.personality_tab import PersonalityTab
-from pyside_chat.ui.memory_tab import MemoryTab
+from pyside_chat.ui.tabs.chat_tab import ChatTab
+from pyside_chat.ui.tabs.model_tab import ModelTab
+from pyside_chat.ui.tabs.personality_tab import PersonalityTab
+from pyside_chat.ui.tabs.memory_tab import MemoryTab
 from pyside_chat.services.ollama_service import OllamaService
 from pyside_chat.services.conversation_service import ConversationService
 from pyside_chat.services.enhancement_service import EnhancementService

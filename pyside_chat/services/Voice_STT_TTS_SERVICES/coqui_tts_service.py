@@ -125,7 +125,7 @@ class StreamingAudioPlayer(QThread):
                     # Use much smaller amplification to get reasonable values
                     amplified_level = combined_level * 2.0  # Reduced amplification
                     
-                    print(f"[TTS DEBUG] Segment {i//segment_size}: RMS={rms_level:.4f}, Peak={peak_level:.4f}, Combined={combined_level:.4f}, Amplified={amplified_level:.4f}")
+                    #print(f"[TTS DEBUG] Segment {i//segment_size}: RMS={rms_level:.4f}, Peak={peak_level:.4f}, Combined={combined_level:.4f}, Amplified={amplified_level:.4f}")
                     
                     # Emit audio level for EQ visualization
                     self.audio_level_changed.emit(amplified_level)
