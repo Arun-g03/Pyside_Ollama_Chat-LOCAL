@@ -66,15 +66,15 @@ class ServiceManager:
                 'think': self.config_manager.is_think_enabled()
             }
             
-            logger.info("All services initialized successfully")
+            logger.info("[ID:0224] All services initialized successfully")
             
         except Exception as e:
-            logger.error(f"Error initializing services: {e}")
+            logger.error(f"[ID:0223] Error initializing services: {e}")
             raise
     
     def reinitialize_services(self):
         """Reinitialize services (used when configuration changes)"""
-        logger.info("Reinitializing services...")
+        logger.info("[ID:0222] Reinitializing services...")
         self._initialize_services()
     
     def get_ollama_service(self) -> OllamaService:
@@ -120,7 +120,7 @@ class ServiceManager:
                 # Any cleanup needed for memory service
                 pass
             
-            logger.info("Services cleaned up successfully")
+            logger.info("[ID:0221] Services cleaned up successfully")
             
         except Exception as e:
-            logger.error(f"Error during service cleanup: {e}") 
+            logger.error(f"[ID:0220] Error during service cleanup: {e}")

@@ -27,7 +27,7 @@ class AppLifecycleManager:
     def initialize_application(self):
         """Initialize the application"""
         try:
-            logger.info("Starting application initialization...")
+            logger.info("[ID:0330] Starting application initialization...")
             
             # Apply initial theme
             theme = self.service_manager.config_manager.get("theme", "Dark")
@@ -39,10 +39,10 @@ class AppLifecycleManager:
             # Initial model refresh
             self.event_handler._on_refresh_models()
             
-            logger.info("Application initialization completed successfully")
+            logger.info("[ID:0329] Application initialization completed successfully")
             
         except Exception as e:
-            logger.error(f"Error during application initialization: {e}")
+            logger.error(f"[ID:0328] Error during application initialization: {e}")
             self._show_initialization_error(str(e))
             raise
     
@@ -62,15 +62,15 @@ class AppLifecycleManager:
             theme = self.service_manager.config_manager.get("theme", "Dark")
             self.ui_manager.apply_theme(theme)
             
-            logger.info("Application show event handled successfully")
+            logger.info("[ID:0327] Application show event handled successfully")
             
         except Exception as e:
-            logger.error(f"Error handling show event: {e}")
+            logger.error(f"[ID:0326] Error handling show event: {e}")
     
     def handle_close_event(self, event):
         """Handle application close event"""
         try:
-            logger.info("Handling application close event...")
+            logger.info("[ID:0325] Handling application close event...")
             
             # Save current conversation
             conversation_service = self.service_manager.get_conversation_service()
@@ -95,7 +95,7 @@ class AppLifecycleManager:
             self.service_manager.cleanup()
             
             event.accept()
-            logger.info("Application close event handled successfully")
+            logger.info("[ID:0324] Application close event handled successfully")
             
         except Exception as e:
             error_msg = PromptFormatter.format_error_message("close_error", error=str(e))
@@ -111,7 +111,7 @@ class AppLifecycleManager:
                 f"Failed to initialize application:\n\n{error_message}\n\nPlease check your configuration and try again."
             )
         except Exception as e:
-            logger.error(f"Error showing initialization error dialog: {e}")
+            logger.error(f"[ID:0323] Error showing initialization error dialog: {e}")
     
     def show_ollama_connection_error(self, context="general", force_show=False):
         """Show a user-friendly error dialog when Ollama is not running"""

@@ -84,10 +84,10 @@ class UIManager:
             self.status_var = PromptFormatter.format_status_message("ready")
             self.status_bar.showMessage(self.status_var)
             
-            logger.info("UI setup completed successfully")
+            logger.info("[ID:0236] UI setup completed successfully")
             
         except Exception as e:
-            logger.error(f"Error setting up UI: {e}")
+            logger.error(f"[ID:0235] Error setting up UI: {e}")
             raise
     
     def setup_menu_bar(self):
@@ -165,10 +165,10 @@ class UIManager:
             help_menu.addAction(about_action)
             self.menu_actions['about'] = about_action
             
-            logger.info("Menu bar setup completed successfully")
+            logger.info("[ID:0234] Menu bar setup completed successfully")
             
         except Exception as e:
-            logger.error(f"Error setting up menu bar: {e}")
+            logger.error(f"[ID:0233] Error setting up menu bar: {e}")
             raise
     
     def apply_theme(self, theme: str = "Dark"):
@@ -179,10 +179,10 @@ class UIManager:
             else:
                 self.main_window.setStyleSheet(dark_stylesheet)
             
-            logger.info(f"Theme applied: {theme}")
+            logger.info(f"[ID:0232] Theme applied: {theme}")
             
         except Exception as e:
-            logger.error(f"Error applying theme: {e}")
+            logger.error(f"[ID:0231] Error applying theme: {e}")
     
     def update_status(self, message: str):
         """Update status bar message"""
@@ -191,7 +191,7 @@ class UIManager:
             if self.status_bar:
                 self.status_bar.showMessage(self.status_var)
         except Exception as e:
-            logger.error(f"Error updating status: {e}")
+            logger.error(f"[ID:0230] Error updating status: {e}")
     
     def get_menu_action(self, action_name: str) -> Optional[QAction]:
         """Get a menu action by name"""
@@ -223,7 +223,7 @@ class UIManager:
             about_text = PromptFormatter.get_menu_text("about_text")
             QMessageBox.about(self.main_window, "About Ollama Chat", about_text)
         except Exception as e:
-            logger.error(f"Error showing about dialog: {e}")
+            logger.error(f"[ID:0229] Error showing about dialog: {e}")
     
     def show_clear_chat_dialog(self) -> bool:
         """Show clear chat confirmation dialog"""
@@ -235,5 +235,5 @@ class UIManager:
             )
             return reply == QMessageBox.Yes
         except Exception as e:
-            logger.error(f"Error showing clear chat dialog: {e}")
+            logger.error(f"[ID:0228] Error showing clear chat dialog: {e}")
             return False 

@@ -70,10 +70,10 @@ class OllamaChat(QMainWindow):
             # Initialize application
             self.lifecycle_manager.initialize_application()
             
-            logger.info("OllamaChat initialization completed successfully")
+            logger.info("[ID:0334] OllamaChat initialization completed successfully")
             
         except Exception as e:
-            logger.error(f'❌ Exception in OllamaChat.__init__: {e}')
+            logger.error(f'[ID:0333] ❌ Exception in OllamaChat.__init__: {e}')
             traceback.print_exc()
             raise
     
@@ -96,10 +96,10 @@ class OllamaChat(QMainWindow):
             if chat_tab:
                 self.chat_controller.set_chat_tab_reference(chat_tab)
             
-            logger.info("UI setup completed successfully")
+            logger.info("[ID:0332] UI setup completed successfully")
             
         except Exception as e:
-            logger.error(f"Error setting up UI: {e}")
+            logger.error(f"[ID:0331] Error setting up UI: {e}")
             raise
     
     def showEvent(self, event):

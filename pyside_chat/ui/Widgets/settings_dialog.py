@@ -243,7 +243,7 @@ class SettingsDialog(QDialog):
     def load_current_settings(self):
         """Load current settings into the UI"""
         if not self.ui_ready:
-            logger.debug(f" SETTINGS: UI not ready yet, skipping settings load",print_to_terminal=False)
+            logger.debug(f"[ID:0281]  SETTINGS: UI not ready yet, skipping settings load",print_to_terminal=False)
             return
             
         try:
@@ -284,7 +284,7 @@ class SettingsDialog(QDialog):
                 self.verbose_checkbox.setChecked(self.config_manager.is_verbose_enabled())
                 self.think_checkbox.setChecked(self.config_manager.is_think_enabled())
             except RuntimeError as e:
-                logger.debug(f" SETTINGS: UI elements deleted during load: {e}",print_to_terminal=True)
+                logger.debug(f"[ID:0280]  SETTINGS: UI elements deleted during load: {e}",print_to_terminal=True)
                 return
             
             # Load chat parameters
@@ -296,7 +296,7 @@ class SettingsDialog(QDialog):
             self.logging_checkbox.setChecked(self.config_manager.get("logging_enabled", True))
             
         except Exception as e:
-            logger.debug(f" SETTINGS: Error loading settings: {e}",print_to_terminal=True)
+            logger.debug(f"[ID:0279]  SETTINGS: Error loading settings: {e}",print_to_terminal=True)
             QMessageBox.warning(self, "Warning", f"Some settings could not be loaded: {str(e)}")
     
     def save_settings(self):

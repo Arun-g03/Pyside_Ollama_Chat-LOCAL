@@ -34,31 +34,31 @@ class SummarizationService(QObject):
             filepath: Path to the conversation file
         """
         try:
-            logger.info(f"Starting name generation for conversation: {filepath}")
-            logger.info(f"Conversation has {len(conversation)} messages, minimum required: {self.min_messages_for_summarization}")
+            logger.info(f"[ID:0194] Starting name generation for conversation: {filepath}")
+            logger.info(f"[ID:0193] Conversation has {len(conversation)} messages, minimum required: {self.min_messages_for_summarization}")
             
             # Check if we have enough messages to summarize
             if len(conversation) < self.min_messages_for_summarization:
-                logger.debug(f"Not enough messages ({len(conversation)}) for summarization")
+                logger.debug(f"[ID:0192] Not enough messages ({len(conversation)}) for summarization")
                 return
             
             # Extract user messages for summarization
             user_messages = [msg.get('content', '') for msg in conversation if msg.get('role') == 'user']
             if not user_messages:
-                logger.debug("No user messages found for summarization")
+                logger.debug("[ID:0191] No user messages found for summarization")
                 return
             
             # Check if the conversation has enough substance for meaningful naming
             if not self._has_enough_substance(user_messages):
-                logger.debug("Conversation lacks sufficient substance for meaningful naming")
+                logger.debug("[ID:0190] Conversation lacks sufficient substance for meaningful naming")
                 return
             
-            logger.info(f"Found {len(user_messages)} user messages for summarization")
-            logger.info(f"User messages: {user_messages}")
+            logger.info(f"[ID:0189] Found {len(user_messages)} user messages for summarization")
+            logger.info(f"[ID:0188] User messages: {user_messages}")
             
             # Create summarization prompt
             prompt = self._create_summarization_prompt(user_messages)
-            logger.info(f"Summarization prompt: {prompt}")
+            logger.info(f"[ID:0187] Summarization prompt: {prompt}")
             
             # Send to Ollama for summarization
             messages = [{"role": "user", "content": prompt}]
@@ -71,7 +71,7 @@ class SummarizationService(QObject):
                 # Get available models
                 available_models = self.ollama_service.get_models()
                 if not available_models:
-                    logger.warning("No models available for summarization")
+                    logger.warning("[ID:0186] No models available for summarization")
                     self.summarization_failed.emit(filepath, "No models available")
                     return
                 
@@ -79,12 +79,12 @@ class SummarizationService(QObject):
                 complexity_metrics = analyzer.analyze_complexity(prompt)
                 chosen_model = analyzer.get_model_recommendation(complexity_metrics, available_models)
                 
-                logger.info(f"Auto-selected model for summarization: {chosen_model}")
+                logger.info(f"[ID:0185] Auto-selected model for summarization: {chosen_model}")
             else:
                 chosen_model = self.summarization_model
             
-            logger.info(f"Sending summarization request to model: {chosen_model}")
-            logger.info(f"Request messages: {messages}")
+            logger.info(f"[ID:0184] Sending summarization request to model: {chosen_model}")
+            logger.info(f"[ID:0183] Request messages: {messages}")
             
             # Use the selected model for summarization
             response = ""
@@ -96,22 +96,22 @@ class SummarizationService(QObject):
             ):
                 response += chunk
             
-            logger.info(f"Raw AI response: '{response}'")
+            logger.info(f"[ID:0182] Raw AI response: '{response}'")
             
             # Clean and validate the response
             generated_name = self._clean_generated_name(response)
-            logger.info(f"Cleaned generated name: '{generated_name}'")
+            logger.info(f"[ID:0181] Cleaned generated name: '{generated_name}'")
             
             if generated_name:
-                logger.info(f"Generated chat name: {generated_name}")
+                logger.info(f"[ID:0180] Generated chat name: {generated_name}")
                 self.summarization_completed.emit(filepath, generated_name)
             else:
-                logger.warning("Failed to generate valid chat name")
-                logger.warning(f"Raw response was: '{response}'")
+                logger.warning("[ID:0179] Failed to generate valid chat name")
+                logger.warning(f"[ID:0178] Raw response was: '{response}'")
                 self.summarization_failed.emit(filepath, "Failed to generate valid name")
                 
         except Exception as e:
-            logger.error(f"Error generating chat name: {str(e)}")
+            logger.error(f"[ID:0177] Error generating chat name: {str(e)}")
             self.summarization_failed.emit(filepath, str(e))
     
     def _create_summarization_prompt(self, user_messages: List[str]) -> str:
@@ -134,28 +134,28 @@ User messages:
 
 Generate a concise, meaningful name that accurately describes what this conversation is about. If the conversation lacks substance or clear topic, respond with "NO_TOPIC". Return only the name or "NO_TOPIC", nothing else."""
 
-        logger.debug(f"Created summarization prompt with {len(sample_messages)} sample messages")
-        logger.debug(f"Sample messages: {sample_messages}")
+        logger.debug(f"[ID:0176] Created summarization prompt with {len(sample_messages)} sample messages")
+        logger.debug(f"[ID:0175] Sample messages: {sample_messages}")
         
         return prompt
     
     def _clean_generated_name(self, response: str) -> Optional[str]:
         """Clean and validate the generated name"""
-        logger.debug(f"Cleaning response: '{response}'")
+        logger.debug(f"[ID:0174] Cleaning response: '{response}'")
         
         if not response:
-            logger.debug("Response is empty")
+            logger.debug("[ID:0173] Response is empty")
             return None
         
         # Clean the response
         name = response.strip()
-        logger.debug(f"After strip: '{name}'")
+        logger.debug(f"[ID:0172] After strip: '{name}'")
         
         # Remove <think> tags and their content
         import re
         name = re.sub(r'<think>.*?</think>', '', name, flags=re.DOTALL)
         name = name.strip()
-        logger.debug(f"After removing <think> tags: '{name}'")
+        logger.debug(f"[ID:0171] After removing <think> tags: '{name}'")
         
         # Remove common prefixes/suffixes that models might add
         prefixes_to_remove = [
@@ -170,24 +170,24 @@ Generate a concise, meaningful name that accurately describes what this conversa
         for prefix in prefixes_to_remove:
             if name.lower().startswith(prefix.lower()):
                 name = name[len(prefix):].strip()
-                logger.debug(f"Removed prefix '{prefix}', result: '{name}'")
+                logger.debug(f"[ID:0170] Removed prefix '{prefix}', result: '{name}'")
         
         # Remove quotes if present
         name = name.strip('"\'')
-        logger.debug(f"After quote removal: '{name}'")
+        logger.debug(f"[ID:0169] After quote removal: '{name}'")
         
         # Check for NO_TOPIC response
         if name.upper() == "NO_TOPIC":
-            logger.debug("AI indicated no clear topic found")
+            logger.debug("[ID:0168] AI indicated no clear topic found")
             return None
         
         # Validate the name length
         if len(name) < 3:
-            logger.debug(f"Name too short ({len(name)} chars): '{name}'")
+            logger.debug(f"[ID:0167] Name too short ({len(name)} chars): '{name}'")
             return None
         
         if len(name) > 50:
-            logger.debug(f"Name too long ({len(name)} chars): '{name}'")
+            logger.debug(f"[ID:0166] Name too long ({len(name)} chars): '{name}'")
             return None
         
         # Check if it's not just generic responses
@@ -201,15 +201,15 @@ Generate a concise, meaningful name that accurately describes what this conversa
         # Check generic responses
         for generic in generic_responses:
             if generic in name_lower:
-                logger.debug(f"Name contains generic term '{generic}': '{name}'")
+                logger.debug(f"[ID:0165] Name contains generic term '{generic}': '{name}'")
                 return None
         
         # Use AI to evaluate name quality instead of hardcoded patterns
         if not self._ai_evaluate_name_quality(name):
-            logger.debug(f"AI determined name '{name}' is not suitable")
+            logger.debug(f"[ID:0164] AI determined name '{name}' is not suitable")
             return None
         
-        logger.debug(f"Final cleaned name: '{name}'")
+        logger.debug(f"[ID:0163] Final cleaned name: '{name}'")
         return name
     
     def _has_enough_substance(self, user_messages: List[str]) -> bool:
@@ -265,14 +265,14 @@ Respond with only "YES" if the conversation has enough substance for naming, or 
                 # Get available models
                 available_models = self.ollama_service.get_models()
                 if not available_models:
-                    logger.warning("No models available for quality evaluation")
+                    logger.warning("[ID:0162] No models available for quality evaluation")
                     return False
                 
                 # Analyze complexity (evaluation is a simple task)
                 complexity_metrics = analyzer.analyze_complexity(prompt)
                 chosen_model = analyzer.get_model_recommendation(complexity_metrics, available_models)
                 
-                logger.debug(f"Auto-selected model for quality evaluation: {chosen_model}")
+                logger.debug(f"[ID:0161] Auto-selected model for quality evaluation: {chosen_model}")
             else:
                 chosen_model = self.summarization_model
             
@@ -290,18 +290,18 @@ Respond with only "YES" if the conversation has enough substance for naming, or 
             
             # Clean and evaluate response
             response = response.strip().upper()
-            logger.debug(f"Quality evaluation response: '{response}'")
+            logger.debug(f"[ID:0160] Quality evaluation response: '{response}'")
             
             # Check for positive evaluation
             if "YES" in response:
-                logger.debug("AI determined conversation has sufficient substance")
+                logger.debug("[ID:0159] AI determined conversation has sufficient substance")
                 return True
             else:
-                logger.debug("AI determined conversation lacks sufficient substance")
+                logger.debug("[ID:0158] AI determined conversation lacks sufficient substance")
                 return False
                 
         except Exception as e:
-            logger.error(f"Error evaluating conversation quality: {str(e)}")
+            logger.error(f"[ID:0157] Error evaluating conversation quality: {str(e)}")
             # Fallback to basic checks if AI evaluation fails
             return self._fallback_quality_check(user_messages)
     
@@ -331,7 +331,7 @@ Respond with only "YES" if the conversation has enough substance for naming, or 
             
             substantial_messages += 1
         
-        logger.debug(f"Fallback check: {substantial_messages} substantial messages out of {len(user_messages)} total")
+        logger.debug(f"[ID:0156] Fallback check: {substantial_messages} substantial messages out of {len(user_messages)} total")
         return substantial_messages >= 2
     
     def _ai_evaluate_name_quality(self, name: str) -> bool:
@@ -366,14 +366,14 @@ Respond with only "YES" if the name is suitable, or "NO" if it's not suitable (e
                 # Get available models
                 available_models = self.ollama_service.get_models()
                 if not available_models:
-                    logger.warning("No models available for name quality evaluation")
+                    logger.warning("[ID:0155] No models available for name quality evaluation")
                     return False
                 
                 # Analyze complexity (evaluation is a simple task)
                 complexity_metrics = analyzer.analyze_complexity(prompt)
                 chosen_model = analyzer.get_model_recommendation(complexity_metrics, available_models)
                 
-                logger.debug(f"Auto-selected model for name quality evaluation: {chosen_model}")
+                logger.debug(f"[ID:0154] Auto-selected model for name quality evaluation: {chosen_model}")
             else:
                 chosen_model = self.summarization_model
             
@@ -391,18 +391,18 @@ Respond with only "YES" if the name is suitable, or "NO" if it's not suitable (e
             
             # Clean and evaluate response
             response = response.strip().upper()
-            logger.debug(f"Name quality evaluation response: '{response}'")
+            logger.debug(f"[ID:0153] Name quality evaluation response: '{response}'")
             
             # Check for positive evaluation
             if "YES" in response:
-                logger.debug("AI determined name is suitable")
+                logger.debug("[ID:0152] AI determined name is suitable")
                 return True
             else:
-                logger.debug("AI determined name is not suitable")
+                logger.debug("[ID:0151] AI determined name is not suitable")
                 return False
                 
         except Exception as e:
-            logger.error(f"Error evaluating name quality: {str(e)}")
+            logger.error(f"[ID:0150] Error evaluating name quality: {str(e)}")
             # Fallback: accept the name if AI evaluation fails
             return True
     

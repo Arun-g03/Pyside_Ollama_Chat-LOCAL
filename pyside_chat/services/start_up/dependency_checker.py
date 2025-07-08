@@ -178,10 +178,10 @@ class DependencyChecker:
             install_script = os.path.join(current_dir, "install_dependencies.py")
             
             if not os.path.exists(install_script):
-                print(f"Error: install_dependencies.py not found at {install_script}")
+                print(f"[ID:0361] Error: install_dependencies.py not found at {install_script}")
                 return False
             
-            print("Installing dependencies...")
+            print("[ID:0360] Installing dependencies...")
             result = subprocess.run([
                 sys.executable, install_script
             ], capture_output=False, text=True, check=True)
@@ -189,10 +189,10 @@ class DependencyChecker:
             return True
             
         except subprocess.CalledProcessError as e:
-            print(f"Failed to install dependencies: {e}")
+            print(f"[ID:0359] Failed to install dependencies: {e}")
             return False
         except Exception as e:
-            print(f"Error installing dependencies: {e}")
+            print(f"[ID:0358] Error installing dependencies: {e}")
             return False
     
     def get_dependency_summary(self) -> str:
@@ -215,76 +215,76 @@ def check_and_install_dependencies(auto_install: bool = True, verbose: bool = Fa
         True if all dependencies are working, False otherwise
     """
     if verbose:
-        print("Checking dependencies...")
+        print("[ID:0357] Checking dependencies...")
     
     checker = DependencyChecker()
     needs_fixing = checker.run_comprehensive_check()
     
     if not needs_fixing:
         if verbose:
-            print("All dependencies are working correctly!")
+            print("[ID:0356] All dependencies are working correctly!")
         return True
     
     if verbose:
-        print(f"Dependency issues found: {checker.get_dependency_summary()}")
+        print(f"[ID:0355] Dependency issues found: {checker.get_dependency_summary()}")
         if checker.broken_imports:
-            print(f"Missing: {', '.join(checker.broken_imports)}")
+            print(f"[ID:0354] Missing: {', '.join(checker.broken_imports)}")
         if checker.version_conflicts:
-            print(f"Version conflicts: {len(checker.version_conflicts)}")
+            print(f"[ID:0353] Version conflicts: {len(checker.version_conflicts)}")
     
     if auto_install:
         if verbose:
-            print("Installing missing dependencies...")
+            print("[ID:0352] Installing missing dependencies...")
         success = checker.run_install_dependencies()
         
         if success:
             if verbose:
-                print("Re-checking dependencies...")
+                print("[ID:0351] Re-checking dependencies...")
             # Re-check after installation
             checker2 = DependencyChecker()
             final_check = checker2.run_comprehensive_check()
             
             if not final_check:
                 if verbose:
-                    print("All dependencies are now working!")
+                    print("[ID:0350] All dependencies are now working!")
                 return True
             else:
                 if verbose:
-                    print("Some dependencies may still have issues")
+                    print("[ID:0349] Some dependencies may still have issues")
                 return False
         else:
             if verbose:
-                print("Failed to install dependencies automatically")
+                print("[ID:0348] Failed to install dependencies automatically")
             return False
     else:
         if verbose:
-            print("Run 'python pyside_chat/services/start_up/install_dependencies.py' to install missing dependencies")
+            print("[ID:0347] Run 'python pyside_chat/services/start_up/install_dependencies.py' to install missing dependencies")
         return False
 
 
 if __name__ == "__main__":
     # Test the dependency checker
-    print("🔍 Testing Dependency Checker...")
+    print("[ID:0346] 🔍 Testing Dependency Checker...")
     checker = DependencyChecker()
     needs_fixing = checker.run_comprehensive_check()
     
-    print(f"\nWorking imports ({len(checker.working_imports)}):")
+    print(f"[ID:0345] \nWorking imports ({len(checker.working_imports)}):")
     for imp in checker.working_imports:
-        print(f"  ✅ {imp}")
+        print(f"[ID:0344]   ✅ {imp}")
     
-    print(f"\nCritical broken imports ({len(checker.broken_imports)}):")
+    print(f"[ID:0343] \nCritical broken imports ({len(checker.broken_imports)}):")
     for imp in checker.broken_imports:
-        print(f"  ❌ {imp}")
+        print(f"[ID:0342]   ❌ {imp}")
     
-    print(f"\nOptional broken imports ({len(checker.optional_broken)}):")
+    print(f"[ID:0341] \nOptional broken imports ({len(checker.optional_broken)}):")
     for imp in checker.optional_broken:
-        print(f"  ⚠️  {imp}")
+        print(f"[ID:0340]   ⚠️  {imp}")
     
-    print(f"\nVersion conflicts ({len(checker.version_conflicts)}):")
+    print(f"[ID:0339] \nVersion conflicts ({len(checker.version_conflicts)}):")
     for conflict in checker.version_conflicts:
-        print(f"  ⚠️  {conflict}")
+        print(f"[ID:0338]   ⚠️  {conflict}")
     
-    print(f"\nOverall status: {'✅ All good' if not needs_fixing else '❌ Needs fixing'}")
-    print(f"Can start application: {'✅ Yes' if not needs_fixing else '❌ No'}")
+    print(f"[ID:0337] \nOverall status: {'✅ All good' if not needs_fixing else '❌ Needs fixing'}")
+    print(f"[ID:0336] Can start application: {'✅ Yes' if not needs_fixing else '❌ No'}")
     if checker.optional_broken:
-        print(f"Note: {len(checker.optional_broken)} optional features unavailable")
+        print(f"[ID:0335] Note: {len(checker.optional_broken)} optional features unavailable")

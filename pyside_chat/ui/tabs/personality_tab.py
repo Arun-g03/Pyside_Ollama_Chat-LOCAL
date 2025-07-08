@@ -595,7 +595,7 @@ class PersonalityTab(QWidget):
             for personality in system_personalities:
                 self.system_personalities_list.addItem(personality)
         except Exception as e:
-            logger.debug(f"Failed to update system personalities list: {e}",print_to_terminal=True)
+            logger.debug(f"[ID:0227] Failed to update system personalities list: {e}",print_to_terminal=True)
     
     def update_custom_personalities_list(self):
         """Update the custom personalities list"""
@@ -606,7 +606,7 @@ class PersonalityTab(QWidget):
             for personality in custom_personalities:
                 self.custom_personalities_list.addItem(personality)
         except Exception as e:
-            logger.debug(f"Failed to update custom personalities list: {e}",print_to_terminal=True)
+            logger.debug(f"[ID:0226] Failed to update custom personalities list: {e}",print_to_terminal=True)
     
     def on_system_personality_selected(self, item):
         """Handle system personality selection"""
@@ -818,5 +818,5 @@ class PersonalityTab(QWidget):
         try:
             return self.personality_model.get_available_personalities()
         except Exception as e:
-            logger.debug(f"Error getting available personalities: {e}",print_to_terminal=True)
+            logger.debug(f"[ID:0225] Error getting available personalities: {e}",print_to_terminal=True)
             return [] 

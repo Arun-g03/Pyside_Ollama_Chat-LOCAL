@@ -314,7 +314,7 @@ class ShortTermMemoryService:
                 with open(self.stm_file, 'r', encoding='utf-8') as f:
                     self.messages = json.load(f)
             except Exception as e:
-                logger.error(f"Error loading STM file: {e}", print_to_terminal=True)
+                logger.error(f"[ID:0149] Error loading STM file: {e}", print_to_terminal=True)
                 self.messages = []
     def add_message(self, message: Dict):
         self.messages.append(message)
@@ -331,7 +331,7 @@ class ShortTermMemoryService:
             with open(self.stm_file, 'w', encoding='utf-8') as f:
                 json.dump(self.messages, f, indent=2, ensure_ascii=False)
         except Exception as e:
-            logger.error(f"Error saving STM file: {e}", print_to_terminal=True)
+            logger.error(f"[ID:0148] Error saving STM file: {e}", print_to_terminal=True)
 
 class LongTermMemoryService:
     def __init__(self, ltm_file: str = "User_history/memory/long_term_memory.json"):
@@ -358,38 +358,38 @@ class LongTermMemoryService:
                             entry = LongTermMemoryEntry(**entry_data)
                             self.entries.append(entry)
                         except Exception as e:
-                            logger.error(f"Error loading LTM entry {entry_data}: {e}", print_to_terminal=True)
+                            logger.error(f"[ID:0147] Error loading LTM entry {entry_data}: {e}", print_to_terminal=True)
                             continue
             except Exception as e:
-                logger.error(f"Error loading LTM file: {e}", print_to_terminal=True)
+                logger.error(f"[ID:0146] Error loading LTM file: {e}", print_to_terminal=True)
                 self.entries = []
     def add_entry(self, entry: LongTermMemoryEntry):
-        logger.debug(f"=== LTM ADD ENTRY START ===", print_to_terminal=True)
-        logger.debug(f"Adding entry: type='{entry.type}', key='{entry.key}', value='{entry.value}'", print_to_terminal=True)
-        logger.debug(f"Current entries count: {len(self.entries)}", print_to_terminal=True)
+        logger.debug(f"[ID:0145] === LTM ADD ENTRY START ===", print_to_terminal=True)
+        logger.debug(f"[ID:0144] Adding entry: type='{entry.type}', key='{entry.key}', value='{entry.value}'", print_to_terminal=True)
+        logger.debug(f"[ID:0143] Current entries count: {len(self.entries)}", print_to_terminal=True)
         
         self.entries.append(entry)
-        logger.debug(f"Entry added to memory, new count: {len(self.entries)}", print_to_terminal=True)
+        logger.debug(f"[ID:0142] Entry added to memory, new count: {len(self.entries)}", print_to_terminal=True)
         
-        logger.debug("Saving to disk...", print_to_terminal=True)
+        logger.debug("[ID:0141] Saving to disk...", print_to_terminal=True)
         self._save()
-        logger.debug("Save completed", print_to_terminal=True)
-        logger.debug(f"=== LTM ADD ENTRY END ===", print_to_terminal=True)
+        logger.debug("[ID:0140] Save completed", print_to_terminal=True)
+        logger.debug(f"[ID:0139] === LTM ADD ENTRY END ===", print_to_terminal=True)
     def get_entries(self, type_filter: Optional[str] = None) -> List[LongTermMemoryEntry]:
         if type_filter:
             return [e for e in self.entries if e.type == type_filter]
         return self.entries.copy()
     def _save(self):
         try:
-            logger.debug(f"Saving {len(self.entries)} entries to {self.ltm_file}", print_to_terminal=True)
+            logger.debug(f"[ID:0138] Saving {len(self.entries)} entries to {self.ltm_file}", print_to_terminal=True)
             with open(self.ltm_file, 'w', encoding='utf-8') as f:
                 data_to_save = [asdict(e) for e in self.entries]
-                logger.debug(f"Data to save: {data_to_save}", print_to_terminal=True)
+                logger.debug(f"[ID:0137] Data to save: {data_to_save}", print_to_terminal=True)
                 json.dump(data_to_save, f, indent=2, ensure_ascii=False)
-            logger.debug("LTM file saved successfully", print_to_terminal=True)
+            logger.debug("[ID:0136] LTM file saved successfully", print_to_terminal=True)
         except Exception as e:
-            logger.error(f"Error saving LTM file: {e}", print_to_terminal=True)
-            logger.error(f"Exception type: {type(e)}", print_to_terminal=True)
+            logger.error(f"[ID:0135] Error saving LTM file: {e}", print_to_terminal=True)
+            logger.error(f"[ID:0134] Exception type: {type(e)}", print_to_terminal=True)
     def update_access_stats(self, entry: LongTermMemoryEntry):
         """Update access statistics for a memory entry"""
         entry.access_count += 1
@@ -431,7 +431,7 @@ class MemoryService(QObject):
                     data = json.load(f)
                     self.memories = [MemoryEntry(**entry) for entry in data]
         except Exception as e:
-            logger.error(f"Error loading memory: {e}", print_to_terminal=True)
+            logger.error(f"[ID:0133] Error loading memory: {e}", print_to_terminal=True)
     
     def _save_memory(self):
         """Save memory to disk"""
@@ -439,11 +439,11 @@ class MemoryService(QObject):
             with open(self.memory_file, 'w', encoding='utf-8') as f:
                 json.dump([asdict(memory) for memory in self.memories], f, indent=2, ensure_ascii=False)
         except Exception as e:
-            logger.error(f"Error saving memory: {e}", print_to_terminal=True)
+            logger.error(f"[ID:0132] Error saving memory: {e}", print_to_terminal=True)
     
     def _on_embeddings_updated(self):
         """Handle embeddings updates from semantic search service"""
-        logger.debug("Semantic search embeddings updated", print_to_terminal=True)
+        logger.debug("[ID:0131] Semantic search embeddings updated", print_to_terminal=True)
         # Could emit a signal here if needed for UI updates
     
     def add_memory(self, content: str, conversation_id: str, importance: float = 0.5, 
@@ -476,13 +476,13 @@ class MemoryService(QObject):
         )
         
         self.memory_updated.emit(self.memories)
-        logger.debug(f"Added memory: {memory_id}")
+        logger.debug(f"[ID:0130] Added memory: {memory_id}")
         return memory_id
     
     def add_summary(self, summary: str, importance: float = 0.5, tags: List[str] = None):
         """Add a conversation summary to long-term memory"""
-        logger.debug(f"=== ADD SUMMARY START ===", print_to_terminal=True)
-        logger.debug(f"Adding summary: '{summary[:50]}...'", print_to_terminal=True)
+        logger.debug(f"[ID:0129] === ADD SUMMARY START ===", print_to_terminal=True)
+        logger.debug(f"[ID:0128] Adding summary: '{summary[:50]}...'", print_to_terminal=True)
         
         try:
             # Normalize pronouns in the summary to avoid AI confusion
@@ -490,7 +490,7 @@ class MemoryService(QObject):
             if self.pronoun_normalizer.should_normalize(summary):
                 user_name = self.get_user_name()
                 normalized_summary = self.pronoun_normalizer.normalize_pronouns(summary, user_name)
-                logger.debug(f"Normalized summary pronouns: '{summary[:50]}...' -> '{normalized_summary[:50]}...'", print_to_terminal=True)
+                logger.debug(f"[ID:0127] Normalized summary pronouns: '{summary[:50]}...' -> '{normalized_summary[:50]}...'", print_to_terminal=True)
             
             # Create LTM entry for summary
             entry = LongTermMemoryEntry(
@@ -503,20 +503,20 @@ class MemoryService(QObject):
             )
             
             self.ltm.add_entry(entry)
-            logger.debug(f"Summary added to LTM", print_to_terminal=True)
+            logger.debug(f"[ID:0126] Summary added to LTM", print_to_terminal=True)
             
             # Emit signal for UI updates
             self.summary_updated.emit(self.ltm.get_entries('summary'))
             
         except Exception as e:
-            logger.error(f"Error adding summary: {e}", print_to_terminal=True)
+            logger.error(f"[ID:0125] Error adding summary: {e}", print_to_terminal=True)
         finally:
-            logger.debug(f"=== ADD SUMMARY END ===", print_to_terminal=True)
+            logger.debug(f"[ID:0124] === ADD SUMMARY END ===", print_to_terminal=True)
     
     def get_relevant_memories(self, query: str, limit: int = 10, use_semantic: bool = True) -> List[MemoryEntry]:
         """Get memories relevant to the current query using semantic search or keyword matching"""
         if use_semantic and self.semantic_search.is_ready():
-            logger.debug(f"Using semantic search for query: '{query}'", print_to_terminal=True)
+            logger.debug(f"[ID:0123] Using semantic search for query: '{query}'", print_to_terminal=True)
             
             # Use hybrid search for better results
             semantic_results = self.semantic_search.search_hybrid(
@@ -534,11 +534,11 @@ class MemoryService(QObject):
                 memory = next((m for m in self.memories if m.id == memory_id), None)
                 if memory:
                     relevant_memories.append(memory)
-                    logger.debug(f"Found relevant memory via semantic search: {memory_id} (similarity: {similarity:.3f})", print_to_terminal=True)
+                    logger.debug(f"[ID:0122] Found relevant memory via semantic search: {memory_id} (similarity: {similarity:.3f})", print_to_terminal=True)
             
             return relevant_memories
         else:
-            logger.debug(f"Using keyword-based search for query: '{query}'", print_to_terminal=True)
+            logger.debug(f"[ID:0121] Using keyword-based search for query: '{query}'", print_to_terminal=True)
             
             # Fallback to original keyword-based search
             query_words = set(query.lower().split())
@@ -567,12 +567,12 @@ class MemoryService(QObject):
     
     def intelligent_add_message(self, message: Dict) -> Dict:
         """Intelligently add a message and determine if it should go to LTM"""
-        logger.debug(f"=== INTELLIGENT MESSAGE ADDITION START ===", print_to_terminal=True)
-        logger.debug(f"Processing message: {message}", print_to_terminal=True)
+        logger.debug(f"[ID:0120] === INTELLIGENT MESSAGE ADDITION START ===", print_to_terminal=True)
+        logger.debug(f"[ID:0119] Processing message: {message}", print_to_terminal=True)
         
         # Always add to STM
         self.stm.add_message(message)
-        logger.debug("Message added to STM", print_to_terminal=True)
+        logger.debug("[ID:0118] Message added to STM", print_to_terminal=True)
         
         # Classify the message
         content = message.get("content", "")
@@ -580,15 +580,15 @@ class MemoryService(QObject):
         
         if role == "user" and content.strip():
             classification = self.classifier.classify_message(content, role)
-            logger.debug(f"Message classification: {classification}", print_to_terminal=True)
+            logger.debug(f"[ID:0117] Message classification: {classification}", print_to_terminal=True)
             
             # If message should be stored in LTM, extract and store facts
             if classification["should_store_ltm"]:
-                logger.debug("Message qualifies for LTM storage", print_to_terminal=True)
+                logger.debug("[ID:0116] Message qualifies for LTM storage", print_to_terminal=True)
                 
                 # Extract facts from the message
                 facts = self.extract_facts_from_message(content)
-                logger.debug(f"Extracted facts: {facts}", print_to_terminal=True)
+                logger.debug(f"[ID:0115] Extracted facts: {facts}", print_to_terminal=True)
                 
                 # Store each fact in LTM
                 for key, value in facts.items():
@@ -600,9 +600,9 @@ class MemoryService(QObject):
                             tags=classification["context_keywords"]
                         )
             else:
-                logger.debug("Message does not qualify for LTM storage", print_to_terminal=True)
+                logger.debug("[ID:0114] Message does not qualify for LTM storage", print_to_terminal=True)
         
-        logger.debug(f"=== INTELLIGENT MESSAGE ADDITION END ===", print_to_terminal=True)
+        logger.debug(f"[ID:0113] === INTELLIGENT MESSAGE ADDITION END ===", print_to_terminal=True)
         return {"stm_added": True, "ltm_qualified": classification.get("should_store_ltm", False) if role == "user" else False}
     
     def extract_facts_from_message(self, message: str) -> Dict[str, str]:
@@ -646,10 +646,10 @@ class MemoryService(QObject):
                 if potential_name.lower() not in invalid_names and len(potential_name) > 1:
                     facts["name"] = potential_name
                     facts["user_name"] = potential_name  # Also store as user_name for personality system
-                    logger.debug(f"Extracted valid name: {potential_name}", print_to_terminal=True)
+                    logger.debug(f"[ID:0112] Extracted valid name: {potential_name}", print_to_terminal=True)
                     break
                 else:
-                    logger.debug(f"Rejected invalid name: {potential_name}", print_to_terminal=True)
+                    logger.debug(f"[ID:0111] Rejected invalid name: {potential_name}", print_to_terminal=True)
         
         # Extract location patterns - more precise
         location_patterns = [
@@ -668,7 +668,7 @@ class MemoryService(QObject):
                 if len(location) > 3 and not location.lower() in ['here', 'there', 'somewhere', 'anywhere']:
                     facts["location"] = location
                     facts["home"] = location
-                    logger.debug(f"Extracted location: {location}", print_to_terminal=True)
+                    logger.debug(f"[ID:0110] Extracted location: {location}", print_to_terminal=True)
                     break
         
         # Extract preferences - more precise
@@ -688,14 +688,14 @@ class MemoryService(QObject):
                     # Validate preference is meaningful
                     if len(item) > 2 and not item.lower() in ['it', 'this', 'that', 'things', 'stuff']:
                         facts[f"favorite_{category}"] = item
-                        logger.debug(f"Extracted favorite {category}: {item}", print_to_terminal=True)
+                        logger.debug(f"[ID:0109] Extracted favorite {category}: {item}", print_to_terminal=True)
                 else:
                     action = match.group(1)
                     item = match.group(2).strip()
                     # Validate preference is meaningful
                     if len(item) > 2 and not item.lower() in ['it', 'this', 'that', 'things', 'stuff']:
                         facts[f"preference_{action}"] = item
-                        logger.debug(f"Extracted preference {action}: {item}", print_to_terminal=True)
+                        logger.debug(f"[ID:0108] Extracted preference {action}: {item}", print_to_terminal=True)
         
         # Normalize pronouns in extracted facts to avoid AI confusion
         normalized_facts = {}
@@ -703,7 +703,7 @@ class MemoryService(QObject):
             if self.pronoun_normalizer.should_normalize(value):
                 user_name = self.get_user_name()
                 normalized_value = self.pronoun_normalizer.normalize_pronouns(value, user_name)
-                logger.debug(f"Normalized fact '{key}': '{value}' -> '{normalized_value}'", print_to_terminal=True)
+                logger.debug(f"[ID:0107] Normalized fact '{key}': '{value}' -> '{normalized_value}'", print_to_terminal=True)
                 normalized_facts[key] = normalized_value
             else:
                 normalized_facts[key] = value
@@ -728,7 +728,7 @@ class MemoryService(QObject):
                 category = fact.key.replace("preference_", "")
                 user_info[f"preference_{category}"] = fact.value
         
-        logger.debug(f"Retrieved user info: {user_info}", print_to_terminal=True)
+        logger.debug(f"[ID:0106] Retrieved user info: {user_info}", print_to_terminal=True)
         return user_info
     
     def get_user_name(self) -> Optional[str]:
@@ -741,29 +741,29 @@ class MemoryService(QObject):
     
     def get_context_messages(self, current_query: str = "") -> List[Dict]:
         """Get messages for context window, including relevant memories"""
-        logger.debug(f"=== CONTEXT RETRIEVAL START ===", print_to_terminal=True)
-        logger.debug(f"Current query: '{current_query}'", print_to_terminal=True)
+        logger.debug(f"[ID:0105] === CONTEXT RETRIEVAL START ===", print_to_terminal=True)
+        logger.debug(f"[ID:0104] Current query: '{current_query}'", print_to_terminal=True)
         
         # Get STM messages
         stm_msgs = self.stm.get_messages()
-        logger.debug(f"STM messages: {len(stm_msgs)}", print_to_terminal=True)
+        logger.debug(f"[ID:0103] STM messages: {len(stm_msgs)}", print_to_terminal=True)
         
         # Get relevant LTM entries if we have a query
         relevant_ltm = []
         if current_query.strip():
-            logger.debug("Retrieving relevant LTM entries...", print_to_terminal=True)
+            logger.debug("[ID:0102] Retrieving relevant LTM entries...", print_to_terminal=True)
             relevant_ltm = self.retriever.get_relevant_memories(
                 current_query, 
                 self.ltm.entries, 
                 max_results=5, 
                 min_relevance=0.2
             )
-            logger.debug(f"Found {len(relevant_ltm)} relevant LTM entries", print_to_terminal=True)
+            logger.debug(f"[ID:0101] Found {len(relevant_ltm)} relevant LTM entries", print_to_terminal=True)
             
             # Update access stats for retrieved memories
             for memory, relevance in relevant_ltm:
                 self.ltm.update_access_stats(memory)
-                logger.debug(f"Retrieved memory: {memory.key} = {memory.value} (relevance: {relevance:.2f})", print_to_terminal=True)
+                logger.debug(f"[ID:0100] Retrieved memory: {memory.key} = {memory.value} (relevance: {relevance:.2f})", print_to_terminal=True)
         
         # Build context - only include conversation messages, not system messages
         context = []
@@ -796,8 +796,8 @@ class MemoryService(QObject):
             filtered_stm.append(msg)
         
         context.extend(filtered_stm)
-        logger.debug(f"Context messages: {context}", print_to_terminal=False)
-        logger.debug(f"=== CONTEXT RETRIEVAL END ===", print_to_terminal=True)
+        logger.debug(f"[ID:0099] Context messages: {context}", print_to_terminal=False)
+        logger.debug(f"[ID:0098] === CONTEXT RETRIEVAL END ===", print_to_terminal=True)
         return context
     
     def summarize_conversation(self, conversation_messages: List[Dict], conversation_id: str) -> str:
@@ -839,13 +839,13 @@ class MemoryService(QObject):
                 if os.path.exists(self.stm.stm_file):
                     with open(self.stm.stm_file, 'w', encoding='utf-8') as f:
                         json.dump([], f, indent=2, ensure_ascii=False)
-                    logger.debug(f"Cleared short-term memory file: {self.stm.stm_file}", print_to_terminal=True)
+                    logger.debug(f"[ID:0097] Cleared short-term memory file: {self.stm.stm_file}", print_to_terminal=True)
                 
                 # Clear long-term memory file
                 if os.path.exists(self.ltm.ltm_file):
                     with open(self.ltm.ltm_file, 'w', encoding='utf-8') as f:
                         json.dump([], f, indent=2, ensure_ascii=False)
-                    logger.debug(f"Cleared long-term memory file: {self.ltm.ltm_file}", print_to_terminal=True)
+                    logger.debug(f"[ID:0096] Cleared long-term memory file: {self.ltm.ltm_file}", print_to_terminal=True)
                 
 
                 
@@ -853,19 +853,19 @@ class MemoryService(QObject):
                 if os.path.exists(self.memory_file):
                     with open(self.memory_file, 'w', encoding='utf-8') as f:
                         json.dump([], f, indent=2, ensure_ascii=False)
-                    logger.debug(f"Cleared memories file: {self.memory_file}", print_to_terminal=True)
+                    logger.debug(f"[ID:0095] Cleared memories file: {self.memory_file}", print_to_terminal=True)
                 
-                logger.debug("All memory files cleared successfully", print_to_terminal=True)
+                logger.debug("[ID:0094] All memory files cleared successfully", print_to_terminal=True)
                 
                 # Verify files are empty
                 self._verify_memory_files_cleared()
                 
             except Exception as e:
-                logger.error(f"Error clearing memory files: {e}", print_to_terminal=True)
+                logger.error(f"[ID:0093] Error clearing memory files: {e}", print_to_terminal=True)
         
         self._save_memory()
         self.memory_updated.emit(self.memories)
-        logger.debug(f"Memory cleared: type={memory_type if memory_type else 'all'}", print_to_terminal=True)
+        logger.debug(f"[ID:0092] Memory cleared: type={memory_type if memory_type else 'all'}", print_to_terminal=True)
     
     def _verify_memory_files_cleared(self):
         """Verify that all memory files are properly cleared"""
@@ -875,18 +875,18 @@ class MemoryService(QObject):
                 with open(self.stm.stm_file, 'r', encoding='utf-8') as f:
                     stm_data = json.load(f)
                     if stm_data:
-                        logger.warning(f"Short-term memory file not empty after clearing: {len(stm_data)} entries", print_to_terminal=True)
+                        logger.warning(f"[ID:0091] Short-term memory file not empty after clearing: {len(stm_data)} entries", print_to_terminal=True)
                     else:
-                        logger.debug("Short-term memory file verified as empty", print_to_terminal=True)
+                        logger.debug("[ID:0090] Short-term memory file verified as empty", print_to_terminal=True)
             
             # Check long-term memory file
             if os.path.exists(self.ltm.ltm_file):
                 with open(self.ltm.ltm_file, 'r', encoding='utf-8') as f:
                     ltm_data = json.load(f)
                     if ltm_data:
-                        logger.warning(f"Long-term memory file not empty after clearing: {len(ltm_data)} entries", print_to_terminal=True)
+                        logger.warning(f"[ID:0089] Long-term memory file not empty after clearing: {len(ltm_data)} entries", print_to_terminal=True)
                     else:
-                        logger.debug("Long-term memory file verified as empty", print_to_terminal=True)
+                        logger.debug("[ID:0088] Long-term memory file verified as empty", print_to_terminal=True)
             
 
             
@@ -895,12 +895,12 @@ class MemoryService(QObject):
                 with open(self.memory_file, 'r', encoding='utf-8') as f:
                     memories_data = json.load(f)
                     if memories_data:
-                        logger.warning(f"Memories file not empty after clearing: {len(memories_data)} entries", print_to_terminal=True)
+                        logger.warning(f"[ID:0087] Memories file not empty after clearing: {len(memories_data)} entries", print_to_terminal=True)
                     else:
-                        logger.debug("Memories file verified as empty", print_to_terminal=True)
+                        logger.debug("[ID:0086] Memories file verified as empty", print_to_terminal=True)
                         
         except Exception as e:
-            logger.error(f"Error verifying memory files: {e}", print_to_terminal=True)
+            logger.error(f"[ID:0085] Error verifying memory files: {e}", print_to_terminal=True)
     
     def delete_memory(self, memory_id: str):
         """Delete a specific memory entry"""
@@ -944,46 +944,46 @@ class MemoryService(QObject):
     
     def add_fact(self, key: str, value: str, importance: float = 0.7, tags: List[str] = None):
         """Add a fact to long-term memory with validation"""
-        logger.debug(f"=== MEMORY SERVICE ADD FACT START ===", print_to_terminal=True)
-        logger.debug(f"Adding fact: key='{key}', value='{value}', importance={importance}", print_to_terminal=True)
+        logger.debug(f"[ID:0084] === MEMORY SERVICE ADD FACT START ===", print_to_terminal=True)
+        logger.debug(f"[ID:0083] Adding fact: key='{key}', value='{value}', importance={importance}", print_to_terminal=True)
         
         try:
             # Validate inputs
             if not key or not value:
-                logger.debug(f"Invalid fact data: key='{key}', value='{value}'", print_to_terminal=True)
+                logger.debug(f"[ID:0082] Invalid fact data: key='{key}', value='{value}'", print_to_terminal=True)
                 return
                 
             if not isinstance(key, str) or not isinstance(value, str):
-                logger.debug(f"Fact key and value must be strings: key={type(key)}, value={type(value)}", print_to_terminal=True)
+                logger.debug(f"[ID:0081] Fact key and value must be strings: key={type(key)}, value={type(value)}", print_to_terminal=True)
                 return
             
             # Clean the inputs
             clean_key = key.strip()
             clean_value = value.strip()
-            logger.debug(f"Cleaned inputs: key='{clean_key}', value='{clean_value}'", print_to_terminal=True)
+            logger.debug(f"[ID:0080] Cleaned inputs: key='{clean_key}', value='{clean_value}'", print_to_terminal=True)
             
             # Normalize pronouns in the value to avoid AI confusion
             if self.pronoun_normalizer.should_normalize(clean_value):
                 user_name = self.get_user_name()
                 normalized_value = self.pronoun_normalizer.normalize_pronouns(clean_value, user_name)
-                logger.debug(f"Normalized pronouns: '{clean_value}' -> '{normalized_value}'", print_to_terminal=True)
+                logger.debug(f"[ID:0079] Normalized pronouns: '{clean_value}' -> '{normalized_value}'", print_to_terminal=True)
                 clean_value = normalized_value
             
             if not clean_key or not clean_value:
-                logger.debug("Fact key or value is empty after cleaning", print_to_terminal=True)
+                logger.debug("[ID:0078] Fact key or value is empty after cleaning", print_to_terminal=True)
                 return
             
             # Check if this fact already exists to avoid duplicates
-            logger.debug("Checking for existing facts to avoid duplicates...", print_to_terminal=True)
+            logger.debug("[ID:0077] Checking for existing facts to avoid duplicates...", print_to_terminal=True)
             existing_facts = self.ltm.get_entries('fact')
-            logger.debug(f"Found {len(existing_facts)} existing facts", print_to_terminal=True)
+            logger.debug(f"[ID:0076] Found {len(existing_facts)} existing facts", print_to_terminal=True)
             
             for existing in existing_facts:
                 if existing.key == clean_key and existing.value == clean_value:
-                    logger.debug(f"Fact already exists: {clean_key} = {clean_value}", print_to_terminal=True)
+                    logger.debug(f"[ID:0075] Fact already exists: {clean_key} = {clean_value}", print_to_terminal=True)
                     return
             
-            logger.debug("No duplicate found, creating new fact entry", print_to_terminal=True)
+            logger.debug("[ID:0074] No duplicate found, creating new fact entry", print_to_terminal=True)
             entry = LongTermMemoryEntry(
                 type='fact', 
                 key=clean_key, 
@@ -993,20 +993,20 @@ class MemoryService(QObject):
                 tags=tags or [],
                 context_keywords=tags or []
             )
-            logger.debug(f"Created entry: {entry}", print_to_terminal=True)
+            logger.debug(f"[ID:0073] Created entry: {entry}", print_to_terminal=True)
             
             self.ltm.add_entry(entry)
-            logger.debug(f"Added fact to LTM: {clean_key} = {clean_value}", print_to_terminal=True)
-            logger.debug(f"Total LTM entries: {len(self.ltm.entries)}", print_to_terminal=True)
+            logger.debug(f"[ID:0072] Added fact to LTM: {clean_key} = {clean_value}", print_to_terminal=True)
+            logger.debug(f"[ID:0071] Total LTM entries: {len(self.ltm.entries)}", print_to_terminal=True)
             
             # Clean up memory entries to resolve conflicts
             self.cleanup_memory_entries()
             
         except Exception as e:
-            logger.error(f"Error adding fact: {e}", print_to_terminal=True)
-            logger.error(f"Exception type: {type(e)}", print_to_terminal=True)
+            logger.error(f"[ID:0070] Error adding fact: {e}", print_to_terminal=True)
+            logger.error(f"[ID:0069] Exception type: {type(e)}", print_to_terminal=True)
         finally:
-            logger.debug(f"=== MEMORY SERVICE ADD FACT END ===", print_to_terminal=True)
+            logger.debug(f"[ID:0068] === MEMORY SERVICE ADD FACT END ===", print_to_terminal=True)
     
 
     
@@ -1017,7 +1017,7 @@ class MemoryService(QObject):
         if len(self.stm.messages) > max_messages:
             self.stm.messages = self.stm.messages[-max_messages:]
         self.stm._save()
-        logger.debug(f"Set max context messages to {max_messages}", print_to_terminal=True)
+        logger.debug(f"[ID:0067] Set max context messages to {max_messages}", print_to_terminal=True)
     
     def search_memories(self, query: str, memory_type: str = None) -> List[MemoryEntry]:
         """Search memories by content"""
@@ -1040,7 +1040,7 @@ class MemoryService(QObject):
 
     def cleanup_memory_entries(self):
         """Clean up duplicate and conflicting memory entries"""
-        logger.debug("=== MEMORY CLEANUP START ===", print_to_terminal=True)
+        logger.debug("[ID:0066] === MEMORY CLEANUP START ===", print_to_terminal=True)
         
         # Group entries by key
         entries_by_key = {}
@@ -1057,7 +1057,7 @@ class MemoryService(QObject):
                 cleaned_entries.append(entries[0])
             else:
                 # Multiple entries for same key, resolve conflicts
-                logger.debug(f"Found {len(entries)} entries for key '{key}': {[e.value for e in entries]}", print_to_terminal=True)
+                logger.debug(f"[ID:0065] Found {len(entries)} entries for key '{key}': {[e.value for e in entries]}", print_to_terminal=True)
                 
                 if key in ['name', 'user_name']:
                     # For names, prefer the most recent valid name
@@ -1066,26 +1066,26 @@ class MemoryService(QObject):
                         # Sort by timestamp, most recent first
                         valid_names.sort(key=lambda x: x.timestamp, reverse=True)
                         best_name = valid_names[0]
-                        logger.debug(f"Selected best name: {best_name.value} (timestamp: {best_name.timestamp})", print_to_terminal=True)
+                        logger.debug(f"[ID:0064] Selected best name: {best_name.value} (timestamp: {best_name.timestamp})", print_to_terminal=True)
                         cleaned_entries.append(best_name)
                     else:
                         # No valid names found, keep the most recent
                         entries.sort(key=lambda x: x.timestamp, reverse=True)
                         cleaned_entries.append(entries[0])
-                        logger.debug(f"No valid names found, keeping most recent: {entries[0].value}", print_to_terminal=True)
+                        logger.debug(f"[ID:0063] No valid names found, keeping most recent: {entries[0].value}", print_to_terminal=True)
                 else:
                     # For other keys, keep the most recent entry
                     entries.sort(key=lambda x: x.timestamp, reverse=True)
                     cleaned_entries.append(entries[0])
-                    logger.debug(f"Keeping most recent entry for '{key}': {entries[0].value}", print_to_terminal=True)
+                    logger.debug(f"[ID:0062] Keeping most recent entry for '{key}': {entries[0].value}", print_to_terminal=True)
         
         # Update the entries list
         old_count = len(self.ltm.entries)
         self.ltm.entries = cleaned_entries
         new_count = len(self.ltm.entries)
         
-        logger.debug(f"Memory cleanup complete: {old_count} -> {new_count} entries", print_to_terminal=True)
-        logger.debug("=== MEMORY CLEANUP END ===", print_to_terminal=True)
+        logger.debug(f"[ID:0061] Memory cleanup complete: {old_count} -> {new_count} entries", print_to_terminal=True)
+        logger.debug("[ID:0060] === MEMORY CLEANUP END ===", print_to_terminal=True)
         
         # Save the cleaned entries
         self.ltm._save() 

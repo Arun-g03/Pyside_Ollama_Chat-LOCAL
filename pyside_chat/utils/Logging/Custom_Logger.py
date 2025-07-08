@@ -34,7 +34,7 @@ def strip_emojis(text):
 
 class PrintOnLogMixin:
     def _print(self, msg):
-        print(strip_emojis(msg))
+[ID:0005]         print(strip_emojis(msg))
     def info(self, msg, *args, print_to_terminal=False, **kwargs):
         clean_msg = strip_emojis(msg % args if args else msg)
         super().info(clean_msg, **kwargs)
@@ -125,7 +125,7 @@ class CustomLogger(logging.Logger):
         if not name:
             name = "PyChat"
             if not _warned_about_default:
-                print("[CustomLogger WARNING] No logger name specified. Using default 'PyChat' logger. Specify a module name for module-specific logging.")
+                print("[ID:0004] [CustomLogger WARNING] No logger name specified. Using default 'PyChat' logger. Specify a module name for module-specific logging.")
                 _warned_about_default = True
         if name in cls._loggers:
             return cls._loggers[name]
@@ -138,14 +138,14 @@ class CustomLogger(logging.Logger):
                 cls._clear_log_file(CENTRAL_LOG_FILE)
                 file_handler = logging.FileHandler(CENTRAL_LOG_FILE)
                 file_handler.setFormatter(formatter)
-                logger.addHandler(file_handler)
+[ID:0003]                 logger.addHandler(file_handler)
             else:
                 module_log_file = os.path.join(LOGS_DIR, f"{_sanitize_filename(name)}.log")
                 cls._clear_log_file(module_log_file)
                 file_handler = logging.FileHandler(module_log_file)
                 file_handler.setFormatter(formatter)
-                logger.addHandler(file_handler)
-            logger.setLevel(LOG_LEVEL)
+[ID:0002]                 logger.addHandler(file_handler)
+[ID:0001]             logger.setLevel(LOG_LEVEL)
             logger.propagate = False
         # Wrap logger with print-on-log mixin for per-message print_to_terminal support
         class PrintLogger(PrintOnLogMixin, type(logger)):
