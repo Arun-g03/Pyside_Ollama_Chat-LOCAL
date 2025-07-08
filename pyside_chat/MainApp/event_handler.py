@@ -81,10 +81,10 @@ class EventHandler:
             # Connect timer
             self.model_update_timer.timeout.connect(self._on_delayed_model_update)
             
-            logger.info("[ID:0322] All signal connections established successfully")
+            logger.info("[ID:0273] All signal connections established successfully")
             
         except Exception as e:
-            logger.error(f"[ID:0321] Error setting up connections: {e}")
+            logger.error(f"[ID:0272] Error setting up connections: {e}")
             raise
     
     def _connect_menu_actions(self):
@@ -127,7 +127,7 @@ class EventHandler:
                 about_action.triggered.connect(self._on_show_about)
                 
         except Exception as e:
-            logger.error(f"[ID:0320] Error connecting menu actions: {e}")
+            logger.error(f"[ID:0271] Error connecting menu actions: {e}")
     
     def _on_status_updated(self, message: str):
         """Handle status updates from controller"""
@@ -146,7 +146,7 @@ class EventHandler:
     
     def _on_name_generation_requested(self, filepath: str):
         """Handle name generation request from controller"""
-        logger.info(f"[ID:0319] Name generation requested for: {filepath}")
+        logger.info(f"[ID:0270] Name generation requested for: {filepath}")
         
         summarization_service = self.service_manager.get_summarization_service()
         if summarization_service:
@@ -154,20 +154,20 @@ class EventHandler:
                 # Load the conversation
                 conversation_manager = self.service_manager.get_conversation_manager()
                 conversation, metadata = conversation_manager.load_conversation(filepath)
-                logger.info(f"[ID:0318] Loaded conversation with {len(conversation)} messages")
-                logger.info(f"[ID:0317] Current AI name: {metadata.ai_generated_name}")
+                logger.info(f"[ID:0269] Loaded conversation with {len(conversation)} messages")
+                logger.info(f"[ID:0268] Current AI name: {metadata.ai_generated_name}")
                 
                 # Only generate name if we don't already have one
                 if not metadata.ai_generated_name:
-                    logger.info("[ID:0316] No AI name exists, triggering generation...")
+                    logger.info("[ID:0267] No AI name exists, triggering generation...")
                     summarization_service.generate_chat_name(conversation, filepath)
                 else:
-                    logger.info(f"[ID:0315] AI name already exists: {metadata.ai_generated_name}")
+                    logger.info(f"[ID:0266] AI name already exists: {metadata.ai_generated_name}")
                     
             except Exception as e:
-                logger.error(f"[ID:0314] Error triggering name generation: {str(e)}")
+                logger.error(f"[ID:0265] Error triggering name generation: {str(e)}")
         else:
-            logger.warning("[ID:0313] No summarization service available")
+            logger.warning("[ID:0264] No summarization service available")
     
     def _on_models_updated(self, models):
         """Handle model list updates"""
@@ -329,7 +329,7 @@ class EventHandler:
     
     def _on_worker_finished(self):
         """Handle worker completion"""
-        logger.debug("[ID:0312] Worker finished")
+        logger.debug("[ID:0263] Worker finished")
         
         # Mark worker as finished
         if hasattr(self, 'worker'):
@@ -337,15 +337,15 @@ class EventHandler:
         
         # Only clean up if TTS is also finished
         if self._tts_finished:
-            logger.debug("[ID:0311] Both worker and TTS finished, cleaning up")
+            logger.debug("[ID:0262] Both worker and TTS finished, cleaning up")
             self._cleanup_worker_thread()
         else:
-            logger.debug("[ID:0310] Worker finished but TTS still running, waiting for TTS")
+            logger.debug("[ID:0261] Worker finished but TTS still running, waiting for TTS")
             # TTS will call cleanup when it finishes
     
     def _on_tts_finished(self):
         """Handle TTS completion"""
-        logger.debug("[ID:0309] TTS finished signal received")
+        logger.debug("[ID:0260] TTS finished signal received")
         self._tts_finished = True
         
         # Use QTimer.singleShot to ensure this runs in the main thread
@@ -357,15 +357,15 @@ class EventHandler:
         try:
             # Check if worker thread is still running
             if hasattr(self, 'worker_thread') and self.worker_thread and self.worker_thread.isRunning():
-                logger.debug("[ID:0308] Worker thread still running, waiting for it to finish")
+                logger.debug("[ID:0259] Worker thread still running, waiting for it to finish")
                 # Don't clean up yet - let the worker finish naturally
                 # The worker will call cleanup when it finishes
                 return
             else:
-                logger.debug("[ID:0307] Worker thread not running, cleaning up immediately")
+                logger.debug("[ID:0258] Worker thread not running, cleaning up immediately")
                 self._cleanup_worker_thread()
         except Exception as e:
-            logger.error(f"[ID:0306] Error in delayed TTS finished handling: {e}")
+            logger.error(f"[ID:0257] Error in delayed TTS finished handling: {e}")
             # Force cleanup on error
             self._cleanup_worker_thread()
     
@@ -389,7 +389,7 @@ class EventHandler:
                     try:
                         self.worker.stop()
                     except Exception as e:
-                        logger.error(f"[ID:0305] Error stopping worker: {e}")
+                        logger.error(f"[ID:0256] Error stopping worker: {e}")
                 
                 if self.worker_thread and self.worker_thread.isRunning():
                     # Try to quit gracefully first
@@ -397,20 +397,20 @@ class EventHandler:
                     
                     # Use a shorter timeout to avoid blocking the UI
                     if not self.worker_thread.wait(2000):  # 2 second timeout
-                        logger.warning("[ID:0304] Worker thread did not quit within timeout, marking for deletion")
+                        logger.warning("[ID:0255] Worker thread did not quit within timeout, marking for deletion")
                         # Don't use terminate() as it can cause crashes
                         # Instead, just mark it for deletion and let it finish naturally
                         self.worker_thread.deleteLater()
                     else:
-                        logger.debug("[ID:0303] Worker thread quit successfully")
+                        logger.debug("[ID:0254] Worker thread quit successfully")
                         self.worker_thread.deleteLater()
                 else:
-                    logger.debug("[ID:0302] Worker thread not running, cleaning up")
+                    logger.debug("[ID:0253] Worker thread not running, cleaning up")
                     if self.worker_thread:
                         self.worker_thread.deleteLater()
                         
             except Exception as e:
-                logger.error(f"[ID:0301] Error cleaning up worker thread: {e}")
+                logger.error(f"[ID:0252] Error cleaning up worker thread: {e}")
             finally:
                 # Always clean up references
                 if hasattr(self, 'worker_thread'):
@@ -484,14 +484,14 @@ class EventHandler:
             if conversation_manager.get_current_metadata().current_conversation_file == old_filepath:
                 conversation_manager.get_current_metadata().current_conversation_file = new_filepath
             
-            logger.info(f"[ID:0300] Conversation renamed: {old_filepath} -> {new_filepath}")
+            logger.info(f"[ID:0251] Conversation renamed: {old_filepath} -> {new_filepath}")
             
             # Refresh navigation to show updated AI-generated name
             if chat_tab:
                 chat_tab.refresh_navigation()
                 
         except Exception as e:
-            logger.error(f"[ID:0299] Error handling conversation rename: {str(e)}")
+            logger.error(f"[ID:0250] Error handling conversation rename: {str(e)}")
     
     def _on_personality_changed(self, personality_name):
         """Handle personality changes"""
@@ -652,7 +652,7 @@ class EventHandler:
                 # No models returned - likely Ollama is not running
                 self._show_ollama_connection_error("startup")
         except Exception as e:
-            logger.error(f"[ID:0298] Error refreshing models: {e}")
+            logger.error(f"[ID:0249] Error refreshing models: {e}")
             self._show_ollama_connection_error("startup")
         
         # Also refresh personalities

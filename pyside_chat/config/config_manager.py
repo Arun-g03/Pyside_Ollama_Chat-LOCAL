@@ -53,7 +53,7 @@ class ConfigManager:
                     # Merge with defaults to ensure all keys exist
                     return self.merge_configs(default_config, loaded_config)
             except Exception as e:
-                logger.debug(f"[ID:0219] Error loading config: {e}, using defaults",print_to_terminal=True)
+                logger.debug(f"[ID:0212] Error loading config: {e}, using defaults",print_to_terminal=True)
                 return default_config
         else:
             # Create default config file
@@ -80,7 +80,7 @@ class ConfigManager:
                 json.dump(config, f, indent=2, ensure_ascii=False)
             return True
         except Exception as e:
-            logger.debug(f"[ID:0218] Error saving config: {e}",print_to_terminal=True)
+            logger.debug(f"[ID:0211] Error saving config: {e}",print_to_terminal=True)
             return False
     
     def get(self, key: str, default: Any = None) -> Any:

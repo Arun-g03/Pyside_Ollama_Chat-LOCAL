@@ -34,7 +34,7 @@ def strip_emojis(text):
 
 class PrintOnLogMixin:
     def _print(self, msg):
-[ID:0005]         print(strip_emojis(msg))
+       print(strip_emojis(msg))
     def info(self, msg, *args, print_to_terminal=False, **kwargs):
         clean_msg = strip_emojis(msg % args if args else msg)
         super().info(clean_msg, **kwargs)
@@ -138,15 +138,15 @@ class CustomLogger(logging.Logger):
                 cls._clear_log_file(CENTRAL_LOG_FILE)
                 file_handler = logging.FileHandler(CENTRAL_LOG_FILE)
                 file_handler.setFormatter(formatter)
-[ID:0003]                 logger.addHandler(file_handler)
+                logger.addHandler(file_handler)
             else:
                 module_log_file = os.path.join(LOGS_DIR, f"{_sanitize_filename(name)}.log")
                 cls._clear_log_file(module_log_file)
                 file_handler = logging.FileHandler(module_log_file)
                 file_handler.setFormatter(formatter)
-[ID:0002]                 logger.addHandler(file_handler)
-[ID:0001]             logger.setLevel(LOG_LEVEL)
-            logger.propagate = False
+                logger.addHandler(file_handler)
+        logger.setLevel(LOG_LEVEL)
+        logger.propagate = False
         # Wrap logger with print-on-log mixin for per-message print_to_terminal support
         class PrintLogger(PrintOnLogMixin, type(logger)):
             pass

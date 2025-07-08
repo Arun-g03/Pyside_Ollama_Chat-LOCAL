@@ -22,6 +22,8 @@ IGNORE_PATHS = []
 
 ID_PATTERN = re.compile(r'\[ID:\d{4}\]\s*')
 
+SKIP_LOGGER_FILES = ["Custom_Logger.py", "logging_helpers.py"]
+
 def find_logger_and_print_statements(filepath):
     """Find all logger calls and print statements in a Python file."""
     try:
@@ -130,7 +132,7 @@ def parse_directory_for_logging(directory, ignore_env=None):
             dirs[:] = [d for d in dirs if d != ignore_env]
         
         for file in files:
-            if file in IGNORE_FILES:
+            if file in IGNORE_FILES or file in SKIP_LOGGER_FILES:
                 continue
             if any(file.endswith(ext) for ext in IGNORE_EXTENSIONS):
                 continue

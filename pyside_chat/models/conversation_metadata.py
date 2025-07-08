@@ -189,24 +189,24 @@ class ConversationManager(QObject):
             New filepath if successful, None otherwise
         """
         try:
-            logger.debug(f"[ID:0217] Updating conversation name for {filepath} to '{ai_generated_name}'")
+            logger.debug(f"[ID:0210] Updating conversation name for {filepath} to '{ai_generated_name}'")
             
             # Load the conversation
             conversation, metadata = self.load_conversation(filepath)
-            logger.debug(f"[ID:0216] Loaded conversation with {len(conversation)} messages")
-            logger.debug(f"[ID:0215] Original metadata ai_generated_name: {metadata.ai_generated_name}")
+            logger.debug(f"[ID:0209] Loaded conversation with {len(conversation)} messages")
+            logger.debug(f"[ID:0208] Original metadata ai_generated_name: {metadata.ai_generated_name}")
             
             # Update the AI-generated name
             metadata.update_ai_generated_name(ai_generated_name)
-            logger.debug(f"[ID:0214] Updated metadata ai_generated_name: {metadata.ai_generated_name}")
+            logger.debug(f"[ID:0207] Updated metadata ai_generated_name: {metadata.ai_generated_name}")
             
             # Create a safe filename from the AI-generated name
             safe_filename = self._create_safe_filename(ai_generated_name)
-            logger.debug(f"[ID:0213] Created safe filename: {safe_filename}")
+            logger.debug(f"[ID:0206] Created safe filename: {safe_filename}")
             
             # Generate new filepath
             new_filepath = os.path.join(self.history_dir, safe_filename)
-            logger.debug(f"[ID:0212] New filepath: {new_filepath}")
+            logger.debug(f"[ID:0205] New filepath: {new_filepath}")
             
             # Check if new filename already exists
             if os.path.exists(new_filepath) and new_filepath != filepath:
@@ -215,7 +215,7 @@ class ConversationManager(QObject):
                 name_without_ext = os.path.splitext(safe_filename)[0]
                 safe_filename = f"{name_without_ext}_{timestamp}.json"
                 new_filepath = os.path.join(self.history_dir, safe_filename)
-                logger.debug(f"[ID:0211] File exists, using timestamped filename: {new_filepath}")
+                logger.debug(f"[ID:0204] File exists, using timestamped filename: {new_filepath}")
             
             # Save the updated conversation to the new file
             save_data = {
@@ -223,7 +223,7 @@ class ConversationManager(QObject):
                 "conversation": conversation
             }
             
-            logger.debug(f"[ID:0210] Saving with metadata: {save_data['metadata']}")
+            logger.debug(f"[ID:0203] Saving with metadata: {save_data['metadata']}")
             
             with open(new_filepath, 'w', encoding='utf-8') as f:
                 json.dump(save_data, f, indent=2, ensure_ascii=False)
@@ -232,21 +232,21 @@ class ConversationManager(QObject):
             if new_filepath != filepath:
                 try:
                     os.remove(filepath)
-                    logger.debug(f"[ID:0209] Deleted old file: {filepath}")
+                    logger.debug(f"[ID:0202] Deleted old file: {filepath}")
                 except Exception as e:
-                    logger.warning(f"[ID:0208] Failed to remove old file {filepath}: {e}")
+                    logger.warning(f"[ID:0201] Failed to remove old file {filepath}: {e}")
             
             # Update current conversation file reference if this was the current one
             if self.metadata.current_conversation_file == filepath:
                 self.metadata.current_conversation_file = new_filepath
-                logger.debug(f"[ID:0207] Updated current conversation file reference to: {new_filepath}")
+                logger.debug(f"[ID:0200] Updated current conversation file reference to: {new_filepath}")
             
             self.metadata_updated.emit()
-            logger.debug(f"[ID:0206] Successfully updated conversation name, returning: {new_filepath}")
+            logger.debug(f"[ID:0199] Successfully updated conversation name, returning: {new_filepath}")
             return new_filepath
             
         except Exception as e:
-            logger.error(f"[ID:0205] Failed to update conversation name: {str(e)}")
+            logger.error(f"[ID:0198] Failed to update conversation name: {str(e)}")
             return None
     
     def _create_safe_filename(self, ai_generated_name: str) -> str:
@@ -331,10 +331,10 @@ class ConversationManager(QObject):
         Returns:
             Path to saved file if saved, None otherwise
         """
-        logger.debug(f"[ID:0204] Auto-save attempt - enabled: {self.metadata.auto_save_enabled}, conversation length: {len(conversation) if conversation else 0}")
+        logger.debug(f"[ID:0197] Auto-save attempt - enabled: {self.metadata.auto_save_enabled}, conversation length: {len(conversation) if conversation else 0}")
         
         if not self.metadata.auto_save_enabled:
-            logger.debug("[ID:0203] Auto-save skipped: auto_save_enabled is False")
+            logger.debug("[ID:0196] Auto-save skipped: auto_save_enabled is False")
             return None
             
         # Skip saving if conversation is empty and we already have a file with content
@@ -344,7 +344,7 @@ class ConversationManager(QObject):
                     data = json.load(f)
                     existing_conversation = data.get("conversation", []) if isinstance(data, dict) else data
                     if len(existing_conversation) > 0:
-                        logger.debug("[ID:0202] Auto-save skipped: conversation is empty and existing file has content")
+                        logger.debug("[ID:0195] Auto-save skipped: conversation is empty and existing file has content")
                         return None
             except:
                 pass  # If we can't read the file, proceed with saving
@@ -370,10 +370,10 @@ class ConversationManager(QObject):
                     if isinstance(data, dict) and "metadata" in data:
                         existing_ai_name = data["metadata"].get("ai_generated_name")
                         if existing_ai_name and not self.metadata.ai_generated_name:
-                            logger.debug(f"[ID:0201] Preserving existing AI name: {existing_ai_name}")
+                            logger.debug(f"[ID:0194] Preserving existing AI name: {existing_ai_name}")
                             self.metadata.update_ai_generated_name(existing_ai_name)
             except Exception as e:
-                logger.debug(f"[ID:0200] Could not read existing file for AI name preservation: {e}")
+                logger.debug(f"[ID:0193] Could not read existing file for AI name preservation: {e}")
         
         # Update metadata
         self.metadata.update_message_count(len(conversation))
@@ -388,11 +388,11 @@ class ConversationManager(QObject):
                 json.dump(save_data, f, indent=2, ensure_ascii=False)
             
             self.metadata_updated.emit()
-            logger.debug(f"[ID:0199] Auto-save successful: {self.metadata.current_conversation_file}")
+            logger.debug(f"[ID:0192] Auto-save successful: {self.metadata.current_conversation_file}")
             return self.metadata.current_conversation_file
             
         except Exception as e:
-            logger.debug(f"[ID:0198] Auto-save failed: {e}",print_to_terminal=True)
+            logger.debug(f"[ID:0191] Auto-save failed: {e}",print_to_terminal=True)
             return None
     
     def list_conversations(self) -> list[tuple[str, ConversationMetadata]]:
@@ -414,7 +414,7 @@ class ConversationManager(QObject):
                     conversation, metadata = self.load_conversation(filepath)
                     conversations.append((filepath, metadata))
                 except Exception as e:
-                    logger.debug(f"[ID:0197] Error reading {filename}: {e}",print_to_terminal=True)
+                    logger.debug(f"[ID:0190] Error reading {filename}: {e}",print_to_terminal=True)
                     # Add with basic metadata even if corrupted
                     basic_metadata = ConversationMetadata()
                     basic_metadata.current_conversation_file = filepath
@@ -438,7 +438,7 @@ class ConversationManager(QObject):
             os.remove(filepath)
             return True
         except Exception as e:
-            logger.debug(f"[ID:0196] Failed to delete {filepath}: {e}",print_to_terminal=True)
+            logger.debug(f"[ID:0189] Failed to delete {filepath}: {e}",print_to_terminal=True)
             return False
     
     def rename_conversation(self, old_filepath: str, new_filepath: str) -> bool:
@@ -463,7 +463,7 @@ class ConversationManager(QObject):
             
             return True
         except Exception as e:
-            logger.debug(f"[ID:0195] Failed to rename {old_filepath} to {new_filepath}: {e}",print_to_terminal=True)
+            logger.debug(f"[ID:0188] Failed to rename {old_filepath} to {new_filepath}: {e}",print_to_terminal=True)
             return False
     
     def clear_current_conversation(self) -> None:

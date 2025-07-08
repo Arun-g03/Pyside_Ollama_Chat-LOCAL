@@ -304,21 +304,21 @@ class ChatController(QObject):
     def handle_ai_response(self) -> None:
         """Handle AI response completion using accumulated response."""
         response = self._pending_assistant_response
-        logger.debug(f"[ID:0297] DEBUG: handle_ai_response called with response length: {len(response)}")
+        logger.debug(f"[ID:0248] DEBUG: handle_ai_response called with response length: {len(response)}")
         self.conversation_service.add_message("assistant", response)
         self.clear_pending_assistant_response()
         if self.is_memory_active():
             result = self.memory_service.intelligent_add_message({"role": "assistant", "content": response})
             LoggingHelpers.log_memory_result(result)
         messages = self.conversation_service.get_messages()
-        logger.debug(f"[ID:0296] DEBUG: About to auto-save conversation with {len(messages)} messages")
-        logger.debug(f"[ID:0295] DEBUG: Current conversation file: {self.conversation_manager.get_current_metadata().current_conversation_file}")
+        logger.debug(f"[ID:0247] DEBUG: About to auto-save conversation with {len(messages)} messages")
+        logger.debug(f"[ID:0246] DEBUG: Current conversation file: {self.conversation_manager.get_current_metadata().current_conversation_file}")
         saved_filepath = self.conversation_manager.auto_save_conversation(messages)
         if saved_filepath:
-            logger.debug(f"[ID:0294] DEBUG: Conversation saved to: {saved_filepath}")
+            logger.debug(f"[ID:0245] DEBUG: Conversation saved to: {saved_filepath}")
             self._trigger_name_generation(saved_filepath)
         else:
-            logger.debug("[ID:0293] DEBUG: Auto-save returned None - conversation not saved")
+            logger.debug("[ID:0244] DEBUG: Auto-save returned None - conversation not saved")
         self.message_received.emit(response)
         self.conversation_updated.emit()
         self.status_updated.emit("Ready")
@@ -335,11 +335,11 @@ class ChatController(QObject):
             spoken_text = remove_emojis(spoken_text)
             if hasattr(self, '_chat_tab_reference') and self._chat_tab_reference:
                 self._chat_tab_reference.speak_ai_response(spoken_text)
-                logger.debug(f"[ID:0292] TTS triggered for AI response (length: {len(spoken_text)})")
+                logger.debug(f"[ID:0243] TTS triggered for AI response (length: {len(spoken_text)})")
             else:
-                logger.debug("[ID:0291] No chat tab reference available for TTS")
+                logger.debug("[ID:0242] No chat tab reference available for TTS")
         except Exception as e:
-            logger.error(f"[ID:0290] Error triggering TTS for AI response: {e}")
+            logger.error(f"[ID:0241] Error triggering TTS for AI response: {e}")
     
     def set_chat_tab_reference(self, chat_tab):
         """Set reference to chat tab for TTS functionality"""
@@ -347,26 +347,26 @@ class ChatController(QObject):
     
     def _trigger_name_generation(self, filepath: str) -> None:
         """Trigger AI name generation for a conversation"""
-        logger.debug(f"[ID:0289] DEBUG: Triggering name generation for: {filepath}")
+        logger.debug(f"[ID:0240] DEBUG: Triggering name generation for: {filepath}")
         # Emit signal for UI to handle name generation
         self.name_generation_requested.emit(filepath)
         
     
     def start_new_conversation(self) -> None:
         """Start a new conversation"""
-        logger.debug("[ID:0288] DEBUG: start_new_conversation called")
+        logger.debug("[ID:0239] DEBUG: start_new_conversation called")
         
         # Check if there's already a blank conversation we can reuse
         existing_blank = self.conversation_manager.find_blank_conversation()
         if existing_blank:
-            logger.debug(f"[ID:0287] DEBUG: Found existing blank conversation: {existing_blank}")
+            logger.debug(f"[ID:0238] DEBUG: Found existing blank conversation: {existing_blank}")
             # Use the existing blank conversation instead of creating a new one
             self.is_new_conversation = True
             self.conversation_service.clear_conversation()
             
             # Set the current conversation file to the existing blank one
             self.conversation_manager.get_current_metadata().current_conversation_file = existing_blank
-            logger.debug(f"[ID:0286] DEBUG: Reusing existing blank conversation: {existing_blank}")
+            logger.debug(f"[ID:0237] DEBUG: Reusing existing blank conversation: {existing_blank}")
             
             # Emit signals to update UI
             self.conversation_updated.emit()
@@ -374,7 +374,7 @@ class ChatController(QObject):
             return
         
         # No blank conversation found, create a new one
-        logger.debug("[ID:0285] DEBUG: No blank conversation found, creating new one")
+        logger.debug("[ID:0236] DEBUG: No blank conversation found, creating new one")
         self.is_new_conversation = True
         self.conversation_service.clear_conversation()
         self.conversation_manager.clear_current_conversation()
@@ -387,14 +387,14 @@ class ChatController(QObject):
             f"conversation_{timestamp}.json"
         )
         self.conversation_manager.get_current_metadata().current_conversation_file = new_filepath
-        logger.debug(f"[ID:0284] DEBUG: Set new conversation file: {new_filepath}")
+        logger.debug(f"[ID:0235] DEBUG: Set new conversation file: {new_filepath}")
         
         # Create the initial empty conversation file
         saved_filepath = self.conversation_manager.auto_save_conversation([])
         if saved_filepath:
-            logger.debug(f"[ID:0283] DEBUG: Initial conversation file created: {saved_filepath}")
+            logger.debug(f"[ID:0234] DEBUG: Initial conversation file created: {saved_filepath}")
         else:
-            logger.debug("[ID:0282] DEBUG: Failed to create initial conversation file")
+            logger.debug("[ID:0233] DEBUG: Failed to create initial conversation file")
         
         self.conversation_updated.emit()
         self.status_updated.emit("Started new conversation")

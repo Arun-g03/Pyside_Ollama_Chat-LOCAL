@@ -12,7 +12,7 @@ from PySide6.QtCore import QObject, Signal
 from pyside_chat.utils.Logging.Custom_Logger import CustomLogger
 
 logger = CustomLogger.get_logger(__name__)
-logger.info("[ID:0022] OllamaService logger initialized")
+logger.info("[ID:0015] OllamaService logger initialized")
 
 
 class OllamaService(QObject):
@@ -34,34 +34,34 @@ class OllamaService(QObject):
     def get_models(self) -> List[str]:
         """Get list of available models from Ollama"""
         try:
-            logger.debug(f"[ID:0021]  DEBUG: Attempting to connect to Ollama at: {self.base_url}/tags")
+            logger.debug(f"[ID:0014] DEBUG: Attempting to connect to Ollama at: {self.base_url}/tags")
             response = requests.get(f"{self.base_url}/tags", timeout=5)  # Add timeout
-            logger.debug(f"[ID:0020]  DEBUG: Response status: {response.status_code}")
+            logger.debug(f"[ID:0013] DEBUG: Response status: {response.status_code}")
             
             if response.status_code == 200:
                 data = response.json()
-                logger.debug(f"[ID:0019] DEBUG: Response data: {data}")
+                logger.debug(f"[ID:0012] DEBUG: Response data: {data}")
                 model_names = [model['name'] for model in data.get('models', [])]
                 self.model_list_updated.emit(model_names)
                 return model_names
             else:
-                logger.debug(f"[ID:0018]  DEBUG: Error response: {response.text}")
+                logger.debug(f"[ID:0011] DEBUG: Error response: {response.text}")
                 error_msg = f"Error fetching models (HTTP {response.status_code}). Is Ollama running?"
                 self.model_operation_error.emit(error_msg)
                 return []
                 
         except requests.exceptions.ConnectionError as e:
-            logger.debug(f"[ID:0017]  DEBUG: Connection error: {e}", print_to_terminal=True)
+            logger.debug(f"[ID:0010] DEBUG: Connection error: {e}", print_to_terminal=True)
             error_msg = "Cannot connect to Ollama. Make sure it's running on localhost:11434"
             self.model_operation_error.emit(error_msg)
             return []
         except requests.exceptions.Timeout as e:
-            logger.debug(f"[ID:0016]  DEBUG: Timeout error: {e}", print_to_terminal=True)
+            logger.debug(f"[ID:0009] DEBUG: Timeout error: {e}", print_to_terminal=True)
             error_msg = "Connection to Ollama timed out. Is it running and responding?"
             self.model_operation_error.emit(error_msg)
             return []
         except Exception as e:
-            logger.debug(f"[ID:0015]  DEBUG: Unexpected error: {e}", print_to_terminal=True)
+            logger.debug(f"[ID:0008] DEBUG: Unexpected error: {e}", print_to_terminal=True)
             error_msg = f"Unexpected error connecting to Ollama: {e}"
             self.model_operation_error.emit(error_msg)
             return []
@@ -105,28 +105,26 @@ class OllamaService(QObject):
             "top_p": 0.9,
             "stream": stream,
         }
-        logger.debug(f"[ID:0014]  DEBUG: Sending data: {data}")
+        logger.debug(f"[ID:0007] DEBUG: Sending data: {data}")
         # Add session variables if provided
         if session_variables:
             session_commands = self._build_session_commands(session_variables)
             if session_commands:
                 session_system_message = "\n".join(session_commands)
                 data["messages"].insert(0, {"role": "system", "content": session_system_message})
-                logger.debug(f"[ID:0013]  SESSION: Sending session commands: {session_commands}")
+                logger.debug(f"[ID:0006] SESSION: Sending session commands: {session_commands}")
         
         # Log the user's message (last user message in the list)
         user_message = next((m['content'] for m in reversed(messages) if m.get('role') == 'user'), None)
         if user_message:
-            logger.info(f"[ID:0012] User: {user_message}")
+            logger.info(f"[ID:0005] User: {user_message}")
         
         try:
             # Check for cancellation before making the request
             if self.cancellation_requested:
                 return
                 
-            logger.debug("[ID:0011] ====================SENDING TO OLLAMA====================")
-[ID:0010]             logger.debug(json.dumps(data, indent=2))
-            logger.debug("[ID:0009] =========================================================")
+            logger.debug(f"[ID:0004] ====================SENDING TO OLLAMA====================\n{json.dumps(data, indent=2)}\n=========================================================")
 
             url = f"{self.base_url}/chat"
             
@@ -140,21 +138,21 @@ class OllamaService(QObject):
                             chunk = json.loads(line)
                             content = chunk.get("message", {}).get("content", "")
                             if content:
-                                logger.info(f"[ID:0008] AI: {content}")
+                                logger.info(f"[ID:0003] AI: {content}")
                             yield content
                 else:
                     # Non-streaming response
                     data = response.json()
                     content = data.get("message", {}).get("content", "")
                     if content:
-                        logger.info(f"[ID:0007] AI: {content}")
+                        logger.info(f"[ID:0002] AI: {content}")
                     yield content
                     
         except requests.exceptions.ConnectionError:
             yield "Cannot connect to Ollama. Make sure it's running."
         except Exception as e:
             if not self.cancellation_requested:
-                logger.debug(f"[ID:0006] Error in send_chat_message: {e}", print_to_terminal=True)
+                logger.debug(f"[ID:0001] Error in send_chat_message: {e}", print_to_terminal=True)
                 yield f"An error occurred while processing your request: {e}"
     
     def pull_model(self, model_name: str) -> None:

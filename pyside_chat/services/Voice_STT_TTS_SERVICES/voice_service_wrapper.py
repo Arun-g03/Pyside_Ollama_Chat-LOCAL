@@ -66,11 +66,11 @@ class VoiceServiceWrapper(QObject):
             self.process_manager.voice_processing_finished.connect(self.voice_processing_finished.emit, Qt.ConnectionType.QueuedConnection)
             self.process_manager.state_updated.connect(self._update_cached_state_from_signal, Qt.ConnectionType.QueuedConnection)
             
-            logger.info("Voice service wrapper initialized with process manager")
+            logger.info("[ID:0225] Voice service wrapper initialized with process manager")
             
         except Exception as e:
-            logger.error(f"Failed to initialize process manager: {e}")
-            logger.info("Falling back to direct voice service")
+            logger.error(f"[ID:0224] Failed to initialize process manager: {e}")
+            logger.info("[ID:0223] Falling back to direct voice service")
             self._init_direct_service()
     
     def _init_direct_service(self):
@@ -93,10 +93,10 @@ class VoiceServiceWrapper(QObject):
             self.direct_service.voice_processing_finished.connect(self.voice_processing_finished.emit, Qt.ConnectionType.QueuedConnection)
             self.direct_service.audio_level_changed.connect(self.audio_level_changed.emit, Qt.ConnectionType.QueuedConnection)
             
-            logger.info("Voice service wrapper initialized with direct service")
+            logger.info("[ID:0222] Voice service wrapper initialized with direct service")
             
         except Exception as e:
-            logger.error(f"Failed to initialize direct voice service: {e}")
+            logger.error(f"[ID:0221] Failed to initialize direct voice service: {e}")
             # Don't raise the exception, just log it and continue without voice service
             self.direct_service = None
     
@@ -107,7 +107,7 @@ class VoiceServiceWrapper(QObject):
         elif self.direct_service:
             self.direct_service.start_voice_input()
         else:
-            logger.error("No voice service available")
+            logger.error("[ID:0220] No voice service available")
     
     def stop_voice_input(self):
         """Stop voice recording and process the audio"""
@@ -116,7 +116,7 @@ class VoiceServiceWrapper(QObject):
         elif self.direct_service:
             self.direct_service.stop_voice_input()
         else:
-            logger.error("No voice service available")
+            logger.error("[ID:0219] No voice service available")
     
     def speak_text(self, text: str):
         """Convert text to speech and play it"""
@@ -125,7 +125,7 @@ class VoiceServiceWrapper(QObject):
         elif self.direct_service:
             self.direct_service.speak_text(text)
         else:
-            logger.error("No voice service available")
+            logger.error("[ID:0218] No voice service available")
     
     def speak_text_streaming(self, text: str):
         """Convert text to speech using streaming synthesis"""
@@ -134,7 +134,7 @@ class VoiceServiceWrapper(QObject):
         elif self.direct_service:
             self.direct_service.speak_text_streaming(text)
         else:
-            logger.error("No voice service available")
+            logger.error("[ID:0217] No voice service available")
     
     def speak_text_non_streaming(self, text: str):
         """Convert text to speech using non-streaming synthesis"""
@@ -143,7 +143,7 @@ class VoiceServiceWrapper(QObject):
         elif self.direct_service:
             self.direct_service.speak_text_non_streaming(text)
         else:
-            logger.error("No voice service available")
+            logger.error("[ID:0216] No voice service available")
     
     def stop_tts(self):
         """Stop current TTS playback"""
@@ -152,7 +152,7 @@ class VoiceServiceWrapper(QObject):
         elif self.direct_service:
             self.direct_service.stop_tts()
         else:
-            logger.error("No voice service available")
+            logger.error("[ID:0215] No voice service available")
     
     def is_voice_available(self) -> bool:
         """Check if voice functionality is available"""
@@ -170,7 +170,7 @@ class VoiceServiceWrapper(QObject):
         elif self.direct_service:
             self.direct_service.update_settings(settings)
         else:
-            logger.error("No voice service available")
+            logger.error("[ID:0214] No voice service available")
     
     def get_recording_timeout(self) -> float:
         """Get current recording timeout in seconds"""
@@ -223,7 +223,7 @@ class VoiceServiceWrapper(QObject):
         elif self.direct_service:
             self.direct_service.set_continuous_voice_mode(enabled)
         else:
-            logger.error("No voice service available")
+            logger.error("[ID:0213] No voice service available")
     
     def is_continuous_voice_mode(self) -> bool:
         """Check if continuous voice mode is enabled"""

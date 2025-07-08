@@ -55,22 +55,22 @@ class SemanticSearchService(QObject):
     def _init_model(self):
         """Initialize the sentence transformer model"""
         try:
-            logger.info(f"[ID:0059] Loading sentence transformer model: {self.model_name}", print_to_terminal=True)
+            logger.info(f"[ID:0052] Loading sentence transformer model: {self.model_name}", print_to_terminal=True)
             self.model = SentenceTransformer(self.model_name)
-            logger.info("[ID:0058] Sentence transformer model loaded successfully", print_to_terminal=True)
+            logger.info("[ID:0051] Sentence transformer model loaded successfully", print_to_terminal=True)
             
             # Load existing embeddings if available
             self._load_embeddings()
             
         except Exception as e:
-            logger.error(f"[ID:0057] Error loading sentence transformer model: {e}", print_to_terminal=True)
-            logger.error("[ID:0056] Falling back to keyword-based search", print_to_terminal=True)
+            logger.error(f"[ID:0050] Error loading sentence transformer model: {e}", print_to_terminal=True)
+            logger.error("[ID:0049] Falling back to keyword-based search", print_to_terminal=True)
     
     def _load_embeddings(self):
         """Load existing embeddings from cache"""
         try:
             if os.path.exists(self.embeddings_file) and os.path.exists(self.metadata_file):
-                logger.info("[ID:0055] Loading existing embeddings from cache", print_to_terminal=True)
+                logger.info("[ID:0048] Loading existing embeddings from cache", print_to_terminal=True)
                 
                 with open(self.embeddings_file, 'rb') as f:
                     embeddings_data = pickle.load(f)
@@ -94,10 +94,10 @@ class SemanticSearchService(QObject):
                         )
                         self.vectorized_memories.append(vectorized_memory)
                 
-                logger.info(f"[ID:0054] Loaded {len(self.vectorized_memories)} vectorized memories", print_to_terminal=True)
+                logger.info(f"[ID:0047] Loaded {len(self.vectorized_memories)} vectorized memories", print_to_terminal=True)
                 
         except Exception as e:
-            logger.error(f"[ID:0053] Error loading embeddings: {e}", print_to_terminal=True)
+            logger.error(f"[ID:0046] Error loading embeddings: {e}", print_to_terminal=True)
             self.vectorized_memories = []
     
     def _save_embeddings(self):
@@ -129,16 +129,16 @@ class SemanticSearchService(QObject):
             with open(self.metadata_file, 'w', encoding='utf-8') as f:
                 json.dump(metadata, f, indent=2, ensure_ascii=False)
             
-            logger.debug(f"[ID:0052] Saved {len(self.vectorized_memories)} embeddings to cache", print_to_terminal=True)
+            logger.debug(f"[ID:0045] Saved {len(self.vectorized_memories)} embeddings to cache", print_to_terminal=True)
             
         except Exception as e:
-            logger.error(f"[ID:0051] Error saving embeddings: {e}", print_to_terminal=True)
+            logger.error(f"[ID:0044] Error saving embeddings: {e}", print_to_terminal=True)
     
     def add_memory(self, memory_id: str, content: str, memory_type: str = "conversation", 
                    importance: float = 0.5, tags: List[str] = None, metadata: Dict = None) -> bool:
         """Add a new memory with vector embedding"""
         if not self.model:
-            logger.warning("[ID:0050] Model not initialized, cannot add memory with embedding", print_to_terminal=True)
+            logger.warning("[ID:0043] Model not initialized, cannot add memory with embedding", print_to_terminal=True)
             return False
         
         try:
@@ -147,7 +147,7 @@ class SemanticSearchService(QObject):
             # Check if memory already exists
             existing_memory = next((vm for vm in self.vectorized_memories if vm.memory_id == memory_id), None)
             if existing_memory:
-                logger.debug(f"[ID:0049] Memory {memory_id} already exists, updating", print_to_terminal=True)
+                logger.debug(f"[ID:0042] Memory {memory_id} already exists, updating", print_to_terminal=True)
                 self.vectorized_memories.remove(existing_memory)
             
             # Create embedding
@@ -170,13 +170,13 @@ class SemanticSearchService(QObject):
             # Save to cache
             self._save_embeddings()
             
-            logger.debug(f"[ID:0048] Added memory {memory_id} with embedding", print_to_terminal=True)
+            logger.debug(f"[ID:0041] Added memory {memory_id} with embedding", print_to_terminal=True)
             self.embeddings_updated.emit()
             
             return True
             
         except Exception as e:
-            logger.error(f"[ID:0047] Error adding memory with embedding: {e}", print_to_terminal=True)
+            logger.error(f"[ID:0040] Error adding memory with embedding: {e}", print_to_terminal=True)
             return False
         finally:
             self.mutex.unlock()
@@ -191,15 +191,15 @@ class SemanticSearchService(QObject):
             if memory_to_remove:
                 self.vectorized_memories.remove(memory_to_remove)
                 self._save_embeddings()
-                logger.debug(f"[ID:0046] Removed memory {memory_id}", print_to_terminal=True)
+                logger.debug(f"[ID:0039] Removed memory {memory_id}", print_to_terminal=True)
                 self.embeddings_updated.emit()
                 return True
             else:
-                logger.debug(f"[ID:0045] Memory {memory_id} not found", print_to_terminal=True)
+                logger.debug(f"[ID:0038] Memory {memory_id} not found", print_to_terminal=True)
                 return False
                 
         except Exception as e:
-            logger.error(f"[ID:0044] Error removing memory: {e}", print_to_terminal=True)
+            logger.error(f"[ID:0037] Error removing memory: {e}", print_to_terminal=True)
             return False
         finally:
             self.mutex.unlock()
@@ -213,7 +213,7 @@ class SemanticSearchService(QObject):
             List of tuples: (memory_id, similarity_score, memory_data)
         """
         if not self.model or not self.vectorized_memories:
-            logger.debug("[ID:0043] No model or memories available for semantic search", print_to_terminal=True)
+            logger.debug("[ID:0036] No model or memories available for semantic search", print_to_terminal=True)
             return []
         
         try:
@@ -228,7 +228,7 @@ class SemanticSearchService(QObject):
                 memories_to_search = [vm for vm in self.vectorized_memories if vm.memory_type in memory_types]
             
             if not memories_to_search:
-                logger.debug("[ID:0042] No memories match the specified types", print_to_terminal=True)
+                logger.debug("[ID:0035] No memories match the specified types", print_to_terminal=True)
                 return []
             
             # Calculate similarities
@@ -255,14 +255,14 @@ class SemanticSearchService(QObject):
             
             results = similarities[:max_results]
             
-            logger.debug(f"[ID:0041] Semantic search found {len(results)} results for query: '{query}'", print_to_terminal=True)
+            logger.debug(f"[ID:0034] Semantic search found {len(results)} results for query: '{query}'", print_to_terminal=True)
             for memory_id, similarity, _ in results[:3]:  # Log top 3 results
-                logger.debug(f"[ID:0040]   - {memory_id}: {similarity:.3f}", print_to_terminal=True)
+                logger.debug(f"[ID:0033] - {memory_id}: {similarity:.3f}", print_to_terminal=True)
             
             return results
             
         except Exception as e:
-            logger.error(f"[ID:0039] Error in semantic search: {e}", print_to_terminal=True)
+            logger.error(f"[ID:0032] Error in semantic search: {e}", print_to_terminal=True)
             return []
         finally:
             self.mutex.unlock()
@@ -282,7 +282,7 @@ class SemanticSearchService(QObject):
             semantic_weight: Weight for semantic similarity (0.0 to 1.0)
         """
         if not self.model or not self.vectorized_memories:
-            logger.debug("[ID:0038] No model or memories available for hybrid search", print_to_terminal=True)
+            logger.debug("[ID:0031] No model or memories available for hybrid search", print_to_terminal=True)
             return []
         
         try:
@@ -294,7 +294,7 @@ class SemanticSearchService(QObject):
                 memories_to_search = [vm for vm in self.vectorized_memories if vm.memory_type in memory_types]
             
             if not memories_to_search:
-                logger.debug("[ID:0037] No memories match the specified types", print_to_terminal=True)
+                logger.debug("[ID:0030] No memories match the specified types", print_to_terminal=True)
                 return []
             
             # Create query embedding
@@ -339,16 +339,16 @@ class SemanticSearchService(QObject):
             
             results = hybrid_scores[:max_results]
             
-            logger.debug(f"[ID:0036] Hybrid search found {len(results)} results for query: '{query}'", print_to_terminal=True)
+            logger.debug(f"[ID:0029] Hybrid search found {len(results)} results for query: '{query}'", print_to_terminal=True)
             for memory_id, score, data in results[:3]:  # Log top 3 results
                 semantic = data.get('semantic_similarity', 0)
                 keyword = data.get('keyword_score', 0)
-                logger.debug(f"[ID:0035]   - {memory_id}: {score:.3f} (semantic: {semantic:.3f}, keyword: {keyword:.3f})", print_to_terminal=True)
+                logger.debug(f"[ID:0028] - {memory_id}: {score:.3f} (semantic: {semantic:.3f}, keyword: {keyword:.3f})", print_to_terminal=True)
             
             return results
             
         except Exception as e:
-            logger.error(f"[ID:0034] Error in hybrid search: {e}", print_to_terminal=True)
+            logger.error(f"[ID:0027] Error in hybrid search: {e}", print_to_terminal=True)
             return []
         finally:
             self.mutex.unlock()
@@ -362,14 +362,14 @@ class SemanticSearchService(QObject):
             if memory:
                 memory.importance = new_importance
                 self._save_embeddings()
-                logger.debug(f"[ID:0033] Updated importance for memory {memory_id}: {new_importance}", print_to_terminal=True)
+                logger.debug(f"[ID:0026] Updated importance for memory {memory_id}: {new_importance}", print_to_terminal=True)
                 return True
             else:
-                logger.debug(f"[ID:0032] Memory {memory_id} not found for importance update", print_to_terminal=True)
+                logger.debug(f"[ID:0025] Memory {memory_id} not found for importance update", print_to_terminal=True)
                 return False
                 
         except Exception as e:
-            logger.error(f"[ID:0031] Error updating memory importance: {e}", print_to_terminal=True)
+            logger.error(f"[ID:0024] Error updating memory importance: {e}", print_to_terminal=True)
             return False
         finally:
             self.mutex.unlock()
@@ -404,7 +404,7 @@ class SemanticSearchService(QObject):
             }
             
         except Exception as e:
-            logger.error(f"[ID:0030] Error getting memory stats: {e}", print_to_terminal=True)
+            logger.error(f"[ID:0023] Error getting memory stats: {e}", print_to_terminal=True)
             return {
                 'total_memories': 0,
                 'memory_types': {},
@@ -428,11 +428,11 @@ class SemanticSearchService(QObject):
             if os.path.exists(self.metadata_file):
                 os.remove(self.metadata_file)
             
-            logger.info("[ID:0029] Cleared all vectorized memories", print_to_terminal=True)
+            logger.info("[ID:0022] Cleared all vectorized memories", print_to_terminal=True)
             self.embeddings_updated.emit()
             
         except Exception as e:
-            logger.error(f"[ID:0028] Error clearing vectorized memories: {e}", print_to_terminal=True)
+            logger.error(f"[ID:0021] Error clearing vectorized memories: {e}", print_to_terminal=True)
         finally:
             self.mutex.unlock()
     

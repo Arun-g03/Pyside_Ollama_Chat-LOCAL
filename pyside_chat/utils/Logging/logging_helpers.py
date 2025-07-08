@@ -150,4 +150,4 @@ class LoggingHelpers:
     @staticmethod
     def log_debug(message: str) -> None:
         """Log debug message"""
-[ID:0237]         logger.debug(message, print_to_terminal=True)
+        logger.debug(message, print_to_terminal=True)
