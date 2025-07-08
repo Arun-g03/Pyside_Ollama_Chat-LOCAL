@@ -1,7 +1,7 @@
 import os
 import subprocess
 import platform
-from PySide6.QtCore import QObject, Signal, QTimer
+from PySide6.QtCore import QObject, Signal, QTimer, Qt
 from pyside_chat.utils.Logging.Custom_Logger import CustomLogger
 
 logger = CustomLogger.get_logger(__name__)
@@ -36,11 +36,11 @@ class TTSService(QObject):
         if COQUI_AVAILABLE:
             try:
                 self.coqui_service = CoquiTTSService()
-                # Connect Coqui TTS signals
-                self.coqui_service.tts_started.connect(self.tts_started.emit)
-                self.coqui_service.tts_finished.connect(self.tts_finished.emit)
-                self.coqui_service.tts_error.connect(self.tts_error.emit)
-                self.coqui_service.audio_level_changed.connect(self.audio_level_changed.emit)
+                # Connect Coqui TTS signals with QueuedConnection for thread safety
+                self.coqui_service.tts_started.connect(self.tts_started.emit, Qt.ConnectionType.QueuedConnection)
+                self.coqui_service.tts_finished.connect(self.tts_finished.emit, Qt.ConnectionType.QueuedConnection)
+                self.coqui_service.tts_error.connect(self.tts_error.emit, Qt.ConnectionType.QueuedConnection)
+                self.coqui_service.audio_level_changed.connect(self.audio_level_changed.emit, Qt.ConnectionType.QueuedConnection)
             except Exception as e:
                 logger.error(f"Failed to initialize Coqui TTS service: {e}")
 

@@ -12,7 +12,6 @@ Features include:
 
 import os
 import tempfile
-import threading
 import time
 import json
 import numpy as np
@@ -46,7 +45,13 @@ class StreamingAudioPlayer(QThread):
         self.is_playing = False
         self.should_stop = False
         self.volume = 0.5  # Volume control (0.0 to 1.0)
-        self.last_audio_level_time = 0  # For throttling audio level emissions
+        
+        # Audio level processing improvements
+        self.audio_level_timer = QTimer()
+        self.audio_level_timer.setInterval(50)  # 20 FPS instead of 100 FPS
+        self.audio_level_timer.timeout.connect(self._emit_audio_level)
+        self.current_audio_level = 0.0
+        self.audio_level_buffer = []  # Buffer for averaging audio levels
         
         # PyAudio setup
         self.pyaudio = pyaudio.PyAudio()
@@ -85,8 +90,11 @@ class StreamingAudioPlayer(QThread):
             self.playback_error.emit(str(e))
         finally:
             if self.stream:
-                self.stream.stop_stream()
-                self.stream.close()
+                try:
+                    self.stream.stop_stream()
+                    self.stream.close()
+                except Exception as e:
+                    logger.warning(f"Error closing audio stream: {e}")
     
     def _process_audio_chunk(self, audio_chunk: np.ndarray) -> np.ndarray:
         """Process audio chunk for better quality"""
@@ -105,44 +113,42 @@ class StreamingAudioPlayer(QThread):
             # Ensure values are in valid range
             audio_chunk = np.clip(audio_chunk, -1.0, 1.0)
             
-            # Calculate audio level for EQ visualization with more granular updates
-            # Process smaller chunks for more frequent analysis
-            chunk_size = len(audio_chunk)
-            segment_size = max(1, chunk_size // 16)  # Split into 16 smaller segments for much more frequent updates
+            # Calculate audio level once per chunk (much more efficient)
+            rms_level = np.sqrt(np.mean(audio_chunk**2))  # RMS level
+            peak_level = np.max(np.abs(audio_chunk))  # Peak level
+            # Combine RMS and peak for more complete wave representation
+            combined_level = (rms_level * 0.7 + peak_level * 0.3)
             
-            print(f"[TTS DEBUG] Processing chunk size: {chunk_size}, segment size: {segment_size}")
+            # Amplify the audio level for better EQ visualization
+            amplified_level = combined_level * 2.0
             
-            for i in range(0, chunk_size, segment_size):
-                segment = audio_chunk[i:i + segment_size]
-                if len(segment) > 0:
-                    # Calculate multiple audio level metrics for better wave analysis
-                    rms_level = np.sqrt(np.mean(segment**2))  # RMS level
-                    peak_level = np.max(np.abs(segment))  # Peak level
-                    # Combine RMS and peak for more complete wave representation
-                    combined_level = (rms_level * 0.7 + peak_level * 0.3)
-                    
-                    # Amplify the audio level for better EQ visualization
-                    # Use much smaller amplification to get reasonable values
-                    amplified_level = combined_level * 2.0  # Reduced amplification
-                    
-                    #print(f"[TTS DEBUG] Segment {i//segment_size}: RMS={rms_level:.4f}, Peak={peak_level:.4f}, Combined={combined_level:.4f}, Amplified={amplified_level:.4f}")
-                    
-                    # Emit audio level for EQ visualization
-                    self.audio_level_changed.emit(amplified_level)
-                    
-                    # Throttle updates to prevent overwhelming the UI
-                    current_time = time.time()
-                    if current_time - self.last_audio_level_time >= 0.01:  # 100 FPS for TTS
-                        self.last_audio_level_time = current_time
-                    else:
-                        # Small delay to prevent overwhelming
-                        time.sleep(0.001)
+            # Update current audio level and add to buffer
+            self.current_audio_level = amplified_level
+            self.audio_level_buffer.append(amplified_level)
+            
+            # Keep only last 5 levels for averaging
+            if len(self.audio_level_buffer) > 5:
+                self.audio_level_buffer.pop(0)
+            
+            # Start timer for periodic emission if not already running
+            if not self.audio_level_timer.isActive():
+                self.audio_level_timer.start()
             
             return audio_chunk
             
         except Exception as e:
             logger.error(f"Error processing audio chunk: {e}")
             return audio_chunk
+    
+    def _emit_audio_level(self):
+        """Emit averaged audio level for EQ visualization"""
+        try:
+            if self.audio_level_buffer:
+                # Use average of recent levels for smoother visualization
+                avg_level = sum(self.audio_level_buffer) / len(self.audio_level_buffer)
+                self.audio_level_changed.emit(avg_level)
+        except Exception as e:
+            logger.error(f"Error emitting audio level: {e}")
     
     def set_volume(self, volume: float):
         """Set playback volume (0.0 to 1.0)"""
@@ -163,13 +169,186 @@ class StreamingAudioPlayer(QThread):
         self.should_stop = True
         self.is_playing = False
         if self.stream:
-            self.stream.stop_stream()
+            try:
+                self.stream.stop_stream()
+            except Exception as e:
+                logger.warning(f"Error stopping audio stream: {e}")
     
     def cleanup(self):
         """Clean up resources"""
         self.stop_playback()
+        
+        # Stop audio level timer
+        if hasattr(self, 'audio_level_timer'):
+            self.audio_level_timer.stop()
+        
         if self.pyaudio:
-            self.pyaudio.terminate()
+            try:
+                # Use a timeout to prevent hanging
+                import threading
+                import queue
+                
+                def terminate_pyaudio():
+                    try:
+                        self.pyaudio.terminate()
+                    except Exception as e:
+                        logger.warning(f"Error terminating pyaudio: {e}")
+                
+                # Run pyaudio.terminate() in a separate thread with timeout
+                thread = threading.Thread(target=terminate_pyaudio)
+                thread.daemon = True
+                thread.start()
+                thread.join(timeout=1.0)  # 1 second timeout
+                
+                if thread.is_alive():
+                    logger.warning("pyaudio.terminate() timed out, continuing cleanup")
+                    
+            except Exception as e:
+                logger.error(f"Error during pyaudio cleanup: {e}")
+
+
+class StreamingAudioWorker(QObject):
+    """Worker for streaming audio generation in a separate thread"""
+    
+    # Signals
+    audio_chunk_ready = Signal(object)  # Emit audio chunk (numpy array)
+    progress_updated = Signal(int)  # Progress percentage
+    streaming_finished = Signal()  # Signal when generation is complete
+    streaming_error = Signal(str)  # Signal when error occurs
+    
+    def __init__(self, text: str, tts_service):
+        super().__init__()
+        self.text = text
+        self.tts_service = tts_service
+        self.is_running = True
+    
+    def run(self):
+        """Generate audio in chunks and stream to player"""
+        try:
+            # Split text into sentences for chunked processing
+            sentences = self._split_text_into_sentences(self.text)
+            total_sentences = len(sentences)
+            
+            for i, sentence in enumerate(sentences):
+                if not self.is_running:
+                    break
+                
+                # Generate audio for this sentence
+                audio_chunk = self._generate_audio_chunk(sentence)
+                if audio_chunk is not None:
+                    # Emit audio chunk
+                    self.audio_chunk_ready.emit(audio_chunk)
+                    
+                    # Update progress
+                    progress = int((i + 1) / total_sentences * 100)
+                    self.progress_updated.emit(progress)
+                
+                # Small delay between sentences for smoother streaming
+                time.sleep(0.1)
+            
+            # Signal end of stream
+            if self.is_running:
+                self.streaming_finished.emit()
+                
+        except Exception as e:
+            logger.error(f"Error in streaming audio generation: {e}")
+            self.streaming_error.emit(f"Streaming audio generation failed: {str(e)}")
+    
+    def _split_text_into_sentences(self, text: str) -> List[str]:
+        """Split text into sentences for chunked processing"""
+        import re
+        
+        # Simple sentence splitting - can be improved with NLP libraries
+        sentences = re.split(r'[.!?]+', text)
+        sentences = [s.strip() for s in sentences if s.strip()]
+        
+        # If no sentences found, treat the whole text as one sentence
+        if not sentences:
+            sentences = [text]
+        
+        # Limit sentence length to prevent very long chunks
+        max_chars = 200
+        split_sentences = []
+        for sentence in sentences:
+            if len(sentence) > max_chars:
+                # Split long sentences by commas or natural breaks
+                parts = re.split(r'[,;:]', sentence)
+                for part in parts:
+                    if part.strip():
+                        split_sentences.append(part.strip())
+            else:
+                split_sentences.append(sentence)
+        
+        return split_sentences
+    
+    def _generate_audio_chunk(self, text: str) -> Optional[np.ndarray]:
+        """Generate audio chunk for a piece of text"""
+        try:
+            if not text.strip():
+                return None
+            
+            # Generate audio using TTS model with timeout protection
+            if self.tts_service.available_voices and self.tts_service.current_voice:
+                # Multi-speaker model - use the selected voice
+                logger.debug(f"Generating audio with voice: {self.tts_service.current_voice}")
+                audio = self.tts_service.tts_model.tts(
+                    text=text,
+                    speaker=self.tts_service.current_voice
+                )
+            else:
+                # Single-speaker model
+                logger.debug("Generating audio with single-speaker model")
+                audio = self.tts_service.tts_model.tts(text=text)
+            
+            # Convert to numpy array if needed
+            if isinstance(audio, list):
+                audio = np.array(audio)
+            
+            # Ensure audio is float32
+            if audio.dtype != np.float32:
+                audio = audio.astype(np.float32)
+            
+            # Normalize audio to prevent clipping
+            if np.max(np.abs(audio)) > 0:
+                audio = audio / np.max(np.abs(audio)) * 0.7  # Reduce volume to 70%
+            
+            # Apply speed adjustment if needed
+            if self.tts_service.speech_speed != 1.0:
+                audio = self._adjust_audio_speed(audio)
+            
+            return audio
+            
+        except Exception as e:
+            logger.error(f"Failed to generate audio chunk: {e}")
+            return None
+    
+    def _adjust_audio_speed(self, audio: np.ndarray) -> np.ndarray:
+        """Adjust audio speed using simple resampling"""
+        try:
+            from scipy import signal
+            
+            # Simple speed adjustment using resampling
+            if self.tts_service.speech_speed > 1.0:
+                # Speed up: downsample
+                new_length = int(len(audio) / self.tts_service.speech_speed)
+                audio = signal.resample(audio, new_length)
+            elif self.tts_service.speech_speed < 1.0:
+                # Slow down: upsample
+                new_length = int(len(audio) / self.tts_service.speech_speed)
+                audio = signal.resample(audio, new_length)
+            
+            return audio
+            
+        except ImportError:
+            logger.warning("scipy not available, skipping speed adjustment")
+            return audio
+        except Exception as e:
+            logger.error(f"Failed to adjust audio speed: {e}")
+            return audio
+    
+    def stop(self):
+        """Stop the worker"""
+        self.is_running = False
 
 
 class CoquiTTSService(QObject):
@@ -411,20 +590,30 @@ class CoquiTTSService(QObject):
             self.streaming_player = StreamingAudioPlayer()
             self.streaming_player.playback_finished.connect(self._on_streaming_finished)
             self.streaming_player.playback_error.connect(self._on_streaming_error)
-            self.streaming_player.audio_level_changed.connect(self.audio_level_changed.emit)
+            # Use QueuedConnection for thread safety
+            from PySide6.QtCore import Qt
+            self.streaming_player.audio_level_changed.connect(self.audio_level_changed.emit, Qt.ConnectionType.QueuedConnection)
             
             # Set volume to a reasonable level (0.5 = 50%)
             self.streaming_player.set_volume(0.5)
             
-            # Start streaming in a separate thread
-            self.streaming_thread = threading.Thread(
-                target=self._generate_and_stream_audio,
-                args=(text,),
-                daemon=True
-            )
-            self.streaming_thread.start()
+            # Start streaming in a separate QThread instead of threading.Thread
+            from PySide6.QtCore import QThread
+            self.streaming_thread = QThread()
+            self.streaming_worker = StreamingAudioWorker(text, self)
+            self.streaming_worker.moveToThread(self.streaming_thread)
             
-            # Start the audio player
+            # Connect signals with QueuedConnection for thread safety
+            self.streaming_worker.audio_chunk_ready.connect(self.streaming_player.add_audio_chunk, Qt.ConnectionType.QueuedConnection)
+            self.streaming_worker.progress_updated.connect(self.streaming_progress.emit, Qt.ConnectionType.QueuedConnection)
+            self.streaming_worker.streaming_finished.connect(self._on_streaming_generation_finished, Qt.ConnectionType.QueuedConnection)
+            self.streaming_worker.streaming_error.connect(self._on_streaming_generation_error, Qt.ConnectionType.QueuedConnection)
+            
+            # Connect thread started signal
+            self.streaming_thread.started.connect(self.streaming_worker.run)
+            
+            # Start the threads
+            self.streaming_thread.start()
             self.streaming_player.start()
             self.is_streaming = True
             
@@ -434,134 +623,27 @@ class CoquiTTSService(QObject):
             logger.error(f"Failed to start streaming TTS: {e}")
             self.tts_error.emit(f"Failed to start streaming TTS: {str(e)}")
     
-    def _generate_and_stream_audio(self, text: str):
-        """Generate audio in chunks and stream to player"""
-        try:
-            # Split text into sentences for chunked processing
-            sentences = self._split_text_into_sentences(text)
-            total_sentences = len(sentences)
-            
-            for i, sentence in enumerate(sentences):
-                if not self.is_streaming:
-                    break
-                
-                # Generate audio for this sentence
-                audio_chunk = self._generate_audio_chunk(sentence)
-                if audio_chunk is not None:
-                    # Add to player queue
-                    self.streaming_player.add_audio_chunk(audio_chunk)
-                    
-                    # Update progress
-                    progress = int((i + 1) / total_sentences * 100)
-                    self.streaming_progress.emit(progress)
-                
-                # Small delay between sentences for smoother streaming
-                time.sleep(0.1)
-            
-            # Signal end of stream
-            if self.is_streaming:
-                self.streaming_player.end_stream()
-                
-        except Exception as e:
-            logger.error(f"Error in streaming audio generation: {e}")
-            self.tts_error.emit(f"Streaming audio generation failed: {str(e)}")
+    def _on_streaming_generation_finished(self):
+        """Handle streaming generation finished"""
+        if self.is_streaming and self.streaming_player:
+            self.streaming_player.end_stream()
     
-    def _split_text_into_sentences(self, text: str) -> List[str]:
-        """Split text into sentences for chunked processing"""
-        import re
-        
-        # Simple sentence splitting - can be improved with NLP libraries
-        sentences = re.split(r'[.!?]+', text)
-        sentences = [s.strip() for s in sentences if s.strip()]
-        
-        # If no sentences found, treat the whole text as one sentence
-        if not sentences:
-            sentences = [text]
-        
-        # Limit sentence length to prevent very long chunks
-        max_chars = 200
-        split_sentences = []
-        for sentence in sentences:
-            if len(sentence) > max_chars:
-                # Split long sentences by commas or natural breaks
-                parts = re.split(r'[,;:]', sentence)
-                for part in parts:
-                    if part.strip():
-                        split_sentences.append(part.strip())
-            else:
-                split_sentences.append(sentence)
-        
-        return split_sentences
-    
-    def _generate_audio_chunk(self, text: str) -> Optional[np.ndarray]:
-        """Generate audio chunk for a piece of text"""
-        try:
-            if not text.strip():
-                return None
-            
-            # Generate audio using TTS model
-            if self.available_voices and self.current_voice:
-                # Multi-speaker model - use the selected voice
-                logger.debug(f"Generating audio with voice: {self.current_voice}")
-                audio = self.tts_model.tts(
-                    text=text,
-                    speaker=self.current_voice
-                )
-            else:
-                # Single-speaker model
-                logger.debug("Generating audio with single-speaker model")
-                audio = self.tts_model.tts(text=text)
-            
-            # Convert to numpy array if needed
-            if isinstance(audio, list):
-                audio = np.array(audio)
-            
-            # Ensure audio is float32
-            if audio.dtype != np.float32:
-                audio = audio.astype(np.float32)
-            
-            # Normalize audio to prevent clipping
-            if np.max(np.abs(audio)) > 0:
-                audio = audio / np.max(np.abs(audio)) * 0.7  # Reduce volume to 70%
-            
-            # Apply speed adjustment if needed
-            if self.speech_speed != 1.0:
-                audio = self._adjust_audio_speed(audio)
-            
-            return audio
-            
-        except Exception as e:
-            logger.error(f"Failed to generate audio chunk: {e}")
-            return None
-    
-    def _adjust_audio_speed(self, audio: np.ndarray) -> np.ndarray:
-        """Adjust audio speed using simple resampling"""
-        try:
-            from scipy import signal
-            
-            # Simple speed adjustment using resampling
-            if self.speech_speed > 1.0:
-                # Speed up: downsample
-                new_length = int(len(audio) / self.speech_speed)
-                audio = signal.resample(audio, new_length)
-            elif self.speech_speed < 1.0:
-                # Slow down: upsample
-                new_length = int(len(audio) / self.speech_speed)
-                audio = signal.resample(audio, new_length)
-            
-            return audio
-            
-        except ImportError:
-            logger.warning("scipy not available, skipping speed adjustment")
-            return audio
-        except Exception as e:
-            logger.error(f"Failed to adjust audio speed: {e}")
-            return audio
+    def _on_streaming_generation_error(self, error: str):
+        """Handle streaming generation error"""
+        self.is_streaming = False
+        self.tts_error.emit(f"Streaming generation error: {error}")
+        logger.error(f"Streaming TTS generation error: {error}")
     
     def _on_streaming_finished(self):
         """Handle streaming playback finished"""
         self.is_streaming = False
-        self.tts_finished.emit()
+        # Only emit if not already emitting to prevent double emissions
+        if not hasattr(self, '_emitting_finished') or not self._emitting_finished:
+            self._emitting_finished = True
+            self.tts_finished.emit()
+            # Reset the flag after a short delay
+            from PySide6.QtCore import QTimer
+            QTimer.singleShot(100, lambda: setattr(self, '_emitting_finished', False))
         logger.debug("Streaming TTS playback finished")
     
     def _on_streaming_error(self, error: str):
@@ -575,16 +657,47 @@ class CoquiTTSService(QObject):
         # Stop streaming playback
         if self.is_streaming and self.streaming_player:
             self.is_streaming = False
-            self.streaming_player.stop_playback()
-            if self.streaming_player.isRunning():
-                self.streaming_player.quit()
-                self.streaming_player.wait()
+            
+            # Stop the streaming worker
+            if hasattr(self, 'streaming_worker'):
+                self.streaming_worker.stop()
+            
+            # Stop the streaming player with timeout
+            try:
+                self.streaming_player.stop_playback()
+                if self.streaming_player.isRunning():
+                    self.streaming_player.quit()
+                    if not self.streaming_player.wait(1000):  # 1 second timeout
+                        logger.warning("Streaming player quit timeout, forcing termination")
+                        self.streaming_player.terminate()
+                        self.streaming_player.wait(500)  # Additional 500ms timeout
+            except Exception as e:
+                logger.error(f"Error stopping streaming player: {e}")
+            
+            # Stop the streaming thread with timeout
+            if hasattr(self, 'streaming_thread') and self.streaming_thread.isRunning():
+                try:
+                    self.streaming_thread.quit()
+                    if not self.streaming_thread.wait(1000):  # 1 second timeout
+                        logger.warning("Streaming thread quit timeout, forcing termination")
+                        self.streaming_thread.terminate()
+                        self.streaming_thread.wait(500)  # Additional 500ms timeout
+                    self.streaming_thread.deleteLater()
+                except Exception as e:
+                    logger.error(f"Error stopping streaming thread: {e}")
         
         # Stop non-streaming playback
         if self.media_player:
             self.media_player.stop()
         
-        self.tts_finished.emit()
+        # Only emit tts_finished if we're not already in a streaming finished callback
+        # This prevents double emissions
+        if not hasattr(self, '_emitting_finished'):
+            self._emitting_finished = True
+            self.tts_finished.emit()
+            # Reset the flag after a short delay
+            from PySide6.QtCore import QTimer
+            QTimer.singleShot(100, lambda: setattr(self, '_emitting_finished', False))
     
     def cleanup(self):
         """Clean up resources"""

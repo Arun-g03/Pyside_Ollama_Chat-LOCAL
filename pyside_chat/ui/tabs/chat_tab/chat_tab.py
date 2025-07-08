@@ -123,7 +123,6 @@ class ChatTab(QWidget):
         
         # Controls area
         input_components = self.input_controls.get_ui_components()
-        voice_components = self.voice_controls.get_ui_components()
         
         # Create controls widget
         controls_widget = QWidget()
@@ -134,15 +133,23 @@ class ChatTab(QWidget):
         controls_layout.addWidget(input_components['input_widget'])
         controls_layout.addWidget(input_components['settings_widget'])
         
-        # Add voice controls to input layout
-        input_layout = input_components['input_widget'].layout()
+        # Add voice controls to a separate section
+        voice_components = self.voice_controls.get_ui_components()
         voice_button = voice_components['voice_button']
         voice_settings_button = voice_components['voice_settings_button']
         audio_level_widget = voice_components['audio_level_widget']
         
-        input_layout.addWidget(voice_button)
-        input_layout.addWidget(voice_settings_button)
-        input_layout.addWidget(audio_level_widget)
+        # Create voice controls widget
+        voice_controls_widget = QWidget()
+        voice_controls_layout = QHBoxLayout(voice_controls_widget)
+        voice_controls_layout.setContentsMargins(0, 0, 0, 0)
+        
+        voice_controls_layout.addWidget(voice_button)
+        voice_controls_layout.addWidget(voice_settings_button)
+        voice_controls_layout.addWidget(audio_level_widget)
+        voice_controls_layout.addStretch()  # Add stretch to push controls to the left
+        
+        controls_layout.addWidget(voice_controls_widget)
         
         # Initially hide voice-related widgets
         voice_button.hide()
@@ -266,7 +273,7 @@ class ChatTab(QWidget):
         self.voice_controls.voice_processing_started.connect(self.on_voice_processing_started)
         self.voice_controls.voice_processing_finished.connect(self.on_voice_processing_finished)
         self.voice_controls.audio_level_changed.connect(self.on_audio_level_changed)
-        self.voice_controls.voice_mode_changed.connect(self.on_voice_mode_changed)
+        # Voice mode changes are handled by input mode changes
         
         # Connect chat display signals
         self.chat_display.message_edited.connect(self.on_message_edited)
@@ -300,10 +307,16 @@ class ChatTab(QWidget):
         
     def on_input_mode_changed(self, mode: str):
         """Handle input mode change"""
+        logger.debug(f"[VOICE DEBUG] on_input_mode_changed called with mode: {mode}")
+        
         if mode == "Chat":
             # If any voice process is running, stop it
-            if self.voice_controls.voice_service.is_recording or self.voice_controls.voice_service.is_processing_voice:
-                self.voice_controls.voice_service.stop_voice_input()
+            if hasattr(self, 'voice_controls') and self.voice_controls.voice_service:
+                try:
+                    if self.voice_controls.voice_service.is_recording or self.voice_controls.voice_service.is_processing_voice:
+                        self.voice_controls.voice_service.stop_voice_input()
+                except Exception as e:
+                    logger.error(f"Failed to stop voice input: {e}")
             
             # Show chat input widgets
             input_components = self.input_controls.get_ui_components()
@@ -317,6 +330,7 @@ class ChatTab(QWidget):
             
             self.voice_mode = False
             self.eq_visualizer.switch_to_chat_display(self.chat_display.chat_display)
+            logger.debug("[VOICE DEBUG] Switched to Chat mode")
             
         elif mode == "Voice":
             # Hide chat input widgets
@@ -325,6 +339,7 @@ class ChatTab(QWidget):
             
             input_components['message_input'].hide()
             input_components['send_button'].hide()
+            input_components['cancel_button'].hide()
             voice_components['voice_button'].show()
             voice_components['audio_level_widget'].show()
             voice_components['voice_settings_button'].show()
@@ -335,6 +350,9 @@ class ChatTab(QWidget):
             eq_mode = self.voice_controls.get_voice_settings().get("eq_visualizer", "None")
             if eq_mode != "None":
                 self.eq_visualizer.switch_to_eq_visualizer(self.chat_display.chat_display, self.voice_mode)
+                logger.debug(f"[VOICE DEBUG] Switched to Voice mode with EQ: {eq_mode}")
+            else:
+                logger.debug("[VOICE DEBUG] Switched to Voice mode without EQ")
     
     def on_temperature_changed(self, temperature: float):
         """Handle temperature change"""
@@ -369,6 +387,9 @@ class ChatTab(QWidget):
         # Send the message through the normal flow
         self.message_sent.emit(text)
         
+        # In voice mode, we don't need to manage UI state here
+        # The voice controls will handle the continuous cycle
+    
     def on_voice_input_error(self, error: str):
         """Handle voice input error"""
         logger.error(f"Voice input error: {error}")
@@ -386,8 +407,29 @@ class ChatTab(QWidget):
     
     def on_tts_finished(self):
         """Handle TTS finished"""
+        # Prevent multiple calls to this method
+        if hasattr(self, '_tts_finished_handled') and self._tts_finished_handled:
+            return
+        self._tts_finished_handled = True
+        
+        # Reset the flag after a short delay
+        from PySide6.QtCore import QTimer
+        QTimer.singleShot(100, lambda: setattr(self, '_tts_finished_handled', False))
+        
+        logger.debug("TTS finished in chat tab")
+        
         # Restore chat display
-        self.eq_visualizer.switch_to_chat_display(self.chat_display.chat_display)
+        try:
+            self.eq_visualizer.switch_to_chat_display(self.chat_display.chat_display)
+        except Exception as e:
+            logger.error(f"Error switching to chat display: {e}")
+        
+        # Don't call event handler directly - let the voice service handle it
+        # The event handler will receive the TTS finished signal from the voice service
+        # and handle worker thread cleanup separately
+        
+        # In voice mode, let the voice controls handle the continuous cycle
+        # They will restart voice input after TTS finishes
     
     def on_tts_error(self, error: str):
         """Handle TTS error"""
@@ -429,20 +471,7 @@ class ChatTab(QWidget):
         """Handle message edit"""
         self.message_edited.emit(message_index, new_content)
         
-    def on_voice_mode_changed(self, mode: bool):
-        """Handle voice mode change"""
-        self.voice_mode = mode
-        logger.debug(f"Voice mode changed to: {self.voice_mode}")
-        
-        # Switch EQ visualizer based on voice mode and settings
-        if mode:
-            # Voice mode activated - switch to EQ if enabled
-            eq_mode = self.voice_controls.get_voice_settings().get("eq_visualizer", "None")
-            if eq_mode != "None":
-                self.eq_visualizer.switch_to_eq_visualizer(self.chat_display.chat_display, self.voice_mode)
-        else:
-            # Voice mode deactivated - switch back to chat display
-            self.eq_visualizer.switch_to_chat_display(self.chat_display.chat_display)
+    # Note: Voice mode changes are handled by on_input_mode_changed method
     
     def get_ai_name(self) -> str:
         """Get the AI name based on current personality"""
@@ -478,6 +507,12 @@ class ChatTab(QWidget):
         
     def append_response_chunk(self, chunk: str, model_name: str = None):
         """Append a streaming response chunk"""
+        # Use QTimer.singleShot to ensure this method runs in the main thread
+        from PySide6.QtCore import QTimer
+        QTimer.singleShot(0, lambda: self._append_response_chunk_safe(chunk, model_name))
+    
+    def _append_response_chunk_safe(self, chunk: str, model_name: str = None):
+        """Append a streaming response chunk safely in the main thread"""
         # Don't append response chunks if EQ visualizer is active
         if self.eq_visualizer.is_eq_visualizer_active(self.voice_mode, self.voice_controls.is_tts_playing()):
             logger.debug(f"[EQ DEBUG] Skipping response chunk append - EQ visualizer is active")
@@ -496,20 +531,34 @@ class ChatTab(QWidget):
         
     def start_streaming(self):
         """Start streaming state"""
+        # Use QTimer.singleShot to ensure this method runs in the main thread
+        from PySide6.QtCore import QTimer
+        QTimer.singleShot(0, self._start_streaming_safe)
+    
+    def _start_streaming_safe(self):
+        """Start streaming state safely in the main thread"""
         if not self.is_streaming:  # Only change state if not already streaming
             self.is_streaming = True
             self.current_response = ""
             input_components = self.input_controls.get_ui_components()
-            input_components['send_button'].setEnabled(False)
-            input_components['cancel_button'].setVisible(True)
+            
+            # Only manage send/cancel buttons in text mode
+            if not self.voice_mode:
+                input_components['send_button'].setEnabled(False)
+                input_components['cancel_button'].setVisible(True)
+                logger.debug("[VOICE DEBUG] Text mode: disabled send button, showed cancel button")
+            else:
+                # In voice mode, buttons should remain hidden
+                logger.debug("[VOICE DEBUG] Voice mode: buttons remain hidden during streaming")
+            
             ai_name = self.get_ai_name()
             streaming_handler = self.chat_display.get_streaming_handler()
             if streaming_handler:
                 streaming_handler.start_streaming_message(ai_name, tag="ai")
             
-            # Double-check that the button is actually disabled
-            if input_components['send_button'].isEnabled():
-                logger.warning("Send button was not disabled, forcing disable")
+            # Double-check that the button state is correct (only in text mode)
+            if not self.voice_mode and input_components['send_button'].isEnabled():
+                logger.warning("Send button was not disabled in text mode, forcing disable")
                 input_components['send_button'].setEnabled(False)
                 input_components['send_button'].update()
                 from PySide6.QtWidgets import QApplication
@@ -517,12 +566,27 @@ class ChatTab(QWidget):
         
     def stop_streaming(self):
         """Stop streaming state"""
-        logger.debug("[DEBUG] stop_streaming called. is_streaming: %s", self.is_streaming)
+        # Use QTimer.singleShot to ensure this method runs in the main thread
+        from PySide6.QtCore import QTimer
+        QTimer.singleShot(0, self._stop_streaming_safe)
+    
+    def _stop_streaming_safe(self):
+        """Stop streaming state safely in the main thread"""
+        logger.debug("[DEBUG] stop_streaming called. is_streaming: %s, voice_mode: %s", self.is_streaming, self.voice_mode)
         self.is_streaming = False
         input_components = self.input_controls.get_ui_components()
-        input_components['send_button'].setEnabled(True)
-        input_components['cancel_button'].setVisible(False)
-        logger.debug(f"[DEBUG] stop_streaming: send_button enabled? {input_components['send_button'].isEnabled()} cancel_button visible? {input_components['cancel_button'].isVisible()}")
+        
+        # Only manage send/cancel buttons in text mode
+        if not self.voice_mode:
+            input_components['send_button'].setEnabled(True)
+            input_components['send_button'].setVisible(True)
+            input_components['cancel_button'].setVisible(False)
+            logger.debug("[VOICE DEBUG] Text mode: enabled send button, hid cancel button")
+        else:
+            # In voice mode, buttons should remain hidden
+            logger.debug("[VOICE DEBUG] Voice mode: buttons remain hidden after streaming")
+        
+        logger.debug(f"[DEBUG] stop_streaming: send_button enabled? {input_components['send_button'].isEnabled()} visible? {input_components['send_button'].isVisible()} cancel_button visible? {input_components['cancel_button'].isVisible()}")
         streaming_handler = self.chat_display.get_streaming_handler()
         if streaming_handler:
             streaming_handler.finalize_streaming_message()
@@ -531,25 +595,40 @@ class ChatTab(QWidget):
         from PySide6.QtWidgets import QApplication
         QApplication.processEvents()
         
-        # Double-check that the button is actually enabled
-        if not input_components['send_button'].isEnabled():
-            logger.warning("Send button was not enabled, forcing enable")
+        # Double-check that the button is actually enabled (only in text mode)
+        if not self.voice_mode and not input_components['send_button'].isEnabled():
+            logger.warning("Send button was not enabled in text mode, forcing enable")
             input_components['send_button'].setEnabled(True)
             input_components['send_button'].update()
             QApplication.processEvents()
     
     def force_enable_send_button(self):
         """Force enable the send button and ensure UI is updated"""
+        # Use QTimer.singleShot to ensure this method runs in the main thread
+        from PySide6.QtCore import QTimer
+        QTimer.singleShot(0, self._force_enable_send_button_safe)
+    
+    def _force_enable_send_button_safe(self):
+        """Force enable the send button safely in the main thread"""
         logger.debug("Force enabling send button")
         self.is_streaming = False
         input_components = self.input_controls.get_ui_components()
-        input_components['send_button'].setEnabled(True)
-        input_components['cancel_button'].setVisible(False)
+        
+        # Only manage send/cancel buttons in text mode
+        if not self.voice_mode:
+            input_components['send_button'].setEnabled(True)
+            input_components['send_button'].setVisible(True)
+            input_components['cancel_button'].setVisible(False)
+            logger.debug("[VOICE DEBUG] Text mode: force enabled send button")
+        else:
+            # In voice mode, buttons should remain hidden
+            logger.debug("[VOICE DEBUG] Voice mode: buttons remain hidden")
+        
         input_components['send_button'].update()
         input_components['cancel_button'].update()
         from PySide6.QtWidgets import QApplication
         QApplication.processEvents()
-        logger.debug(f"Send button enabled: {input_components['send_button'].isEnabled()}")
+        logger.debug(f"Send button enabled: {input_components['send_button'].isEnabled()}, visible: {input_components['send_button'].isVisible()}")
     
     def clear_chat(self):
         """Clear the chat display"""

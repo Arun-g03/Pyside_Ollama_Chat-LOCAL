@@ -341,14 +341,28 @@ class EQVisualizer(QObject):
             
             logger.debug(f"[EQ DEBUG] Generated {len(bar_values)} bar values: {[f'{v:.3f}' for v in bar_values]}")
             
-            # Update the EQ visualizer
-            self.current_eq_widget.set_eq_bars(bar_values)
-            logger.debug(f"[EQ DEBUG] Sent {len(bar_values)} bar values to EQ widget")
+            # Use QTimer.singleShot to ensure UI update happens in main thread
+            from PySide6.QtCore import QTimer
+            QTimer.singleShot(0, lambda: self._update_eq_widget_safe(bar_values))
+            logger.debug(f"[EQ DEBUG] Scheduled EQ widget update for main thread")
             
         except Exception as e:
             logger.error(f"[EQ DEBUG] Error updating EQ visualizer: {e}")
             import traceback
             logger.error(f"[EQ DEBUG] EQ error traceback: {traceback.format_exc()}")
+    
+    def _update_eq_widget_safe(self, bar_values):
+        """Update the EQ widget safely in the main thread"""
+        try:
+            if self.current_eq_widget and hasattr(self.current_eq_widget, 'set_eq_bars'):
+                self.current_eq_widget.set_eq_bars(bar_values)
+                logger.debug(f"[EQ DEBUG] Updated EQ widget with {len(bar_values)} bar values in main thread")
+            else:
+                logger.debug("[EQ DEBUG] No EQ widget available for update")
+        except Exception as e:
+            logger.error(f"[EQ DEBUG] Error in _update_eq_widget_safe: {e}")
+            import traceback
+            logger.error(f"[EQ DEBUG] Safe update error traceback: {traceback.format_exc()}")
     
     def is_eq_visualizer_active(self, voice_mode: bool, tts_playing: bool = False):
         """Check if EQ visualizer should be active"""

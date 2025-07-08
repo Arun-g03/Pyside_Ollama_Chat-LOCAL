@@ -52,18 +52,19 @@ class VoiceServiceWrapper(QObject):
             from .voice_process_manager import create_voice_process_manager
             self.process_manager = create_voice_process_manager()
             
-            # Connect signals from process manager
-            self.process_manager.voice_input_received.connect(self.voice_input_received.emit)
-            self.process_manager.voice_input_error.connect(self.voice_input_error.emit)
-            self.process_manager.tts_started.connect(self.tts_started.emit)
-            self.process_manager.tts_finished.connect(self.tts_finished.emit)
-            self.process_manager.tts_error.connect(self.tts_error.emit)
-            self.process_manager.recording_started.connect(self.recording_started.emit)
-            self.process_manager.recording_stopped.connect(self.recording_stopped.emit)
-            self.process_manager.recording_error.connect(self.recording_error.emit)
-            self.process_manager.voice_processing_started.connect(self.voice_processing_started.emit)
-            self.process_manager.voice_processing_finished.connect(self.voice_processing_finished.emit)
-            self.process_manager.state_updated.connect(self._update_cached_state_from_signal)
+            # Connect signals from process manager with QueuedConnection for thread safety
+            from PySide6.QtCore import Qt
+            self.process_manager.voice_input_received.connect(self.voice_input_received.emit, Qt.ConnectionType.QueuedConnection)
+            self.process_manager.voice_input_error.connect(self.voice_input_error.emit, Qt.ConnectionType.QueuedConnection)
+            self.process_manager.tts_started.connect(self.tts_started.emit, Qt.ConnectionType.QueuedConnection)
+            self.process_manager.tts_finished.connect(self.tts_finished.emit, Qt.ConnectionType.QueuedConnection)
+            self.process_manager.tts_error.connect(self.tts_error.emit, Qt.ConnectionType.QueuedConnection)
+            self.process_manager.recording_started.connect(self.recording_started.emit, Qt.ConnectionType.QueuedConnection)
+            self.process_manager.recording_stopped.connect(self.recording_stopped.emit, Qt.ConnectionType.QueuedConnection)
+            self.process_manager.recording_error.connect(self.recording_error.emit, Qt.ConnectionType.QueuedConnection)
+            self.process_manager.voice_processing_started.connect(self.voice_processing_started.emit, Qt.ConnectionType.QueuedConnection)
+            self.process_manager.voice_processing_finished.connect(self.voice_processing_finished.emit, Qt.ConnectionType.QueuedConnection)
+            self.process_manager.state_updated.connect(self._update_cached_state_from_signal, Qt.ConnectionType.QueuedConnection)
             
             logger.info("Voice service wrapper initialized with process manager")
             
@@ -78,24 +79,26 @@ class VoiceServiceWrapper(QObject):
             from .voice_service import VoiceService
             self.direct_service = VoiceService()
             
-            # Connect signals from direct service
-            self.direct_service.voice_input_received.connect(self.voice_input_received.emit)
-            self.direct_service.voice_input_error.connect(self.voice_input_error.emit)
-            self.direct_service.tts_started.connect(self.tts_started.emit)
-            self.direct_service.tts_finished.connect(self.tts_finished.emit)
-            self.direct_service.tts_error.connect(self.tts_error.emit)
-            self.direct_service.recording_started.connect(self.recording_started.emit)
-            self.direct_service.recording_stopped.connect(self.recording_stopped.emit)
-            self.direct_service.recording_error.connect(self.recording_error.emit)
-            self.direct_service.voice_processing_started.connect(self.voice_processing_started.emit)
-            self.direct_service.voice_processing_finished.connect(self.voice_processing_finished.emit)
-            self.direct_service.audio_level_changed.connect(self.audio_level_changed.emit)
+            # Connect signals from direct service with QueuedConnection for thread safety
+            from PySide6.QtCore import Qt
+            self.direct_service.voice_input_received.connect(self.voice_input_received.emit, Qt.ConnectionType.QueuedConnection)
+            self.direct_service.voice_input_error.connect(self.voice_input_error.emit, Qt.ConnectionType.QueuedConnection)
+            self.direct_service.tts_started.connect(self.tts_started.emit, Qt.ConnectionType.QueuedConnection)
+            self.direct_service.tts_finished.connect(self.tts_finished.emit, Qt.ConnectionType.QueuedConnection)
+            self.direct_service.tts_error.connect(self.tts_error.emit, Qt.ConnectionType.QueuedConnection)
+            self.direct_service.recording_started.connect(self.recording_started.emit, Qt.ConnectionType.QueuedConnection)
+            self.direct_service.recording_stopped.connect(self.recording_stopped.emit, Qt.ConnectionType.QueuedConnection)
+            self.direct_service.recording_error.connect(self.recording_error.emit, Qt.ConnectionType.QueuedConnection)
+            self.direct_service.voice_processing_started.connect(self.voice_processing_started.emit, Qt.ConnectionType.QueuedConnection)
+            self.direct_service.voice_processing_finished.connect(self.voice_processing_finished.emit, Qt.ConnectionType.QueuedConnection)
+            self.direct_service.audio_level_changed.connect(self.audio_level_changed.emit, Qt.ConnectionType.QueuedConnection)
             
             logger.info("Voice service wrapper initialized with direct service")
             
         except Exception as e:
             logger.error(f"Failed to initialize direct voice service: {e}")
-            raise
+            # Don't raise the exception, just log it and continue without voice service
+            self.direct_service = None
     
     def start_voice_input(self):
         """Start voice recording and convert to text"""
@@ -157,7 +160,8 @@ class VoiceServiceWrapper(QObject):
             return self.process_manager.is_process_running()
         elif self.direct_service:
             return self.direct_service.is_voice_available()
-        return False
+        else:
+            return False
     
     def update_settings(self, settings: dict):
         """Update voice service settings"""
@@ -183,7 +187,7 @@ class VoiceServiceWrapper(QObject):
         """Get current silence duration in seconds"""
         if self.direct_service:
             return self.direct_service.get_silence_duration()
-        return 2.0  # Default fallback
+        return 3.0  # Default fallback
     
     def set_silence_duration(self, duration: float):
         """Set silence duration in seconds"""
@@ -210,18 +214,22 @@ class VoiceServiceWrapper(QObject):
         """Get current audio level for debugging"""
         if self.direct_service:
             return self.direct_service.get_current_audio_level()
-        return 0.0
+        return 0.0  # Default fallback
     
     def set_continuous_voice_mode(self, enabled: bool):
         """Enable or disable continuous voice mode"""
-        if self.direct_service:
+        if self.use_separate_process and self.process_manager:
+            self.process_manager.send_command("set_continuous_voice_mode", enabled)
+        elif self.direct_service:
             self.direct_service.set_continuous_voice_mode(enabled)
+        else:
+            logger.error("No voice service available")
     
     def is_continuous_voice_mode(self) -> bool:
         """Check if continuous voice mode is enabled"""
         if self.direct_service:
             return self.direct_service.is_continuous_voice_mode()
-        return False
+        return False  # Default fallback
     
     def cleanup_on_exit(self):
         """Clean up resources on application exit"""

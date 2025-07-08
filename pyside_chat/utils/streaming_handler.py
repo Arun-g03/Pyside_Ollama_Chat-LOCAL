@@ -4,7 +4,7 @@ Handles streaming response processing and display updates.
 """
 
 from PySide6.QtWidgets import QTextEdit, QApplication
-from PySide6.QtCore import QTimer, Signal, QObject
+from PySide6.QtCore import QTimer, Signal, QObject, QThread
 from PySide6.QtGui import QTextCursor, QTextCharFormat, QColor
 from pyside_chat.ui.styles.message_formatter import MessageFormatter
 from pyside_chat.utils.Logging.Custom_Logger import CustomLogger
@@ -48,9 +48,9 @@ class StreamingHandler(QObject):
             'message_id': message_id
         })
         logger.debug("[DEBUG][append_message] messages: %s", ', '.join(f"{m['sender']} streaming={m['is_streaming']} len={len(m['content'])}" for m in self.messages))
-        self._render_chat_display()
-        self.chat_display.update()
-        QTimer.singleShot(0, self._render_chat_display)
+        # Use QTimer.singleShot to ensure UI updates happen in the main thread
+        QTimer.singleShot(0, self._render_chat_display_safe)
+        QTimer.singleShot(0, lambda: self.chat_display.update())
 
     def start_streaming_message(self, sender: str, tag: str = "ai"):
         """Append a streaming placeholder message and re-render chat display"""
@@ -63,7 +63,8 @@ class StreamingHandler(QObject):
             'tag': tag,
             'message_id': message_id
         })
-        self._render_chat_display()
+        # Use QTimer.singleShot to ensure UI updates happen in the main thread
+        QTimer.singleShot(0, self._render_chat_display_safe)
 
     def edit_message(self, message_index: int, new_content: str):
         """Edit a specific message by index"""
@@ -71,7 +72,8 @@ class StreamingHandler(QObject):
             old_content = self.messages[message_index]['content']
             self.messages[message_index]['content'] = new_content
             logger.debug(f"[DEBUG][edit_message] Edited message {message_index}: '{old_content}' -> '{new_content}'")
-            self._render_chat_display()
+            # Use QTimer.singleShot to ensure UI updates happen in the main thread
+            QTimer.singleShot(0, self._render_chat_display_safe)
             # Emit signal for external handling (e.g., conversation saving)
             self.message_edited.emit(message_index, new_content)
             return True
@@ -122,7 +124,8 @@ class StreamingHandler(QObject):
                 msg['is_code'] = is_code
                 msg['tag'] = tag
                 break
-        self._render_chat_display()
+        # Use QTimer.singleShot to ensure UI updates happen in the main thread
+        QTimer.singleShot(0, self._render_chat_display_safe)
         # If still streaming, keep timer running; else, stop
         if not any(msg['is_streaming'] for msg in self.messages):
             self._stream_timer.stop()
@@ -144,8 +147,9 @@ class StreamingHandler(QObject):
                     del self.messages[i]
                 break
         logger.debug("[DEBUG][finalize_streaming_message] after finalize messages: %s", ', '.join(f"{m['sender']} streaming={m['is_streaming']} len={len(m['content'])}" for m in self.messages))
-        self._render_chat_display()
-        self.chat_display.update()
+        # Use QTimer.singleShot to ensure UI updates happen in the main thread
+        QTimer.singleShot(0, self._render_chat_display_safe)
+        QTimer.singleShot(0, lambda: self.chat_display.update())
 
     def update_last_system_switch(self, message: str):
         """Update the last system switch message ("Switched to ...") and re-render chat display"""
@@ -153,46 +157,82 @@ class StreamingHandler(QObject):
             if msg['sender'] == 'System' and msg['content'].startswith('Switched to '):
                 msg['content'] = message
                 break
-        self._render_chat_display()
+        # Use QTimer.singleShot to ensure UI updates happen in the main thread
+        QTimer.singleShot(0, self._render_chat_display_safe)
 
     def _render_chat_display(self):
         """Re-render the entire chat display from the message list using tables for alignment and content-width bubbles"""
         
-        self.chat_display.clear()
-        prev_was_thinking = False
-        
-        for msg in self.messages:
-            sender = msg['sender']
-            content = msg['content']
-            is_code = msg['is_code']
-            is_streaming = msg['is_streaming']
-            tag = msg.get('tag', 'ai')
-            message_id = msg.get('message_id', '')
+        # Use QTimer.singleShot to ensure UI updates happen in the main thread
+        QTimer.singleShot(0, self._render_chat_display_safe)
+    
+    def _render_chat_display_safe(self):
+        """Re-render the chat display safely in the main thread"""
+        try:
+            # Ensure we're in the main thread
+            if QThread.currentThread() != self.chat_display.thread():
+                # If we're not in the main thread, schedule this for the main thread
+                QTimer.singleShot(0, self._render_chat_display_safe)
+                return
             
-            # Format content
-            formatted_content = ''  # Ensure it's always defined
-            if is_streaming:
-                if not content:
-                    # Distinct 'thinking' block for AI
-                    if tag == 'ai':
-                        html = f"""
-                        <table width='100%' cellspacing='0' cellpadding='0'><tr>
-                          <td align='left'>
-                            <div style='background-color: #23272e; color: #aaa; border-radius: 8px; padding: 10px 16px; margin: 8px 0; max-width: 500px; min-width: 60px; display: inline-block; word-break: break-word; border: 2px dashed #888; font-style: italic;'>
-                              💭 Thinking...
-                            </div>
-                          </td>
-                          <td></td>
-                        </tr></table>
-                        """
+            self.chat_display.clear()
+            prev_was_thinking = False
+            
+            for msg in self.messages:
+                sender = msg['sender']
+                content = msg['content']
+                is_code = msg['is_code']
+                is_streaming = msg['is_streaming']
+                tag = msg.get('tag', 'ai')
+                message_id = msg.get('message_id', '')
+                
+                # Format content
+                formatted_content = ''  # Ensure it's always defined
+                if is_streaming:
+                    if not content:
+                        # Distinct 'thinking' block for AI
+                        if tag == 'ai':
+                            html = f"""
+                            <table width='100%' cellspacing='0' cellpadding='0'><tr>
+                              <td align='left'>
+                                <div style='background-color: #23272e; color: #aaa; border-radius: 8px; padding: 10px 16px; margin: 8px 0; max-width: 500px; min-width: 60px; display: inline-block; word-break: break-word; border: 2px dashed #888; font-style: italic;'>
+                                  💭 Thinking...
+                                </div>
+                              </td>
+                              <td></td>
+                            </tr></table>
+                            """
+                        else:
+                            html = f"<div style='color: #888; font-style: italic;'>Thinking...</div>"
+                        self.chat_display.insertHtml(html)
+                        self.chat_display.insertHtml("<br>")
+                        prev_was_thinking = True
+                        continue
                     else:
-                        html = f"<div style='color: #888; font-style: italic;'>Thinking...</div>"
-                    self.chat_display.insertHtml(html)
-                    self.chat_display.insertHtml("<br>")
-                    prev_was_thinking = True
-                    continue
+                        # Format streaming AI messages just like finalized ones
+                        if tag == 'ai':
+                            thoughts, main_answer = MessageFormatter.split_thoughts_and_answer(content)
+                            if thoughts:
+                                # Render thoughts block first
+                                thoughts_html = f"""
+                                <table width='100%' cellspacing='0' cellpadding='0'><tr>
+                                  <td align='left'>
+                                    <div style='background-color: #23272e; color: #aaa; border-radius: 8px; padding: 10px 16px; margin: 8px 0 4px 0; max-width: 500px; min-width: 60px; display: inline-block; word-break: break-word; border: 2px dashed #888; font-style: italic;'>
+                                      <b style='color: #aaa;'>{self.ai_name} Thoughts💭:</b><br> {MessageFormatter.format_markdown(thoughts)}
+                                    </div>
+                                  </td>
+                                  <td></td>
+                                </tr></table>
+                                """
+                                self.chat_display.insertHtml(thoughts_html)
+                                self.chat_display.insertHtml("<br>")
+                                content = main_answer
+                        formatted_content = MessageFormatter.detect_and_format_code(content)
+                        formatted_content = MessageFormatter.format_markdown(formatted_content)
+                elif is_code:
+                    formatted_content = MessageFormatter.syntax_highlight_code(content)
                 else:
-                    # Format streaming AI messages just like finalized ones
+                    # Check for <think>...</think> in AI messages
                     if tag == 'ai':
                         thoughts, main_answer = MessageFormatter.split_thoughts_and_answer(content)
                         if thoughts:
@@ -209,77 +249,58 @@ class StreamingHandler(QObject):
                             """
                             self.chat_display.insertHtml(thoughts_html)
                             self.chat_display.insertHtml("<br>")
+                            # Now render the main answer as the AI bubble
                             content = main_answer
-                    formatted_content = MessageFormatter.detect_and_format_code(content)
-                    formatted_content = MessageFormatter.format_markdown(formatted_content)
-            elif is_code:
-                formatted_content = MessageFormatter.syntax_highlight_code(content)
-            else:
-                # Check for <think>...</think> in AI messages
-                if tag == 'ai':
-                    thoughts, main_answer = MessageFormatter.split_thoughts_and_answer(content)
-                    if thoughts:
-                        # Render thoughts block first
-                        thoughts_html = f"""
-                        <table width='100%' cellspacing='0' cellpadding='0'><tr>
-                          <td align='left'>
-                            <div style='background-color: #23272e; color: #aaa; border-radius: 8px; padding: 10px 16px; margin: 8px 0 4px 0; max-width: 500px; min-width: 60px; display: inline-block; word-break: break-word; border: 2px dashed #888; font-style: italic;'>
-                              <b style='color: #aaa;'>{self.ai_name} Thoughts💭:</b><br> {MessageFormatter.format_markdown(thoughts)}
-                            </div>
-                          </td>
-                          <td></td>
-                        </tr></table>
-                        """
-                        self.chat_display.insertHtml(thoughts_html)
-                        self.chat_display.insertHtml("<br>")
-                        # Now render the main answer as the AI bubble
-                        content = main_answer
-                    formatted_content = MessageFormatter.detect_and_format_code(content)
-                    formatted_content = MessageFormatter.format_markdown(formatted_content)
-            # Fallback: if still not set, just escape the content
-            if not formatted_content:
-                from html import escape
-                formatted_content = escape(content)
+                        formatted_content = MessageFormatter.detect_and_format_code(content)
+                        formatted_content = MessageFormatter.format_markdown(formatted_content)
+                # Fallback: if still not set, just escape the content
+                if not formatted_content:
+                    from html import escape
+                    formatted_content = escape(content)
 
-            # Bubble style for content-width
-            bubble_style = "max-width: 500px; min-width: 60px; display: inline-block; word-break: break-word;"
+                # Bubble style for content-width
+                bubble_style = "max-width: 500px; min-width: 60px; display: inline-block; word-break: break-word;"
 
-            # Table-based alignment
-            extra_top_margin = ''
-            if tag == 'ai' and not is_streaming and prev_was_thinking:
-                extra_top_margin = 'margin-top: 24px;'
-            if tag == 'user':
-                html = f"""
-                <table width='100%' cellspacing='0' cellpadding='0'><tr>
-                  <td></td>
-                  <td align='right'>
-                    <div style='background-color: #1a3a5d; color: #fff; border-radius: 8px; padding: 10px 16px; margin: 8px 0; {bubble_style}'>
-                      <span style='display:none' data-msg-idx='{self.messages.index(msg)}'></span>
-                      <b>{sender}:</b> {formatted_content}
-                    </div>
-                  </td>
-                </tr></table>
-                """
-            elif tag == 'ai':
-                html = f"""
-                <table width='100%' cellspacing='0' cellpadding='0'><tr>
-                  <td align='left'>
-                    <div style='background-color: #23272e; color: #fff; border-radius: 8px; padding: 10px 16px; {extra_top_margin} margin: 8px 0; {bubble_style}'>
-                      <b>{sender}:</b> {formatted_content}
-                    </div>
-                  </td>
-                  <td></td>
-                </tr></table>
-                """
-            else:
-                html = f"""
-                <div style='background-color: #1e1e1e; color: #fff; border-radius: 5px; padding: 10px 16px; margin: 8px 0;'><b>{sender}:</b> {formatted_content}</div>
-                """
-            self.chat_display.insertHtml(html)
-            self.chat_display.insertHtml("<br>")
-            prev_was_thinking = False
-        self.chat_display.ensureCursorVisible()
-        logger.debug(f"[DEBUG] _render_chat_display finished. Message count: {len(self.messages)}", print_to_terminal=False)
+                # Table-based alignment
+                extra_top_margin = ''
+                if tag == 'ai' and not is_streaming and prev_was_thinking:
+                    extra_top_margin = 'margin-top: 24px;'
+                if tag == 'user':
+                    html = f"""
+                    <table width='100%' cellspacing='0' cellpadding='0'><tr>
+                      <td></td>
+                      <td align='right'>
+                        <div style='background-color: #1a3a5d; color: #fff; border-radius: 8px; padding: 10px 16px; margin: 8px 0; {bubble_style}'>
+                          <span style='display:none' data-msg-idx='{self.messages.index(msg)}'></span>
+                          <b>{sender}:</b> {formatted_content}
+                        </div>
+                      </td>
+                    </tr></table>
+                    """
+                elif tag == 'ai':
+                    html = f"""
+                    <table width='100%' cellspacing='0' cellpadding='0'><tr>
+                      <td align='left'>
+                        <div style='background-color: #23272e; color: #fff; border-radius: 8px; padding: 10px 16px; {extra_top_margin} margin: 8px 0; {bubble_style}'>
+                          <b>{sender}:</b> {formatted_content}
+                        </div>
+                      </td>
+                      <td></td>
+                    </tr></table>
+                    """
+                else:
+                    html = f"""
+                    <div style='background-color: #1e1e1e; color: #fff; border-radius: 5px; padding: 10px 16px; margin: 8px 0;'><b>{sender}:</b> {formatted_content}</div>
+                    """
+                self.chat_display.insertHtml(html)
+                self.chat_display.insertHtml("<br>")
+                prev_was_thinking = False
+            self.chat_display.ensureCursorVisible()
+            logger.debug(f"[DEBUG] _render_chat_display finished. Message count: {len(self.messages)}", print_to_terminal=False)
+        except Exception as e:
+            logger.error(f"[DEBUG] Error in _render_chat_display_safe: {e}")
+            import traceback
+            logger.error(f"[DEBUG] Render error traceback: {traceback.format_exc()}")
 
     def _on_message_edited(self, message_id: str, new_content: str):
         """Handle message edit from widget"""
@@ -298,16 +319,19 @@ class StreamingHandler(QObject):
             if self.messages[i]['is_streaming']:
                 del self.messages[i]
                 break
-        self._render_chat_display()
+        # Use QTimer.singleShot to ensure UI updates happen in the main thread
+        QTimer.singleShot(0, self._render_chat_display_safe)
 
     def cleanup(self):
         self.messages.clear()
-        self._render_chat_display()
+        # Use QTimer.singleShot to ensure UI updates happen in the main thread
+        QTimer.singleShot(0, self._render_chat_display_safe)
     
     def clear_chat(self):
         """Clear all messages and re-render chat display"""
         self.messages.clear()
-        self._render_chat_display()
+        # Use QTimer.singleShot to ensure UI updates happen in the main thread
+        QTimer.singleShot(0, self._render_chat_display_safe)
     
     def update_ai_name(self, ai_name: str):
         """Update the AI name used for thoughts display"""

@@ -233,6 +233,20 @@ class InputControls(QObject):
     def set_input_mode(self, mode):
         """Set the input mode (Chat or Voice)"""
         logger.debug(f"Setting input mode to: {mode}")
+        
+        if mode == "Chat":
+            # Show text input controls
+            self.message_input.show()
+            self.send_button.show()
+            self.cancel_button.hide()  # Hide cancel button in chat mode initially
+            logger.debug("[VOICE DEBUG] Chat mode: showed message input and send button")
+        elif mode == "Voice":
+            # Hide text input controls completely in voice mode
+            self.message_input.hide()
+            self.send_button.hide()
+            self.cancel_button.hide()
+            logger.debug("[VOICE DEBUG] Voice mode: hid message input, send button, and cancel button")
+        
         self.input_mode_changed.emit(mode)
     
     def on_temperature_changed(self, value):
@@ -278,11 +292,18 @@ class InputControls(QObject):
         if not self.is_streaming:  # Only change state if not already streaming
             self.is_streaming = True
             self.current_response = ""
-            self.send_button.setEnabled(False)
-            self.cancel_button.setVisible(True)
+            
+            # Only manage send/cancel buttons if we're in chat mode
+            if self.mode_combo.currentText() == "Chat":
+                self.send_button.setEnabled(False)
+                self.cancel_button.setVisible(True)
+                logger.debug("[VOICE DEBUG] Chat mode streaming: disabled send button, showed cancel button")
+            else:
+                # In voice mode, buttons should remain hidden
+                logger.debug("[VOICE DEBUG] Voice mode streaming: buttons remain hidden")
             
             # Double-check that the button is actually disabled
-            if self.send_button.isEnabled():
+            if self.mode_combo.currentText() == "Chat" and self.send_button.isEnabled():
                 logger.warning("Send button was not disabled, forcing disable")
                 self.send_button.setEnabled(False)
                 self.send_button.update()
@@ -293,16 +314,23 @@ class InputControls(QObject):
         """Stop streaming state"""
         logger.debug("[DEBUG] stop_streaming called. is_streaming: %s", self.is_streaming)
         self.is_streaming = False
-        self.send_button.setEnabled(True)
-        self.cancel_button.setVisible(False)
-        logger.debug(f"[DEBUG] stop_streaming: send_button enabled? {self.send_button.isEnabled()} cancel_button visible? {self.cancel_button.isVisible()}")
+        
+        # Only manage send/cancel buttons if we're in chat mode
+        if self.mode_combo.currentText() == "Chat":
+            self.send_button.setEnabled(True)
+            self.cancel_button.setVisible(False)
+            logger.debug(f"[DEBUG] stop_streaming: send_button enabled? {self.send_button.isEnabled()} cancel_button visible? {self.cancel_button.isVisible()}")
+        else:
+            # In voice mode, buttons should remain hidden
+            logger.debug("[VOICE DEBUG] Voice mode streaming stopped: buttons remain hidden")
+        
         self.send_button.update()
         self.cancel_button.update()
         from PySide6.QtWidgets import QApplication
         QApplication.processEvents()
         
-        # Double-check that the button is actually enabled
-        if not self.send_button.isEnabled():
+        # Double-check that the button is actually enabled (only in chat mode)
+        if self.mode_combo.currentText() == "Chat" and not self.send_button.isEnabled():
             logger.warning("Send button was not enabled, forcing enable")
             self.send_button.setEnabled(True)
             self.send_button.update()
@@ -312,8 +340,16 @@ class InputControls(QObject):
         """Force enable the send button and ensure UI is updated"""
         logger.debug("Force enabling send button")
         self.is_streaming = False
-        self.send_button.setEnabled(True)
-        self.cancel_button.setVisible(False)
+        
+        # Only manage send/cancel buttons if we're in chat mode
+        if self.mode_combo.currentText() == "Chat":
+            self.send_button.setEnabled(True)
+            self.cancel_button.setVisible(False)
+            logger.debug("[VOICE DEBUG] Chat mode: enabled send button, hid cancel button")
+        else:
+            # In voice mode, buttons should remain hidden
+            logger.debug("[VOICE DEBUG] Voice mode: buttons remain hidden")
+        
         self.send_button.update()
         self.cancel_button.update()
         from PySide6.QtWidgets import QApplication

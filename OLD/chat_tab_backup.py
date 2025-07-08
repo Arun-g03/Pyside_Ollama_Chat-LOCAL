@@ -497,12 +497,12 @@ class ChatTab(QWidget):
         self.input_layout.addWidget(self.voice_button)
 
         # --- Restore Voice Settings Button ---
-        self.voice_settings_button = QPushButton("⚙️")
+        self.voice_settings_button = QPushButton("Settings⚙️")
         self.voice_settings_button.setToolTip("Voice Settings")
         self.voice_settings_button.setFixedSize(32, 32)
         self.voice_settings_button.setStyleSheet("""
             QPushButton {
-                background-color: #6c757d;
+                background-color: #000000;
                 color: #ffffff;
                 border: none;
                 border-radius: 16px;

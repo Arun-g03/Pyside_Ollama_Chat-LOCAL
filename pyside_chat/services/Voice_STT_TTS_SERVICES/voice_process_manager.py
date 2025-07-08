@@ -13,6 +13,7 @@ import sys
 from typing import Dict, Any, Optional, Callable
 from PySide6.QtCore import QObject, Signal, QThread, QTimer
 from PySide6.QtWidgets import QApplication
+import queue
 
 from pyside_chat.utils.Logging.Custom_Logger import CustomLogger
 
@@ -60,7 +61,7 @@ class VoiceProcessManager(QObject):
             
             # Start voice process
             self.voice_process = mp.Process(
-                target=self._voice_process_worker,
+                target=_voice_process_worker,
                 args=(self.command_queue, self.response_queue),
                 name="VoiceService"
             )
@@ -68,7 +69,9 @@ class VoiceProcessManager(QObject):
             
             # Start monitoring thread
             self.process_thread = VoiceProcessMonitor(self.response_queue, self)
-            self.process_thread.response_received.connect(self._handle_response)
+            # Use QueuedConnection for thread safety
+            from PySide6.QtCore import Qt
+            self.process_thread.response_received.connect(self._handle_response, Qt.ConnectionType.QueuedConnection)
             self.process_thread.start()
             
             self.is_running = True
@@ -100,10 +103,18 @@ class VoiceProcessManager(QObject):
                     if self.voice_process.is_alive():
                         self.voice_process.kill()
             
-            # Stop monitoring thread
+            # Stop monitoring thread safely
             if self.process_thread:
                 self.process_thread.stop()
-                self.process_thread.wait()
+                # Use timeout to avoid blocking
+                if not self.process_thread.wait(3000):  # 3 second timeout
+                    logger.warning("Voice process monitor did not stop within timeout")
+                    # Don't use terminate() as it can cause crashes
+                    # Instead, mark it for deletion and let it finish naturally
+                    self.process_thread.deleteLater()
+                else:
+                    logger.debug("Voice process monitor stopped successfully")
+                    self.process_thread.deleteLater()
             
             self.is_running = False
             self.process_status_changed.emit("stopped")
@@ -197,10 +208,13 @@ class VoiceProcessMonitor(QThread):
         """Monitor the response queue"""
         while self.running:
             try:
-                # Check for response with timeout
-                if self.response_queue.poll(timeout=0.1):
-                    response = self.response_queue.get()
+                # Check for response with timeout using get_nowait
+                try:
+                    response = self.response_queue.get(timeout=0.1)
                     self.response_received.emit(response)
+                except queue.Empty:
+                    # No response received, continue loop
+                    pass
             except Exception as e:
                 logger.error(f"Error in voice process monitor: {e}")
                 break
@@ -208,6 +222,8 @@ class VoiceProcessMonitor(QThread):
     def stop(self):
         """Stop the monitoring thread"""
         self.running = False
+        # Give the thread a moment to finish naturally
+        time.sleep(0.1)
 
 
 def _voice_process_worker(command_queue: mp.Queue, response_queue: mp.Queue):
@@ -235,9 +251,9 @@ def _voice_process_worker(command_queue: mp.Queue, response_queue: mp.Queue):
         # Main command loop
         while True:
             try:
-                # Check for commands with timeout
-                if command_queue.poll(timeout=0.1):
-                    message = command_queue.get()
+                # Check for commands with timeout using get_nowait
+                try:
+                    message = command_queue.get(timeout=0.1)
                     command = message.get("command")
                     data = message.get("data")
                     
@@ -258,6 +274,8 @@ def _voice_process_worker(command_queue: mp.Queue, response_queue: mp.Queue):
                         voice_service.stop_tts()
                     elif command == "update_settings":
                         voice_service.update_settings(data)
+                    elif command == "set_continuous_voice_mode":
+                        voice_service.set_continuous_voice_mode(data)
                     elif command == "test_connection":
                         response_queue.put({
                             "type": "status",
@@ -275,6 +293,10 @@ def _voice_process_worker(command_queue: mp.Queue, response_queue: mp.Queue):
                         })
                     else:
                         logger.warning(f"Unknown command: {command}")
+                        
+                except queue.Empty:
+                    # No command received, continue loop
+                    pass
                 
                 # Process Qt events
                 app.processEvents()
@@ -302,11 +324,19 @@ def _voice_process_worker(command_queue: mp.Queue, response_queue: mp.Queue):
 # Convenience functions for the main application
 def create_voice_process_manager() -> VoiceProcessManager:
     """Create and start a voice process manager"""
-    manager = VoiceProcessManager()
-    if manager.start_voice_process():
+    try:
+        manager = VoiceProcessManager()
+        if manager.start_voice_process():
+            return manager
+        else:
+            logger.error("Failed to start voice process manager")
+            # Return a manager that will use direct service fallback
+            return manager
+    except Exception as e:
+        logger.error(f"Failed to create voice process manager: {e}")
+        # Return a manager that will use direct service fallback
+        manager = VoiceProcessManager()
         return manager
-    else:
-        raise RuntimeError("Failed to start voice process manager")
 
 
 def stop_voice_process_manager(manager: VoiceProcessManager):

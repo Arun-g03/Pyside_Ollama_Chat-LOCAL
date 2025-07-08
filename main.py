@@ -2,7 +2,7 @@ import sys
 import argparse
 from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import QTimer
-from pyside_chat.ollama_chat import OllamaChat
+from pyside_chat.MainApp.ollama_chat import OllamaChat
 from pyside_chat.utils.Logging.Custom_Logger import CustomLogger
 from pyside_chat.services.start_up.dependency_checker import check_and_install_dependencies
 
@@ -30,10 +30,10 @@ def check_dependencies(auto_install=True):
         dependencies_ok = check_and_install_dependencies(auto_install=auto_install)
         
         if not dependencies_ok:
-            logger.error("\n❌ Dependency check failed. Please run:")
-            logger.error("   python pyside_chat/services/start_up/install_dependencies.py")
-            logger.error("   or")
-            logger.error("   python pyside_chat/services/start_up/check_dependencies.py")
+            logger.error("\n❌ Dependency check failed. Please run:\n"
+                        "   python pyside_chat/services/start_up/install_dependencies.py\n"
+                        "   or\n"
+                        "   python pyside_chat/services/start_up/check_dependencies.py")
             return False
         
         return True

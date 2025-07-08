@@ -1,6 +1,7 @@
 from PySide6.QtCore import QObject, Signal
 import requests
 import json
+import time
 
 class Worker(QObject):
     update_message_signal = Signal(str)
@@ -10,6 +11,7 @@ class Worker(QObject):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._running = False
+        self._should_stop = False
 
     def run(self, message):
         """
@@ -31,6 +33,7 @@ class Worker(QObject):
         Stop the worker.
         """
         self._running = False
+        self._should_stop = True
 
     def is_running(self):
         """
@@ -50,6 +53,9 @@ class Worker(QObject):
         presence_penalty
     ):
         try:
+            self._running = True
+            self._should_stop = False
+            
             url = f"{ollama_url}/chat"
             data = {
                 "model": model,
@@ -61,18 +67,32 @@ class Worker(QObject):
                 "presence_penalty": presence_penalty,
                 "stream": True
             }
-            with requests.post(url, json=data, stream=True) as response:
+            
+            # Use timeout to prevent hanging
+            with requests.post(url, json=data, stream=True, timeout=30) as response:
                 response.raise_for_status()
                 for line in response.iter_lines(decode_unicode=True):
+                    if self._should_stop:
+                        break
                     if line:
-                        chunk = json.loads(line)
-                        content = chunk.get("message", {}).get("content", "")
-                        #logger.debug("STREAM CHUNK:", content,print_to_terminal=True)
-                        if content:
-                            self.stream_chunk_signal.emit(content)
-                        if chunk.get("done", False):
-                            break
+                        try:
+                            chunk = json.loads(line)
+                            content = chunk.get("message", {}).get("content", "")
+                            #logger.debug("STREAM CHUNK:", content,print_to_terminal=True)
+                            if content:
+                                self.stream_chunk_signal.emit(content)
+                            if chunk.get("done", False):
+                                break
+                        except json.JSONDecodeError:
+                            # Skip malformed JSON lines
+                            continue
+        except requests.exceptions.Timeout:
+            self.update_message_signal.emit("Error: Request timed out")
+        except requests.exceptions.ConnectionError:
+            self.update_message_signal.emit("Error: Connection lost")
         except Exception as e:
             self.update_message_signal.emit(f"Error: {str(e)}")
         finally:
+            self._running = False
+            self._should_stop = False
             self.finished_signal.emit()
