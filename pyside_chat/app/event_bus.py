@@ -3,8 +3,9 @@ Event Handler - Manages signal connections and event handling
 """
 
 from PySide6.QtCore import QTimer, QThread
-from typing import Optional, Callable
+from typing import Optional, Callable, Dict, Any
 from pyside_chat.core.logging.logger import CustomLogger
+from pyside_chat.app.threading_integration import EventHandlerThreadingBridge
 import traceback
 
 logger = CustomLogger.get_logger(__name__)
@@ -17,8 +18,13 @@ class EventHandler:
         self.service_manager = service_manager
         self.ui_manager = ui_manager
         self.chat_controller = chat_controller
-        self.worker_thread = None
-        self.worker = None
+        
+        # New threading architecture support
+       
+        
+        # New threading architecture integration
+        self.threading_bridge = EventHandlerThreadingBridge(self)
+        
         self._current_response_model = None
         self._tts_finished = False  # Track TTS completion
         
@@ -203,10 +209,13 @@ class EventHandler:
     
     def _send_to_ollama(self, message, model, temperature):
         """Send message to Ollama and handle response asynchronously"""
+        chat_tab = self.ui_manager.get_chat_tab()
+        if chat_tab:
+            chat_tab.stop_streaming()  # Finalize any previous streaming message
+            chat_tab.start_streaming() # Prepare for new streaming message
         # Check Ollama connection
         if not self._check_ollama_connection():
             self._show_ollama_connection_error("message", force_show=True)
-            chat_tab = self.ui_manager.get_chat_tab()
             if chat_tab:
                 chat_tab.append_to_chat("System", "Failed to send: Could not connect to Ollama.\n Please check the Ollama connection and try again.")
                 chat_tab.stop_streaming()
@@ -305,54 +314,22 @@ class EventHandler:
         self._create_worker_thread(context_messages, chosen_model, temperature)
     
     def _create_worker_thread(self, context_messages, chosen_model, temperature):
-        """Create and start worker thread for Ollama communication"""
-        from PySide6.QtCore import QThread, Qt
-        from pyside_chat.workers.worker import Worker
-        
+        """Create and start worker thread for Ollama communication using new threading architecture"""
         try:
             logger.debug(f"[ID:0213] Creating worker thread for model: {chosen_model}")
             
-            # Clean up any existing worker thread first
-            if hasattr(self, 'worker_thread') and self.worker_thread:
-                logger.debug("[ID:0212] Cleaning up existing worker thread before creating new one")
-                self._cleanup_worker_thread_once()
+            # Use new threading architecture
+            success = self.threading_bridge.start_chat_streaming(context_messages, chosen_model, temperature)
             
-            # Create worker thread
-            self.worker_thread = QThread()
-            self.worker_thread.setObjectName(f"WorkerThread_{id(self.worker_thread)}")
-            self.worker = Worker()
-            
-            logger.debug(f"[ID:0211] Worker thread created - ID: {id(self.worker_thread)}")
-            logger.debug(f"[ID:0210] Worker created - ID: {id(self.worker)}")
-            
-            # Move worker to thread
-            self.worker.moveToThread(self.worker_thread)
-            
-            # Store the chosen model for this response
-            self._current_response_model = chosen_model
-            
-            # Connect worker signals with QueuedConnection for thread safety
-            logger.debug("[ID:0209] Connecting worker signals")
-            self.worker.stream_chunk_signal.connect(self._on_worker_chunk, Qt.ConnectionType.QueuedConnection)
-            self.worker.finished_signal.connect(self._on_worker_finished, Qt.ConnectionType.QueuedConnection)
-            self.worker.update_message_signal.connect(self._on_worker_error, Qt.ConnectionType.QueuedConnection)
-            self.worker.error_signal.connect(self._on_worker_detailed_error, Qt.ConnectionType.QueuedConnection)
-            self.worker.progress_signal.connect(self._on_worker_progress, Qt.ConnectionType.QueuedConnection)
-            
-            # Connect thread signals
-            config_manager = self.service_manager.config_manager
-            self.worker_thread.started.connect(
-                lambda: self._start_worker_stream(context_messages, chosen_model, temperature, config_manager)
-            )
-            
-            # Connect thread finished signal for cleanup
-            self.worker_thread.finished.connect(self._on_worker_thread_finished)
-            
-            # Start the worker thread
-            logger.debug("[ID:0208] Starting worker thread")
-            self.worker_thread.start()
-            
-            logger.debug(f"[ID:0207] Worker thread started successfully - Thread ID: {id(self.worker_thread)}")
+            if success:
+                logger.debug("[ID:0207] Worker thread started successfully with new architecture")
+            else:
+                logger.error("[ID:0206] Failed to start worker thread with new architecture")
+                # Optionally, show error to user
+                chat_tab = self.ui_manager.get_chat_tab()
+                if chat_tab:
+                    chat_tab.append_to_chat("System", "Error: Could not start chat streaming thread.")
+                    chat_tab.force_enable_send_button()
             
         except Exception as e:
             logger.error(f"[ID:0206] Error creating worker thread: {e}")
@@ -362,36 +339,6 @@ class EventHandler:
             if chat_tab:
                 chat_tab.append_to_chat("System", f"Error creating worker thread: {str(e)}")
                 chat_tab.force_enable_send_button()
-    
-    def _start_worker_stream(self, context_messages, chosen_model, temperature, config_manager):
-        """Start the worker stream in the worker thread"""
-        try:
-            logger.debug(f"[ID:0204] Starting worker stream in thread: {QThread.currentThread().objectName()}")
-            
-            # Check if worker exists before trying to use it
-            if not hasattr(self, 'worker') or self.worker is None:
-                logger.error("[ID:0203] Worker is None, cannot start stream")
-                return
-                
-            self.worker.run_stream(
-                context_messages,
-                chosen_model,
-                temperature,
-                config_manager.get_ollama_url(),
-                config_manager.get_max_tokens(),
-                config_manager.get_top_p(),
-                config_manager.get_frequency_penalty(),
-                config_manager.get_presence_penalty(),
-            )
-        except Exception as e:
-            logger.error(f"[ID:0202] Error starting worker stream: {e}")
-            logger.error(f"[ID:0201] Worker stream start traceback: {traceback.format_exc()}")
-            
-            # Check if worker exists before trying to emit error signal
-            if hasattr(self, 'worker') and self.worker is not None:
-                self.worker.error_signal.emit(f"Failed to start stream: {str(e)}")
-            else:
-                logger.error("[ID:0200] Cannot emit error signal - worker is None")
     
     def _on_worker_progress(self, progress_message):
         """Handle worker progress updates"""
@@ -420,20 +367,9 @@ class EventHandler:
         self._on_worker_finished()
     
     def _on_worker_thread_finished(self):
-        """Handle worker thread finished signal"""
-        logger.debug(f"[ID:0197] Worker thread finished - Thread ID: {id(self.worker_thread) if hasattr(self, 'worker_thread') and self.worker_thread else 'unknown'}")
-        
-        # Clean up thread reference
-        if hasattr(self, 'worker_thread') and self.worker_thread:
-            try:
-                self.worker_thread.deleteLater()
-                logger.debug("[ID:0196] Worker thread marked for deletion")
-            except Exception as e:
-                logger.error(f"[ID:0195] Error deleting worker thread: {e}")
-            finally:
-                self.worker_thread = None
-        else:
-            logger.debug("[ID:0194] No worker thread to clean up in finished handler")
+        """Handle worker thread finished signal (legacy method - kept for compatibility)"""
+        logger.debug("[ID:0197] Worker thread finished signal received")
+        # No cleanup needed - handled by new threading system
     
     def _on_worker_chunk(self, chunk):
         """Handle worker chunk signal"""
@@ -456,9 +392,7 @@ class EventHandler:
         
         try:
             # Log worker stats if available
-            if hasattr(self, 'worker') and self.worker:
-                stats = self.worker.get_stats()
-                logger.debug(f"[ID:0192] Worker finished with stats: {stats}")
+            # No legacy worker stats to log
             
             # Handle AI response completion
             self.chat_controller.handle_ai_response()
@@ -491,15 +425,9 @@ class EventHandler:
         try:
             logger.debug("[ID:0186] Handling TTS finished delayed")
             
-            # Check if worker thread is still running
-            if hasattr(self, 'worker_thread') and self.worker_thread and self.worker_thread.isRunning():
-                logger.debug("[ID:0185] Worker thread still running, waiting for it to finish")
-                # Don't clean up yet - let the worker finish naturally
-                # The worker will call cleanup when it finishes
-                return
-            else:
-                logger.debug("[ID:0184] Worker thread not running, cleaning up immediately")
-                self._cleanup_worker_thread()
+            # Check if worker thread is still running (legacy check - now handled by new threading system)
+            # Cleanup is handled by the new threading system
+            self._cleanup_worker_thread()
                 
         except Exception as e:
             logger.error(f"[ID:0183] Error in delayed TTS finished handling: {e}")
@@ -524,97 +452,29 @@ class EventHandler:
         try:
             logger.debug("[ID:0180] Starting worker thread cleanup")
             
-            if hasattr(self, 'worker_thread'):
-                thread_id = id(self.worker_thread)
-                logger.debug(f"[ID:0179] Cleaning up worker thread - ID: {thread_id}")
-                
-                # First stop the worker if it's running
-                if hasattr(self, 'worker') and self.worker:
-                    try:
-                        logger.debug("[ID:0178] Stopping worker")
-                        self.worker.stop()
-                        
-                        # Get worker stats before cleanup
-                        stats = self.worker.get_stats()
-                        logger.debug(f"[ID:0177] Worker stats before cleanup: {stats}")
-                        
-                    except Exception as e:
-                        logger.error(f"[ID:0176] Error stopping worker: {e}")
-                        logger.error(f"[ID:0175] Worker stop error traceback: {traceback.format_exc()}")
-                
-                if self.worker_thread and self.worker_thread.isRunning():
-                    logger.debug("[ID:0174] Worker thread is running, attempting graceful quit")
-                    
-                    # Try to quit gracefully first
-                    self.worker_thread.quit()
-                    
-                    # Wait longer for the thread to finish naturally
-                    if not self.worker_thread.wait(5000):  # 5 second timeout
-                        logger.warning("[ID:0173] Worker thread did not quit within timeout, forcing cleanup")
-                        # Force quit and wait a bit more
-                        self.worker_thread.quit()
-                        if not self.worker_thread.wait(2000):  # Additional 2 second wait
-                            logger.warning("[ID:0172] Worker thread still not quitting, marking for deletion")
-                            # Mark for deletion but don't force terminate
-                            self.worker_thread.deleteLater()
-                        else:
-                            logger.debug("[ID:0171] Worker thread quit successfully after retry")
-                            self.worker_thread.deleteLater()
-                    else:
-                        logger.debug("[ID:0170] Worker thread quit successfully")
-                        self.worker_thread.deleteLater()
-                        
-                    # Add a final cleanup timer to ensure thread is properly destroyed
-                    from PySide6.QtCore import QTimer
-                    QTimer.singleShot(500, lambda: self._final_worker_cleanup())
-                else:
-                    logger.debug("[ID:0169] Worker thread not running, cleaning up")
-                    if self.worker_thread:
-                        self.worker_thread.deleteLater()
-                        
-            else:
-                logger.debug("[ID:0168] No worker thread to clean up")
-                
+            # Clean up new threading architecture
+            if hasattr(self, 'threading_bridge'):
+                logger.debug("[ID:0179] Cleaning up new threading architecture")
+                self.threading_bridge.stop_chat_streaming()
+            
+            # No legacy worker cleanup needed
+            
         except Exception as e:
-            logger.error(f"[ID:0167] Error cleaning up worker thread: {e}")
-            logger.error(f"[ID:0166] Worker cleanup error traceback: {traceback.format_exc()}")
+            logger.error(f"[ID:0166] Error cleaning up worker thread: {e}")
+            logger.error(f"[ID:0165] Worker cleanup error traceback: {traceback.format_exc()}")
         finally:
-            # Always clean up references
-            if hasattr(self, 'worker_thread'):
-                self.worker_thread = None
-            if hasattr(self, 'worker'):
-                self.worker = None
             self._tts_finished = False  # Reset for next time
-            
-            logger.debug("[ID:0165] Worker thread cleanup completed")
-            
+            logger.debug("[ID:0164] Worker thread cleanup completed")
             # Reset streaming state in chat tab
             chat_tab = self.ui_manager.get_chat_tab()
             if chat_tab:
                 chat_tab.stop_streaming()
     
     def _final_worker_cleanup(self):
-        """Final cleanup to ensure worker thread is properly destroyed"""
+        """Final cleanup to ensure worker thread is properly destroyed (legacy method - kept for compatibility)"""
         try:
-            if hasattr(self, 'worker_thread') and self.worker_thread:
-                # Check if thread is still running
-                if self.worker_thread.isRunning():
-                    logger.warning("[ID:0164] Worker thread still running during final cleanup")
-                    # Force quit and wait a bit more
-                    self.worker_thread.quit()
-                    if not self.worker_thread.wait(2000):  # 2 second timeout
-                        logger.warning("[ID:0163] Worker thread still not quitting, scheduling another cleanup")
-                        # Schedule another cleanup attempt
-                        from PySide6.QtCore import QTimer
-                        QTimer.singleShot(1000, lambda: self._final_worker_cleanup())
-                        return
-                    else:
-                        logger.debug("[ID:0162] Worker thread quit successfully in final cleanup")
-                
-                # Ensure thread is marked for deletion
-                self.worker_thread.deleteLater()
-                logger.debug("[ID:0161] Final worker cleanup completed")
-                
+            logger.debug("[ID:0161] Final worker cleanup completed")
+            # No cleanup needed - handled by new threading system
         except Exception as e:
             logger.error(f"[ID:0160] Error in final worker cleanup: {e}")
             logger.error(f"[ID:0159] Final cleanup error traceback: {traceback.format_exc()}")
@@ -654,10 +514,9 @@ class EventHandler:
             ollama_service.cancel_request()
             
             # Stop the worker thread if it's running using safe cleanup
-            if hasattr(self, 'worker_thread') and self.worker_thread and self.worker_thread.isRunning():
-                logger.debug("[ID:0162] Cancelling worker thread")
-                from PySide6.QtCore import QTimer
-                QTimer.singleShot(0, self._cleanup_worker_thread_once)
+            # (Legacy worker cleanup - now handled by new threading system)
+            if hasattr(self, 'threading_bridge'):
+                self.threading_bridge.stop_chat_streaming()
             
             # Update the chat tab (prevent recursive call)
             chat_tab = self.ui_manager.get_chat_tab()
@@ -951,34 +810,32 @@ class EventHandler:
         msg_box.setText(message)
         msg_box.exec()
     
+    def get_threading_status(self) -> Dict[str, Any]:
+        """Get current threading status and statistics."""
+        try:
+            if hasattr(self, 'threading_bridge'):
+                return self.threading_bridge.get_threading_status()
+            else:
+                return {}
+        except Exception as e:
+            logger.error(f"[ID:0152] Error getting threading status: {e}")
+            return {}
+    
     def cleanup_on_exit(self):
         """Clean up all resources when application is exiting"""
         try:
-            logger.debug("[ID:0152] Starting application exit cleanup")
+            logger.debug("[ID:0151] Starting application exit cleanup")
             
-            # Clean up any running worker threads
-            if hasattr(self, 'worker_thread') and self.worker_thread:
-                logger.debug("[ID:0151] Cleaning up worker thread on exit")
-                self._cleanup_worker_thread_once()
-                
-                # Force final cleanup with longer timeout
-                if hasattr(self, 'worker_thread') and self.worker_thread and self.worker_thread.isRunning():
-                    logger.debug("[ID:0150] Forcing worker thread cleanup on exit")
-                    self.worker_thread.quit()
-                    self.worker_thread.wait(10000)  # 10 second timeout for exit
-                    if self.worker_thread:  # Check again after wait
-                        try:
-                            self.worker_thread.deleteLater()
-                            logger.debug("[ID:0149] Worker thread marked for deletion on exit")
-                        except Exception as e:
-                            logger.error(f"[ID:0148] Error deleting worker thread on exit: {e}")
+            # Clean up new threading architecture
+            if hasattr(self, 'threading_bridge'):
+                logger.debug("[ID:0150] Cleaning up threading bridge on exit")
+                self.threading_bridge.cleanup()
             
-            # Clean up worker reference
-            if hasattr(self, 'worker'):
-                self.worker = None
-                
-            logger.debug("[ID:0147] Application exit cleanup completed")
+            # Clean up any running worker threads (legacy cleanup removed)
+            # All cleanup is now handled by the new threading system
+            
+            logger.debug("[ID:0145] Application exit cleanup completed")
             
         except Exception as e:
-            logger.error(f"[ID:0146] Error during application exit cleanup: {e}")
-            logger.error(f"[ID:0145] Exit cleanup error traceback: {traceback.format_exc()}") 
+            logger.error(f"[ID:0144] Error during application exit cleanup: {e}")
+            logger.error(f"[ID:0143] Exit cleanup error traceback: {traceback.format_exc()}") 
