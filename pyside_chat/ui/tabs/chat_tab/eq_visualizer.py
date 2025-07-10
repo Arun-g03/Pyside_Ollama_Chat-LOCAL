@@ -9,11 +9,11 @@ from PySide6.QtCore import QObject, Signal
 from PySide6.QtWidgets import QWidget, QScrollArea
 
 # Import EQ visualizer components
-from pyside_chat.ui.Audio_visualisers.eq_widgets.circle_eq_widget import CircleEQWidget
-from pyside_chat.ui.Audio_visualisers.eq_widgets.bar_eq_widget import BarEQWidget
-from pyside_chat.ui.Audio_visualisers.eq_widgets.circular_net_eq_widget import CircularNetEQWidget
-from pyside_chat.ui.Audio_visualisers.eq_widgets.circular_gradient_eq_widget import CircularGradientEQWidget
-from pyside_chat.utils.Logging.Custom_Logger import CustomLogger
+from pyside_chat.ui.visualizers.widgets.circle_eq_widget import CircleEQWidget
+from pyside_chat.ui.visualizers.widgets.bar_eq_widget import BarEQWidget
+from pyside_chat.ui.visualizers.widgets.circular_net_eq_widget import CircularNetEQWidget
+from pyside_chat.ui.visualizers.widgets.circular_gradient_eq_widget import CircularGradientEQWidget
+from pyside_chat.core.logging.logger import CustomLogger
 
 logger = CustomLogger.get_logger(__name__)
 

@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QListWidget,
 from PySide6.QtCore import Signal, Qt, QTimer
 from PySide6.QtGui import QFont, QTextCursor
 
-from pyside_chat.services.ollama_service import OllamaService
+from pyside_chat.features.ollama.ollama_service import OllamaService
 
 
 class ModelTab(QWidget):

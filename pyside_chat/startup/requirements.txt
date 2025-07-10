@@ -1,0 +1,121 @@
+# PySide Chat Application - Requirements
+# Core dependencies for the local LLM chat application
+
+# =============================================================================
+# CORE GUI AND FRAMEWORK
+# =============================================================================
+PySide6>=6.5.0                    # Main GUI framework
+tqdm>=4.65.0                      # Progress bars for installation feedback
+
+# =============================================================================
+# HTTP AND NETWORKING
+# =============================================================================
+requests>=2.31.0                  # HTTP client for API calls
+ollama>=0.1.7                     # Official Ollama Python client library
+
+# =============================================================================
+# TEXT PROCESSING AND FORMATTING
+# =============================================================================
+pygments>=2.15.0                  # Code syntax highlighting
+pyenchant>=3.2.2                  # Spellchecker functionality
+
+# =============================================================================
+# AUDIO PROCESSING AND PLAYBACK
+# =============================================================================
+pygame>=2.5.0                     # Audio playback
+pyaudio                           # Audio I/O library for recording and playback
+sounddevice                       # Audio library for real-time audio processing
+soundfile>=0.12.0                # Audio file I/O
+pydub>=0.25.1                    # Audio manipulation
+librosa>=0.10.0                  # Audio processing library
+playsound>=1.3.0                 # Simple audio playback library
+
+# =============================================================================
+# TTS (TEXT-TO-SPEECH) OPTIONS
+# =============================================================================
+edge-tts>=6.1.9                  # Microsoft Edge TTS (fast and natural)
+pyttsx3>=2.90                    # Local TTS engine
+TTS>=0.22.0                      # Coqui TTS (advanced local TTS)
+
+# =============================================================================
+# INPUT HANDLING
+# =============================================================================
+keyboard>=0.13.5                  # Keyboard input handling
+
+# =============================================================================
+# SCIENTIFIC COMPUTING AND ML
+# =============================================================================
+numpy>=1.21.0                    # Numerical computing
+scipy>=1.7.0                     # Scientific computing
+scikit-learn                      # Machine learning library
+
+# =============================================================================
+# MACHINE LEARNING AND AI (GPU with CUDA 12.4)
+# =============================================================================
+# PyTorch GPU version with CUDA 12.4 support
+--find-links https://download.pytorch.org/whl/cu124
+torch                             # PyTorch deep learning framework (GPU)
+torchvision                       # PyTorch computer vision (GPU)
+torchaudio                        # PyTorch audio processing (GPU)
+
+# Hugging Face ecosystem (compatible versions)
+huggingface-hub==0.20.3          # Hugging Face Hub
+transformers==4.35.2             # Transformers library
+accelerate==0.25.0               # Accelerate library
+sentence-transformers==2.2.2      # Semantic search and embeddings
+
+# =============================================================================
+# SPEECH RECOGNITION
+# =============================================================================
+vosk                              # Offline speech recognition library
+
+# =============================================================================
+# OPTIONAL DEPENDENCIES
+# =============================================================================
+# These are marked as optional in the install script
+blis==0.7.9                      # Pre-built blis wheel for Coqui TTS
+thinc==8.1.10                    # Pre-built thinc wheel for Coqui TTS
+
+# =============================================================================
+# DEVELOPMENT AND PACKAGING (Optional)
+# =============================================================================
+# Uncomment if you need these for development
+# pipwin                          # Windows package installer (for PyAudio issues)
+# networkx                        # Graph library (for code analysis tools)
+# pyvis                          # Network visualization (for code analysis tools)
+
+# =============================================================================
+# INSTALLATION NOTES
+# =============================================================================
+# 
+# This requirements file uses PyTorch GPU with CUDA 12.4 support.
+# Make sure you have:
+# 1. NVIDIA GPU with CUDA 12.4 support
+# 2. NVIDIA drivers installed
+# 3. CUDA 12.4 toolkit installed
+#
+# To check GPU support:
+# python -c "import torch; print(f'CUDA available: {torch.cuda.is_available()}')"
+#
+# For Windows users with PyAudio issues:
+# 1. Install Visual C++ Build Tools
+# 2. Or use: pip install pipwin && pipwin install pyaudio
+#
+# For sentence_transformers conflicts:
+# Run: python fix_sentence_transformers.py
+#
+# For Vosk models:
+# Download from: https://alphacephei.com/vosk/models
+# Place in models/ directory
+#
+# For spellchecker dictionaries:
+# Download from: https://www.abisource.com/projects/enchant/
+#
+# For audio processing (optional):
+# Install ffmpeg for pydub functionality 
+sentence-transformers
+pyaudio
+SpeechRecognition
+sounddevice
+soundfile
+pyvis 

@@ -57,7 +57,7 @@ def run_basic_analyzer():
         
         analyzer = CodebaseAnalyzer()
         analyzer.analyze_codebase()
-        analyzer.generate_markdown_report("basic_codebase_analysis.md")
+        analyzer.generate_markdown_report("Reports/basic_codebase_analysis.md")
         
         print("✅ Basic analysis complete!")
         print("📄 Check 'basic_codebase_analysis.md' for the report")

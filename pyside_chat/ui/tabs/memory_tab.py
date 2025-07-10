@@ -10,8 +10,10 @@ from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QTabWidget,
 from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtGui import QFont, QColor
 from datetime import datetime
-from pyside_chat.services.memory_service import MemoryService, MemoryEntry
-from pyside_chat.utils.Logging.Custom_Logger import CustomLogger
+import hashlib
+from pyside_chat.features.memory.memory_service import MemoryService, MemoryEntry
+from pyside_chat.core.logging.logger import CustomLogger
+from typing import Dict
 
 logger = CustomLogger.get_logger(__name__)
 
@@ -65,10 +67,10 @@ class MemoryTab(QWidget):
         context_hbox = QHBoxLayout()
         self.context_slider = QSlider(Qt.Horizontal)
         self.context_slider.setRange(5, 100)
-        self.context_slider.setValue(self.memory_service.stm.max_messages)
+        self.context_slider.setValue(self.memory_service.max_context_messages)
         self.context_spinbox = QSpinBox()
         self.context_spinbox.setRange(5, 100)
-        self.context_spinbox.setValue(self.memory_service.stm.max_messages)
+        self.context_spinbox.setValue(self.memory_service.max_context_messages)
         
         context_hbox.addWidget(self.context_slider)
         context_hbox.addWidget(self.context_spinbox)
@@ -333,16 +335,13 @@ class MemoryTab(QWidget):
         # Combine memories and LTM entries for recent activity
         all_entries = []
         
-        # Add old memories
-        for memory in self.memory_service.memories:
-            all_entries.append({
-                'timestamp': memory.timestamp,
-                'type': memory.memory_type,
-                'content': memory.content
-            })
+        # Add old memories (legacy support - these would be from the old memory structure)
+        # The new structure uses stm_service and ltm_service instead of a direct memories list
+        # For now, we'll skip the old memories since they're not accessible in the new structure
+        pass
         
         # Add LTM entries
-        for entry in self.memory_service.ltm.entries:
+        for entry in self.memory_service.ltm_service.entries:
             content = entry.summary if entry.type == 'summary' else entry.value
             if content:
                 all_entries.append({
@@ -364,7 +363,7 @@ class MemoryTab(QWidget):
         """Refresh the memories table based on STM/LTM filter"""
         scope = self.memory_scope_filter.currentText() if hasattr(self, 'memory_scope_filter') else "Short-Term Memory"
         if scope == "Short-Term Memory":
-            memories = self.memory_service.stm.get_messages()
+            memories = self.memory_service.stm_service.get_messages()
             self.memories_table.setRowCount(len(memories))
             # Only fill columns that make sense for STM
             for i, memory in enumerate(memories):
@@ -377,7 +376,7 @@ class MemoryTab(QWidget):
                 self.memories_table.setItem(i, 6, QTableWidgetItem("-"))
         else:
             # LTM: fill all columns
-            ltm_entries = self.memory_service.ltm.get_entries()
+            ltm_entries = self.memory_service.ltm_service.get_entries()
             self.memories_table.setRowCount(len(ltm_entries))
             for i, entry in enumerate(ltm_entries):
                 self.memories_table.setItem(i, 0, QTableWidgetItem(str(i+1)))
@@ -395,7 +394,7 @@ class MemoryTab(QWidget):
         """Refresh the summaries list"""
         self.summaries_list.clear()
         
-        summaries = self.memory_service.ltm.get_entries('summary')
+        summaries = self.memory_service.ltm_service.get_entries('summary')
         for summary in summaries:
             date = datetime.fromisoformat(summary.timestamp).strftime("%Y-%m-%d %H:%M")
             summary_text = summary.summary or ""
@@ -430,29 +429,42 @@ class MemoryTab(QWidget):
         """Show details for selected memory"""
         current_row = self.memories_table.currentRow()
         if current_row >= 0:
-            memory_id = self.memories_table.item(current_row, 0).text()
-            memory = next((m for m in self.memory_service.memories if m.id == memory_id), None)
-            
-            if memory:
-                details = f"ID: {memory.id}\n"
-                details += f"Content: {memory.content}\n"
-                details += f"Type: {memory.memory_type}\n"
-                details += f"Importance: {memory.importance}\n"
-                details += f"Tags: {', '.join(memory.tags)}\n"
-                details += f"Date: {datetime.fromisoformat(memory.timestamp).strftime('%Y-%m-%d %H:%M:%S')}\n"
-                details += f"Conversation ID: {memory.conversation_id}\n"
+            try:
+                # Get the memory ID from the table
+                memory_id = self.memories_table.item(current_row, 0).text()
                 
-                if memory.metadata:
-                    details += f"Metadata: {memory.metadata}"
+                # Try to find the memory in LTM entries first
+                ltm_entries = self.memory_service.ltm_service.get_entries()
+                memory = None
                 
-                self.memory_details_text.setText(details)
+                for entry in ltm_entries:
+                    entry_id = hashlib.md5(f"{entry.type}{entry.key}{entry.value}".encode()).hexdigest()
+                    if entry_id == memory_id:
+                        memory = entry
+                        break
+                
+                if memory:
+                    details = f"ID: {memory_id}\n"
+                    content = memory.summary if memory.type == "summary" else memory.value
+                    details += f"Content: {content or 'N/A'}\n"
+                    details += f"Type: {memory.type}\n"
+                    details += f"Importance: {memory.importance}\n"
+                    details += f"Tags: {', '.join(memory.tags) if memory.tags else 'None'}\n"
+                    details += f"Date: {datetime.fromisoformat(memory.timestamp).strftime('%Y-%m-%d %H:%M:%S')}\n"
+                    details += f"Access Count: {memory.access_count}\n"
+                    
+                    self.memory_details_text.setText(details)
+                else:
+                    self.memory_details_text.setText("Memory not found or no longer available.")
+            except Exception as e:
+                self.memory_details_text.setText(f"Error loading memory details: {str(e)}")
     
     def show_summary_details(self):
         """Show details for selected summary"""
         current_item = self.summaries_list.currentItem()
         if current_item:
             summary_timestamp = current_item.data(Qt.UserRole)
-            summaries = self.memory_service.ltm.get_entries('summary')
+            summaries = self.memory_service.ltm_service.get_entries('summary')
             summary = next((s for s in summaries if s.timestamp == summary_timestamp), None)
             
             if summary:

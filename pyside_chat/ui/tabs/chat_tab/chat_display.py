@@ -8,8 +8,8 @@ from PySide6.QtCore import QObject, Signal, QEvent, Qt
 from PySide6.QtWidgets import QTextEdit, QScrollArea, QPushButton
 from PySide6.QtGui import QTextCursor
 
-from pyside_chat.utils.streaming_handler import StreamingHandler
-from pyside_chat.utils.Logging.Custom_Logger import CustomLogger
+from pyside_chat.core.utils.streaming_handler import StreamingHandler
+from pyside_chat.core.logging.logger import CustomLogger
 
 logger = CustomLogger.get_logger(__name__)
 
@@ -121,7 +121,7 @@ class ChatDisplay(QObject):
         """)
         
         # Position the button near the mouse cursor
-        button_pos = self.chat_display.mapFromGlobal(self.mapToGlobal(pos))
+        button_pos = self.chat_display.mapFromGlobal(self.chat_display.mapToGlobal(pos))
         button_pos.setX(button_pos.x() + 10)
         button_pos.setY(button_pos.y() - 12)
         self.edit_button_widget.move(button_pos)

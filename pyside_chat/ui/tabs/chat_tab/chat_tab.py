@@ -14,11 +14,11 @@ from PySide6.QtWidgets import (
     QDialog
 )
 
-from pyside_chat.ui.Widgets.chat_navigation import ChatNavigationWidget
-from pyside_chat.ui.Widgets.voice_settings_dialog import VoiceSettingsDialog
-from pyside_chat.services.conversation_service import ConversationService
-from pyside_chat.services.ollama_service import OllamaService
-from pyside_chat.utils.Logging.Custom_Logger import CustomLogger
+from pyside_chat.ui.widgets.chat_navigation import ChatNavigationWidget
+from pyside_chat.ui.dialogs.voice_settings_dialog import VoiceSettingsDialog
+from pyside_chat.core.models.conversation_metadata import ConversationManager
+from pyside_chat.features.ollama.ollama_service import OllamaService
+from pyside_chat.core.logging.logger import CustomLogger
 
 # Import modular components
 from .chat_display import ChatDisplay
@@ -296,7 +296,7 @@ class ChatTab(QWidget):
         """Handle message sent from input controls"""
         # Add user message to chat immediately
         self.append_to_chat("You", message)
-        
+        self.start_streaming()
         # Emit signal for parent
         self.message_sent.emit(message)
         
@@ -380,6 +380,9 @@ class ChatTab(QWidget):
     def on_voice_input_received(self, text: str):
         """Handle voice input received"""
         logger.debug(f"Voice input received: {text}")
+        
+        # Log chat processing
+        logger.info(f"Chat processing voice input: '{text}'", print_to_terminal=True)
         
         # Add the voice input to the chat
         self.append_to_chat("You", f"[Voice] {text}")
@@ -475,10 +478,39 @@ class ChatTab(QWidget):
     
     def get_ai_name(self) -> str:
         """Get the AI name based on current personality"""
-        personality = self.get_current_personality()
-        if personality:
-            return personality
-        return "AI"
+        # Try to get AI name from the parent window's chat controller
+        try:
+            if hasattr(self.parent, 'get_chat_controller'):
+                chat_controller = self.parent.get_chat_controller()
+                if chat_controller:
+                    return chat_controller.get_ai_name()
+        except Exception as e:
+            logger.debug(f"Could not get chat controller: {e}")
+        
+        # Fallback: try to get the personality service from the parent window
+        try:
+            if hasattr(self.parent, 'get_service_manager'):
+                service_manager = self.parent.get_service_manager()
+                if hasattr(service_manager, 'get_personality_service'):
+                    personality_service = service_manager.get_personality_service()
+                    if personality_service:
+                        return personality_service.get_ai_name()
+        except Exception as e:
+            logger.debug(f"Could not get personality service: {e}")
+        
+        # Fallback: try to get personality info from personality tab
+        try:
+            if hasattr(self.parent, 'get_ui_manager'):
+                ui_manager = self.parent.get_ui_manager()
+                personality_tab = ui_manager.get_personality_tab()
+                if personality_tab and hasattr(personality_tab, 'personality_model'):
+                    return personality_tab.personality_model.get_ai_name()
+        except Exception as e:
+            logger.debug(f"Could not get personality model: {e}")
+        
+        # Final fallback: return the personality name or "AI"
+        personality_name = self.get_current_personality()
+        return personality_name if personality_name else "AI"
         
     def get_current_personality(self) -> str:
         """Get the currently selected personality"""
@@ -513,14 +545,26 @@ class ChatTab(QWidget):
     
     def _append_response_chunk_safe(self, chunk: str, model_name: str = None):
         """Append a streaming response chunk safely in the main thread"""
-        # Don't append response chunks if EQ visualizer is active
-        if self.eq_visualizer.is_eq_visualizer_active(self.voice_mode, self.voice_controls.is_tts_playing()):
-            logger.debug(f"[EQ DEBUG] Skipping response chunk append - EQ visualizer is active")
+        # Don't append response chunks if EQ visualizer is active and we're in voice mode
+        tts_playing = self.voice_controls.is_tts_playing()
+        eq_active = self.eq_visualizer.is_eq_visualizer_active(self.voice_mode, tts_playing)
+        if self.voice_mode and eq_active:
+            logger.debug(f"[EQ DEBUG] Skipping response chunk append - EQ visualizer is active in voice mode")
             return
             
         if not self.is_streaming:
             self.start_streaming()
         self.current_response += chunk  # accumulate here only!
+        
+        # Log the full accumulated message every 10 chunks to reduce log size
+        if hasattr(self, '_chunk_count'):
+            self._chunk_count += 1
+        else:
+            self._chunk_count = 1
+            
+        if self._chunk_count % 10 == 0:
+            logger.debug(f"[DEBUG] Streaming progress - chunks: {self._chunk_count}, full message: {self.current_response[:200]}...")
+        
         ai_name = self.get_ai_name()
         label = f"{ai_name} ({model_name})" if model_name else ai_name
         streaming_handler = self.chat_display.get_streaming_handler()
@@ -540,6 +584,7 @@ class ChatTab(QWidget):
         if not self.is_streaming:  # Only change state if not already streaming
             self.is_streaming = True
             self.current_response = ""
+            self._chunk_count = 0  # Reset chunk counter for new streaming session
             input_components = self.input_controls.get_ui_components()
             
             # Only manage send/cancel buttons in text mode
@@ -587,6 +632,11 @@ class ChatTab(QWidget):
             logger.debug("[VOICE DEBUG] Voice mode: buttons remain hidden after streaming")
         
         logger.debug(f"[DEBUG] stop_streaming: send_button enabled? {input_components['send_button'].isEnabled()} visible? {input_components['send_button'].isVisible()} cancel_button visible? {input_components['cancel_button'].isVisible()}")
+        
+        # Log the final complete message
+        if hasattr(self, '_chunk_count') and self._chunk_count > 0:
+            logger.debug(f"[DEBUG] Streaming completed - total chunks: {self._chunk_count}, final message: {self.current_response}")
+        
         streaming_handler = self.chat_display.get_streaming_handler()
         if streaming_handler:
             streaming_handler.finalize_streaming_message()
@@ -700,7 +750,7 @@ class ChatTab(QWidget):
             
             # Load metadata if available
             try:
-                from pyside_chat.models.conversation_metadata import ConversationMetadata
+                from pyside_chat.core.models.conversation_metadata import ConversationMetadata
                 metadata = ConversationMetadata.from_file(filepath)
                 
                 # Restore settings from metadata

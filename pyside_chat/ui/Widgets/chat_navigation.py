@@ -13,8 +13,8 @@ import time
 from datetime import datetime
 from typing import List, Tuple, Optional
 
-from pyside_chat.models.conversation_metadata import ConversationManager, ConversationMetadata
-from pyside_chat.services.summarization_service import SummarizationService
+from pyside_chat.core.models.conversation_metadata import ConversationManager, ConversationMetadata
+from pyside_chat.features.chat.summarization.summarization_service import SummarizationService
 
 
 class ChatNavigationWidget(QWidget):

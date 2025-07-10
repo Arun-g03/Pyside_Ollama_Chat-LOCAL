@@ -34,6 +34,8 @@ class FileAnalysis:
     has_gui_code: bool
     has_business_logic: bool
     has_data_access: bool
+    duplicate_functions: List[str]
+    duplicate_classes: List[str]
     issues: List[str]
     recommendations: List[str]
 
@@ -61,6 +63,8 @@ class RefactoringReport:
     high_priority_files: List[str]
     medium_priority_files: List[str]
     low_priority_files: List[str]
+    duplicate_functions: List[Tuple[str, List[str]]]
+    duplicate_classes: List[Tuple[str, List[str]]]
     architectural_issues: List[str]
     general_recommendations: List[str]
 
@@ -68,8 +72,21 @@ class CodeAnalyzer:
     """Analyzes Python code for complexity and structure"""
     
     def __init__(self):
-        self.ignore_dirs = {'chat_env', '__pycache__', '.git', '.vscode', 'node_modules'}
-        self.ignore_files = {'.pyc', '.pyo', '.pyd', '.so', '.dll', '.exe'}
+        self.ignore_dirs = {'chat_env', '__pycache__', '.git', '.vscode', 'node_modules', 'OLD', 'Tools'}
+        self.ignore_files = {'.pyc', '.pyo', '.pyd', '.so', '.dll', '.exe', '.md'}
+        self.ignore_specific_files = {
+            'voice_ring_animation.py',  # Specific filename to ignore
+            'pyside_chat/ui/Audio_visualisers/voice_ring_animation.py',  # Full path
+            'OLD/chat_tab_backup.py',  # Files in OLD directory
+            'OLD/ollama_chat_old.py',
+            
+        }
+        self.ignore_file_patterns = [
+            r'.*\.md$',  # All markdown files
+            r'.*_backup\.py$',  # All backup files
+            r'.*_old\.py$',  # All old files
+        ]
+        self.duplicate_detector = DuplicateDetector()
         
     def analyze_file(self, file_path: str) -> FileAnalysis:
         """Analyze a single Python file"""
@@ -88,6 +105,13 @@ class CodeAnalyzer:
                 analyzer = ASTAnalyzer()
                 ast_analysis = analyzer.analyze_ast(tree)
                 
+                # Add to duplicate detector
+                self.duplicate_detector.add_file_analysis(
+                    file_path, 
+                    ast_analysis.get('functions', []), 
+                    ast_analysis.get('classes', [])
+                )
+                
                 # Determine file type based on content analysis
                 has_gui_code = self._detect_gui_code(content)
                 has_business_logic = self._detect_business_logic(content)
@@ -99,6 +123,9 @@ class CodeAnalyzer:
                     line_count, ast_analysis['function_count'], 
                     ast_analysis['class_count'], ast_analysis['nesting_depth']
                 )
+                
+                # Get duplicate information for this file
+                duplicate_functions, duplicate_classes = self.duplicate_detector.get_file_duplicates(file_path)
                 
                 # Identify issues
                 issues = self._identify_issues(file_path, content, ast_analysis, size_kb)
@@ -122,6 +149,8 @@ class CodeAnalyzer:
                     has_gui_code=has_gui_code,
                     has_business_logic=has_business_logic,
                     has_data_access=has_data_access,
+                    duplicate_functions=duplicate_functions,
+                    duplicate_classes=duplicate_classes,
                     issues=issues,
                     recommendations=recommendations
                 )
@@ -141,6 +170,8 @@ class CodeAnalyzer:
                     has_gui_code=False,
                     has_business_logic=False,
                     has_data_access=False,
+                    duplicate_functions=[],
+                    duplicate_classes=[],
                     issues=[f"Syntax error: {e}"],
                     recommendations=["Fix syntax errors before refactoring"]
                 )
@@ -160,6 +191,8 @@ class CodeAnalyzer:
                 has_gui_code=False,
                 has_business_logic=False,
                 has_data_access=False,
+                duplicate_functions=[],
+                duplicate_classes=[],
                 issues=[f"Error reading file: {e}"],
                 recommendations=["Check file permissions and encoding"]
             )
@@ -278,6 +311,9 @@ class CodeAnalyzer:
         if responsibility_count > 1:
             issues.append(f"Mixed responsibilities detected - GUI: {has_gui}, Logic: {has_logic}, Data: {has_data}")
         
+        # Duplicate detection (will be populated after all files are analyzed)
+        # This is handled in the main analysis loop
+        
         return issues
     
     def _generate_recommendations(self, file_path: str, size_kb: float, line_count: int, 
@@ -322,6 +358,9 @@ class CodeAnalyzer:
             recommendations.append("Simplify nested conditions using early returns")
             recommendations.append("Extract complex logic into separate functions")
         
+        # Duplicate-based recommendations (will be populated after all files are analyzed)
+        # This is handled in the main analysis loop
+        
         return recommendations
 
 class ASTAnalyzer:
@@ -346,7 +385,9 @@ class ASTAnalyzer:
             'import_count': visitor.import_count,
             'nesting_depth': visitor.max_nesting_depth,
             'variable_count': visitor.variable_count,
-            'method_count': visitor.method_count
+            'method_count': visitor.method_count,
+            'functions': visitor.functions,
+            'classes': visitor.classes
         }
     
     def _count_lines(self, tree: ast.AST) -> int:
@@ -368,11 +409,18 @@ class ASTVisitor(ast.NodeVisitor):
         self.method_count = 0
         self.max_nesting_depth = 0
         self.current_nesting = 0
+        self.functions = []
+        self.classes = []
     
     def visit_FunctionDef(self, node):
         self.function_count += 1
         self.current_nesting += 1
         self.max_nesting_depth = max(self.max_nesting_depth, self.current_nesting)
+        
+        # Extract function signature for duplicate detection
+        func_signature = self._extract_function_signature(node)
+        self.functions.append(func_signature)
+        
         self.generic_visit(node)
         self.current_nesting -= 1
     
@@ -387,6 +435,11 @@ class ASTVisitor(ast.NodeVisitor):
         self.class_count += 1
         self.current_nesting += 1
         self.max_nesting_depth = max(self.max_nesting_depth, self.current_nesting)
+        
+        # Extract class signature for duplicate detection
+        class_signature = self._extract_class_signature(node)
+        self.classes.append(class_signature)
+        
         self.generic_visit(node)
         self.current_nesting -= 1
     
@@ -425,6 +478,107 @@ class ASTVisitor(ast.NodeVisitor):
         self.max_nesting_depth = max(self.max_nesting_depth, self.current_nesting)
         self.generic_visit(node)
         self.current_nesting -= 1
+    
+    def _extract_function_signature(self, node):
+        """Extract a normalized function signature for duplicate detection"""
+        # Get function name
+        name = node.name
+        
+        # Get argument names (normalized)
+        args = []
+        if node.args.args:
+            for arg in node.args.args:
+                args.append(arg.arg)
+        
+        # Get return type hint if available
+        return_type = ""
+        if node.returns:
+            return_type = ast.unparse(node.returns) if hasattr(ast, 'unparse') else str(node.returns)
+        
+        # Create normalized signature with 'def' keyword
+        signature = f"def {name}({','.join(args)})"
+        if return_type:
+            signature += f" -> {return_type}"
+        
+        return signature
+    
+    def _extract_class_signature(self, node):
+        """Extract a normalized class signature for duplicate detection"""
+        # Get class name
+        name = node.name
+        
+        # Get base classes
+        bases = []
+        if node.bases:
+            for base in node.bases:
+                if hasattr(ast, 'unparse'):
+                    bases.append(ast.unparse(base))
+                else:
+                    bases.append(str(base))
+        
+        # Get class methods
+        methods = []
+        for item in node.body:
+            if isinstance(item, ast.FunctionDef):
+                methods.append(item.name)
+        
+        # Create normalized signature with 'class' keyword
+        signature = f"class {name}"
+        if bases:
+            signature += f"({','.join(bases)})"
+        signature += f" methods:[{','.join(methods)}]"
+        
+        return signature
+
+class DuplicateDetector:
+    """Detects duplicate functions and classes across the codebase"""
+    
+    def __init__(self):
+        self.function_signatures = {}  # signature -> [file_paths]
+        self.class_signatures = {}     # signature -> [file_paths]
+    
+    def add_file_analysis(self, file_path: str, functions: List[str], classes: List[str]):
+        """Add function and class signatures from a file"""
+        for func_sig in functions:
+            if func_sig not in self.function_signatures:
+                self.function_signatures[func_sig] = []
+            self.function_signatures[func_sig].append(file_path)
+        
+        for class_sig in classes:
+            if class_sig not in self.class_signatures:
+                self.class_signatures[class_sig] = []
+            self.class_signatures[class_sig].append(file_path)
+    
+    def get_duplicate_functions(self) -> List[Tuple[str, List[str]]]:
+        """Get functions that appear in multiple files"""
+        duplicates = []
+        for signature, file_paths in self.function_signatures.items():
+            if len(file_paths) > 1:
+                duplicates.append((signature, file_paths))
+        return sorted(duplicates, key=lambda x: len(x[1]), reverse=True)
+    
+    def get_duplicate_classes(self) -> List[Tuple[str, List[str]]]:
+        """Get classes that appear in multiple files"""
+        duplicates = []
+        for signature, file_paths in self.class_signatures.items():
+            if len(file_paths) > 1:
+                duplicates.append((signature, file_paths))
+        return sorted(duplicates, key=lambda x: len(x[1]), reverse=True)
+    
+    def get_file_duplicates(self, file_path: str) -> Tuple[List[str], List[str]]:
+        """Get duplicate functions and classes for a specific file"""
+        file_duplicate_functions = []
+        file_duplicate_classes = []
+        
+        for signature, file_paths in self.function_signatures.items():
+            if file_path in file_paths and len(file_paths) > 1:
+                file_duplicate_functions.append(signature)
+        
+        for signature, file_paths in self.class_signatures.items():
+            if file_path in file_paths and len(file_paths) > 1:
+                file_duplicate_classes.append(signature)
+        
+        return file_duplicate_functions, file_duplicate_classes
 
 class RefactoringAnalyzer:
     """Main analyzer class that coordinates the analysis"""
@@ -450,6 +604,10 @@ class RefactoringAnalyzer:
         # Analyze directories
         directory_analyses = self._analyze_directories(file_analyses)
         
+        # Get duplicate information
+        duplicate_functions = self.code_analyzer.duplicate_detector.get_duplicate_functions()
+        duplicate_classes = self.code_analyzer.duplicate_detector.get_duplicate_classes()
+        
         # Categorize files by priority
         high_priority = self._get_high_priority_files(file_analyses)
         medium_priority = self._get_medium_priority_files(file_analyses)
@@ -460,6 +618,9 @@ class RefactoringAnalyzer:
         
         # Generate general recommendations
         general_recommendations = self._generate_general_recommendations(file_analyses, directory_analyses)
+        
+        # Update file analyses with duplicate information
+        self._update_file_analyses_with_duplicates(file_analyses)
         
         # Create report
         report = RefactoringReport(
@@ -472,6 +633,8 @@ class RefactoringAnalyzer:
             high_priority_files=high_priority,
             medium_priority_files=medium_priority,
             low_priority_files=low_priority,
+            duplicate_functions=duplicate_functions,
+            duplicate_classes=duplicate_classes,
             architectural_issues=architectural_issues,
             general_recommendations=general_recommendations
         )
@@ -490,9 +653,58 @@ class RefactoringAnalyzer:
             for file in files:
                 if file.endswith('.py'):
                     file_path = Path(root) / file
+                    
+                    # Check if file should be ignored
+                    if self._should_ignore_file(file_path):
+                        continue
+                    
                     python_files.append(file_path)
         
         return python_files
+    
+    def _should_ignore_file(self, file_path: Path) -> bool:
+        """Check if a file should be ignored based on various ignore rules"""
+        # Convert to string for easier comparison
+        file_str = str(file_path)
+        file_name = file_path.name
+        
+        # Check file extensions
+        for ext in self.code_analyzer.ignore_files:
+            if file_name.endswith(ext):
+                return True
+        
+        # Check specific files (by name or full path)
+        for ignore_file in self.code_analyzer.ignore_specific_files:
+            if file_name == ignore_file or file_str.endswith(ignore_file):
+                return True
+        
+        # Check file patterns
+        for pattern in self.code_analyzer.ignore_file_patterns:
+            if re.match(pattern, file_str):
+                return True
+        
+        return False
+    
+    def add_ignore_file(self, file_path: str):
+        """Add a specific file to ignore list"""
+        self.code_analyzer.ignore_specific_files.add(file_path)
+    
+    def add_ignore_pattern(self, pattern: str):
+        """Add a regex pattern to ignore list"""
+        self.code_analyzer.ignore_file_patterns.append(pattern)
+    
+    def add_ignore_directory(self, dir_name: str):
+        """Add a directory to ignore list"""
+        self.code_analyzer.ignore_dirs.add(dir_name)
+    
+    def get_ignore_info(self) -> Dict[str, List[str]]:
+        """Get information about what's being ignored"""
+        return {
+            'ignored_directories': list(self.code_analyzer.ignore_dirs),
+            'ignored_file_extensions': list(self.code_analyzer.ignore_files),
+            'ignored_specific_files': list(self.code_analyzer.ignore_specific_files),
+            'ignored_file_patterns': self.code_analyzer.ignore_file_patterns
+        }
     
     def _analyze_directories(self, file_analyses: List[FileAnalysis]) -> List[DirectoryAnalysis]:
         """Analyze directories for patterns and issues"""
@@ -657,6 +869,16 @@ class RefactoringAnalyzer:
         if large_dirs:
             issues.append(f"Found {len(large_dirs)} very large directories - consider reorganization")
         
+        # Check for duplicates
+        duplicate_functions = self.code_analyzer.duplicate_detector.get_duplicate_functions()
+        duplicate_classes = self.code_analyzer.duplicate_detector.get_duplicate_classes()
+        
+        if duplicate_functions:
+            issues.append(f"Found {len(duplicate_functions)} duplicate functions across the codebase - consider consolidation")
+        
+        if duplicate_classes:
+            issues.append(f"Found {len(duplicate_classes)} duplicate classes across the codebase - consider consolidation")
+        
         return issues
     
     def _generate_general_recommendations(self, file_analyses: List[FileAnalysis], 
@@ -687,9 +909,46 @@ class RefactoringAnalyzer:
         recommendations.append("Implement dependency injection for better testability")
         recommendations.append("Consider using design patterns to reduce code duplication")
         
+        # Duplicate-related recommendations
+        duplicate_functions = self.code_analyzer.duplicate_detector.get_duplicate_functions()
+        duplicate_classes = self.code_analyzer.duplicate_detector.get_duplicate_classes()
+        
+        if duplicate_functions:
+            recommendations.append("Create a shared utilities module for common functions")
+            recommendations.append("Implement a common library for frequently used functionality")
+        
+        if duplicate_classes:
+            recommendations.append("Create base classes for common functionality")
+            recommendations.append("Use composition over inheritance where appropriate")
+        
         return recommendations
+    
+    def _update_file_analyses_with_duplicates(self, file_analyses: List[FileAnalysis]):
+        """Update file analyses with duplicate-related issues and recommendations"""
+        duplicate_functions = self.code_analyzer.duplicate_detector.get_duplicate_functions()
+        duplicate_classes = self.code_analyzer.duplicate_detector.get_duplicate_classes()
+        
+        for analysis in file_analyses:
+            # Get duplicates for this file
+            file_duplicate_functions, file_duplicate_classes = self.code_analyzer.duplicate_detector.get_file_duplicates(analysis.path)
+            
+            # Add duplicate-related issues
+            if file_duplicate_functions:
+                analysis.issues.append(f"Contains {len(file_duplicate_functions)} duplicate functions that could be consolidated")
+            
+            if file_duplicate_classes:
+                analysis.issues.append(f"Contains {len(file_duplicate_classes)} duplicate classes that could be consolidated")
+            
+            # Add duplicate-related recommendations
+            if file_duplicate_functions:
+                analysis.recommendations.append("Extract duplicate functions into a shared utility module")
+                analysis.recommendations.append("Consider creating a common library for shared functionality")
+            
+            if file_duplicate_classes:
+                analysis.recommendations.append("Extract duplicate classes into a shared base module")
+                analysis.recommendations.append("Consider using inheritance to reduce code duplication")
 
-def save_report_as_markdown(report: RefactoringReport, output_path: str = "refactoring_report.md"):
+def save_report_as_markdown(report: RefactoringReport, output_path: str = "Reports/refactoring_report.md"):
     """Save the refactoring report as a markdown file"""
     
     with open(output_path, 'w', encoding='utf-8') as f:
@@ -728,6 +987,30 @@ def save_report_as_markdown(report: RefactoringReport, output_path: str = "refac
                 f.write(f"- `{file_path}`\n")
             f.write("\n")
         
+        # Duplicate Functions
+        if report.duplicate_functions:
+            f.write("## 🔄 Duplicate Functions\n\n")
+            f.write("These functions appear in multiple files and could be consolidated:\n\n")
+            for signature, file_paths in report.duplicate_functions:
+                f.write(f"### `{signature}`\n")
+                f.write(f"**Found in:** {len(file_paths)} files\n")
+                f.write("**Files:**\n")
+                for file_path in file_paths:
+                    f.write(f"- `{file_path}`\n")
+                f.write("\n")
+        
+        # Duplicate Classes
+        if report.duplicate_classes:
+            f.write("## 🔄 Duplicate Classes\n\n")
+            f.write("These classes appear in multiple files and could be consolidated:\n\n")
+            for signature, file_paths in report.duplicate_classes:
+                f.write(f"### `{signature}`\n")
+                f.write(f"**Found in:** {len(file_paths)} files\n")
+                f.write("**Files:**\n")
+                for file_path in file_paths:
+                    f.write(f"- `{file_path}`\n")
+                f.write("\n")
+        
         # Detailed File Analysis
         if report.files_needing_refactoring:
             f.write("## 📋 Detailed File Analysis\n\n")
@@ -738,6 +1021,18 @@ def save_report_as_markdown(report: RefactoringReport, output_path: str = "refac
                 f.write(f"- **Functions:** {analysis.function_count}\n")
                 f.write(f"- **Complexity Score:** {analysis.complexity_score:.2f}\n")
                 f.write(f"- **Responsibilities:** GUI: {analysis.has_gui_code}, Logic: {analysis.has_business_logic}, Data: {analysis.has_data_access}\n\n")
+                
+                if analysis.duplicate_functions:
+                    f.write("**Duplicate Functions:**\n")
+                    for func_sig in analysis.duplicate_functions:
+                        f.write(f"- `{func_sig}`\n")
+                    f.write("\n")
+                
+                if analysis.duplicate_classes:
+                    f.write("**Duplicate Classes:**\n")
+                    for class_sig in analysis.duplicate_classes:
+                        f.write(f"- `{class_sig}`\n")
+                    f.write("\n")
                 
                 if analysis.issues:
                     f.write("**Issues:**\n")
@@ -820,6 +1115,12 @@ def save_report_as_markdown(report: RefactoringReport, output_path: str = "refac
         f.write("1. Implement design patterns (MVC, Repository, etc.)\n")
         f.write("2. Create proper separation of concerns\n")
         f.write("3. Improve testability and maintainability\n\n")
+        
+        f.write("### Phase 5: Duplicate Consolidation\n")
+        f.write("1. Identify and consolidate duplicate functions into shared utilities\n")
+        f.write("2. Create base classes for duplicate class functionality\n")
+        f.write("3. Implement common libraries for frequently used code\n")
+        f.write("4. Update imports to use consolidated modules\n\n")
     
     print(f"Report saved to: {output_path}")
 
@@ -831,8 +1132,21 @@ def main():
     # Initialize analyzer
     analyzer = RefactoringAnalyzer()
     
+    # Example: Add additional ignore rules programmatically
+    # analyzer.add_ignore_file("specific_file.py")
+    # analyzer.add_ignore_pattern(r".*_test\.py$")
+    # analyzer.add_ignore_directory("test_dir")
+    
     # Run analysis
     report = analyzer.analyze_codebase()
+    
+    # Print ignore information for debugging
+    ignore_info = analyzer.get_ignore_info()
+    print("\n📋 Ignore Rules:")
+    print(f"   Ignored Directories: {len(ignore_info['ignored_directories'])}")
+    print(f"   Ignored File Extensions: {len(ignore_info['ignored_file_extensions'])}")
+    print(f"   Ignored Specific Files: {len(ignore_info['ignored_specific_files'])}")
+    print(f"   Ignored File Patterns: {len(ignore_info['ignored_file_patterns'])}")
     
     # Save report
     save_report_as_markdown(report)
@@ -846,6 +1160,8 @@ def main():
     print(f"   High Priority Files: {len(report.high_priority_files)}")
     print(f"   Medium Priority Files: {len(report.medium_priority_files)}")
     print(f"   Low Priority Files: {len(report.low_priority_files)}")
+    print(f"   Duplicate Functions: {len(report.duplicate_functions)}")
+    print(f"   Duplicate Classes: {len(report.duplicate_classes)}")
     
     if report.high_priority_files:
         print("\n🔴 High Priority Files:")
@@ -854,7 +1170,7 @@ def main():
         if len(report.high_priority_files) > 5:
             print(f"   ... and {len(report.high_priority_files) - 5} more")
     
-    print(f"\n✅ Report saved to: refactoring_report.md")
+    print(f"\n✅ Report saved to: Reports/refactoring_report.md")
 
 if __name__ == "__main__":
     main() 

@@ -1,7 +1,7 @@
 import json
 import os
 from typing import Dict, Any, Optional
-from pyside_chat.utils.Logging.Custom_Logger import CustomLogger
+from pyside_chat.core.logging.logger import CustomLogger
 
 logger = CustomLogger.get_logger(__name__)
 
@@ -53,7 +53,7 @@ class ConfigManager:
                     # Merge with defaults to ensure all keys exist
                     return self.merge_configs(default_config, loaded_config)
             except Exception as e:
-                logger.debug(f"[ID:0212] Error loading config: {e}, using defaults",print_to_terminal=True)
+                logger.debug(f"[ID:0089] Error loading config: {e}, using defaults",print_to_terminal=True)
                 return default_config
         else:
             # Create default config file
@@ -80,7 +80,7 @@ class ConfigManager:
                 json.dump(config, f, indent=2, ensure_ascii=False)
             return True
         except Exception as e:
-            logger.debug(f"[ID:0211] Error saving config: {e}",print_to_terminal=True)
+            logger.debug(f"[ID:0088] Error saving config: {e}",print_to_terminal=True)
             return False
     
     def get(self, key: str, default: Any = None) -> Any:
@@ -173,7 +173,7 @@ class ConfigManager:
     
     def get_ollama_url(self) -> str:
         """Get the Ollama API URL"""
-        return self.get("ollama_url", "http://127.0.0.1:11434/api")
+        return self.get("ollama_url", "http://localhost:11434")
     
     
     def set_ollama_url(self, url: str) -> bool:

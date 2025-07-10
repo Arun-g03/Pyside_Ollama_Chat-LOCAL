@@ -117,7 +117,7 @@ def visualize_graph(G, output_html):
 
 def main():
     project_root = os.path.dirname(os.path.abspath(__file__))
-    output_html = os.path.join(project_root, "PROGRAM_FLOW_GRAPH.html")
+    output_html = os.path.join(project_root, "Reports/PROGRAM_FLOW_GRAPH.html")
     G = build_graph()
     visualize_graph(G, output_html)
     print(f"✅ Program flow graph generated!")

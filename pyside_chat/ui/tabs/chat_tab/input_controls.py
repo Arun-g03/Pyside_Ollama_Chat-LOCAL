@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (
     QLabel, QComboBox, QSpinBox, QGroupBox, QSlider
 )
 
-from pyside_chat.utils.Logging.Custom_Logger import CustomLogger
+from pyside_chat.core.logging.logger import CustomLogger
 
 logger = CustomLogger.get_logger(__name__)
 
@@ -269,18 +269,24 @@ class InputControls(QObject):
     
     def send_message(self):
         """Send the current message"""
-        message = self.message_input.toPlainText().strip()
-        if not message:
-            return
+        try:
+            message = self.message_input.toPlainText().strip()
+            if not message:
+                return
+                
+            # Clear input
+            self.message_input.clear()
             
-        # Clear input
-        self.message_input.clear()
-        
-        # Start streaming state
-        self.start_streaming()
-        
-        # Emit signal
-        self.message_sent.emit(message)
+            # Start streaming state
+            self.start_streaming()
+            
+            # Emit signal
+            self.message_sent.emit(message)
+            
+        except Exception as e:
+            logger.error(f"Error sending message: {str(e)}")
+            # Ensure we're not left in a bad state
+            self.stop_streaming()
         
     def cancel_message(self):
         """Cancel the current message"""

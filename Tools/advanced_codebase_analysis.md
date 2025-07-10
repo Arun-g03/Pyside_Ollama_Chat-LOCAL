@@ -1,16 +1,16 @@
 # Advanced Codebase Analysis Report
 
-**Generated on:** 2025-07-07 17:44:42  
+**Generated on:** 2025-07-09 01:24:29  
 **Root Path:** pyside_chat  
-**Total Files Analyzed:** 82
+**Total Files Analyzed:** 81
 
 ---
 
 ## 📊 Summary
 
-- **Total Classes:** 90
-- **Total Functions:** 1132
-- **Total Files:** 82
+- **Total Classes:** 91
+- **Total Functions:** 1107
+- **Total Files:** 81
 
 ### Files by Directory
 
@@ -24,16 +24,16 @@
 - `models/`: 2 files
 - `services/`: 7 files
 - `services\Voice_STT_TTS_SERVICES/`: 7 files
-- `services\start_up/`: 4 files
+- `services\start_up/`: 3 files
 - `services\worker/`: 1 files
-- `ui/`: 2 files
+- `ui/`: 1 files
 - `ui\Audio_visualisers/`: 2 files
 - `ui\Audio_visualisers\eq_widgets/`: 5 files
 - `ui\Widgets/`: 8 files
 - `ui\styles/`: 4 files
 - `ui\tabs/`: 4 files
 - `ui\tabs\chat_tab/`: 8 files
-- `utils/`: 6 files
+- `utils/`: 7 files
 - `utils\Logging/`: 2 files
 
 ---
@@ -42,29 +42,29 @@
 
 ### Most Dependent Files (High In-Degree)
 
-- `config\config_manager`: 44 dependencies
+- `config\config_manager`: 45 dependencies
+- `utils\Logging\logging_helpers`: 44 dependencies
+- `Personalities\services\personality_service`: 42 dependencies
+- `models\conversation_metadata`: 42 dependencies
+- `services\ollama_service`: 42 dependencies
+- `utils\internet_connection`: 42 dependencies
+- `services\Voice_STT_TTS_SERVICES\coqui_tts_service`: 42 dependencies
 - `services\start_up\install_dependencies`: 42 dependencies
-- `services\start_up\check_dependencies`: 42 dependencies
-- `models\conversation_metadata`: 41 dependencies
-- `services\ollama_service`: 41 dependencies
-- `utils\internet_connection`: 41 dependencies
-- `services\worker\worker`: 40 dependencies
-- `services\Voice_STT_TTS_SERVICES\Recording_Service`: 40 dependencies
-- `MainApp\service_manager`: 40 dependencies
-- `ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget`: 40 dependencies
+- `MainApp\ui_manager`: 41 dependencies
+- `services\worker\worker`: 41 dependencies
 
 ### Most Influential Files (High Out-Degree)
 
-- `controllers\chat_controller.py`: 57 dependents
-- `ui\chat_tab.py`: 56 dependents
-- `utils\streaming_handler.py`: 56 dependents
-- `MainApp\ollama_chat.py`: 55 dependents
-- `models\conversation_metadata.py`: 55 dependents
-- `services\conversation_service.py`: 55 dependents
-- `services\memory_service.py`: 55 dependents
-- `services\ollama_service.py`: 55 dependents
-- `services\semantic_search_service.py`: 55 dependents
-- `services\summarization_service.py`: 55 dependents
+- `controllers\chat_controller.py`: 55 dependents
+- `utils\streaming_handler.py`: 55 dependents
+- `MainApp\ollama_chat.py`: 54 dependents
+- `models\conversation_metadata.py`: 54 dependents
+- `services\conversation_service.py`: 54 dependents
+- `services\memory_service.py`: 54 dependents
+- `services\ollama_service.py`: 54 dependents
+- `services\semantic_search_service.py`: 54 dependents
+- `services\summarization_service.py`: 54 dependents
+- `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py`: 54 dependents
 
 ### ✅ No Circular Dependencies Found
 
@@ -87,62 +87,67 @@
 - `initialize_application` (line 27)
 - `handle_show_event` (line 49)
 - `handle_close_event` (line 70)
-- `show_initialization_error` (line 105)
-- `show_ollama_connection_error` (line 116)
-- `check_ollama_connection` (line 155)
-- `is_initialization_complete` (line 160)
-- `set_ollama_error_shown` (line 164)
-- `get_ollama_error_shown` (line 168)
+- `show_initialization_error` (line 108)
+- `show_ollama_connection_error` (line 119)
+- `check_ollama_connection` (line 158)
+- `is_initialization_complete` (line 163)
+- `set_ollama_error_shown` (line 167)
+- `get_ollama_error_shown` (line 171)
 
 ---
 
 ### `MainApp\event_handler.py`
 
 **Classes:**
-- `EventHandler` (line 11)
+- `EventHandler` (line 12)
 
 **Functions:**
-- `__init__` (line 14)
-- `setup_connections` (line 35)
-- `_connect_menu_actions` (line 90)
-- `_on_status_updated` (line 132)
-- `_on_error_occurred` (line 136)
-- `_on_conversation_updated` (line 141)
-- `_on_name_generation_requested` (line 147)
-- `_on_models_updated` (line 172)
-- `_on_message_sent` (line 186)
-- `_send_to_ollama` (line 202)
-- `_create_worker_thread` (line 286)
-- `_on_worker_chunk` (line 322)
-- `_on_worker_finished` (line 330)
-- `_on_tts_finished` (line 346)
-- `_handle_tts_finished_delayed` (line 355)
-- `_cleanup_worker_thread` (line 372)
-- `_cleanup_worker_thread_once` (line 383)
-- `_on_worker_error` (line 427)
-- `_on_message_finished` (line 436)
-- `_on_message_cancelled` (line 445)
-- `_on_conversation_selected` (line 462)
-- `_on_conversation_deleted` (line 470)
-- `_on_conversation_renamed` (line 474)
-- `_on_personality_changed` (line 496)
-- `_on_model_operation_progress` (line 521)
-- `_on_model_operation_error` (line 527)
-- `_on_conversation_metadata_updated` (line 541)
-- `_on_new_conversation_requested` (line 547)
-- `_on_new_conversation` (line 551)
-- `_on_clear_chat` (line 568)
-- `_on_save_chat` (line 579)
-- `_on_load_chat` (line 585)
-- `_on_open_settings` (line 591)
-- `_create_chat_controller` (line 618)
-- `_setup_ui_with_new_services` (line 630)
-- `_on_refresh_models` (line 636)
-- `_on_refresh_personalities` (line 661)
-- `_on_show_about` (line 675)
-- `_on_delayed_model_update` (line 679)
-- `_check_ollama_connection` (line 695)
-- `_show_ollama_connection_error` (line 700)
+- `__init__` (line 15)
+- `setup_connections` (line 36)
+- `_connect_menu_actions` (line 91)
+- `_on_status_updated` (line 133)
+- `_on_error_occurred` (line 137)
+- `_on_conversation_updated` (line 142)
+- `_on_name_generation_requested` (line 148)
+- `_on_models_updated` (line 173)
+- `_on_message_sent` (line 187)
+- `_send_to_ollama` (line 203)
+- `_create_worker_thread` (line 287)
+- `_start_worker_stream` (line 345)
+- `_on_worker_detailed_error` (line 375)
+- `_on_worker_thread_finished` (line 389)
+- `_on_worker_chunk` (line 405)
+- `_on_worker_finished` (line 419)
+- `_on_tts_finished` (line 443)
+- `_handle_tts_finished_delayed` (line 452)
+- `_cleanup_worker_thread` (line 473)
+- `_cleanup_worker_thread_once` (line 485)
+- `_final_worker_cleanup` (line 559)
+- `_on_worker_error` (line 585)
+- `_on_message_finished` (line 601)
+- `_on_message_cancelled` (line 610)
+- `_on_conversation_selected` (line 637)
+- `_on_conversation_deleted` (line 645)
+- `_on_conversation_renamed` (line 649)
+- `_on_personality_changed` (line 671)
+- `_on_model_operation_progress` (line 696)
+- `_on_model_operation_error` (line 702)
+- `_on_conversation_metadata_updated` (line 716)
+- `_on_new_conversation_requested` (line 722)
+- `_on_new_conversation` (line 726)
+- `_on_clear_chat` (line 743)
+- `_on_save_chat` (line 754)
+- `_on_load_chat` (line 760)
+- `_on_open_settings` (line 766)
+- `_create_chat_controller` (line 793)
+- `_setup_ui_with_new_services` (line 805)
+- `_on_refresh_models` (line 811)
+- `_on_refresh_personalities` (line 836)
+- `_on_show_about` (line 850)
+- `_on_delayed_model_update` (line 854)
+- `_check_ollama_connection` (line 870)
+- `_show_ollama_connection_error` (line 875)
+- `cleanup_on_exit` (line 916)
 
 ---
 
@@ -153,16 +158,16 @@
 
 **Functions:**
 - `__init__` (line 26)
-- `_setup_ui` (line 80)
-- `showEvent` (line 105)
-- `closeEvent` (line 110)
-- `show_ollama_connection_error` (line 114)
-- `check_ollama_connection` (line 118)
-- `get_service_manager` (line 123)
-- `get_ui_manager` (line 127)
-- `get_event_handler` (line 131)
-- `get_lifecycle_manager` (line 135)
-- `get_chat_controller` (line 139)
+- `_setup_ui` (line 82)
+- `showEvent` (line 110)
+- `closeEvent` (line 115)
+- `show_ollama_connection_error` (line 119)
+- `check_ollama_connection` (line 123)
+- `get_service_manager` (line 128)
+- `get_ui_manager` (line 132)
+- `get_event_handler` (line 136)
+- `get_lifecycle_manager` (line 140)
+- `get_chat_controller` (line 144)
 
 ---
 
@@ -254,38 +259,14 @@
 
 **Functions:**
 - `__init__` (line 26)
-- `_initialize_default_personalities` (line 35)
-- `_find_personality_files` (line 42)
-- `_extract_personality_name` (line 46)
-- `_load_custom_personalities` (line 50)
-- `get_available_personalities` (line 55)
-- `get_personality` (line 59)
-- `set_current_personality` (line 63)
-- `get_current_personality` (line 70)
-- `create_custom_personality` (line 74)
-- `delete_custom_personality` (line 83)
-- `_find_personality_file_by_name` (line 92)
-- `refresh_personalities` (line 96)
-- `format_prompt_with_personality` (line 105)
-- `get_system_prompt` (line 109)
-- `get_personality_info` (line 113)
-- `get_personality_config` (line 117)
-- `update_personality_metadata` (line 121)
-- `build_comprehensive_system_prompt` (line 125)
-- `get_user_context_messages` (line 129)
-- `get_custom_personalities` (line 133)
-- `get_system_personalities` (line 138)
-- `is_system_personality` (line 142)
-- `is_custom_personality` (line 146)
-- `update_custom_personality` (line 150)
-- `save_custom_personality` (line 159)
-- `get_personalities_by_category` (line 164)
-- `get_personality_categories` (line 168)
-- `search_personalities` (line 172)
-- `get_selected_model` (line 177)
-- `get_ai_name` (line 181)
-- `get_personality_loader` (line 185)
-- `get_personality_formatter` (line 189)
+- `_initialize_default_personalities` (line 34)
+- `_find_personality_files` (line 41)
+- `_extract_personality_name` (line 45)
+- `_load_custom_personalities` (line 49)
+- `_find_personality_file_by_name` (line 54)
+- `save_custom_personality` (line 58)
+- `get_personality_loader` (line 64)
+- `get_personality_formatter` (line 68)
 
 ---
 
@@ -538,7 +519,7 @@
 - `is_available` (line 43)
 - `convert_audio_to_text` (line 46)
 - `_convert_with_vosk` (line 53)
-- `update_api` (line 85)
+- `update_api` (line 86)
 
 ---
 
@@ -555,146 +536,156 @@
 - `speak_text_streaming` (line 74)
 - `speak_text_non_streaming` (line 90)
 - `_speak_with_espeak` (line 107)
-- `_cleanup_audio_file` (line 128)
-- `_simulate_tts_finished` (line 135)
-- `stop_playback` (line 138)
-- `update_api` (line 147)
-- `update_voice` (line 155)
-- `update_speed` (line 163)
-- `is_coqui_available` (line 172)
-- `get_coqui_models` (line 176)
-- `get_coqui_voices` (line 182)
-- `get_coqui_model_info` (line 188)
-- `load_coqui_model` (line 194)
-- `set_coqui_model` (line 200)
+- `_simulate_tts_finished` (line 130)
+- `stop_playback` (line 133)
+- `update_api` (line 142)
+- `update_voice` (line 150)
+- `update_speed` (line 158)
+- `is_coqui_available` (line 167)
+- `get_coqui_models` (line 171)
+- `get_coqui_voices` (line 177)
+- `get_coqui_model_info` (line 183)
+- `load_coqui_model` (line 189)
+- `set_coqui_model` (line 195)
 
 ---
 
 ### `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py`
 
 **Classes:**
-- `StreamingAudioPlayer` (line 31)
-- `StreamingAudioWorker` (line 201)
-- `CoquiTTSService` (line 345)
+- `StreamingAudioPlayer` (line 32)
+- `StreamingAudioWorker` (line 211)
+- `CoquiTTSService` (line 355)
 
 **Functions:**
-- `__init__` (line 357)
-- `run` (line 216)
-- `_process_audio_chunk` (line 93)
-- `set_volume` (line 149)
-- `add_audio_chunk` (line 153)
-- `end_stream` (line 158)
-- `stop_playback` (line 646)
-- `cleanup` (line 693)
-- `_split_text_into_sentences` (line 248)
-- `_generate_audio_chunk` (line 275)
-- `_adjust_audio_speed` (line 316)
-- `stop` (line 340)
-- `_initialize_service` (line 377)
-- `_load_default_model` (line 391)
-- `_load_available_voices` (line 422)
-- `is_available` (line 438)
-- `_get_tts_model_cache_dirs` (line 442)
-- `_model_name_to_folder` (line 464)
-- `_is_model_fully_downloaded` (line 467)
-- `get_downloaded_models` (line 483)
-- `is_model_downloaded` (line 498)
-- `get_available_voices` (line 501)
-- `download_model` (line 510)
-- `set_voice` (line 527)
-- `set_speed` (line 537)
-- `set_streaming_volume` (line 542)
-- `speak_text` (line 548)
-- `_speak_text_streaming` (line 574)
-- `_on_streaming_generation_finished` (line 617)
-- `_on_streaming_generation_error` (line 622)
-- `_on_streaming_finished` (line 628)
-- `_on_streaming_error` (line 640)
-- `get_model_info` (line 701)
-- `get_model_download_size` (line 741)
-- `get_comprehensive_model_list` (line 766)
-- `get_current_model_info` (line 799)
-- `get_available_models` (line 811)
-- `load_model` (line 833)
-- `is_multi_speaker` (line 888)
-- `get_model_config` (line 921)
-- `_generate_audio` (line 935)
-- `_play_audio` (line 971)
-- `_on_media_status_changed` (line 1004)
-- `_cleanup_audio_file` (line 1013)
-- `refresh_model_list` (line 1022)
-- `terminate_pyaudio` (line 182)
+- `__init__` (line 377)
+- `run` (line 226)
+- `_process_audio_chunk` (line 100)
+- `_emit_audio_level` (line 144)
+- `set_volume` (line 154)
+- `add_audio_chunk` (line 158)
+- `end_stream` (line 163)
+- `stop_playback` (line 689)
+- `cleanup` (line 736)
+- `_split_text_into_sentences` (line 258)
+- `_generate_audio_chunk` (line 285)
+- `_adjust_audio_speed` (line 326)
+- `stop` (line 350)
+- `__new__` (line 371)
+- `_initialize_service` (line 407)
+- `_load_default_model` (line 428)
+- `_load_available_voices` (line 456)
+- `is_available` (line 472)
+- `_get_tts_model_cache_dirs` (line 476)
+- `_model_name_to_folder` (line 498)
+- `_is_model_fully_downloaded` (line 501)
+- `get_downloaded_models` (line 517)
+- `is_model_downloaded` (line 532)
+- `is_model_loaded` (line 535)
+- `get_available_voices` (line 544)
+- `download_model` (line 553)
+- `set_voice` (line 570)
+- `set_speed` (line 580)
+- `set_streaming_volume` (line 585)
+- `speak_text` (line 591)
+- `_speak_text_streaming` (line 617)
+- `_on_streaming_generation_finished` (line 660)
+- `_on_streaming_generation_error` (line 665)
+- `_on_streaming_finished` (line 671)
+- `_on_streaming_error` (line 683)
+- `clear_model_cache` (line 747)
+- `get_cache_info` (line 756)
+- `get_model_info` (line 769)
+- `get_model_download_size` (line 809)
+- `get_comprehensive_model_list` (line 834)
+- `get_current_model_info` (line 867)
+- `get_available_models` (line 879)
+- `load_model` (line 901)
+- `is_multi_speaker` (line 984)
+- `get_model_config` (line 1017)
+- `_generate_audio` (line 1031)
+- `_play_audio` (line 1067)
+- `_on_media_status_changed` (line 1100)
+- `_cleanup_audio_file` (line 1109)
+- `refresh_model_list` (line 1118)
+- `terminate_pyaudio` (line 192)
 
 ---
 
 ### `services\Voice_STT_TTS_SERVICES\voice_process_manager.py`
 
 **Classes:**
-- `VoiceProcessManager` (line 23)
-- `VoiceProcessMonitor` (line 197)
+- `VoiceProcessManager` (line 24)
+- `VoiceProcessMonitor` (line 272)
 
 **Functions:**
-- `_voice_process_worker` (line 229)
-- `create_voice_process_manager` (line 325)
-- `stop_voice_process_manager` (line 342)
-- `__init__` (line 202)
-- `start_voice_process` (line 51)
-- `stop_voice_process` (line 88)
-- `send_command` (line 126)
-- `_handle_response` (line 144)
-- `is_process_running` (line 180)
-- `get_process_info` (line 184)
-- `run` (line 207)
-- `stop` (line 222)
+- `_voice_process_worker` (line 349)
+- `create_voice_process_manager` (line 445)
+- `stop_voice_process_manager` (line 462)
+- `__init__` (line 278)
+- `start_voice_process` (line 52)
+- `stop_voice_process` (line 105)
+- `send_command` (line 185)
+- `_handle_response` (line 202)
+- `_handle_monitor_error` (line 241)
+- `is_process_running` (line 249)
+- `get_process_info` (line 255)
+- `run` (line 289)
+- `stop` (line 324)
+- `get_stats` (line 339)
 
 ---
 
 ### `services\Voice_STT_TTS_SERVICES\voice_service.py`
 
 **Classes:**
-- `VoiceService` (line 30)
+- `VoiceService` (line 31)
 
 **Functions:**
-- `__init__` (line 46)
-- `__del__` (line 128)
-- `start_voice_input` (line 137)
-- `stop_voice_input` (line 174)
-- `_on_recording_timeout` (line 224)
-- `_on_recording_auto_stopped` (line 230)
-- `_on_stt_text_received` (line 236)
-- `_on_stt_error` (line 265)
-- `_on_tts_finished` (line 287)
-- `_on_tts_error` (line 305)
-- `speak_text` (line 318)
-- `speak_text_streaming` (line 347)
-- `speak_text_non_streaming` (line 367)
-- `stop_tts` (line 387)
-- `is_voice_available` (line 393)
-- `update_settings` (line 401)
-- `get_recording_timeout` (line 450)
-- `set_recording_timeout` (line 454)
-- `get_silence_duration` (line 459)
-- `set_silence_duration` (line 463)
-- `get_silence_threshold` (line 468)
-- `set_silence_threshold` (line 472)
-- `set_min_speech_duration` (line 477)
-- `get_min_speech_duration` (line 482)
-- `set_speech_detection_sensitivity` (line 486)
-- `get_speech_detection_sensitivity` (line 508)
-- `set_audio_gate_enabled` (line 517)
-- `get_current_audio_level` (line 522)
-- `set_continuous_voice_mode` (line 526)
-- `is_continuous_voice_mode` (line 531)
-- `get_eq_visualizer` (line 535)
-- `cleanup_on_exit` (line 539)
-- `get_audio_folder_path` (line 548)
-- `list_audio_files` (line 552)
-- `cleanup_old_audio_files` (line 574)
-- `cleanup_all_audio_files` (line 608)
-- `_forward_recording_started` (line 627)
-- `_forward_recording_stopped` (line 635)
-- `_forward_recording_error` (line 643)
-- `_forward_voice_processing_started` (line 651)
+- `__init__` (line 47)
+- `__del__` (line 88)
+- `start_voice_input` (line 97)
+- `stop_voice_input` (line 150)
+- `_on_recording_timeout` (line 227)
+- `_on_recording_auto_stopped` (line 233)
+- `_on_stt_text_received` (line 239)
+- `_on_stt_error` (line 271)
+- `_on_tts_finished` (line 293)
+- `_on_tts_error` (line 311)
+- `speak_text` (line 324)
+- `speak_text_streaming` (line 353)
+- `speak_text_non_streaming` (line 373)
+- `stop_tts` (line 393)
+- `is_voice_available` (line 399)
+- `update_settings` (line 407)
+- `get_recording_timeout` (line 456)
+- `set_recording_timeout` (line 460)
+- `get_silence_duration` (line 465)
+- `set_silence_duration` (line 469)
+- `get_silence_threshold` (line 474)
+- `set_silence_threshold` (line 478)
+- `set_min_speech_duration` (line 483)
+- `get_min_speech_duration` (line 488)
+- `set_speech_detection_sensitivity` (line 492)
+- `get_speech_detection_sensitivity` (line 514)
+- `set_audio_gate_enabled` (line 523)
+- `get_current_audio_level` (line 528)
+- `set_continuous_voice_mode` (line 532)
+- `is_continuous_voice_mode` (line 537)
+- `get_eq_visualizer` (line 541)
+- `cleanup_on_exit` (line 545)
+- `get_audio_folder_path` (line 560)
+- `list_audio_files` (line 564)
+- `cleanup_old_audio_files` (line 586)
+- `cleanup_all_audio_files` (line 620)
+- `_forward_recording_started` (line 639)
+- `_forward_recording_stopped` (line 647)
+- `_forward_recording_error` (line 655)
+- `_forward_voice_processing_started` (line 663)
+- `_cleanup_resources` (line 671)
+- `_reset_error_count` (line 680)
+- `_initialize_services` (line 685)
+- `_connect_signals` (line 764)
 
 ---
 
@@ -780,119 +771,100 @@
 ### `services\memory_service.py`
 
 **Classes:**
-- `MemoryEntry` (line 19)
-- `LongTermMemoryEntry` (line 33)
-- `MemoryClassifier` (line 53)
-- `PronounNormalizer` (line 150)
-- `MemoryRetriever` (line 260)
-- `ShortTermMemoryService` (line 305)
-- `LongTermMemoryService` (line 336)
-- `MemoryService` (line 399)
+- `MemoryEntry` (line 20)
+- `LongTermMemoryEntry` (line 34)
+- `MemoryClassifier` (line 54)
+- `PronounNormalizer` (line 161)
+- `MemoryRetriever` (line 250)
+- `ShortTermMemoryService` (line 323)
+- `LongTermMemoryService` (line 377)
+- `MemoryService` (line 439)
 
 **Functions:**
-- `__post_init__` (line 46)
-- `classify_message` (line 91)
-- `normalize_pronouns` (line 180)
-- `should_normalize` (line 241)
-- `calculate_relevance` (line 264)
-- `get_relevant_memories` (line 516)
-- `__init__` (line 405)
-- `_load` (line 341)
-- `add_message` (line 941)
-- `get_messages` (line 324)
-- `clear` (line 1037)
-- `_save` (line 382)
-- `add_entry` (line 366)
-- `get_entries` (line 378)
-- `update_access_stats` (line 393)
-- `_load_memory` (line 426)
-- `_save_memory` (line 436)
-- `_on_embeddings_updated` (line 444)
-- `add_memory` (line 449)
-- `add_summary` (line 482)
-- `intelligent_add_message` (line 568)
-- `extract_facts_from_message` (line 608)
-- `get_user_info` (line 713)
-- `get_user_name` (line 734)
-- `get_context_messages` (line 742)
-- `summarize_conversation` (line 803)
-- `clear_memory` (line 823)
-- `_verify_memory_files_cleared` (line 870)
-- `delete_memory` (line 905)
-- `get_memory_stats` (line 915)
-- `add_fact` (line 945)
-- `set_max_context_messages` (line 1013)
-- `search_memories` (line 1022)
-- `cleanup_memory_entries` (line 1041)
+- `__post_init__` (line 47)
+- `classify_message` (line 92)
+- `normalize_pronouns` (line 191)
+- `should_normalize` (line 226)
+- `calculate_relevance` (line 254)
+- `get_relevant_memories` (line 543)
+- `__init__` (line 445)
+- `_load` (line 385)
+- `add_message` (line 847)
+- `get_messages` (line 355)
+- `clear` (line 909)
+- `_save` (line 420)
+- `add_entry` (line 400)
+- `get_entries` (line 410)
+- `update_access_stats` (line 430)
+- `_load_memory` (line 470)
+- `_save_memory` (line 478)
+- `_on_embeddings_updated` (line 486)
+- `add_memory` (line 494)
+- `add_summary` (line 525)
+- `intelligent_add_message` (line 595)
+- `extract_facts_from_message` (line 641)
+- `get_user_info` (line 670)
+- `get_user_name` (line 685)
+- `get_context_messages` (line 694)
+- `summarize_conversation` (line 721)
+- `clear_memory` (line 738)
+- `_verify_memory_files_cleared` (line 763)
+- `delete_memory` (line 782)
+- `get_memory_stats` (line 793)
+- `add_fact` (line 854)
+- `set_max_context_messages` (line 871)
+- `search_memories` (line 880)
+- `cleanup_memory_entries` (line 916)
 
 ---
 
 ### `services\ollama_service.py`
 
 **Classes:**
-- `OllamaService` (line 18)
+- `OllamaService` (line 20)
 
 **Functions:**
-- `__init__` (line 28)
-- `get_models` (line 34)
-- `test_connection` (line 69)
-- `send_chat_message` (line 77)
-- `pull_model` (line 160)
-- `_pull_model_thread` (line 172)
-- `remove_model` (line 201)
-- `_remove_model_thread` (line 209)
-- `update_model` (line 232)
-- `_update_model_thread` (line 240)
-- `_extract_system_prompt` (line 263)
-- `_build_session_commands` (line 270)
-- `cancel_request` (line 301)
-- `reset_cancellation` (line 305)
-- `is_connected` (line 309)
+- `__init__` (line 30)
+- `get_models` (line 41)
+- `test_connection` (line 90)
+- `send_chat_message` (line 102)
+- `pull_model` (line 219)
+- `_pull_model_thread` (line 231)
+- `remove_model` (line 267)
+- `_remove_model_thread` (line 279)
+- `update_model` (line 315)
+- `_update_model_thread` (line 327)
+- `_extract_system_prompt` (line 363)
+- `_build_session_commands` (line 372)
+- `cancel_request` (line 388)
+- `reset_cancellation` (line 396)
+- `is_connected` (line 404)
 
 ---
 
 ### `services\semantic_search_service.py`
 
 **Classes:**
-- `VectorizedMemory` (line 20)
-- `SemanticSearchService` (line 31)
+- `VectorizedMemory` (line 21)
+- `SemanticSearchService` (line 32)
 
 **Functions:**
-- `__init__` (line 37)
-- `_init_model` (line 55)
-- `_load_embeddings` (line 69)
-- `_save_embeddings` (line 103)
-- `add_memory` (line 137)
-- `remove_memory` (line 184)
-- `search_semantic` (line 207)
-- `search_hybrid` (line 270)
-- `update_memory_importance` (line 356)
-- `get_memory_stats` (line 377)
-- `clear_all` (line 418)
-- `is_ready` (line 439)
+- `__init__` (line 38)
+- `_init_model` (line 56)
+- `_load_embeddings` (line 70)
+- `_save_embeddings` (line 104)
+- `add_memory` (line 138)
+- `remove_memory` (line 192)
+- `search_semantic` (line 221)
+- `search_hybrid` (line 274)
+- `update_memory_importance` (line 353)
+- `get_memory_stats` (line 380)
+- `clear_all` (line 427)
+- `is_ready` (line 454)
 
 ---
 
 ### `services\start_up\__init__.py`
-
----
-
-### `services\start_up\check_dependencies.py`
-
-**Classes:**
-- `DependencyManager` (line 24)
-
-**Functions:**
-- `main` (line 367)
-- `__init__` (line 25)
-- `test_import` (line 31)
-- `run_pip_command` (line 47)
-- `check_core_dependencies` (line 72)
-- `check_ml_dependencies` (line 116)
-- `check_package_versions` (line 151)
-- `generate_fix_plan` (line 204)
-- `execute_fix_plan` (line 298)
-- `run_comprehensive_check` (line 332)
 
 ---
 
@@ -960,14 +932,16 @@
 ### `services\worker\worker.py`
 
 **Classes:**
-- `Worker` (line 6)
+- `Worker` (line 10)
 
 **Functions:**
-- `__init__` (line 11)
-- `run` (line 16)
-- `stop` (line 31)
-- `is_running` (line 38)
-- `run_stream` (line 44)
+- `__init__` (line 16)
+- `_log_thread_info` (line 28)
+- `run` (line 35)
+- `stop` (line 66)
+- `is_running` (line 88)
+- `run_stream` (line 94)
+- `get_stats` (line 197)
 
 ---
 
@@ -1309,80 +1283,6 @@
 
 ---
 
-### `ui\chat_tab.py`
-
-**Classes:**
-- `ChatTab` (line 37)
-
-**Functions:**
-- `__init__` (line 51)
-- `setup_ui` (line 99)
-- `setup_eq_visualizers` (line 235)
-- `setup_chat_display` (line 249)
-- `chat_display_mouse_move_event` (line 285)
-- `show_edit_button` (line 311)
-- `hide_edit_button` (line 346)
-- `edit_message_at_index` (line 354)
-- `setup_controls` (line 365)
-- `setup_streaming_handler` (line 632)
-- `setup_connections` (line 638)
-- `switch_to_eq_visualizer` (line 700)
-- `switch_to_chat_display` (line 797)
-- `update_eq_visualizer` (line 893)
-- `on_audio_level_changed` (line 1005)
-- `on_temperature_changed` (line 1074)
-- `update_model_list` (line 1079)
-- `update_personality_list` (line 1091)
-- `on_personality_combo_changed` (line 1103)
-- `on_personality_changed` (line 1108)
-- `on_model_changed` (line 1113)
-- `get_current_model` (line 1118)
-- `get_temperature` (line 1122)
-- `get_current_response` (line 1126)
-- `get_current_personality` (line 1130)
-- `get_ai_name` (line 1134)
-- `clear_chat` (line 1141)
-- `save_chat` (line 1148)
-- `load_chat` (line 1178)
-- `load_conversation` (line 1187)
-- `refresh_navigation` (line 1233)
-- `set_current_conversation_file` (line 1238)
-- `on_message_cancelled` (line 1243)
-- `force_enable_send_button` (line 1249)
-- `set_input_mode` (line 1261)
-- `open_tts_settings` (line 1297)
-- `on_tts_settings_changed` (line 1304)
-- `show_message_edit_dialog` (line 1313)
-- `save_message_edit` (line 1403)
-- `on_message_edited` (line 1419)
-- `is_eq_visualizer_active` (line 1424)
-- `update_eq_visualizer_mode` (line 1431)
-- `toggle_voice_mode` (line 1461)
-- `_reset_voice_button` (line 1492)
-- `on_voice_input_received` (line 1507)
-- `on_voice_input_error` (line 1528)
-- `on_tts_started` (line 1545)
-- `on_tts_finished` (line 1549)
-- `on_tts_error` (line 1553)
-- `on_recording_started` (line 1558)
-- `on_recording_stopped` (line 1579)
-- `on_recording_error` (line 1593)
-- `on_voice_processing_started` (line 1609)
-- `on_voice_processing_finished` (line 1615)
-- `speak_ai_response` (line 1620)
-- `open_voice_settings` (line 1634)
-- `on_voice_settings_changed` (line 1653)
-- `send_message` (line 1666)
-- `cancel_message` (line 1684)
-- `append_to_chat` (line 1689)
-- `append_response_chunk` (line 1709)
-- `start_streaming` (line 1725)
-- `stop_streaming` (line 1743)
-- `enforce_voice_mode_ui` (line 1764)
-- `eventFilter` (line 1773)
-
----
-
 ### `ui\styles\__init__.py`
 
 ---
@@ -1397,14 +1297,15 @@
 - `detect_code_type` (line 48)
 - `syntax_highlight_code` (line 60)
 - `detect_and_format_code` (line 97)
-- `format_markdown` (line 133)
-- `handle_html_tags` (line 214)
-- `cleanup_message` (line 253)
-- `format_chat_message` (line 281)
-- `split_thoughts_and_answer` (line 318)
-- `to_plain_text` (line 334)
+- `_protect_code_blocks` (line 133)
+- `format_markdown` (line 149)
+- `handle_html_tags` (line 221)
+- `cleanup_message` (line 250)
+- `format_chat_message` (line 278)
+- `split_thoughts_and_answer` (line 315)
+- `to_plain_text` (line 331)
 - `format_block_code` (line 107)
-- `protect_code_blocks` (line 222)
+- `protect_code_blocks` (line 137)
 
 ---
 
@@ -1475,42 +1376,42 @@
 - `on_model_changed` (line 367)
 - `on_eq_mode_changed` (line 372)
 - `on_voice_input_received` (line 380)
-- `on_voice_input_error` (line 393)
-- `on_tts_started` (line 398)
-- `on_tts_finished` (line 408)
-- `on_tts_error` (line 434)
-- `on_recording_started` (line 438)
-- `on_recording_stopped` (line 442)
-- `on_recording_error` (line 446)
-- `on_voice_processing_started` (line 450)
-- `on_voice_processing_finished` (line 454)
-- `on_audio_level_changed` (line 458)
-- `on_message_edited` (line 470)
-- `get_ai_name` (line 476)
-- `get_current_personality` (line 483)
-- `get_current_model` (line 487)
-- `get_temperature` (line 491)
-- `get_current_response` (line 495)
-- `append_to_chat` (line 499)
-- `append_response_chunk` (line 508)
-- `_append_response_chunk_safe` (line 514)
-- `start_streaming` (line 532)
-- `_start_streaming_safe` (line 538)
-- `stop_streaming` (line 567)
-- `_stop_streaming_safe` (line 573)
-- `force_enable_send_button` (line 605)
-- `_force_enable_send_button_safe` (line 611)
-- `clear_chat` (line 633)
-- `update_model_list` (line 637)
-- `update_personality_list` (line 641)
-- `speak_ai_response` (line 645)
-- `open_voice_settings` (line 649)
-- `on_voice_settings_changed` (line 667)
-- `load_conversation` (line 677)
-- `refresh_navigation` (line 724)
-- `set_current_conversation_file` (line 729)
-- `get_streaming_handler` (line 734)
-- `streaming_handler` (line 739)
+- `on_voice_input_error` (line 396)
+- `on_tts_started` (line 401)
+- `on_tts_finished` (line 411)
+- `on_tts_error` (line 437)
+- `on_recording_started` (line 441)
+- `on_recording_stopped` (line 445)
+- `on_recording_error` (line 449)
+- `on_voice_processing_started` (line 453)
+- `on_voice_processing_finished` (line 457)
+- `on_audio_level_changed` (line 461)
+- `on_message_edited` (line 473)
+- `get_ai_name` (line 479)
+- `get_current_personality` (line 486)
+- `get_current_model` (line 490)
+- `get_temperature` (line 494)
+- `get_current_response` (line 498)
+- `append_to_chat` (line 502)
+- `append_response_chunk` (line 511)
+- `_append_response_chunk_safe` (line 517)
+- `start_streaming` (line 535)
+- `_start_streaming_safe` (line 541)
+- `stop_streaming` (line 570)
+- `_stop_streaming_safe` (line 576)
+- `force_enable_send_button` (line 608)
+- `_force_enable_send_button_safe` (line 614)
+- `clear_chat` (line 636)
+- `update_model_list` (line 640)
+- `update_personality_list` (line 644)
+- `speak_ai_response` (line 648)
+- `open_voice_settings` (line 652)
+- `on_voice_settings_changed` (line 670)
+- `load_conversation` (line 680)
+- `refresh_navigation` (line 727)
+- `set_current_conversation_file` (line 732)
+- `get_streaming_handler` (line 737)
+- `streaming_handler` (line 742)
 
 ---
 
@@ -1584,66 +1485,77 @@
 
 **Functions:**
 - `__init__` (line 32)
-- `setup_ui_components` (line 87)
-- `setup_connections` (line 171)
-- `toggle_voice_mode` (line 200)
-- `_start_continuous_voice_mode` (line 252)
-- `_handle_voice_input_safe` (line 269)
-- `_handle_tts_finished_continuous` (line 286)
-- `_restart_voice_input` (line 296)
-- `_reset_voice_button` (line 310)
-- `on_voice_input_received` (line 332)
-- `on_voice_input_error` (line 340)
-- `_handle_voice_input_error_safe` (line 347)
-- `on_tts_started` (line 362)
-- `on_tts_finished` (line 367)
-- `on_tts_error` (line 378)
-- `on_recording_started` (line 383)
-- `_handle_recording_started_safe` (line 390)
-- `on_recording_stopped` (line 411)
-- `_handle_recording_stopped_safe` (line 418)
-- `on_recording_error` (line 432)
-- `_handle_recording_error_safe` (line 439)
-- `on_voice_processing_started` (line 454)
-- `on_voice_processing_finished` (line 461)
-- `on_audio_level_changed` (line 467)
-- `_update_audio_level_ui_safe` (line 477)
-- `speak_ai_response` (line 536)
-- `update_voice_settings` (line 547)
-- `get_voice_settings` (line 556)
-- `is_voice_mode_active` (line 560)
-- `is_tts_playing` (line 564)
-- `get_ui_components` (line 574)
+- `setup_ui_components` (line 112)
+- `_update_voice_state` (line 196)
+- `is_voice_busy` (line 201)
+- `_handle_voice_crash` (line 206)
+- `_attempt_recovery` (line 219)
+- `_stop_all_voice_operations` (line 229)
+- `_reset_voice_ui` (line 240)
+- `_reinitialize_voice_service` (line 251)
+- `_disable_voice_features` (line 259)
+- `_reset_error_count` (line 268)
+- `_handle_service_error` (line 272)
+- `setup_connections` (line 284)
+- `toggle_voice_mode` (line 314)
+- `_start_continuous_voice_mode` (line 366)
+- `_handle_voice_input_safe` (line 383)
+- `_handle_tts_finished_continuous` (line 400)
+- `_restart_voice_input` (line 410)
+- `_reset_voice_button` (line 424)
+- `on_voice_input_received` (line 446)
+- `on_voice_input_error` (line 454)
+- `_handle_voice_input_error_safe` (line 464)
+- `on_tts_started` (line 479)
+- `on_tts_finished` (line 484)
+- `on_tts_error` (line 495)
+- `_handle_tts_error_safe` (line 505)
+- `on_recording_started` (line 509)
+- `_handle_recording_started_safe` (line 516)
+- `on_recording_stopped` (line 537)
+- `_handle_recording_stopped_safe` (line 544)
+- `on_recording_error` (line 558)
+- `_handle_recording_error_safe` (line 565)
+- `on_voice_processing_started` (line 580)
+- `on_voice_processing_finished` (line 587)
+- `on_audio_level_changed` (line 593)
+- `_update_audio_level_ui_safe` (line 603)
+- `speak_ai_response` (line 662)
+- `update_voice_settings` (line 673)
+- `get_voice_settings` (line 682)
+- `is_voice_mode_active` (line 686)
+- `is_tts_playing` (line 690)
+- `get_ui_components` (line 700)
 
 ---
 
 ### `ui\tabs\memory_tab.py`
 
 **Classes:**
-- `MemoryTab` (line 18)
+- `MemoryTab` (line 20)
 
 **Functions:**
-- `__init__` (line 21)
-- `setup_ui` (line 28)
-- `create_settings_tab` (line 54)
-- `create_overview_tab` (line 114)
-- `create_memories_tab` (line 174)
-- `create_summaries_tab` (line 239)
-- `setup_connections` (line 269)
-- `update_context_messages` (line 293)
-- `refresh_data` (line 298)
-- `refresh_overview` (line 304)
-- `refresh_memories` (line 363)
-- `refresh_summaries` (line 394)
-- `search_memories` (line 407)
-- `show_memory_details` (line 429)
-- `show_summary_details` (line 450)
-- `summarize_current_conversation` (line 466)
-- `set_conversation_service` (line 472)
-- `_summarize_with_service` (line 479)
-- `clear_all_memories` (line 500)
-- `cleanup_memory_entries` (line 513)
-- `delete_selected_memory` (line 529)
+- `__init__` (line 23)
+- `setup_ui` (line 30)
+- `create_settings_tab` (line 56)
+- `create_overview_tab` (line 116)
+- `create_memories_tab` (line 176)
+- `create_summaries_tab` (line 241)
+- `setup_connections` (line 271)
+- `update_context_messages` (line 295)
+- `refresh_data` (line 300)
+- `refresh_overview` (line 306)
+- `refresh_memories` (line 362)
+- `refresh_summaries` (line 393)
+- `search_memories` (line 406)
+- `show_memory_details` (line 428)
+- `show_summary_details` (line 462)
+- `summarize_current_conversation` (line 478)
+- `set_conversation_service` (line 484)
+- `_summarize_with_service` (line 491)
+- `clear_all_memories` (line 512)
+- `cleanup_memory_entries` (line 525)
+- `delete_selected_memory` (line 541)
 
 ---
 
@@ -1735,30 +1647,57 @@
 ### `utils\Logging\logging_helpers.py`
 
 **Classes:**
-- `LoggingHelpers` (line 14)
+- `LoggingHelpers` (line 19)
+- `ThreadMonitor` (line 207)
+- `ThreadSafeLogger` (line 370)
 
 **Functions:**
-- `log_message_sent` (line 18)
-- `log_message_sent_end` (line 24)
-- `log_fact_storage_start` (line 29)
-- `log_fact_storage_end` (line 35)
-- `log_fact_extraction_start` (line 40)
-- `log_fact_extraction_end` (line 47)
-- `log_memory_result` (line 52)
-- `log_memory_ltm_status` (line 57)
-- `log_fact_processing` (line 65)
-- `log_fact_skipped` (line 72)
-- `log_fact_storage_summary` (line 80)
-- `log_fact_extraction_result` (line 85)
-- `log_llm_call` (line 95)
-- `log_llm_response` (line 101)
-- `log_json_extraction` (line 107)
-- `log_json_parsing_success` (line 112)
-- `log_json_parsing_error` (line 122)
-- `log_conversation_detection` (line 130)
-- `log_context_messages` (line 136)
-- `log_error` (line 145)
-- `log_debug` (line 151)
+- `get_thread_monitor` (line 417)
+- `cleanup_thread_monitor` (line 424)
+- `log_exception_with_context` (line 23)
+- `log_warning_with_context` (line 30)
+- `log_info_with_context` (line 36)
+- `log_debug` (line 42)
+- `log_error` (line 47)
+- `log_network_request` (line 52)
+- `log_file_operation` (line 62)
+- `log_audio_operation` (line 70)
+- `log_memory_operation` (line 78)
+- `log_ui_operation` (line 86)
+- `log_performance_metric` (line 94)
+- `log_json_parsing_error` (line 100)
+- `log_json_parsing_success` (line 106)
+- `log_critical_error` (line 111)
+- `log_fact_extraction_start` (line 118)
+- `log_fact_extraction_end` (line 123)
+- `log_fact_extraction_result` (line 128)
+- `log_fact_processing` (line 133)
+- `log_fact_storage_start` (line 138)
+- `log_fact_storage_end` (line 143)
+- `log_fact_storage_summary` (line 148)
+- `log_fact_skipped` (line 153)
+- `log_memory_result` (line 158)
+- `log_memory_ltm_status` (line 163)
+- `log_llm_call` (line 168)
+- `log_llm_response` (line 173)
+- `log_json_extraction` (line 178)
+- `log_message_sent` (line 183)
+- `log_message_sent_end` (line 188)
+- `log_conversation_detection` (line 193)
+- `log_service_initialization` (line 198)
+- `__init__` (line 214)
+- `register_thread` (line 222)
+- `unregister_thread` (line 252)
+- `_on_thread_started` (line 272)
+- `_on_thread_finished` (line 284)
+- `get_thread_info` (line 298)
+- `get_all_threads` (line 302)
+- `get_thread_history` (line 306)
+- `get_thread_stats` (line 310)
+- `cleanup` (line 350)
+- `log_thread_context` (line 374)
+- `log_thread_safety_check` (line 392)
+- `log_thread_operation` (line 407)
 
 ---
 
@@ -1811,6 +1750,36 @@
 
 ---
 
+### `utils\error_handler.py`
+
+**Classes:**
+- `ErrorHandler` (line 20)
+
+**Functions:**
+- `error_context` (line 229)
+- `network_error_context` (line 252)
+- `file_operation_context` (line 269)
+- `audio_operation_context` (line 286)
+- `memory_operation_context` (line 302)
+- `ui_operation_context` (line 319)
+- `safe_json_parse` (line 335)
+- `safe_file_read` (line 357)
+- `safe_file_write` (line 377)
+- `safe_network_request` (line 401)
+- `validate_input` (line 423)
+- `cleanup_resources` (line 448)
+- `handle_critical_error` (line 467)
+- `safe_execute` (line 24)
+- `retry_on_failure` (line 49)
+- `handle_network_errors` (line 91)
+- `handle_file_operations` (line 125)
+- `handle_audio_operations` (line 159)
+- `handle_memory_operations` (line 182)
+- `handle_ui_operations` (line 205)
+- `wrapper` (line 216)
+
+---
+
 ### `utils\internet_connection.py`
 
 **Classes:**
@@ -1849,29 +1818,28 @@
 ### `utils\streaming_handler.py`
 
 **Classes:**
-- `StreamingHandler` (line 15)
+- `StreamingHandler` (line 17)
 
 **Functions:**
-- `__init__` (line 21)
-- `_get_next_message_id` (line 34)
-- `append_message` (line 39)
-- `start_streaming_message` (line 55)
-- `edit_message` (line 69)
-- `get_message_by_id` (line 82)
-- `get_editable_messages` (line 89)
-- `get_messages` (line 102)
-- `update_streaming_message` (line 106)
-- `_flush_stream_buffer` (line 115)
-- `finalize_streaming_message` (line 133)
-- `update_last_system_switch` (line 154)
-- `_render_chat_display` (line 163)
-- `_render_chat_display_safe` (line 169)
-- `_on_message_edited` (line 305)
-- `_on_message_edit_cancelled` (line 311)
-- `remove_streaming_placeholder` (line 316)
-- `cleanup` (line 325)
-- `clear_chat` (line 330)
-- `update_ai_name` (line 336)
+- `__init__` (line 23)
+- `_get_next_message_id` (line 36)
+- `_flush_stream_buffer` (line 41)
+- `append_message` (line 60)
+- `start_streaming_message` (line 76)
+- `edit_message` (line 90)
+- `get_message_by_id` (line 103)
+- `get_editable_messages` (line 110)
+- `get_messages` (line 123)
+- `_render_chat_display` (line 127)
+- `_render_chat_display_safe` (line 133)
+- `_safe_ui_update` (line 279)
+- `update_streaming_message` (line 298)
+- `finalize_streaming_message` (line 320)
+- `update_last_system_switch` (line 349)
+- `remove_streaming_placeholder` (line 366)
+- `cleanup` (line 384)
+- `clear_chat` (line 396)
+- `update_ai_name` (line 408)
 
 ---
 
@@ -1888,63 +1856,68 @@
 - `initialize_application` (line 27)
 - `handle_show_event` (line 49)
 - `handle_close_event` (line 70)
-- `show_initialization_error` (line 105)
-- `show_ollama_connection_error` (line 116)
-- `check_ollama_connection` (line 155)
-- `is_initialization_complete` (line 160)
-- `set_ollama_error_shown` (line 164)
-- `get_ollama_error_shown` (line 168)
+- `show_initialization_error` (line 108)
+- `show_ollama_connection_error` (line 119)
+- `check_ollama_connection` (line 158)
+- `is_initialization_complete` (line 163)
+- `set_ollama_error_shown` (line 167)
+- `get_ollama_error_shown` (line 171)
 
 ---
 
 ### `MainApp\event_handler.py.EventHandler`
 
 - **File:** `MainApp\event_handler.py`
-- **Line:** 11
+- **Line:** 12
 - **Docstring:** Manages signal connections and event handling...
 
 **Methods:**
-- `__init__` (line 14)
-- `setup_connections` (line 35)
-- `_connect_menu_actions` (line 90)
-- `_on_status_updated` (line 132)
-- `_on_error_occurred` (line 136)
-- `_on_conversation_updated` (line 141)
-- `_on_name_generation_requested` (line 147)
-- `_on_models_updated` (line 172)
-- `_on_message_sent` (line 186)
-- `_send_to_ollama` (line 202)
-- `_create_worker_thread` (line 286)
-- `_on_worker_chunk` (line 322)
-- `_on_worker_finished` (line 330)
-- `_on_tts_finished` (line 346)
-- `_handle_tts_finished_delayed` (line 355)
-- `_cleanup_worker_thread` (line 372)
-- `_cleanup_worker_thread_once` (line 383)
-- `_on_worker_error` (line 427)
-- `_on_message_finished` (line 436)
-- `_on_message_cancelled` (line 445)
-- `_on_conversation_selected` (line 462)
-- `_on_conversation_deleted` (line 470)
-- `_on_conversation_renamed` (line 474)
-- `_on_personality_changed` (line 496)
-- `_on_model_operation_progress` (line 521)
-- `_on_model_operation_error` (line 527)
-- `_on_conversation_metadata_updated` (line 541)
-- `_on_new_conversation_requested` (line 547)
-- `_on_new_conversation` (line 551)
-- `_on_clear_chat` (line 568)
-- `_on_save_chat` (line 579)
-- `_on_load_chat` (line 585)
-- `_on_open_settings` (line 591)
-- `_create_chat_controller` (line 618)
-- `_setup_ui_with_new_services` (line 630)
-- `_on_refresh_models` (line 636)
-- `_on_refresh_personalities` (line 661)
-- `_on_show_about` (line 675)
-- `_on_delayed_model_update` (line 679)
-- `_check_ollama_connection` (line 695)
-- `_show_ollama_connection_error` (line 700)
+- `__init__` (line 15)
+- `setup_connections` (line 36)
+- `_connect_menu_actions` (line 91)
+- `_on_status_updated` (line 133)
+- `_on_error_occurred` (line 137)
+- `_on_conversation_updated` (line 142)
+- `_on_name_generation_requested` (line 148)
+- `_on_models_updated` (line 173)
+- `_on_message_sent` (line 187)
+- `_send_to_ollama` (line 203)
+- `_create_worker_thread` (line 287)
+- `_start_worker_stream` (line 345)
+- `_on_worker_detailed_error` (line 375)
+- `_on_worker_thread_finished` (line 389)
+- `_on_worker_chunk` (line 405)
+- `_on_worker_finished` (line 419)
+- `_on_tts_finished` (line 443)
+- `_handle_tts_finished_delayed` (line 452)
+- `_cleanup_worker_thread` (line 473)
+- `_cleanup_worker_thread_once` (line 485)
+- `_final_worker_cleanup` (line 559)
+- `_on_worker_error` (line 585)
+- `_on_message_finished` (line 601)
+- `_on_message_cancelled` (line 610)
+- `_on_conversation_selected` (line 637)
+- `_on_conversation_deleted` (line 645)
+- `_on_conversation_renamed` (line 649)
+- `_on_personality_changed` (line 671)
+- `_on_model_operation_progress` (line 696)
+- `_on_model_operation_error` (line 702)
+- `_on_conversation_metadata_updated` (line 716)
+- `_on_new_conversation_requested` (line 722)
+- `_on_new_conversation` (line 726)
+- `_on_clear_chat` (line 743)
+- `_on_save_chat` (line 754)
+- `_on_load_chat` (line 760)
+- `_on_open_settings` (line 766)
+- `_create_chat_controller` (line 793)
+- `_setup_ui_with_new_services` (line 805)
+- `_on_refresh_models` (line 811)
+- `_on_refresh_personalities` (line 836)
+- `_on_show_about` (line 850)
+- `_on_delayed_model_update` (line 854)
+- `_check_ollama_connection` (line 870)
+- `_show_ollama_connection_error` (line 875)
+- `cleanup_on_exit` (line 916)
 
 ---
 
@@ -1957,16 +1930,16 @@
 
 **Methods:**
 - `__init__` (line 26)
-- `_setup_ui` (line 80)
-- `showEvent` (line 105)
-- `closeEvent` (line 110)
-- `show_ollama_connection_error` (line 114)
-- `check_ollama_connection` (line 118)
-- `get_service_manager` (line 123)
-- `get_ui_manager` (line 127)
-- `get_event_handler` (line 131)
-- `get_lifecycle_manager` (line 135)
-- `get_chat_controller` (line 139)
+- `_setup_ui` (line 82)
+- `showEvent` (line 110)
+- `closeEvent` (line 115)
+- `show_ollama_connection_error` (line 119)
+- `check_ollama_connection` (line 123)
+- `get_service_manager` (line 128)
+- `get_ui_manager` (line 132)
+- `get_event_handler` (line 136)
+- `get_lifecycle_manager` (line 140)
+- `get_chat_controller` (line 144)
 
 ---
 
@@ -2085,44 +2058,21 @@
 
 - **File:** `Personalities\personality_model.py`
 - **Line:** 18
+- **Bases:** PersonalityService
 - **Docstring:** Main class for managing AI personalities
 
-This is the refactored version that uses modular component...
+This is the refactored version that inherits from Personal...
 
 **Methods:**
 - `__init__` (line 26)
-- `_initialize_default_personalities` (line 35)
-- `_find_personality_files` (line 42)
-- `_extract_personality_name` (line 46)
-- `_load_custom_personalities` (line 50)
-- `get_available_personalities` (line 55)
-- `get_personality` (line 59)
-- `set_current_personality` (line 63)
-- `get_current_personality` (line 70)
-- `create_custom_personality` (line 74)
-- `delete_custom_personality` (line 83)
-- `_find_personality_file_by_name` (line 92)
-- `refresh_personalities` (line 96)
-- `format_prompt_with_personality` (line 105)
-- `get_system_prompt` (line 109)
-- `get_personality_info` (line 113)
-- `get_personality_config` (line 117)
-- `update_personality_metadata` (line 121)
-- `build_comprehensive_system_prompt` (line 125)
-- `get_user_context_messages` (line 129)
-- `get_custom_personalities` (line 133)
-- `get_system_personalities` (line 138)
-- `is_system_personality` (line 142)
-- `is_custom_personality` (line 146)
-- `update_custom_personality` (line 150)
-- `save_custom_personality` (line 159)
-- `get_personalities_by_category` (line 164)
-- `get_personality_categories` (line 168)
-- `search_personalities` (line 172)
-- `get_selected_model` (line 177)
-- `get_ai_name` (line 181)
-- `get_personality_loader` (line 185)
-- `get_personality_formatter` (line 189)
+- `_initialize_default_personalities` (line 34)
+- `_find_personality_files` (line 41)
+- `_extract_personality_name` (line 45)
+- `_load_custom_personalities` (line 49)
+- `_find_personality_file_by_name` (line 54)
+- `save_custom_personality` (line 58)
+- `get_personality_loader` (line 64)
+- `get_personality_formatter` (line 68)
 
 ---
 
@@ -2376,7 +2326,7 @@ This is the refactored version that uses modular component...
 - `is_available` (line 43)
 - `convert_audio_to_text` (line 46)
 - `_convert_with_vosk` (line 53)
-- `update_api` (line 85)
+- `update_api` (line 86)
 
 ---
 
@@ -2395,184 +2345,194 @@ This is the refactored version that uses modular component...
 - `speak_text_streaming` (line 74)
 - `speak_text_non_streaming` (line 90)
 - `_speak_with_espeak` (line 107)
-- `_cleanup_audio_file` (line 128)
-- `_simulate_tts_finished` (line 135)
-- `stop_playback` (line 138)
-- `update_api` (line 147)
-- `update_voice` (line 155)
-- `update_speed` (line 163)
-- `is_coqui_available` (line 172)
-- `get_coqui_models` (line 176)
-- `get_coqui_voices` (line 182)
-- `get_coqui_model_info` (line 188)
-- `load_coqui_model` (line 194)
-- `set_coqui_model` (line 200)
+- `_simulate_tts_finished` (line 130)
+- `stop_playback` (line 133)
+- `update_api` (line 142)
+- `update_voice` (line 150)
+- `update_speed` (line 158)
+- `is_coqui_available` (line 167)
+- `get_coqui_models` (line 171)
+- `get_coqui_voices` (line 177)
+- `get_coqui_model_info` (line 183)
+- `load_coqui_model` (line 189)
+- `set_coqui_model` (line 195)
 
 ---
 
 ### `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.CoquiTTSService`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py`
-- **Line:** 345
+- **Line:** 355
 - **Bases:** QObject
 - **Docstring:** Advanced TTS service using Coqui TTS library with streaming support...
 
 **Methods:**
-- `__init__` (line 357)
-- `_initialize_service` (line 377)
-- `_load_default_model` (line 391)
-- `_load_available_voices` (line 422)
-- `is_available` (line 438)
-- `_get_tts_model_cache_dirs` (line 442)
-- `_model_name_to_folder` (line 464)
-- `_is_model_fully_downloaded` (line 467)
-- `get_downloaded_models` (line 483)
-- `is_model_downloaded` (line 498)
-- `get_available_voices` (line 501)
-- `download_model` (line 510)
-- `set_voice` (line 527)
-- `set_speed` (line 537)
-- `set_streaming_volume` (line 542)
-- `speak_text` (line 548)
-- `_speak_text_streaming` (line 574)
-- `_on_streaming_generation_finished` (line 617)
-- `_on_streaming_generation_error` (line 622)
-- `_on_streaming_finished` (line 628)
-- `_on_streaming_error` (line 640)
-- `stop_playback` (line 646)
-- `cleanup` (line 693)
-- `get_model_info` (line 701)
-- `get_model_download_size` (line 741)
-- `get_comprehensive_model_list` (line 766)
-- `get_current_model_info` (line 799)
-- `get_available_models` (line 811)
-- `load_model` (line 833)
-- `is_multi_speaker` (line 888)
-- `get_model_config` (line 921)
-- `_generate_audio` (line 935)
-- `_play_audio` (line 971)
-- `_on_media_status_changed` (line 1004)
-- `_cleanup_audio_file` (line 1013)
-- `refresh_model_list` (line 1022)
+- `__new__` (line 371)
+- `__init__` (line 377)
+- `_initialize_service` (line 407)
+- `_load_default_model` (line 428)
+- `_load_available_voices` (line 456)
+- `is_available` (line 472)
+- `_get_tts_model_cache_dirs` (line 476)
+- `_model_name_to_folder` (line 498)
+- `_is_model_fully_downloaded` (line 501)
+- `get_downloaded_models` (line 517)
+- `is_model_downloaded` (line 532)
+- `is_model_loaded` (line 535)
+- `get_available_voices` (line 544)
+- `download_model` (line 553)
+- `set_voice` (line 570)
+- `set_speed` (line 580)
+- `set_streaming_volume` (line 585)
+- `speak_text` (line 591)
+- `_speak_text_streaming` (line 617)
+- `_on_streaming_generation_finished` (line 660)
+- `_on_streaming_generation_error` (line 665)
+- `_on_streaming_finished` (line 671)
+- `_on_streaming_error` (line 683)
+- `stop_playback` (line 689)
+- `cleanup` (line 736)
+- `clear_model_cache` (line 747)
+- `get_cache_info` (line 756)
+- `get_model_info` (line 769)
+- `get_model_download_size` (line 809)
+- `get_comprehensive_model_list` (line 834)
+- `get_current_model_info` (line 867)
+- `get_available_models` (line 879)
+- `load_model` (line 901)
+- `is_multi_speaker` (line 984)
+- `get_model_config` (line 1017)
+- `_generate_audio` (line 1031)
+- `_play_audio` (line 1067)
+- `_on_media_status_changed` (line 1100)
+- `_cleanup_audio_file` (line 1109)
+- `refresh_model_list` (line 1118)
 
 ---
 
 ### `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.StreamingAudioPlayer`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py`
-- **Line:** 31
+- **Line:** 32
 - **Bases:** QThread
 - **Docstring:** Thread for streaming audio playback...
 
 **Methods:**
-- `__init__` (line 39)
-- `run` (line 54)
-- `_process_audio_chunk` (line 93)
-- `set_volume` (line 149)
-- `add_audio_chunk` (line 153)
-- `end_stream` (line 158)
-- `stop_playback` (line 163)
-- `cleanup` (line 173)
+- `__init__` (line 40)
+- `run` (line 61)
+- `_process_audio_chunk` (line 100)
+- `_emit_audio_level` (line 144)
+- `set_volume` (line 154)
+- `add_audio_chunk` (line 158)
+- `end_stream` (line 163)
+- `stop_playback` (line 168)
+- `cleanup` (line 178)
 
 ---
 
 ### `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.StreamingAudioWorker`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py`
-- **Line:** 201
+- **Line:** 211
 - **Bases:** QObject
 - **Docstring:** Worker for streaming audio generation in a separate thread...
 
 **Methods:**
-- `__init__` (line 210)
-- `run` (line 216)
-- `_split_text_into_sentences` (line 248)
-- `_generate_audio_chunk` (line 275)
-- `_adjust_audio_speed` (line 316)
-- `stop` (line 340)
+- `__init__` (line 220)
+- `run` (line 226)
+- `_split_text_into_sentences` (line 258)
+- `_generate_audio_chunk` (line 285)
+- `_adjust_audio_speed` (line 326)
+- `stop` (line 350)
 
 ---
 
 ### `services\Voice_STT_TTS_SERVICES\voice_process_manager.py.VoiceProcessManager`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\voice_process_manager.py`
-- **Line:** 23
+- **Line:** 24
 - **Bases:** QObject
 - **Docstring:** Manages voice services in a separate process...
 
 **Methods:**
-- `__init__` (line 40)
-- `start_voice_process` (line 51)
-- `stop_voice_process` (line 88)
-- `send_command` (line 126)
-- `_handle_response` (line 144)
-- `is_process_running` (line 180)
-- `get_process_info` (line 184)
+- `__init__` (line 41)
+- `start_voice_process` (line 52)
+- `stop_voice_process` (line 105)
+- `send_command` (line 185)
+- `_handle_response` (line 202)
+- `_handle_monitor_error` (line 241)
+- `is_process_running` (line 249)
+- `get_process_info` (line 255)
 
 ---
 
 ### `services\Voice_STT_TTS_SERVICES\voice_process_manager.py.VoiceProcessMonitor`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\voice_process_manager.py`
-- **Line:** 197
+- **Line:** 272
 - **Bases:** QThread
 - **Docstring:** Thread to monitor responses from the voice process...
 
 **Methods:**
-- `__init__` (line 202)
-- `run` (line 207)
-- `stop` (line 222)
+- `__init__` (line 278)
+- `run` (line 289)
+- `stop` (line 324)
+- `get_stats` (line 339)
 
 ---
 
 ### `services\Voice_STT_TTS_SERVICES\voice_service.py.VoiceService`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\voice_service.py`
-- **Line:** 30
+- **Line:** 31
 - **Bases:** QObject
 - **Docstring:** Main voice service that orchestrates STT and TTS functionality...
 
 **Methods:**
-- `__init__` (line 46)
-- `__del__` (line 128)
-- `start_voice_input` (line 137)
-- `stop_voice_input` (line 174)
-- `_on_recording_timeout` (line 224)
-- `_on_recording_auto_stopped` (line 230)
-- `_on_stt_text_received` (line 236)
-- `_on_stt_error` (line 265)
-- `_on_tts_finished` (line 287)
-- `_on_tts_error` (line 305)
-- `speak_text` (line 318)
-- `speak_text_streaming` (line 347)
-- `speak_text_non_streaming` (line 367)
-- `stop_tts` (line 387)
-- `is_voice_available` (line 393)
-- `update_settings` (line 401)
-- `get_recording_timeout` (line 450)
-- `set_recording_timeout` (line 454)
-- `get_silence_duration` (line 459)
-- `set_silence_duration` (line 463)
-- `get_silence_threshold` (line 468)
-- `set_silence_threshold` (line 472)
-- `set_min_speech_duration` (line 477)
-- `get_min_speech_duration` (line 482)
-- `set_speech_detection_sensitivity` (line 486)
-- `get_speech_detection_sensitivity` (line 508)
-- `set_audio_gate_enabled` (line 517)
-- `get_current_audio_level` (line 522)
-- `set_continuous_voice_mode` (line 526)
-- `is_continuous_voice_mode` (line 531)
-- `get_eq_visualizer` (line 535)
-- `cleanup_on_exit` (line 539)
-- `get_audio_folder_path` (line 548)
-- `list_audio_files` (line 552)
-- `cleanup_old_audio_files` (line 574)
-- `cleanup_all_audio_files` (line 608)
-- `_forward_recording_started` (line 627)
-- `_forward_recording_stopped` (line 635)
-- `_forward_recording_error` (line 643)
-- `_forward_voice_processing_started` (line 651)
+- `__init__` (line 47)
+- `__del__` (line 88)
+- `start_voice_input` (line 97)
+- `stop_voice_input` (line 150)
+- `_on_recording_timeout` (line 227)
+- `_on_recording_auto_stopped` (line 233)
+- `_on_stt_text_received` (line 239)
+- `_on_stt_error` (line 271)
+- `_on_tts_finished` (line 293)
+- `_on_tts_error` (line 311)
+- `speak_text` (line 324)
+- `speak_text_streaming` (line 353)
+- `speak_text_non_streaming` (line 373)
+- `stop_tts` (line 393)
+- `is_voice_available` (line 399)
+- `update_settings` (line 407)
+- `get_recording_timeout` (line 456)
+- `set_recording_timeout` (line 460)
+- `get_silence_duration` (line 465)
+- `set_silence_duration` (line 469)
+- `get_silence_threshold` (line 474)
+- `set_silence_threshold` (line 478)
+- `set_min_speech_duration` (line 483)
+- `get_min_speech_duration` (line 488)
+- `set_speech_detection_sensitivity` (line 492)
+- `get_speech_detection_sensitivity` (line 514)
+- `set_audio_gate_enabled` (line 523)
+- `get_current_audio_level` (line 528)
+- `set_continuous_voice_mode` (line 532)
+- `is_continuous_voice_mode` (line 537)
+- `get_eq_visualizer` (line 541)
+- `cleanup_on_exit` (line 545)
+- `get_audio_folder_path` (line 560)
+- `list_audio_files` (line 564)
+- `cleanup_old_audio_files` (line 586)
+- `cleanup_all_audio_files` (line 620)
+- `_forward_recording_started` (line 639)
+- `_forward_recording_stopped` (line 647)
+- `_forward_recording_error` (line 655)
+- `_forward_voice_processing_started` (line 663)
+- `_cleanup_resources` (line 671)
+- `_reset_error_count` (line 680)
+- `_initialize_services` (line 685)
+- `_connect_signals` (line 764)
 
 ---
 
@@ -2659,45 +2619,46 @@ This is the refactored version that uses modular component...
 ### `services\memory_service.py.LongTermMemoryEntry`
 
 - **File:** `services\memory_service.py`
-- **Line:** 33
+- **Line:** 34
 - **Decorators:** dataclass
 - **Docstring:** Represents a long-term memory entry...
 
 **Methods:**
-- `__post_init__` (line 46)
+- `__post_init__` (line 47)
 
 ---
 
 ### `services\memory_service.py.LongTermMemoryService`
 
 - **File:** `services\memory_service.py`
-- **Line:** 336
+- **Line:** 377
+- **Docstring:** Manages long-term memory storage and retrieval...
 
 **Methods:**
-- `__init__` (line 337)
-- `_load` (line 341)
-- `add_entry` (line 366)
-- `get_entries` (line 378)
-- `_save` (line 382)
-- `update_access_stats` (line 393)
+- `__init__` (line 380)
+- `_load` (line 385)
+- `add_entry` (line 400)
+- `get_entries` (line 410)
+- `_save` (line 420)
+- `update_access_stats` (line 430)
 
 ---
 
 ### `services\memory_service.py.MemoryClassifier`
 
 - **File:** `services\memory_service.py`
-- **Line:** 53
+- **Line:** 54
 - **Docstring:** Intelligent classifier for determining memory type and importance...
 
 **Methods:**
-- `classify_message` (line 91)
+- `classify_message` (line 92)
 
 ---
 
 ### `services\memory_service.py.MemoryEntry`
 
 - **File:** `services\memory_service.py`
-- **Line:** 19
+- **Line:** 20
 - **Decorators:** dataclass
 - **Docstring:** Represents a single memory entry...
 
@@ -2706,149 +2667,132 @@ This is the refactored version that uses modular component...
 ### `services\memory_service.py.MemoryRetriever`
 
 - **File:** `services\memory_service.py`
-- **Line:** 260
-- **Docstring:** Intelligent retriever for finding relevant memories...
+- **Line:** 250
+- **Docstring:** Retrieves relevant memories based on query similarity...
 
 **Methods:**
-- `calculate_relevance` (line 264)
-- `get_relevant_memories` (line 290)
+- `calculate_relevance` (line 254)
+- `get_relevant_memories` (line 304)
 
 ---
 
 ### `services\memory_service.py.MemoryService`
 
 - **File:** `services\memory_service.py`
-- **Line:** 399
+- **Line:** 439
 - **Bases:** QObject
 - **Docstring:** Service for managing LLM memory across conversations...
 
 **Methods:**
-- `__init__` (line 405)
-- `_load_memory` (line 426)
-- `_save_memory` (line 436)
-- `_on_embeddings_updated` (line 444)
-- `add_memory` (line 449)
-- `add_summary` (line 482)
-- `get_relevant_memories` (line 516)
-- `intelligent_add_message` (line 568)
-- `extract_facts_from_message` (line 608)
-- `get_user_info` (line 713)
-- `get_user_name` (line 734)
-- `get_context_messages` (line 742)
-- `summarize_conversation` (line 803)
-- `clear_memory` (line 823)
-- `_verify_memory_files_cleared` (line 870)
-- `delete_memory` (line 905)
-- `get_memory_stats` (line 915)
-- `add_message` (line 941)
-- `add_fact` (line 945)
-- `set_max_context_messages` (line 1013)
-- `search_memories` (line 1022)
-- `clear` (line 1037)
-- `cleanup_memory_entries` (line 1041)
+- `__init__` (line 445)
+- `_load_memory` (line 470)
+- `_save_memory` (line 478)
+- `_on_embeddings_updated` (line 486)
+- `add_memory` (line 494)
+- `add_summary` (line 525)
+- `get_relevant_memories` (line 543)
+- `intelligent_add_message` (line 595)
+- `extract_facts_from_message` (line 641)
+- `get_user_info` (line 670)
+- `get_user_name` (line 685)
+- `get_context_messages` (line 694)
+- `summarize_conversation` (line 721)
+- `clear_memory` (line 738)
+- `_verify_memory_files_cleared` (line 763)
+- `delete_memory` (line 782)
+- `get_memory_stats` (line 793)
+- `add_message` (line 847)
+- `add_fact` (line 854)
+- `set_max_context_messages` (line 871)
+- `search_memories` (line 880)
+- `clear` (line 909)
+- `cleanup_memory_entries` (line 916)
 
 ---
 
 ### `services\memory_service.py.PronounNormalizer`
 
 - **File:** `services\memory_service.py`
-- **Line:** 150
+- **Line:** 161
 - **Docstring:** Normalizes pronouns in user messages to avoid AI confusion...
 
 **Methods:**
-- `normalize_pronouns` (line 180)
-- `should_normalize` (line 241)
+- `normalize_pronouns` (line 191)
+- `should_normalize` (line 226)
 
 ---
 
 ### `services\memory_service.py.ShortTermMemoryService`
 
 - **File:** `services\memory_service.py`
-- **Line:** 305
+- **Line:** 323
+- **Docstring:** Manages short-term memory (recent conversation context)...
 
 **Methods:**
-- `__init__` (line 306)
-- `_load` (line 311)
-- `add_message` (line 319)
-- `get_messages` (line 324)
-- `clear` (line 326)
-- `_save` (line 329)
+- `__init__` (line 326)
+- `_load` (line 332)
+- `add_message` (line 345)
+- `get_messages` (line 355)
+- `clear` (line 359)
+- `_save` (line 367)
 
 ---
 
 ### `services\ollama_service.py.OllamaService`
 
 - **File:** `services\ollama_service.py`
-- **Line:** 18
+- **Line:** 20
 - **Bases:** QObject
 - **Docstring:** Service for handling all Ollama API communication...
 
 **Methods:**
-- `__init__` (line 28)
-- `get_models` (line 34)
-- `test_connection` (line 69)
-- `send_chat_message` (line 77)
-- `pull_model` (line 160)
-- `_pull_model_thread` (line 172)
-- `remove_model` (line 201)
-- `_remove_model_thread` (line 209)
-- `update_model` (line 232)
-- `_update_model_thread` (line 240)
-- `_extract_system_prompt` (line 263)
-- `_build_session_commands` (line 270)
-- `cancel_request` (line 301)
-- `reset_cancellation` (line 305)
-- `is_connected` (line 309)
+- `__init__` (line 30)
+- `get_models` (line 41)
+- `test_connection` (line 90)
+- `send_chat_message` (line 102)
+- `pull_model` (line 219)
+- `_pull_model_thread` (line 231)
+- `remove_model` (line 267)
+- `_remove_model_thread` (line 279)
+- `update_model` (line 315)
+- `_update_model_thread` (line 327)
+- `_extract_system_prompt` (line 363)
+- `_build_session_commands` (line 372)
+- `cancel_request` (line 388)
+- `reset_cancellation` (line 396)
+- `is_connected` (line 404)
 
 ---
 
 ### `services\semantic_search_service.py.SemanticSearchService`
 
 - **File:** `services\semantic_search_service.py`
-- **Line:** 31
+- **Line:** 32
 - **Bases:** QObject
 - **Docstring:** Service for semantic memory retrieval using vector embeddings...
 
 **Methods:**
-- `__init__` (line 37)
-- `_init_model` (line 55)
-- `_load_embeddings` (line 69)
-- `_save_embeddings` (line 103)
-- `add_memory` (line 137)
-- `remove_memory` (line 184)
-- `search_semantic` (line 207)
-- `search_hybrid` (line 270)
-- `update_memory_importance` (line 356)
-- `get_memory_stats` (line 377)
-- `clear_all` (line 418)
-- `is_ready` (line 439)
+- `__init__` (line 38)
+- `_init_model` (line 56)
+- `_load_embeddings` (line 70)
+- `_save_embeddings` (line 104)
+- `add_memory` (line 138)
+- `remove_memory` (line 192)
+- `search_semantic` (line 221)
+- `search_hybrid` (line 274)
+- `update_memory_importance` (line 353)
+- `get_memory_stats` (line 380)
+- `clear_all` (line 427)
+- `is_ready` (line 454)
 
 ---
 
 ### `services\semantic_search_service.py.VectorizedMemory`
 
 - **File:** `services\semantic_search_service.py`
-- **Line:** 20
+- **Line:** 21
 - **Decorators:** dataclass
 - **Docstring:** Represents a memory entry with its vector embedding...
-
----
-
-### `services\start_up\check_dependencies.py.DependencyManager`
-
-- **File:** `services\start_up\check_dependencies.py`
-- **Line:** 24
-
-**Methods:**
-- `__init__` (line 25)
-- `test_import` (line 31)
-- `run_pip_command` (line 47)
-- `check_core_dependencies` (line 72)
-- `check_ml_dependencies` (line 116)
-- `check_package_versions` (line 151)
-- `generate_fix_plan` (line 204)
-- `execute_fix_plan` (line 298)
-- `run_comprehensive_check` (line 332)
 
 ---
 
@@ -2917,15 +2861,17 @@ This is the refactored version that uses modular component...
 ### `services\worker\worker.py.Worker`
 
 - **File:** `services\worker\worker.py`
-- **Line:** 6
+- **Line:** 10
 - **Bases:** QObject
 
 **Methods:**
-- `__init__` (line 11)
-- `run` (line 16)
-- `stop` (line 31)
-- `is_running` (line 38)
-- `run_stream` (line 44)
+- `__init__` (line 16)
+- `_log_thread_info` (line 28)
+- `run` (line 35)
+- `stop` (line 66)
+- `is_running` (line 88)
+- `run_stream` (line 94)
+- `get_stats` (line 197)
 
 ---
 
@@ -3363,82 +3309,6 @@ Thi...
 
 ---
 
-### `ui\chat_tab.py.ChatTab`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 37
-- **Bases:** QWidget
-- **Docstring:** Main chat interface tab...
-
-**Methods:**
-- `__init__` (line 51)
-- `setup_ui` (line 99)
-- `setup_eq_visualizers` (line 235)
-- `setup_chat_display` (line 249)
-- `chat_display_mouse_move_event` (line 285)
-- `show_edit_button` (line 311)
-- `hide_edit_button` (line 346)
-- `edit_message_at_index` (line 354)
-- `setup_controls` (line 365)
-- `setup_streaming_handler` (line 632)
-- `setup_connections` (line 638)
-- `switch_to_eq_visualizer` (line 700)
-- `switch_to_chat_display` (line 797)
-- `update_eq_visualizer` (line 893)
-- `on_audio_level_changed` (line 1005)
-- `on_temperature_changed` (line 1074)
-- `update_model_list` (line 1079)
-- `update_personality_list` (line 1091)
-- `on_personality_combo_changed` (line 1103)
-- `on_personality_changed` (line 1108)
-- `on_model_changed` (line 1113)
-- `get_current_model` (line 1118)
-- `get_temperature` (line 1122)
-- `get_current_response` (line 1126)
-- `get_current_personality` (line 1130)
-- `get_ai_name` (line 1134)
-- `clear_chat` (line 1141)
-- `save_chat` (line 1148)
-- `load_chat` (line 1178)
-- `load_conversation` (line 1187)
-- `refresh_navigation` (line 1233)
-- `set_current_conversation_file` (line 1238)
-- `on_message_cancelled` (line 1243)
-- `force_enable_send_button` (line 1249)
-- `set_input_mode` (line 1261)
-- `open_tts_settings` (line 1297)
-- `on_tts_settings_changed` (line 1304)
-- `show_message_edit_dialog` (line 1313)
-- `save_message_edit` (line 1403)
-- `on_message_edited` (line 1419)
-- `is_eq_visualizer_active` (line 1424)
-- `update_eq_visualizer_mode` (line 1431)
-- `toggle_voice_mode` (line 1461)
-- `_reset_voice_button` (line 1492)
-- `on_voice_input_received` (line 1507)
-- `on_voice_input_error` (line 1528)
-- `on_tts_started` (line 1545)
-- `on_tts_finished` (line 1549)
-- `on_tts_error` (line 1553)
-- `on_recording_started` (line 1558)
-- `on_recording_stopped` (line 1579)
-- `on_recording_error` (line 1593)
-- `on_voice_processing_started` (line 1609)
-- `on_voice_processing_finished` (line 1615)
-- `speak_ai_response` (line 1620)
-- `open_voice_settings` (line 1634)
-- `on_voice_settings_changed` (line 1653)
-- `send_message` (line 1666)
-- `cancel_message` (line 1684)
-- `append_to_chat` (line 1689)
-- `append_response_chunk` (line 1709)
-- `start_streaming` (line 1725)
-- `stop_streaming` (line 1743)
-- `enforce_voice_mode_ui` (line 1764)
-- `eventFilter` (line 1773)
-
----
-
 ### `ui\styles\message_formatter.py.MessageFormatter`
 
 - **File:** `ui\styles\message_formatter.py`
@@ -3450,12 +3320,13 @@ Thi...
 - `detect_code_type` (line 48)
 - `syntax_highlight_code` (line 60)
 - `detect_and_format_code` (line 97)
-- `format_markdown` (line 133)
-- `handle_html_tags` (line 214)
-- `cleanup_message` (line 253)
-- `format_chat_message` (line 281)
-- `split_thoughts_and_answer` (line 318)
-- `to_plain_text` (line 334)
+- `_protect_code_blocks` (line 133)
+- `format_markdown` (line 149)
+- `handle_html_tags` (line 221)
+- `cleanup_message` (line 250)
+- `format_chat_message` (line 278)
+- `split_thoughts_and_answer` (line 315)
+- `to_plain_text` (line 331)
 
 ---
 
@@ -3519,42 +3390,42 @@ Thi...
 - `on_model_changed` (line 367)
 - `on_eq_mode_changed` (line 372)
 - `on_voice_input_received` (line 380)
-- `on_voice_input_error` (line 393)
-- `on_tts_started` (line 398)
-- `on_tts_finished` (line 408)
-- `on_tts_error` (line 434)
-- `on_recording_started` (line 438)
-- `on_recording_stopped` (line 442)
-- `on_recording_error` (line 446)
-- `on_voice_processing_started` (line 450)
-- `on_voice_processing_finished` (line 454)
-- `on_audio_level_changed` (line 458)
-- `on_message_edited` (line 470)
-- `get_ai_name` (line 476)
-- `get_current_personality` (line 483)
-- `get_current_model` (line 487)
-- `get_temperature` (line 491)
-- `get_current_response` (line 495)
-- `append_to_chat` (line 499)
-- `append_response_chunk` (line 508)
-- `_append_response_chunk_safe` (line 514)
-- `start_streaming` (line 532)
-- `_start_streaming_safe` (line 538)
-- `stop_streaming` (line 567)
-- `_stop_streaming_safe` (line 573)
-- `force_enable_send_button` (line 605)
-- `_force_enable_send_button_safe` (line 611)
-- `clear_chat` (line 633)
-- `update_model_list` (line 637)
-- `update_personality_list` (line 641)
-- `speak_ai_response` (line 645)
-- `open_voice_settings` (line 649)
-- `on_voice_settings_changed` (line 667)
-- `load_conversation` (line 677)
-- `refresh_navigation` (line 724)
-- `set_current_conversation_file` (line 729)
-- `get_streaming_handler` (line 734)
-- `streaming_handler` (line 739)
+- `on_voice_input_error` (line 396)
+- `on_tts_started` (line 401)
+- `on_tts_finished` (line 411)
+- `on_tts_error` (line 437)
+- `on_recording_started` (line 441)
+- `on_recording_stopped` (line 445)
+- `on_recording_error` (line 449)
+- `on_voice_processing_started` (line 453)
+- `on_voice_processing_finished` (line 457)
+- `on_audio_level_changed` (line 461)
+- `on_message_edited` (line 473)
+- `get_ai_name` (line 479)
+- `get_current_personality` (line 486)
+- `get_current_model` (line 490)
+- `get_temperature` (line 494)
+- `get_current_response` (line 498)
+- `append_to_chat` (line 502)
+- `append_response_chunk` (line 511)
+- `_append_response_chunk_safe` (line 517)
+- `start_streaming` (line 535)
+- `_start_streaming_safe` (line 541)
+- `stop_streaming` (line 570)
+- `_stop_streaming_safe` (line 576)
+- `force_enable_send_button` (line 608)
+- `_force_enable_send_button_safe` (line 614)
+- `clear_chat` (line 636)
+- `update_model_list` (line 640)
+- `update_personality_list` (line 644)
+- `speak_ai_response` (line 648)
+- `open_voice_settings` (line 652)
+- `on_voice_settings_changed` (line 670)
+- `load_conversation` (line 680)
+- `refresh_navigation` (line 727)
+- `set_current_conversation_file` (line 732)
+- `get_streaming_handler` (line 737)
+- `streaming_handler` (line 742)
 
 ---
 
@@ -3619,68 +3490,79 @@ Thi...
 
 **Methods:**
 - `__init__` (line 32)
-- `setup_ui_components` (line 87)
-- `setup_connections` (line 171)
-- `toggle_voice_mode` (line 200)
-- `_start_continuous_voice_mode` (line 252)
-- `_handle_voice_input_safe` (line 269)
-- `_handle_tts_finished_continuous` (line 286)
-- `_restart_voice_input` (line 296)
-- `_reset_voice_button` (line 310)
-- `on_voice_input_received` (line 332)
-- `on_voice_input_error` (line 340)
-- `_handle_voice_input_error_safe` (line 347)
-- `on_tts_started` (line 362)
-- `on_tts_finished` (line 367)
-- `on_tts_error` (line 378)
-- `on_recording_started` (line 383)
-- `_handle_recording_started_safe` (line 390)
-- `on_recording_stopped` (line 411)
-- `_handle_recording_stopped_safe` (line 418)
-- `on_recording_error` (line 432)
-- `_handle_recording_error_safe` (line 439)
-- `on_voice_processing_started` (line 454)
-- `on_voice_processing_finished` (line 461)
-- `on_audio_level_changed` (line 467)
-- `_update_audio_level_ui_safe` (line 477)
-- `speak_ai_response` (line 536)
-- `update_voice_settings` (line 547)
-- `get_voice_settings` (line 556)
-- `is_voice_mode_active` (line 560)
-- `is_tts_playing` (line 564)
-- `get_ui_components` (line 574)
+- `setup_ui_components` (line 112)
+- `_update_voice_state` (line 196)
+- `is_voice_busy` (line 201)
+- `_handle_voice_crash` (line 206)
+- `_attempt_recovery` (line 219)
+- `_stop_all_voice_operations` (line 229)
+- `_reset_voice_ui` (line 240)
+- `_reinitialize_voice_service` (line 251)
+- `_disable_voice_features` (line 259)
+- `_reset_error_count` (line 268)
+- `_handle_service_error` (line 272)
+- `setup_connections` (line 284)
+- `toggle_voice_mode` (line 314)
+- `_start_continuous_voice_mode` (line 366)
+- `_handle_voice_input_safe` (line 383)
+- `_handle_tts_finished_continuous` (line 400)
+- `_restart_voice_input` (line 410)
+- `_reset_voice_button` (line 424)
+- `on_voice_input_received` (line 446)
+- `on_voice_input_error` (line 454)
+- `_handle_voice_input_error_safe` (line 464)
+- `on_tts_started` (line 479)
+- `on_tts_finished` (line 484)
+- `on_tts_error` (line 495)
+- `_handle_tts_error_safe` (line 505)
+- `on_recording_started` (line 509)
+- `_handle_recording_started_safe` (line 516)
+- `on_recording_stopped` (line 537)
+- `_handle_recording_stopped_safe` (line 544)
+- `on_recording_error` (line 558)
+- `_handle_recording_error_safe` (line 565)
+- `on_voice_processing_started` (line 580)
+- `on_voice_processing_finished` (line 587)
+- `on_audio_level_changed` (line 593)
+- `_update_audio_level_ui_safe` (line 603)
+- `speak_ai_response` (line 662)
+- `update_voice_settings` (line 673)
+- `get_voice_settings` (line 682)
+- `is_voice_mode_active` (line 686)
+- `is_tts_playing` (line 690)
+- `get_ui_components` (line 700)
 
 ---
 
 ### `ui\tabs\memory_tab.py.MemoryTab`
 
 - **File:** `ui\tabs\memory_tab.py`
-- **Line:** 18
+- **Line:** 20
 - **Bases:** QWidget
 - **Docstring:** Memory management tab for LLM memory settings and overview...
 
 **Methods:**
-- `__init__` (line 21)
-- `setup_ui` (line 28)
-- `create_settings_tab` (line 54)
-- `create_overview_tab` (line 114)
-- `create_memories_tab` (line 174)
-- `create_summaries_tab` (line 239)
-- `setup_connections` (line 269)
-- `update_context_messages` (line 293)
-- `refresh_data` (line 298)
-- `refresh_overview` (line 304)
-- `refresh_memories` (line 363)
-- `refresh_summaries` (line 394)
-- `search_memories` (line 407)
-- `show_memory_details` (line 429)
-- `show_summary_details` (line 450)
-- `summarize_current_conversation` (line 466)
-- `set_conversation_service` (line 472)
-- `_summarize_with_service` (line 479)
-- `clear_all_memories` (line 500)
-- `cleanup_memory_entries` (line 513)
-- `delete_selected_memory` (line 529)
+- `__init__` (line 23)
+- `setup_ui` (line 30)
+- `create_settings_tab` (line 56)
+- `create_overview_tab` (line 116)
+- `create_memories_tab` (line 176)
+- `create_summaries_tab` (line 241)
+- `setup_connections` (line 271)
+- `update_context_messages` (line 295)
+- `refresh_data` (line 300)
+- `refresh_overview` (line 306)
+- `refresh_memories` (line 362)
+- `refresh_summaries` (line 393)
+- `search_memories` (line 406)
+- `show_memory_details` (line 428)
+- `show_summary_details` (line 462)
+- `summarize_current_conversation` (line 478)
+- `set_conversation_service` (line 484)
+- `_summarize_with_service` (line 491)
+- `clear_all_memories` (line 512)
+- `cleanup_memory_entries` (line 525)
+- `delete_selected_memory` (line 541)
 
 ---
 
@@ -3810,31 +3692,75 @@ This class provides enhanced logging functionality wit...
 ### `utils\Logging\logging_helpers.py.LoggingHelpers`
 
 - **File:** `utils\Logging\logging_helpers.py`
-- **Line:** 14
-- **Docstring:** Centralized logging utilities for consistent log formatting...
+- **Line:** 19
+- **Docstring:** Centralized logging helper methods for consistent logging across the application...
 
 **Methods:**
-- `log_message_sent` (line 18)
-- `log_message_sent_end` (line 24)
-- `log_fact_storage_start` (line 29)
-- `log_fact_storage_end` (line 35)
-- `log_fact_extraction_start` (line 40)
-- `log_fact_extraction_end` (line 47)
-- `log_memory_result` (line 52)
-- `log_memory_ltm_status` (line 57)
-- `log_fact_processing` (line 65)
-- `log_fact_skipped` (line 72)
-- `log_fact_storage_summary` (line 80)
-- `log_fact_extraction_result` (line 85)
-- `log_llm_call` (line 95)
-- `log_llm_response` (line 101)
-- `log_json_extraction` (line 107)
-- `log_json_parsing_success` (line 112)
-- `log_json_parsing_error` (line 122)
-- `log_conversation_detection` (line 130)
-- `log_context_messages` (line 136)
-- `log_error` (line 145)
-- `log_debug` (line 151)
+- `log_exception_with_context` (line 23)
+- `log_warning_with_context` (line 30)
+- `log_info_with_context` (line 36)
+- `log_debug` (line 42)
+- `log_error` (line 47)
+- `log_network_request` (line 52)
+- `log_file_operation` (line 62)
+- `log_audio_operation` (line 70)
+- `log_memory_operation` (line 78)
+- `log_ui_operation` (line 86)
+- `log_performance_metric` (line 94)
+- `log_json_parsing_error` (line 100)
+- `log_json_parsing_success` (line 106)
+- `log_critical_error` (line 111)
+- `log_fact_extraction_start` (line 118)
+- `log_fact_extraction_end` (line 123)
+- `log_fact_extraction_result` (line 128)
+- `log_fact_processing` (line 133)
+- `log_fact_storage_start` (line 138)
+- `log_fact_storage_end` (line 143)
+- `log_fact_storage_summary` (line 148)
+- `log_fact_skipped` (line 153)
+- `log_memory_result` (line 158)
+- `log_memory_ltm_status` (line 163)
+- `log_llm_call` (line 168)
+- `log_llm_response` (line 173)
+- `log_json_extraction` (line 178)
+- `log_message_sent` (line 183)
+- `log_message_sent_end` (line 188)
+- `log_conversation_detection` (line 193)
+- `log_service_initialization` (line 198)
+
+---
+
+### `utils\Logging\logging_helpers.py.ThreadMonitor`
+
+- **File:** `utils\Logging\logging_helpers.py`
+- **Line:** 207
+- **Bases:** QObject
+- **Docstring:** Monitor for tracking QThread lifecycle and debugging thread issues...
+
+**Methods:**
+- `__init__` (line 214)
+- `register_thread` (line 222)
+- `unregister_thread` (line 252)
+- `_on_thread_started` (line 272)
+- `_on_thread_finished` (line 284)
+- `get_thread_info` (line 298)
+- `get_all_threads` (line 302)
+- `get_thread_history` (line 306)
+- `get_thread_stats` (line 310)
+- `cleanup` (line 350)
+
+---
+
+### `utils\Logging\logging_helpers.py.ThreadSafeLogger`
+
+- **File:** `utils\Logging\logging_helpers.py`
+- **Line:** 370
+- **Docstring:** Thread-safe logging utilities...
+
+**Methods:**
+- `log_thread_context` (line 374)
+- `log_thread_safety_check` (line 392)
+- `log_thread_operation` (line 407)
 
 ---
 
@@ -3901,6 +3827,23 @@ This class provides enhanced logging functionality wit...
 
 ---
 
+### `utils\error_handler.py.ErrorHandler`
+
+- **File:** `utils\error_handler.py`
+- **Line:** 20
+- **Docstring:** Centralized error handling utilities...
+
+**Methods:**
+- `safe_execute` (line 24)
+- `retry_on_failure` (line 49)
+- `handle_network_errors` (line 91)
+- `handle_file_operations` (line 125)
+- `handle_audio_operations` (line 159)
+- `handle_memory_operations` (line 182)
+- `handle_ui_operations` (line 205)
+
+---
+
 ### `utils\internet_connection.py.InternetConnectionTester`
 
 - **File:** `utils\internet_connection.py`
@@ -3946,31 +3889,30 @@ Tests multiple reliable endpoints to determine i...
 ### `utils\streaming_handler.py.StreamingHandler`
 
 - **File:** `utils\streaming_handler.py`
-- **Line:** 15
+- **Line:** 17
 - **Bases:** QObject
 - **Docstring:** Handles streaming response processing and display updates...
 
 **Methods:**
-- `__init__` (line 21)
-- `_get_next_message_id` (line 34)
-- `append_message` (line 39)
-- `start_streaming_message` (line 55)
-- `edit_message` (line 69)
-- `get_message_by_id` (line 82)
-- `get_editable_messages` (line 89)
-- `get_messages` (line 102)
-- `update_streaming_message` (line 106)
-- `_flush_stream_buffer` (line 115)
-- `finalize_streaming_message` (line 133)
-- `update_last_system_switch` (line 154)
-- `_render_chat_display` (line 163)
-- `_render_chat_display_safe` (line 169)
-- `_on_message_edited` (line 305)
-- `_on_message_edit_cancelled` (line 311)
-- `remove_streaming_placeholder` (line 316)
-- `cleanup` (line 325)
-- `clear_chat` (line 330)
-- `update_ai_name` (line 336)
+- `__init__` (line 23)
+- `_get_next_message_id` (line 36)
+- `_flush_stream_buffer` (line 41)
+- `append_message` (line 60)
+- `start_streaming_message` (line 76)
+- `edit_message` (line 90)
+- `get_message_by_id` (line 103)
+- `get_editable_messages` (line 110)
+- `get_messages` (line 123)
+- `_render_chat_display` (line 127)
+- `_render_chat_display_safe` (line 133)
+- `_safe_ui_update` (line 279)
+- `update_streaming_message` (line 298)
+- `finalize_streaming_message` (line 320)
+- `update_last_system_switch` (line 349)
+- `remove_streaming_placeholder` (line 366)
+- `cleanup` (line 384)
+- `clear_chat` (line 396)
+- `update_ai_name` (line 408)
 
 ---
 
@@ -3987,7 +3929,7 @@ Tests multiple reliable endpoints to determine i...
 ### `MainApp\app_lifecycle.py.check_ollama_connection`
 
 - **File:** `MainApp\app_lifecycle.py`
-- **Line:** 155
+- **Line:** 158
 - **Arguments:** self
 - **Docstring:** Check if Ollama is running and accessible...
 
@@ -3996,7 +3938,7 @@ Tests multiple reliable endpoints to determine i...
 ### `MainApp\app_lifecycle.py.get_ollama_error_shown`
 
 - **File:** `MainApp\app_lifecycle.py`
-- **Line:** 168
+- **Line:** 171
 - **Arguments:** self
 - **Returns:** bool
 - **Docstring:** Get the Ollama error shown flag...
@@ -4033,7 +3975,7 @@ Tests multiple reliable endpoints to determine i...
 ### `MainApp\app_lifecycle.py.is_initialization_complete`
 
 - **File:** `MainApp\app_lifecycle.py`
-- **Line:** 160
+- **Line:** 163
 - **Arguments:** self
 - **Returns:** bool
 - **Docstring:** Check if initialization is complete...
@@ -4043,7 +3985,7 @@ Tests multiple reliable endpoints to determine i...
 ### `MainApp\app_lifecycle.py.set_ollama_error_shown`
 
 - **File:** `MainApp\app_lifecycle.py`
-- **Line:** 164
+- **Line:** 167
 - **Arguments:** self, shown
 - **Docstring:** Set the Ollama error shown flag...
 
@@ -4052,7 +3994,7 @@ Tests multiple reliable endpoints to determine i...
 ### `MainApp\app_lifecycle.py.show_initialization_error`
 
 - **File:** `MainApp\app_lifecycle.py`
-- **Line:** 105
+- **Line:** 108
 - **Arguments:** self, error_message
 - **Docstring:** Show initialization error dialog...
 
@@ -4061,7 +4003,7 @@ Tests multiple reliable endpoints to determine i...
 ### `MainApp\app_lifecycle.py.show_ollama_connection_error`
 
 - **File:** `MainApp\app_lifecycle.py`
-- **Line:** 116
+- **Line:** 119
 - **Arguments:** self, context, force_show
 - **Docstring:** Show a user-friendly error dialog when Ollama is not running...
 
@@ -4070,7 +4012,7 @@ Tests multiple reliable endpoints to determine i...
 ### `MainApp\event_handler.py.__init__`
 
 - **File:** `MainApp\event_handler.py`
-- **Line:** 14
+- **Line:** 15
 - **Arguments:** self, main_window, service_manager, ui_manager, chat_controller
 
 ---
@@ -4078,7 +4020,7 @@ Tests multiple reliable endpoints to determine i...
 ### `MainApp\event_handler.py._check_ollama_connection`
 
 - **File:** `MainApp\event_handler.py`
-- **Line:** 695
+- **Line:** 870
 - **Arguments:** self
 - **Docstring:** Check if Ollama is running and accessible...
 
@@ -4087,7 +4029,7 @@ Tests multiple reliable endpoints to determine i...
 ### `MainApp\event_handler.py._cleanup_worker_thread`
 
 - **File:** `MainApp\event_handler.py`
-- **Line:** 372
+- **Line:** 473
 - **Arguments:** self
 - **Docstring:** Clean up worker thread safely in the main thread...
 
@@ -4096,7 +4038,7 @@ Tests multiple reliable endpoints to determine i...
 ### `MainApp\event_handler.py._cleanup_worker_thread_once`
 
 - **File:** `MainApp\event_handler.py`
-- **Line:** 383
+- **Line:** 485
 - **Arguments:** self
 - **Docstring:** Clean up worker thread once without recursion...
 
@@ -4105,7 +4047,7 @@ Tests multiple reliable endpoints to determine i...
 ### `MainApp\event_handler.py._connect_menu_actions`
 
 - **File:** `MainApp\event_handler.py`
-- **Line:** 90
+- **Line:** 91
 - **Arguments:** self
 - **Docstring:** Connect menu actions to their handlers...
 
@@ -4114,7 +4056,7 @@ Tests multiple reliable endpoints to determine i...
 ### `MainApp\event_handler.py._create_chat_controller`
 
 - **File:** `MainApp\event_handler.py`
-- **Line:** 618
+- **Line:** 793
 - **Arguments:** self
 - **Docstring:** Create a new chat controller with current services...
 
@@ -4123,16 +4065,25 @@ Tests multiple reliable endpoints to determine i...
 ### `MainApp\event_handler.py._create_worker_thread`
 
 - **File:** `MainApp\event_handler.py`
-- **Line:** 286
+- **Line:** 287
 - **Arguments:** self, context_messages, chosen_model, temperature
 - **Docstring:** Create and start worker thread for Ollama communication...
+
+---
+
+### `MainApp\event_handler.py._final_worker_cleanup`
+
+- **File:** `MainApp\event_handler.py`
+- **Line:** 559
+- **Arguments:** self
+- **Docstring:** Final cleanup to ensure worker thread is properly destroyed...
 
 ---
 
 ### `MainApp\event_handler.py._handle_tts_finished_delayed`
 
 - **File:** `MainApp\event_handler.py`
-- **Line:** 355
+- **Line:** 452
 - **Arguments:** self
 - **Docstring:** Handle TTS finished with a delay to ensure proper coordination...
 
@@ -4141,7 +4092,7 @@ Tests multiple reliable endpoints to determine i...
 ### `MainApp\event_handler.py._on_clear_chat`
 
 - **File:** `MainApp\event_handler.py`
-- **Line:** 568
+- **Line:** 743
 - **Arguments:** self
 - **Docstring:** Clear the chat display...
 
@@ -4150,7 +4101,7 @@ Tests multiple reliable endpoints to determine i...
 ### `MainApp\event_handler.py._on_conversation_deleted`
 
 - **File:** `MainApp\event_handler.py`
-- **Line:** 470
+- **Line:** 645
 - **Arguments:** self, filepath
 - **Docstring:** Handle conversation deletion from navigation...
 
@@ -4159,7 +4110,7 @@ Tests multiple reliable endpoints to determine i...
 ### `MainApp\event_handler.py._on_conversation_metadata_updated`
 
 - **File:** `MainApp\event_handler.py`
-- **Line:** 541
+- **Line:** 716
 - **Arguments:** self
 - **Docstring:** Handle conversation metadata updates...
 
@@ -4168,7 +4119,7 @@ Tests multiple reliable endpoints to determine i...
 ### `MainApp\event_handler.py._on_conversation_renamed`
 
 - **File:** `MainApp\event_handler.py`
-- **Line:** 474
+- **Line:** 649
 - **Arguments:** self, old_filepath, new_filepath
 - **Docstring:** Handle conversation rename from AI naming...
 
@@ -4177,7 +4128,7 @@ Tests multiple reliable endpoints to determine i...
 ### `MainApp\event_handler.py._on_conversation_selected`
 
 - **File:** `MainApp\event_handler.py`
-- **Line:** 462
+- **Line:** 637
 - **Arguments:** self, filepath
 - **Docstring:** Handle conversation selection from navigation...
 
@@ -4186,7 +4137,7 @@ Tests multiple reliable endpoints to determine i...
 ### `MainApp\event_handler.py._on_conversation_updated`
 
 - **File:** `MainApp\event_handler.py`
-- **Line:** 141
+- **Line:** 142
 - **Arguments:** self
 - **Docstring:** Handle conversation updates from controller...
 
@@ -4195,7 +4146,7 @@ Tests multiple reliable endpoints to determine i...
 ### `MainApp\event_handler.py._on_delayed_model_update`
 
 - **File:** `MainApp\event_handler.py`
-- **Line:** 679
+- **Line:** 854
 - **Arguments:** self
 - **Docstring:** Delayed model update to ensure UI is ready...
 
@@ -4204,7 +4155,7 @@ Tests multiple reliable endpoints to determine i...
 ### `MainApp\event_handler.py._on_error_occurred`
 
 - **File:** `MainApp\event_handler.py`
-- **Line:** 136
+- **Line:** 137
 - **Arguments:** self, error_message
 - **Docstring:** Handle errors from controller...
 
@@ -4213,7 +4164,7 @@ Tests multiple reliable endpoints to determine i...
 ### `MainApp\event_handler.py._on_load_chat`
 
 - **File:** `MainApp\event_handler.py`
-- **Line:** 585
+- **Line:** 760
 - **Arguments:** self
 - **Docstring:** Load a chat from a file...
 
@@ -4222,7 +4173,7 @@ Tests multiple reliable endpoints to determine i...
 ### `MainApp\event_handler.py._on_message_cancelled`
 
 - **File:** `MainApp\event_handler.py`
-- **Line:** 445
+- **Line:** 610
 - **Arguments:** self
 - **Docstring:** Handle message cancellation...
 
@@ -4231,7 +4182,7 @@ Tests multiple reliable endpoints to determine i...
 ### `MainApp\event_handler.py._on_message_finished`
 
 - **File:** `MainApp\event_handler.py`
-- **Line:** 436
+- **Line:** 601
 - **Arguments:** self
 - **Docstring:** Handle message finished...
 
@@ -4240,7 +4191,7 @@ Tests multiple reliable endpoints to determine i...
 ### `MainApp\event_handler.py._on_message_sent`
 
 - **File:** `MainApp\event_handler.py`
-- **Line:** 186
+- **Line:** 187
 - **Arguments:** self, message
 - **Docstring:** Handle new message sent from chat tab...
 
@@ -4249,7 +4200,7 @@ Tests multiple reliable endpoints to determine i...
 ### `MainApp\event_handler.py._on_model_operation_error`
 
 - **File:** `MainApp\event_handler.py`
-- **Line:** 527
+- **Line:** 702
 - **Arguments:** self, error
 - **Docstring:** Handle model operation errors...
 
@@ -4258,7 +4209,7 @@ Tests multiple reliable endpoints to determine i...
 ### `MainApp\event_handler.py._on_model_operation_progress`
 
 - **File:** `MainApp\event_handler.py`
-- **Line:** 521
+- **Line:** 696
 - **Arguments:** self, message
 - **Docstring:** Handle model operation progress...
 
@@ -4267,7 +4218,7 @@ Tests multiple reliable endpoints to determine i...
 ### `MainApp\event_handler.py._on_models_updated`
 
 - **File:** `MainApp\event_handler.py`
-- **Line:** 172
+- **Line:** 173
 - **Arguments:** self, models
 - **Docstring:** Handle model list updates...
 
@@ -4276,7 +4227,7 @@ Tests multiple reliable endpoints to determine i...
 ### `MainApp\event_handler.py._on_name_generation_requested`
 
 - **File:** `MainApp\event_handler.py`
-- **Line:** 147
+- **Line:** 148
 - **Arguments:** self, filepath
 - **Docstring:** Handle name generation request from controller...
 
@@ -4285,7 +4236,7 @@ Tests multiple reliable endpoints to determine i...
 ### `MainApp\event_handler.py._on_new_conversation`
 
 - **File:** `MainApp\event_handler.py`
-- **Line:** 551
+- **Line:** 726
 - **Arguments:** self
 - **Docstring:** Start a new conversation...
 
@@ -4294,7 +4245,7 @@ Tests multiple reliable endpoints to determine i...
 ### `MainApp\event_handler.py._on_new_conversation_requested`
 
 - **File:** `MainApp\event_handler.py`
-- **Line:** 547
+- **Line:** 722
 - **Arguments:** self
 - **Docstring:** Handle new conversation request...
 
@@ -4303,7 +4254,7 @@ Tests multiple reliable endpoints to determine i...
 ### `MainApp\event_handler.py._on_open_settings`
 
 - **File:** `MainApp\event_handler.py`
-- **Line:** 591
+- **Line:** 766
 - **Arguments:** self
 - **Docstring:** Open the settings dialog...
 
@@ -4312,7 +4263,7 @@ Tests multiple reliable endpoints to determine i...
 ### `MainApp\event_handler.py._on_personality_changed`
 
 - **File:** `MainApp\event_handler.py`
-- **Line:** 496
+- **Line:** 671
 - **Arguments:** self, personality_name
 - **Docstring:** Handle personality changes...
 
@@ -4321,7 +4272,7 @@ Tests multiple reliable endpoints to determine i...
 ### `MainApp\event_handler.py._on_refresh_models`
 
 - **File:** `MainApp\event_handler.py`
-- **Line:** 636
+- **Line:** 811
 - **Arguments:** self
 - **Docstring:** Refresh the list of available models...
 
@@ -4330,7 +4281,7 @@ Tests multiple reliable endpoints to determine i...
 ### `MainApp\event_handler.py._on_refresh_personalities`
 
 - **File:** `MainApp\event_handler.py`
-- **Line:** 661
+- **Line:** 836
 - **Arguments:** self
 - **Docstring:** Refresh the list of available personalities...
 
@@ -4339,7 +4290,7 @@ Tests multiple reliable endpoints to determine i...
 ### `MainApp\event_handler.py._on_save_chat`
 
 - **File:** `MainApp\event_handler.py`
-- **Line:** 579
+- **Line:** 754
 - **Arguments:** self
 - **Docstring:** Save the current chat to a file...
 
@@ -4348,7 +4299,7 @@ Tests multiple reliable endpoints to determine i...
 ### `MainApp\event_handler.py._on_show_about`
 
 - **File:** `MainApp\event_handler.py`
-- **Line:** 675
+- **Line:** 850
 - **Arguments:** self
 - **Docstring:** Show about dialog...
 
@@ -4357,7 +4308,7 @@ Tests multiple reliable endpoints to determine i...
 ### `MainApp\event_handler.py._on_status_updated`
 
 - **File:** `MainApp\event_handler.py`
-- **Line:** 132
+- **Line:** 133
 - **Arguments:** self, message
 - **Docstring:** Handle status updates from controller...
 
@@ -4366,7 +4317,7 @@ Tests multiple reliable endpoints to determine i...
 ### `MainApp\event_handler.py._on_tts_finished`
 
 - **File:** `MainApp\event_handler.py`
-- **Line:** 346
+- **Line:** 443
 - **Arguments:** self
 - **Docstring:** Handle TTS completion...
 
@@ -4375,16 +4326,25 @@ Tests multiple reliable endpoints to determine i...
 ### `MainApp\event_handler.py._on_worker_chunk`
 
 - **File:** `MainApp\event_handler.py`
-- **Line:** 322
+- **Line:** 405
 - **Arguments:** self, chunk
 - **Docstring:** Handle worker chunk signal...
+
+---
+
+### `MainApp\event_handler.py._on_worker_detailed_error`
+
+- **File:** `MainApp\event_handler.py`
+- **Line:** 375
+- **Arguments:** self, error_message
+- **Docstring:** Handle detailed worker error with logging...
 
 ---
 
 ### `MainApp\event_handler.py._on_worker_error`
 
 - **File:** `MainApp\event_handler.py`
-- **Line:** 427
+- **Line:** 585
 - **Arguments:** self, error_message
 - **Docstring:** Handle worker error...
 
@@ -4393,16 +4353,25 @@ Tests multiple reliable endpoints to determine i...
 ### `MainApp\event_handler.py._on_worker_finished`
 
 - **File:** `MainApp\event_handler.py`
-- **Line:** 330
+- **Line:** 419
 - **Arguments:** self
 - **Docstring:** Handle worker completion...
+
+---
+
+### `MainApp\event_handler.py._on_worker_thread_finished`
+
+- **File:** `MainApp\event_handler.py`
+- **Line:** 389
+- **Arguments:** self
+- **Docstring:** Handle worker thread finished signal...
 
 ---
 
 ### `MainApp\event_handler.py._send_to_ollama`
 
 - **File:** `MainApp\event_handler.py`
-- **Line:** 202
+- **Line:** 203
 - **Arguments:** self, message, model, temperature
 - **Docstring:** Send message to Ollama and handle response asynchronously...
 
@@ -4411,7 +4380,7 @@ Tests multiple reliable endpoints to determine i...
 ### `MainApp\event_handler.py._setup_ui_with_new_services`
 
 - **File:** `MainApp\event_handler.py`
-- **Line:** 630
+- **Line:** 805
 - **Arguments:** self
 - **Docstring:** Setup UI with new services after configuration change...
 
@@ -4420,16 +4389,34 @@ Tests multiple reliable endpoints to determine i...
 ### `MainApp\event_handler.py._show_ollama_connection_error`
 
 - **File:** `MainApp\event_handler.py`
-- **Line:** 700
+- **Line:** 875
 - **Arguments:** self, context, force_show
 - **Docstring:** Show a user-friendly error dialog when Ollama is not running...
+
+---
+
+### `MainApp\event_handler.py._start_worker_stream`
+
+- **File:** `MainApp\event_handler.py`
+- **Line:** 345
+- **Arguments:** self, context_messages, chosen_model, temperature, config_manager
+- **Docstring:** Start the worker stream in the worker thread...
+
+---
+
+### `MainApp\event_handler.py.cleanup_on_exit`
+
+- **File:** `MainApp\event_handler.py`
+- **Line:** 916
+- **Arguments:** self
+- **Docstring:** Clean up all resources when application is exiting...
 
 ---
 
 ### `MainApp\event_handler.py.setup_connections`
 
 - **File:** `MainApp\event_handler.py`
-- **Line:** 35
+- **Line:** 36
 - **Arguments:** self
 - **Docstring:** Setup all signal connections between components...
 
@@ -4446,7 +4433,7 @@ Tests multiple reliable endpoints to determine i...
 ### `MainApp\ollama_chat.py._setup_ui`
 
 - **File:** `MainApp\ollama_chat.py`
-- **Line:** 80
+- **Line:** 82
 - **Arguments:** self
 - **Docstring:** Setup the UI components...
 
@@ -4455,7 +4442,7 @@ Tests multiple reliable endpoints to determine i...
 ### `MainApp\ollama_chat.py.check_ollama_connection`
 
 - **File:** `MainApp\ollama_chat.py`
-- **Line:** 118
+- **Line:** 123
 - **Arguments:** self
 - **Docstring:** Check if Ollama is running and accessible...
 
@@ -4464,7 +4451,7 @@ Tests multiple reliable endpoints to determine i...
 ### `MainApp\ollama_chat.py.closeEvent`
 
 - **File:** `MainApp\ollama_chat.py`
-- **Line:** 110
+- **Line:** 115
 - **Arguments:** self, event
 - **Docstring:** Handle application close event...
 
@@ -4473,7 +4460,7 @@ Tests multiple reliable endpoints to determine i...
 ### `MainApp\ollama_chat.py.get_chat_controller`
 
 - **File:** `MainApp\ollama_chat.py`
-- **Line:** 139
+- **Line:** 144
 - **Arguments:** self
 - **Docstring:** Get the chat controller...
 
@@ -4482,7 +4469,7 @@ Tests multiple reliable endpoints to determine i...
 ### `MainApp\ollama_chat.py.get_event_handler`
 
 - **File:** `MainApp\ollama_chat.py`
-- **Line:** 131
+- **Line:** 136
 - **Arguments:** self
 - **Docstring:** Get the event handler...
 
@@ -4491,7 +4478,7 @@ Tests multiple reliable endpoints to determine i...
 ### `MainApp\ollama_chat.py.get_lifecycle_manager`
 
 - **File:** `MainApp\ollama_chat.py`
-- **Line:** 135
+- **Line:** 140
 - **Arguments:** self
 - **Docstring:** Get the lifecycle manager...
 
@@ -4500,7 +4487,7 @@ Tests multiple reliable endpoints to determine i...
 ### `MainApp\ollama_chat.py.get_service_manager`
 
 - **File:** `MainApp\ollama_chat.py`
-- **Line:** 123
+- **Line:** 128
 - **Arguments:** self
 - **Docstring:** Get the service manager...
 
@@ -4509,7 +4496,7 @@ Tests multiple reliable endpoints to determine i...
 ### `MainApp\ollama_chat.py.get_ui_manager`
 
 - **File:** `MainApp\ollama_chat.py`
-- **Line:** 127
+- **Line:** 132
 - **Arguments:** self
 - **Docstring:** Get the UI manager...
 
@@ -4518,7 +4505,7 @@ Tests multiple reliable endpoints to determine i...
 ### `MainApp\ollama_chat.py.showEvent`
 
 - **File:** `MainApp\ollama_chat.py`
-- **Line:** 105
+- **Line:** 110
 - **Arguments:** self, event
 - **Docstring:** Handle application show event...
 
@@ -4527,7 +4514,7 @@ Tests multiple reliable endpoints to determine i...
 ### `MainApp\ollama_chat.py.show_ollama_connection_error`
 
 - **File:** `MainApp\ollama_chat.py`
-- **Line:** 114
+- **Line:** 119
 - **Arguments:** self, context, force_show
 - **Docstring:** Show Ollama connection error dialog...
 
@@ -4852,7 +4839,7 @@ Tests multiple reliable endpoints to determine i...
 ### `Personalities\personality_model.py._extract_personality_name`
 
 - **File:** `Personalities\personality_model.py`
-- **Line:** 46
+- **Line:** 45
 - **Arguments:** self, filepath
 - **Returns:** str
 - **Docstring:** Extract personality name - now handled by loader...
@@ -4862,7 +4849,7 @@ Tests multiple reliable endpoints to determine i...
 ### `Personalities\personality_model.py._find_personality_file_by_name`
 
 - **File:** `Personalities\personality_model.py`
-- **Line:** 92
+- **Line:** 54
 - **Arguments:** self, personality_name
 - **Docstring:** Find personality file by name - now handled by loader...
 
@@ -4871,7 +4858,7 @@ Tests multiple reliable endpoints to determine i...
 ### `Personalities\personality_model.py._find_personality_files`
 
 - **File:** `Personalities\personality_model.py`
-- **Line:** 42
+- **Line:** 41
 - **Arguments:** self, directory
 - **Docstring:** Find personality files - now handled by loader...
 
@@ -4880,7 +4867,7 @@ Tests multiple reliable endpoints to determine i...
 ### `Personalities\personality_model.py._initialize_default_personalities`
 
 - **File:** `Personalities\personality_model.py`
-- **Line:** 35
+- **Line:** 34
 - **Arguments:** self
 - **Docstring:** Initialize the default personality set - now handled by service...
 
@@ -4889,266 +4876,37 @@ Tests multiple reliable endpoints to determine i...
 ### `Personalities\personality_model.py._load_custom_personalities`
 
 - **File:** `Personalities\personality_model.py`
-- **Line:** 50
+- **Line:** 49
 - **Arguments:** self
 - **Docstring:** Load custom personalities - now handled by service...
-
----
-
-### `Personalities\personality_model.py.build_comprehensive_system_prompt`
-
-- **File:** `Personalities\personality_model.py`
-- **Line:** 125
-- **Arguments:** self, memory_service
-- **Returns:** str
-- **Docstring:** Build a comprehensive system prompt with pronoun guidance and user information from memory...
-
----
-
-### `Personalities\personality_model.py.create_custom_personality`
-
-- **File:** `Personalities\personality_model.py`
-- **Line:** 74
-- **Arguments:** self, name, traits, prompt, config, metadata
-- **Returns:** bool
-- **Docstring:** Create a new custom personality...
-
----
-
-### `Personalities\personality_model.py.delete_custom_personality`
-
-- **File:** `Personalities\personality_model.py`
-- **Line:** 83
-- **Arguments:** self, name
-- **Returns:** bool
-- **Docstring:** Delete a custom personality...
-
----
-
-### `Personalities\personality_model.py.format_prompt_with_personality`
-
-- **File:** `Personalities\personality_model.py`
-- **Line:** 105
-- **Arguments:** self, user_input, context
-- **Returns:** str
-- **Docstring:** Format a prompt using the current personality's prompt templates...
-
----
-
-### `Personalities\personality_model.py.get_ai_name`
-
-- **File:** `Personalities\personality_model.py`
-- **Line:** 181
-- **Arguments:** self
-- **Returns:** str
-- **Docstring:** Get the AI's name from the current personality...
-
----
-
-### `Personalities\personality_model.py.get_available_personalities`
-
-- **File:** `Personalities\personality_model.py`
-- **Line:** 55
-- **Arguments:** self
-- **Docstring:** Get list of all available personality names...
-
----
-
-### `Personalities\personality_model.py.get_current_personality`
-
-- **File:** `Personalities\personality_model.py`
-- **Line:** 70
-- **Arguments:** self
-- **Docstring:** Get the current active personality...
-
----
-
-### `Personalities\personality_model.py.get_custom_personalities`
-
-- **File:** `Personalities\personality_model.py`
-- **Line:** 133
-- **Arguments:** self
-- **Docstring:** Get custom personalities - for backward compatibility...
-
----
-
-### `Personalities\personality_model.py.get_personalities_by_category`
-
-- **File:** `Personalities\personality_model.py`
-- **Line:** 164
-- **Arguments:** self, category
-- **Docstring:** Get personalities by category...
-
----
-
-### `Personalities\personality_model.py.get_personality`
-
-- **File:** `Personalities\personality_model.py`
-- **Line:** 59
-- **Arguments:** self, name
-- **Docstring:** Get personality by name...
-
----
-
-### `Personalities\personality_model.py.get_personality_categories`
-
-- **File:** `Personalities\personality_model.py`
-- **Line:** 168
-- **Arguments:** self
-- **Docstring:** Get list of all personality categories...
-
----
-
-### `Personalities\personality_model.py.get_personality_config`
-
-- **File:** `Personalities\personality_model.py`
-- **Line:** 117
-- **Arguments:** self, name
-- **Docstring:** Get configuration for a personality...
 
 ---
 
 ### `Personalities\personality_model.py.get_personality_formatter`
 
 - **File:** `Personalities\personality_model.py`
-- **Line:** 189
+- **Line:** 68
 - **Arguments:** self
 - **Docstring:** Get access to the personality formatter for advanced operations...
-
----
-
-### `Personalities\personality_model.py.get_personality_info`
-
-- **File:** `Personalities\personality_model.py`
-- **Line:** 113
-- **Arguments:** self, name
-- **Docstring:** Get detailed information about a personality...
 
 ---
 
 ### `Personalities\personality_model.py.get_personality_loader`
 
 - **File:** `Personalities\personality_model.py`
-- **Line:** 185
+- **Line:** 64
 - **Arguments:** self
 - **Docstring:** Get access to the personality loader for advanced operations...
-
----
-
-### `Personalities\personality_model.py.get_selected_model`
-
-- **File:** `Personalities\personality_model.py`
-- **Line:** 177
-- **Arguments:** self
-- **Returns:** str
-- **Docstring:** Get the currently selected personality name...
-
----
-
-### `Personalities\personality_model.py.get_system_personalities`
-
-- **File:** `Personalities\personality_model.py`
-- **Line:** 138
-- **Arguments:** self
-- **Docstring:** Get system personalities (read-only)...
-
----
-
-### `Personalities\personality_model.py.get_system_prompt`
-
-- **File:** `Personalities\personality_model.py`
-- **Line:** 109
-- **Arguments:** self
-- **Returns:** str
-- **Docstring:** Get the system prompt for the current personality...
-
----
-
-### `Personalities\personality_model.py.get_user_context_messages`
-
-- **File:** `Personalities\personality_model.py`
-- **Line:** 129
-- **Arguments:** self, memory_service, is_new_conversation
-- **Docstring:** Get dynamic user context messages that should be added to conversation...
-
----
-
-### `Personalities\personality_model.py.is_custom_personality`
-
-- **File:** `Personalities\personality_model.py`
-- **Line:** 146
-- **Arguments:** self, name
-- **Returns:** bool
-- **Docstring:** Check if a personality is a custom personality (editable/deletable)...
-
----
-
-### `Personalities\personality_model.py.is_system_personality`
-
-- **File:** `Personalities\personality_model.py`
-- **Line:** 142
-- **Arguments:** self, name
-- **Returns:** bool
-- **Docstring:** Check if a personality is a system personality (read-only)...
-
----
-
-### `Personalities\personality_model.py.refresh_personalities`
-
-- **File:** `Personalities\personality_model.py`
-- **Line:** 96
-- **Arguments:** self
-- **Returns:** bool
-- **Docstring:** Refresh personalities from disk...
 
 ---
 
 ### `Personalities\personality_model.py.save_custom_personality`
 
 - **File:** `Personalities\personality_model.py`
-- **Line:** 159
+- **Line:** 58
 - **Arguments:** self, name, personality_data
 - **Returns:** bool
 - **Docstring:** Save a custom personality - for backward compatibility...
-
----
-
-### `Personalities\personality_model.py.search_personalities`
-
-- **File:** `Personalities\personality_model.py`
-- **Line:** 172
-- **Arguments:** self, query
-- **Docstring:** Search personalities by name, description, or tags...
-
----
-
-### `Personalities\personality_model.py.set_current_personality`
-
-- **File:** `Personalities\personality_model.py`
-- **Line:** 63
-- **Arguments:** self, name
-- **Returns:** bool
-- **Docstring:** Set the current active personality...
-
----
-
-### `Personalities\personality_model.py.update_custom_personality`
-
-- **File:** `Personalities\personality_model.py`
-- **Line:** 150
-- **Arguments:** self, name, traits, prompt, config, metadata
-- **Returns:** bool
-- **Docstring:** Update a custom personality (only if it's in the Custom folder)...
-
----
-
-### `Personalities\personality_model.py.update_personality_metadata`
-
-- **File:** `Personalities\personality_model.py`
-- **Line:** 121
-- **Arguments:** self, name
-- **Returns:** bool
-- **Docstring:** Update metadata for a personality...
 
 ---
 
@@ -6679,7 +6437,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\STT_Service.py.update_api`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\STT_Service.py`
-- **Line:** 85
+- **Line:** 86
 - **Arguments:** self, api_name
 
 ---
@@ -6701,18 +6459,10 @@ Args:
 
 ---
 
-### `services\Voice_STT_TTS_SERVICES\TTS_Service.py._cleanup_audio_file`
-
-- **File:** `services\Voice_STT_TTS_SERVICES\TTS_Service.py`
-- **Line:** 128
-- **Arguments:** self, file_path
-
----
-
 ### `services\Voice_STT_TTS_SERVICES\TTS_Service.py._simulate_tts_finished`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\TTS_Service.py`
-- **Line:** 135
+- **Line:** 130
 - **Arguments:** self
 
 ---
@@ -6728,7 +6478,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\TTS_Service.py.get_coqui_model_info`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\TTS_Service.py`
-- **Line:** 188
+- **Line:** 183
 - **Arguments:** self
 - **Returns:** dict
 - **Docstring:** Get information about the current Coqui TTS model...
@@ -6738,7 +6488,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\TTS_Service.py.get_coqui_models`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\TTS_Service.py`
-- **Line:** 176
+- **Line:** 171
 - **Arguments:** self
 - **Returns:** list
 - **Docstring:** Get available Coqui TTS models...
@@ -6748,7 +6498,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\TTS_Service.py.get_coqui_voices`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\TTS_Service.py`
-- **Line:** 182
+- **Line:** 177
 - **Arguments:** self
 - **Returns:** list
 - **Docstring:** Get available Coqui TTS voices for current model...
@@ -6767,7 +6517,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\TTS_Service.py.is_coqui_available`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\TTS_Service.py`
-- **Line:** 172
+- **Line:** 167
 - **Arguments:** self
 - **Returns:** bool
 - **Docstring:** Check if Coqui TTS is available...
@@ -6777,7 +6527,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\TTS_Service.py.load_coqui_model`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\TTS_Service.py`
-- **Line:** 194
+- **Line:** 189
 - **Arguments:** self, model_name
 - **Returns:** bool
 - **Docstring:** Load a specific Coqui TTS model...
@@ -6787,7 +6537,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\TTS_Service.py.set_coqui_model`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\TTS_Service.py`
-- **Line:** 200
+- **Line:** 195
 - **Arguments:** self, model_name
 - **Returns:** bool
 - **Docstring:** Set the Coqui TTS model to use...
@@ -6823,7 +6573,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\TTS_Service.py.stop_playback`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\TTS_Service.py`
-- **Line:** 138
+- **Line:** 133
 - **Arguments:** self
 
 ---
@@ -6831,7 +6581,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\TTS_Service.py.update_api`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\TTS_Service.py`
-- **Line:** 147
+- **Line:** 142
 - **Arguments:** self, api_name
 
 ---
@@ -6839,7 +6589,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\TTS_Service.py.update_speed`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\TTS_Service.py`
-- **Line:** 163
+- **Line:** 158
 - **Arguments:** self, speed
 - **Docstring:** Update speech speed (1.0 = normal, 1.5 = faster, 0.5 = slower)...
 
@@ -6848,7 +6598,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\TTS_Service.py.update_voice`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\TTS_Service.py`
-- **Line:** 155
+- **Line:** 150
 - **Arguments:** self, voice_name
 
 ---
@@ -6856,15 +6606,25 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py`
-- **Line:** 357
+- **Line:** 377
 - **Arguments:** self
+- **Docstring:** Initialize the Coqui TTS service (singleton)...
+
+---
+
+### `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__new__`
+
+- **File:** `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py`
+- **Line:** 371
+- **Arguments:** cls
+- **Docstring:** Singleton pattern to prevent multiple model loading...
 
 ---
 
 ### `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py._adjust_audio_speed`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py`
-- **Line:** 316
+- **Line:** 326
 - **Arguments:** self, audio
 - **Returns:** np.ndarray
 - **Docstring:** Adjust audio speed using simple resampling...
@@ -6874,16 +6634,25 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py._cleanup_audio_file`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py`
-- **Line:** 1013
+- **Line:** 1109
 - **Arguments:** self, file_path
 - **Docstring:** Clean up temporary audio file...
+
+---
+
+### `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py._emit_audio_level`
+
+- **File:** `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py`
+- **Line:** 144
+- **Arguments:** self
+- **Docstring:** Emit averaged audio level for EQ visualization...
 
 ---
 
 ### `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py._generate_audio`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py`
-- **Line:** 935
+- **Line:** 1031
 - **Arguments:** self, text
 - **Docstring:** Generate audio file from text (for non-streaming mode)...
 
@@ -6892,7 +6661,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py._generate_audio_chunk`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py`
-- **Line:** 275
+- **Line:** 285
 - **Arguments:** self, text
 - **Docstring:** Generate audio chunk for a piece of text...
 
@@ -6901,7 +6670,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py._get_tts_model_cache_dirs`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py`
-- **Line:** 442
+- **Line:** 476
 - **Arguments:** self
 
 ---
@@ -6909,7 +6678,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py._initialize_service`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py`
-- **Line:** 377
+- **Line:** 407
 - **Arguments:** self
 - **Docstring:** Initialize the Coqui TTS service...
 
@@ -6918,7 +6687,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py._is_model_fully_downloaded`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py`
-- **Line:** 467
+- **Line:** 501
 - **Arguments:** self, model_name
 - **Returns:** bool
 
@@ -6927,7 +6696,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py._load_available_voices`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py`
-- **Line:** 422
+- **Line:** 456
 - **Arguments:** self
 - **Docstring:** Load available voices for the current model...
 
@@ -6936,7 +6705,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py._load_default_model`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py`
-- **Line:** 391
+- **Line:** 428
 - **Arguments:** self
 - **Docstring:** Load the default TTS model...
 
@@ -6945,7 +6714,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py._model_name_to_folder`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py`
-- **Line:** 464
+- **Line:** 498
 - **Arguments:** self, model_name
 - **Returns:** str
 
@@ -6954,7 +6723,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py._on_media_status_changed`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py`
-- **Line:** 1004
+- **Line:** 1100
 - **Arguments:** self, status
 - **Docstring:** Handle media player status changes...
 
@@ -6963,7 +6732,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py._on_streaming_error`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py`
-- **Line:** 640
+- **Line:** 683
 - **Arguments:** self, error
 - **Docstring:** Handle streaming playback error...
 
@@ -6972,7 +6741,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py._on_streaming_finished`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py`
-- **Line:** 628
+- **Line:** 671
 - **Arguments:** self
 - **Docstring:** Handle streaming playback finished...
 
@@ -6981,7 +6750,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py._on_streaming_generation_error`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py`
-- **Line:** 622
+- **Line:** 665
 - **Arguments:** self, error
 - **Docstring:** Handle streaming generation error...
 
@@ -6990,7 +6759,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py._on_streaming_generation_finished`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py`
-- **Line:** 617
+- **Line:** 660
 - **Arguments:** self
 - **Docstring:** Handle streaming generation finished...
 
@@ -6999,7 +6768,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py._play_audio`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py`
-- **Line:** 971
+- **Line:** 1067
 - **Arguments:** self, audio_file, text
 - **Docstring:** Play the generated audio file (for non-streaming mode)...
 
@@ -7008,7 +6777,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py._process_audio_chunk`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py`
-- **Line:** 93
+- **Line:** 100
 - **Arguments:** self, audio_chunk
 - **Returns:** np.ndarray
 - **Docstring:** Process audio chunk for better quality...
@@ -7018,7 +6787,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py._speak_text_streaming`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py`
-- **Line:** 574
+- **Line:** 617
 - **Arguments:** self, text
 - **Docstring:** Convert text to speech using streaming synthesis...
 
@@ -7027,7 +6796,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py._split_text_into_sentences`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py`
-- **Line:** 248
+- **Line:** 258
 - **Arguments:** self, text
 - **Docstring:** Split text into sentences for chunked processing...
 
@@ -7036,7 +6805,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.add_audio_chunk`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py`
-- **Line:** 153
+- **Line:** 158
 - **Arguments:** self, audio_chunk
 - **Docstring:** Add audio chunk to playback queue...
 
@@ -7045,16 +6814,25 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.cleanup`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py`
-- **Line:** 693
+- **Line:** 736
 - **Arguments:** self
 - **Docstring:** Clean up resources...
+
+---
+
+### `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.clear_model_cache`
+
+- **File:** `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py`
+- **Line:** 747
+- **Arguments:** self
+- **Docstring:** Clear the model cache to free memory...
 
 ---
 
 ### `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.download_model`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py`
-- **Line:** 510
+- **Line:** 553
 - **Arguments:** self, model_name
 - **Returns:** bool
 
@@ -7063,7 +6841,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.end_stream`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py`
-- **Line:** 158
+- **Line:** 163
 - **Arguments:** self
 - **Docstring:** Signal end of audio stream...
 
@@ -7072,7 +6850,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.get_available_models`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py`
-- **Line:** 811
+- **Line:** 879
 - **Arguments:** self
 - **Returns:** list
 - **Docstring:** Return a list of all models: downloaded first, then a curated list of popular downloadable models....
@@ -7082,16 +6860,26 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.get_available_voices`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py`
-- **Line:** 501
+- **Line:** 544
 - **Arguments:** self
 - **Returns:** list
+
+---
+
+### `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.get_cache_info`
+
+- **File:** `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py`
+- **Line:** 756
+- **Arguments:** self
+- **Returns:** dict
+- **Docstring:** Get information about the model cache...
 
 ---
 
 ### `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.get_comprehensive_model_list`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py`
-- **Line:** 766
+- **Line:** 834
 - **Arguments:** self
 - **Docstring:** Get a comprehensive list of available models for download...
 
@@ -7100,7 +6888,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.get_current_model_info`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py`
-- **Line:** 799
+- **Line:** 867
 - **Arguments:** self
 - **Docstring:** Get information about the current loaded model...
 
@@ -7109,7 +6897,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.get_downloaded_models`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py`
-- **Line:** 483
+- **Line:** 517
 - **Arguments:** self
 - **Returns:** list
 
@@ -7118,7 +6906,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.get_model_config`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py`
-- **Line:** 921
+- **Line:** 1017
 - **Arguments:** self, model_name
 
 ---
@@ -7126,7 +6914,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.get_model_download_size`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py`
-- **Line:** 741
+- **Line:** 809
 - **Arguments:** self, model_name
 - **Returns:** str
 - **Docstring:** Get estimated download size for a model...
@@ -7136,7 +6924,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.get_model_info`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py`
-- **Line:** 701
+- **Line:** 769
 - **Arguments:** self, model_name
 - **Docstring:** Get information about a specific model without downloading it...
 
@@ -7145,7 +6933,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.is_available`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py`
-- **Line:** 438
+- **Line:** 472
 - **Arguments:** self
 - **Returns:** bool
 - **Docstring:** Check if Coqui TTS is available...
@@ -7155,16 +6943,26 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.is_model_downloaded`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py`
-- **Line:** 498
+- **Line:** 532
 - **Arguments:** self, model_name
 - **Returns:** bool
+
+---
+
+### `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.is_model_loaded`
+
+- **File:** `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py`
+- **Line:** 535
+- **Arguments:** self, model_name
+- **Returns:** bool
+- **Docstring:** Check if a model is currently loaded in memory...
 
 ---
 
 ### `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.is_multi_speaker`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py`
-- **Line:** 888
+- **Line:** 984
 - **Arguments:** self
 - **Returns:** bool
 
@@ -7173,17 +6971,18 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.load_model`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py`
-- **Line:** 833
+- **Line:** 901
 - **Arguments:** self, model_name
 - **Returns:** bool
-- **Docstring:** Load a specific TTS model and update available voices....
+- **Docstring:** Load a specific TTS model and update available voices.
+Uses caching to prevent duplicate loading....
 
 ---
 
 ### `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.refresh_model_list`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py`
-- **Line:** 1022
+- **Line:** 1118
 - **Arguments:** self
 - **Docstring:** Refresh the list of available models...
 
@@ -7192,7 +6991,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.run`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py`
-- **Line:** 216
+- **Line:** 226
 - **Arguments:** self
 - **Docstring:** Generate audio in chunks and stream to player...
 
@@ -7201,7 +7000,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.set_speed`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py`
-- **Line:** 537
+- **Line:** 580
 - **Arguments:** self, speed
 - **Docstring:** Set speech speed (0.5 to 2.0)...
 
@@ -7210,7 +7009,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.set_streaming_volume`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py`
-- **Line:** 542
+- **Line:** 585
 - **Arguments:** self, volume
 - **Docstring:** Set streaming audio volume (0.0 to 1.0)...
 
@@ -7219,7 +7018,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.set_voice`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py`
-- **Line:** 527
+- **Line:** 570
 - **Arguments:** self, voice_name
 - **Returns:** bool
 - **Docstring:** Set the current voice...
@@ -7229,7 +7028,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.set_volume`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py`
-- **Line:** 149
+- **Line:** 154
 - **Arguments:** self, volume
 - **Docstring:** Set playback volume (0.0 to 1.0)...
 
@@ -7238,7 +7037,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.speak_text`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py`
-- **Line:** 548
+- **Line:** 591
 - **Arguments:** self, text, use_streaming
 - **Docstring:** Convert text to speech using Coqui TTS with optional streaming...
 
@@ -7247,7 +7046,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.stop`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py`
-- **Line:** 340
+- **Line:** 350
 - **Arguments:** self
 - **Docstring:** Stop the worker...
 
@@ -7256,7 +7055,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.stop_playback`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py`
-- **Line:** 646
+- **Line:** 689
 - **Arguments:** self
 - **Docstring:** Stop current TTS playback (both streaming and non-streaming)...
 
@@ -7265,7 +7064,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.terminate_pyaudio`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py`
-- **Line:** 182
+- **Line:** 192
 - **Arguments:** 
 
 ---
@@ -7273,24 +7072,33 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\voice_process_manager.py`
-- **Line:** 202
+- **Line:** 278
 - **Arguments:** self, response_queue, parent
+
+---
+
+### `services\Voice_STT_TTS_SERVICES\voice_process_manager.py._handle_monitor_error`
+
+- **File:** `services\Voice_STT_TTS_SERVICES\voice_process_manager.py`
+- **Line:** 241
+- **Arguments:** self, error_message
+- **Docstring:** Handle monitor thread error...
 
 ---
 
 ### `services\Voice_STT_TTS_SERVICES\voice_process_manager.py._handle_response`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\voice_process_manager.py`
-- **Line:** 144
+- **Line:** 202
 - **Arguments:** self, response
-- **Docstring:** Handle response from voice process...
+- **Docstring:** Handle response from the voice process...
 
 ---
 
 ### `services\Voice_STT_TTS_SERVICES\voice_process_manager.py._voice_process_worker`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\voice_process_manager.py`
-- **Line:** 229
+- **Line:** 349
 - **Arguments:** command_queue, response_queue
 - **Docstring:** Worker function that runs in the separate voice process...
 
@@ -7299,7 +7107,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\voice_process_manager.py.create_voice_process_manager`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\voice_process_manager.py`
-- **Line:** 325
+- **Line:** 445
 - **Arguments:** 
 - **Returns:** VoiceProcessManager
 - **Docstring:** Create and start a voice process manager...
@@ -7309,16 +7117,26 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\voice_process_manager.py.get_process_info`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\voice_process_manager.py`
-- **Line:** 184
+- **Line:** 255
 - **Arguments:** self
 - **Docstring:** Get information about the voice process...
+
+---
+
+### `services\Voice_STT_TTS_SERVICES\voice_process_manager.py.get_stats`
+
+- **File:** `services\Voice_STT_TTS_SERVICES\voice_process_manager.py`
+- **Line:** 339
+- **Arguments:** self
+- **Returns:** dict
+- **Docstring:** Get monitor statistics for debugging...
 
 ---
 
 ### `services\Voice_STT_TTS_SERVICES\voice_process_manager.py.is_process_running`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\voice_process_manager.py`
-- **Line:** 180
+- **Line:** 249
 - **Arguments:** self
 - **Returns:** bool
 - **Docstring:** Check if the voice process is running...
@@ -7328,7 +7146,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\voice_process_manager.py.run`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\voice_process_manager.py`
-- **Line:** 207
+- **Line:** 289
 - **Arguments:** self
 - **Docstring:** Monitor the response queue...
 
@@ -7337,7 +7155,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\voice_process_manager.py.send_command`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\voice_process_manager.py`
-- **Line:** 126
+- **Line:** 185
 - **Arguments:** self, command, data
 - **Docstring:** Send a command to the voice process...
 
@@ -7346,34 +7164,35 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\voice_process_manager.py.start_voice_process`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\voice_process_manager.py`
-- **Line:** 51
+- **Line:** 52
 - **Arguments:** self
-- **Docstring:** Start the voice services in a separate process...
+- **Returns:** bool
+- **Docstring:** Start the voice process and monitoring thread...
 
 ---
 
 ### `services\Voice_STT_TTS_SERVICES\voice_process_manager.py.stop`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\voice_process_manager.py`
-- **Line:** 222
+- **Line:** 324
 - **Arguments:** self
-- **Docstring:** Stop the monitoring thread...
+- **Docstring:** Stop the monitoring thread safely...
 
 ---
 
 ### `services\Voice_STT_TTS_SERVICES\voice_process_manager.py.stop_voice_process`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\voice_process_manager.py`
-- **Line:** 88
+- **Line:** 105
 - **Arguments:** self
-- **Docstring:** Stop the voice services process...
+- **Docstring:** Stop the voice process and monitoring thread safely...
 
 ---
 
 ### `services\Voice_STT_TTS_SERVICES\voice_process_manager.py.stop_voice_process_manager`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\voice_process_manager.py`
-- **Line:** 342
+- **Line:** 462
 - **Arguments:** manager
 - **Docstring:** Stop a voice process manager...
 
@@ -7382,7 +7201,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\voice_service.py.__del__`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\voice_service.py`
-- **Line:** 128
+- **Line:** 88
 - **Arguments:** self
 - **Docstring:** Cleanup when voice service is destroyed...
 
@@ -7391,15 +7210,33 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\voice_service.py.__init__`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\voice_service.py`
-- **Line:** 46
+- **Line:** 47
 - **Arguments:** self, response_queue
+
+---
+
+### `services\Voice_STT_TTS_SERVICES\voice_service.py._cleanup_resources`
+
+- **File:** `services\Voice_STT_TTS_SERVICES\voice_service.py`
+- **Line:** 671
+- **Arguments:** self
+- **Docstring:** Clean up resources when the cleanup timer fires...
+
+---
+
+### `services\Voice_STT_TTS_SERVICES\voice_service.py._connect_signals`
+
+- **File:** `services\Voice_STT_TTS_SERVICES\voice_service.py`
+- **Line:** 764
+- **Arguments:** self
+- **Docstring:** Connect signals with QueuedConnection for thread safety...
 
 ---
 
 ### `services\Voice_STT_TTS_SERVICES\voice_service.py._forward_recording_error`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\voice_service.py`
-- **Line:** 643
+- **Line:** 655
 - **Arguments:** self, error
 - **Docstring:** Forward recording error signal to response queue...
 
@@ -7408,7 +7245,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\voice_service.py._forward_recording_started`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\voice_service.py`
-- **Line:** 627
+- **Line:** 639
 - **Arguments:** self
 - **Docstring:** Forward recording started signal to response queue...
 
@@ -7417,7 +7254,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\voice_service.py._forward_recording_stopped`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\voice_service.py`
-- **Line:** 635
+- **Line:** 647
 - **Arguments:** self
 - **Docstring:** Forward recording stopped signal to response queue...
 
@@ -7426,16 +7263,25 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\voice_service.py._forward_voice_processing_started`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\voice_service.py`
-- **Line:** 651
+- **Line:** 663
 - **Arguments:** self
 - **Docstring:** Forward voice processing started signal to response queue...
+
+---
+
+### `services\Voice_STT_TTS_SERVICES\voice_service.py._initialize_services`
+
+- **File:** `services\Voice_STT_TTS_SERVICES\voice_service.py`
+- **Line:** 685
+- **Arguments:** self
+- **Docstring:** Initialize voice services with error handling...
 
 ---
 
 ### `services\Voice_STT_TTS_SERVICES\voice_service.py._on_recording_auto_stopped`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\voice_service.py`
-- **Line:** 230
+- **Line:** 233
 - **Arguments:** self
 - **Docstring:** Handle recording auto-stopped due to silence detection...
 
@@ -7444,7 +7290,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\voice_service.py._on_recording_timeout`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\voice_service.py`
-- **Line:** 224
+- **Line:** 227
 - **Arguments:** self
 - **Docstring:** Handle recording timeout - automatically stop recording...
 
@@ -7453,7 +7299,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\voice_service.py._on_stt_error`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\voice_service.py`
-- **Line:** 265
+- **Line:** 271
 - **Arguments:** self, error
 - **Docstring:** Handle STT error...
 
@@ -7462,7 +7308,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\voice_service.py._on_stt_text_received`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\voice_service.py`
-- **Line:** 236
+- **Line:** 239
 - **Arguments:** self, text
 - **Docstring:** Handle STT text received...
 
@@ -7471,7 +7317,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\voice_service.py._on_tts_error`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\voice_service.py`
-- **Line:** 305
+- **Line:** 311
 - **Arguments:** self, error
 - **Docstring:** Handle TTS error...
 
@@ -7480,16 +7326,25 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\voice_service.py._on_tts_finished`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\voice_service.py`
-- **Line:** 287
+- **Line:** 293
 - **Arguments:** self
 - **Docstring:** Handle TTS finished...
+
+---
+
+### `services\Voice_STT_TTS_SERVICES\voice_service.py._reset_error_count`
+
+- **File:** `services\Voice_STT_TTS_SERVICES\voice_service.py`
+- **Line:** 680
+- **Arguments:** self
+- **Docstring:** Reset error count after a delay...
 
 ---
 
 ### `services\Voice_STT_TTS_SERVICES\voice_service.py.cleanup_all_audio_files`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\voice_service.py`
-- **Line:** 608
+- **Line:** 620
 - **Arguments:** self
 - **Docstring:** Clean up all audio files (since they're only for STT processing)...
 
@@ -7498,7 +7353,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\voice_service.py.cleanup_old_audio_files`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\voice_service.py`
-- **Line:** 574
+- **Line:** 586
 - **Arguments:** self, max_files, max_age_days
 - **Docstring:** Clean up old audio files to prevent folder from getting too large...
 
@@ -7507,16 +7362,16 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\voice_service.py.cleanup_on_exit`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\voice_service.py`
-- **Line:** 539
+- **Line:** 545
 - **Arguments:** self
-- **Docstring:** Clean up audio files on application exit...
+- **Docstring:** Enhanced cleanup with timeout...
 
 ---
 
 ### `services\Voice_STT_TTS_SERVICES\voice_service.py.get_audio_folder_path`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\voice_service.py`
-- **Line:** 548
+- **Line:** 560
 - **Arguments:** self
 - **Returns:** str
 - **Docstring:** Get the path to the audio folder...
@@ -7526,7 +7381,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\voice_service.py.get_current_audio_level`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\voice_service.py`
-- **Line:** 522
+- **Line:** 528
 - **Arguments:** self
 - **Returns:** float
 - **Docstring:** Get current audio level for debugging...
@@ -7536,7 +7391,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\voice_service.py.get_eq_visualizer`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\voice_service.py`
-- **Line:** 535
+- **Line:** 541
 - **Arguments:** self
 - **Returns:** str
 - **Docstring:** Get current EQ visualizer setting...
@@ -7546,7 +7401,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\voice_service.py.get_min_speech_duration`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\voice_service.py`
-- **Line:** 482
+- **Line:** 488
 - **Arguments:** self
 - **Returns:** float
 - **Docstring:** Get minimum speech duration setting...
@@ -7556,7 +7411,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\voice_service.py.get_recording_timeout`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\voice_service.py`
-- **Line:** 450
+- **Line:** 456
 - **Arguments:** self
 - **Returns:** float
 - **Docstring:** Get current recording timeout in seconds...
@@ -7566,7 +7421,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\voice_service.py.get_silence_duration`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\voice_service.py`
-- **Line:** 459
+- **Line:** 465
 - **Arguments:** self
 - **Returns:** float
 - **Docstring:** Get current silence duration in seconds...
@@ -7576,7 +7431,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\voice_service.py.get_silence_threshold`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\voice_service.py`
-- **Line:** 468
+- **Line:** 474
 - **Arguments:** self
 - **Returns:** float
 - **Docstring:** Get current silence threshold (0-1)...
@@ -7586,7 +7441,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\voice_service.py.get_speech_detection_sensitivity`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\voice_service.py`
-- **Line:** 508
+- **Line:** 514
 - **Arguments:** self
 - **Returns:** str
 - **Docstring:** Get current speech detection sensitivity...
@@ -7596,7 +7451,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\voice_service.py.is_continuous_voice_mode`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\voice_service.py`
-- **Line:** 531
+- **Line:** 537
 - **Arguments:** self
 - **Returns:** bool
 - **Docstring:** Check if continuous voice mode is enabled...
@@ -7606,7 +7461,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\voice_service.py.is_voice_available`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\voice_service.py`
-- **Line:** 393
+- **Line:** 399
 - **Arguments:** self
 - **Returns:** bool
 - **Docstring:** Check if voice functionality is available...
@@ -7616,7 +7471,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\voice_service.py.list_audio_files`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\voice_service.py`
-- **Line:** 552
+- **Line:** 564
 - **Arguments:** self
 - **Returns:** list
 - **Docstring:** List all audio files in the audio folder...
@@ -7626,7 +7481,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\voice_service.py.set_audio_gate_enabled`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\voice_service.py`
-- **Line:** 517
+- **Line:** 523
 - **Arguments:** self, enabled
 - **Docstring:** Enable or disable audio gate detection...
 
@@ -7635,7 +7490,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\voice_service.py.set_continuous_voice_mode`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\voice_service.py`
-- **Line:** 526
+- **Line:** 532
 - **Arguments:** self, enabled
 - **Docstring:** Enable or disable continuous voice mode...
 
@@ -7644,7 +7499,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\voice_service.py.set_min_speech_duration`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\voice_service.py`
-- **Line:** 477
+- **Line:** 483
 - **Arguments:** self, duration
 - **Docstring:** Set minimum speech duration before considering valid...
 
@@ -7653,7 +7508,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\voice_service.py.set_recording_timeout`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\voice_service.py`
-- **Line:** 454
+- **Line:** 460
 - **Arguments:** self, timeout
 - **Docstring:** Set recording timeout in seconds...
 
@@ -7662,7 +7517,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\voice_service.py.set_silence_duration`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\voice_service.py`
-- **Line:** 463
+- **Line:** 469
 - **Arguments:** self, duration
 - **Docstring:** Set silence duration in seconds...
 
@@ -7671,7 +7526,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\voice_service.py.set_silence_threshold`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\voice_service.py`
-- **Line:** 472
+- **Line:** 478
 - **Arguments:** self, threshold
 - **Docstring:** Set silence threshold (0-1)...
 
@@ -7680,7 +7535,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\voice_service.py.set_speech_detection_sensitivity`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\voice_service.py`
-- **Line:** 486
+- **Line:** 492
 - **Arguments:** self, sensitivity
 - **Docstring:** Set speech detection sensitivity (low, medium, high)...
 
@@ -7689,7 +7544,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\voice_service.py.speak_text`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\voice_service.py`
-- **Line:** 318
+- **Line:** 324
 - **Arguments:** self, text
 - **Docstring:** Convert text to speech and play it...
 
@@ -7698,7 +7553,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\voice_service.py.speak_text_non_streaming`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\voice_service.py`
-- **Line:** 367
+- **Line:** 373
 - **Arguments:** self, text
 - **Docstring:** Convert text to speech using non-streaming synthesis...
 
@@ -7707,7 +7562,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\voice_service.py.speak_text_streaming`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\voice_service.py`
-- **Line:** 347
+- **Line:** 353
 - **Arguments:** self, text
 - **Docstring:** Convert text to speech using streaming synthesis...
 
@@ -7716,7 +7571,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\voice_service.py.start_voice_input`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\voice_service.py`
-- **Line:** 137
+- **Line:** 97
 - **Arguments:** self
 - **Docstring:** Start voice recording and convert to text...
 
@@ -7725,7 +7580,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\voice_service.py.stop_tts`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\voice_service.py`
-- **Line:** 387
+- **Line:** 393
 - **Arguments:** self
 - **Docstring:** Stop current TTS playback...
 
@@ -7734,7 +7589,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\voice_service.py.stop_voice_input`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\voice_service.py`
-- **Line:** 174
+- **Line:** 150
 - **Arguments:** self
 - **Docstring:** Stop voice recording and process the audio...
 
@@ -7743,7 +7598,7 @@ Args:
 ### `services\Voice_STT_TTS_SERVICES\voice_service.py.update_settings`
 
 - **File:** `services\Voice_STT_TTS_SERVICES\voice_service.py`
-- **Line:** 401
+- **Line:** 407
 - **Arguments:** self, settings
 - **Docstring:** Update voice service settings...
 
@@ -8200,7 +8055,7 @@ Args:
 ### `services\memory_service.py.__init__`
 
 - **File:** `services\memory_service.py`
-- **Line:** 405
+- **Line:** 445
 - **Arguments:** self, max_context_messages
 
 ---
@@ -8208,7 +8063,7 @@ Args:
 ### `services\memory_service.py.__post_init__`
 
 - **File:** `services\memory_service.py`
-- **Line:** 46
+- **Line:** 47
 - **Arguments:** self
 
 ---
@@ -8216,104 +8071,107 @@ Args:
 ### `services\memory_service.py._load`
 
 - **File:** `services\memory_service.py`
-- **Line:** 341
+- **Line:** 385
 - **Arguments:** self
+- **Docstring:** Load long-term memory from file...
 
 ---
 
 ### `services\memory_service.py._load_memory`
 
 - **File:** `services\memory_service.py`
-- **Line:** 426
+- **Line:** 470
 - **Arguments:** self
-- **Docstring:** Load memory from disk...
+- **Docstring:** Load memory from storage...
 
 ---
 
 ### `services\memory_service.py._on_embeddings_updated`
 
 - **File:** `services\memory_service.py`
-- **Line:** 444
+- **Line:** 486
 - **Arguments:** self
-- **Docstring:** Handle embeddings updates from semantic search service...
+- **Docstring:** Handle embeddings update...
 
 ---
 
 ### `services\memory_service.py._save`
 
 - **File:** `services\memory_service.py`
-- **Line:** 382
+- **Line:** 420
 - **Arguments:** self
+- **Docstring:** Save long-term memory to file...
 
 ---
 
 ### `services\memory_service.py._save_memory`
 
 - **File:** `services\memory_service.py`
-- **Line:** 436
+- **Line:** 478
 - **Arguments:** self
-- **Docstring:** Save memory to disk...
+- **Docstring:** Save memory to storage...
 
 ---
 
 ### `services\memory_service.py._verify_memory_files_cleared`
 
 - **File:** `services\memory_service.py`
-- **Line:** 870
+- **Line:** 763
 - **Arguments:** self
-- **Docstring:** Verify that all memory files are properly cleared...
+- **Docstring:** Verify that memory files have been cleared...
 
 ---
 
 ### `services\memory_service.py.add_entry`
 
 - **File:** `services\memory_service.py`
-- **Line:** 366
+- **Line:** 400
 - **Arguments:** self, entry
+- **Docstring:** Add an entry to long-term memory...
 
 ---
 
 ### `services\memory_service.py.add_fact`
 
 - **File:** `services\memory_service.py`
-- **Line:** 945
+- **Line:** 854
 - **Arguments:** self, key, value, importance, tags
-- **Docstring:** Add a fact to long-term memory with validation...
+- **Docstring:** Add a fact to long-term memory...
 
 ---
 
 ### `services\memory_service.py.add_memory`
 
 - **File:** `services\memory_service.py`
-- **Line:** 449
+- **Line:** 494
 - **Arguments:** self, content, conversation_id, importance, tags, memory_type, metadata
 - **Returns:** str
-- **Docstring:** Add a new memory entry...
+- **Docstring:** Add a memory entry...
 
 ---
 
 ### `services\memory_service.py.add_message`
 
 - **File:** `services\memory_service.py`
-- **Line:** 941
+- **Line:** 847
 - **Arguments:** self, message
-- **Docstring:** Legacy method - use intelligent_add_message instead...
+- **Docstring:** Add a message to memory (legacy method)...
 
 ---
 
 ### `services\memory_service.py.add_summary`
 
 - **File:** `services\memory_service.py`
-- **Line:** 482
+- **Line:** 525
 - **Arguments:** self, summary, importance, tags
-- **Docstring:** Add a conversation summary to long-term memory...
+- **Docstring:** Add a conversation summary to memory...
 
 ---
 
 ### `services\memory_service.py.calculate_relevance`
 
 - **File:** `services\memory_service.py`
-- **Line:** 264
+- **Line:** 254
 - **Arguments:** query, memory_entry
 - **Returns:** float
 - **Decorators:** staticmethod
@@ -8324,7 +8182,7 @@ Args:
 ### `services\memory_service.py.classify_message`
 
 - **File:** `services\memory_service.py`
-- **Line:** 91
+- **Line:** 92
 - **Arguments:** message, role
 - **Returns:** Dict
 - **Decorators:** staticmethod
@@ -8335,34 +8193,34 @@ Args:
 ### `services\memory_service.py.cleanup_memory_entries`
 
 - **File:** `services\memory_service.py`
-- **Line:** 1041
+- **Line:** 916
 - **Arguments:** self
-- **Docstring:** Clean up duplicate and conflicting memory entries...
+- **Docstring:** Clean up old or low-importance memory entries...
 
 ---
 
 ### `services\memory_service.py.clear`
 
 - **File:** `services\memory_service.py`
-- **Line:** 1037
+- **Line:** 909
 - **Arguments:** self
-- **Docstring:** Clear all memory (alias for clear_memory())...
+- **Docstring:** Clear all memory...
 
 ---
 
 ### `services\memory_service.py.clear_memory`
 
 - **File:** `services\memory_service.py`
-- **Line:** 823
+- **Line:** 738
 - **Arguments:** self, memory_type
-- **Docstring:** Clear memory entries and files...
+- **Docstring:** Clear memory entries...
 
 ---
 
 ### `services\memory_service.py.delete_memory`
 
 - **File:** `services\memory_service.py`
-- **Line:** 905
+- **Line:** 782
 - **Arguments:** self, memory_id
 - **Docstring:** Delete a specific memory entry...
 
@@ -8371,33 +8229,34 @@ Args:
 ### `services\memory_service.py.extract_facts_from_message`
 
 - **File:** `services\memory_service.py`
-- **Line:** 608
+- **Line:** 641
 - **Arguments:** self, message
-- **Docstring:** Extract facts from a message using pattern matching...
+- **Docstring:** Extract facts from a message using LLM...
 
 ---
 
 ### `services\memory_service.py.get_context_messages`
 
 - **File:** `services\memory_service.py`
-- **Line:** 742
+- **Line:** 694
 - **Arguments:** self, current_query
-- **Docstring:** Get messages for context window, including relevant memories...
+- **Docstring:** Get context messages for AI conversation...
 
 ---
 
 ### `services\memory_service.py.get_entries`
 
 - **File:** `services\memory_service.py`
-- **Line:** 378
+- **Line:** 410
 - **Arguments:** self, type_filter
+- **Docstring:** Get entries from long-term memory, optionally filtered by type...
 
 ---
 
 ### `services\memory_service.py.get_memory_stats`
 
 - **File:** `services\memory_service.py`
-- **Line:** 915
+- **Line:** 793
 - **Arguments:** self
 - **Returns:** Dict
 - **Docstring:** Get memory statistics...
@@ -8407,52 +8266,53 @@ Args:
 ### `services\memory_service.py.get_messages`
 
 - **File:** `services\memory_service.py`
-- **Line:** 324
+- **Line:** 355
 - **Arguments:** self
+- **Docstring:** Get all messages in short-term memory...
 
 ---
 
 ### `services\memory_service.py.get_relevant_memories`
 
 - **File:** `services\memory_service.py`
-- **Line:** 516
+- **Line:** 543
 - **Arguments:** self, query, limit, use_semantic
-- **Docstring:** Get memories relevant to the current query using semantic search or keyword matching...
+- **Docstring:** Get relevant memories for a query...
 
 ---
 
 ### `services\memory_service.py.get_user_info`
 
 - **File:** `services\memory_service.py`
-- **Line:** 713
+- **Line:** 670
 - **Arguments:** self
-- **Docstring:** Get user information for personality pronouns system...
+- **Docstring:** Get user information from memory...
 
 ---
 
 ### `services\memory_service.py.get_user_name`
 
 - **File:** `services\memory_service.py`
-- **Line:** 734
+- **Line:** 685
 - **Arguments:** self
-- **Docstring:** Get the user's name from memory if available...
+- **Docstring:** Get the user's name from memory...
 
 ---
 
 ### `services\memory_service.py.intelligent_add_message`
 
 - **File:** `services\memory_service.py`
-- **Line:** 568
+- **Line:** 595
 - **Arguments:** self, message
 - **Returns:** Dict
-- **Docstring:** Intelligently add a message and determine if it should go to LTM...
+- **Docstring:** Intelligently add a message to memory with classification...
 
 ---
 
 ### `services\memory_service.py.normalize_pronouns`
 
 - **File:** `services\memory_service.py`
-- **Line:** 180
+- **Line:** 191
 - **Arguments:** text, user_name
 - **Returns:** str
 - **Decorators:** staticmethod
@@ -8466,16 +8326,16 @@ Args:
 ### `services\memory_service.py.search_memories`
 
 - **File:** `services\memory_service.py`
-- **Line:** 1022
+- **Line:** 880
 - **Arguments:** self, query, memory_type
-- **Docstring:** Search memories by content...
+- **Docstring:** Search memories with optional type filter...
 
 ---
 
 ### `services\memory_service.py.set_max_context_messages`
 
 - **File:** `services\memory_service.py`
-- **Line:** 1013
+- **Line:** 871
 - **Arguments:** self, max_messages
 - **Docstring:** Set the maximum number of context messages...
 
@@ -8484,7 +8344,7 @@ Args:
 ### `services\memory_service.py.should_normalize`
 
 - **File:** `services\memory_service.py`
-- **Line:** 241
+- **Line:** 226
 - **Arguments:** text
 - **Returns:** bool
 - **Decorators:** staticmethod
@@ -8495,17 +8355,17 @@ Args:
 ### `services\memory_service.py.summarize_conversation`
 
 - **File:** `services\memory_service.py`
-- **Line:** 803
+- **Line:** 721
 - **Arguments:** self, conversation_messages, conversation_id
 - **Returns:** str
-- **Docstring:** Create a summary of the conversation (placeholder for now)...
+- **Docstring:** Summarize a conversation...
 
 ---
 
 ### `services\memory_service.py.update_access_stats`
 
 - **File:** `services\memory_service.py`
-- **Line:** 393
+- **Line:** 430
 - **Arguments:** self, entry
 - **Docstring:** Update access statistics for a memory entry...
 
@@ -8514,7 +8374,7 @@ Args:
 ### `services\ollama_service.py.__init__`
 
 - **File:** `services\ollama_service.py`
-- **Line:** 28
+- **Line:** 30
 - **Arguments:** self, base_url
 
 ---
@@ -8522,26 +8382,26 @@ Args:
 ### `services\ollama_service.py._build_session_commands`
 
 - **File:** `services\ollama_service.py`
-- **Line:** 270
+- **Line:** 372
 - **Arguments:** self, session_variables
-- **Docstring:** Build session commands from session variables...
+- **Docstring:** Build session commands from variables...
 
 ---
 
 ### `services\ollama_service.py._extract_system_prompt`
 
 - **File:** `services\ollama_service.py`
-- **Line:** 263
+- **Line:** 363
 - **Arguments:** self, messages
 - **Returns:** str
-- **Docstring:** Extract system prompt from messages if present...
+- **Docstring:** Extract system prompt from messages...
 
 ---
 
 ### `services\ollama_service.py._pull_model_thread`
 
 - **File:** `services\ollama_service.py`
-- **Line:** 172
+- **Line:** 231
 - **Arguments:** self, model_name
 - **Docstring:** Background thread for pulling models...
 
@@ -8550,7 +8410,7 @@ Args:
 ### `services\ollama_service.py._remove_model_thread`
 
 - **File:** `services\ollama_service.py`
-- **Line:** 209
+- **Line:** 279
 - **Arguments:** self, model_name
 - **Docstring:** Background thread for removing models...
 
@@ -8559,7 +8419,7 @@ Args:
 ### `services\ollama_service.py._update_model_thread`
 
 - **File:** `services\ollama_service.py`
-- **Line:** 240
+- **Line:** 327
 - **Arguments:** self, model_name
 - **Docstring:** Background thread for updating models...
 
@@ -8568,16 +8428,16 @@ Args:
 ### `services\ollama_service.py.cancel_request`
 
 - **File:** `services\ollama_service.py`
-- **Line:** 301
+- **Line:** 388
 - **Arguments:** self
-- **Docstring:** Cancel any ongoing request...
+- **Docstring:** Cancel the current request...
 
 ---
 
 ### `services\ollama_service.py.get_models`
 
 - **File:** `services\ollama_service.py`
-- **Line:** 34
+- **Line:** 41
 - **Arguments:** self
 - **Docstring:** Get list of available models from Ollama...
 
@@ -8586,17 +8446,17 @@ Args:
 ### `services\ollama_service.py.is_connected`
 
 - **File:** `services\ollama_service.py`
-- **Line:** 309
+- **Line:** 404
 - **Arguments:** self
 - **Returns:** bool
-- **Docstring:** Check if Ollama is running and accessible...
+- **Docstring:** Check if Ollama is connected...
 
 ---
 
 ### `services\ollama_service.py.pull_model`
 
 - **File:** `services\ollama_service.py`
-- **Line:** 160
+- **Line:** 219
 - **Arguments:** self, model_name
 - **Docstring:** Pull a model from Ollama...
 
@@ -8605,7 +8465,7 @@ Args:
 ### `services\ollama_service.py.remove_model`
 
 - **File:** `services\ollama_service.py`
-- **Line:** 201
+- **Line:** 267
 - **Arguments:** self, model_name
 - **Docstring:** Remove a model from Ollama...
 
@@ -8614,16 +8474,16 @@ Args:
 ### `services\ollama_service.py.reset_cancellation`
 
 - **File:** `services\ollama_service.py`
-- **Line:** 305
+- **Line:** 396
 - **Arguments:** self
-- **Docstring:** Reset cancellation flag...
+- **Docstring:** Reset the cancellation flag...
 
 ---
 
 ### `services\ollama_service.py.send_chat_message`
 
 - **File:** `services\ollama_service.py`
-- **Line:** 77
+- **Line:** 102
 - **Arguments:** self, model, messages, temperature, stream, session_variables
 - **Docstring:** Send a chat message to Ollama and yield streaming responses.
 
@@ -8636,7 +8496,7 @@ Args:
 ### `services\ollama_service.py.test_connection`
 
 - **File:** `services\ollama_service.py`
-- **Line:** 69
+- **Line:** 90
 - **Arguments:** self
 - **Returns:** bool
 - **Docstring:** Test if Ollama is running and accessible without emitting signals...
@@ -8646,16 +8506,16 @@ Args:
 ### `services\ollama_service.py.update_model`
 
 - **File:** `services\ollama_service.py`
-- **Line:** 232
+- **Line:** 315
 - **Arguments:** self, model_name
-- **Docstring:** Update a model in Ollama...
+- **Docstring:** Update a model from Ollama...
 
 ---
 
 ### `services\semantic_search_service.py.__init__`
 
 - **File:** `services\semantic_search_service.py`
-- **Line:** 37
+- **Line:** 38
 - **Arguments:** self, model_name, cache_dir
 
 ---
@@ -8663,7 +8523,7 @@ Args:
 ### `services\semantic_search_service.py._init_model`
 
 - **File:** `services\semantic_search_service.py`
-- **Line:** 55
+- **Line:** 56
 - **Arguments:** self
 - **Docstring:** Initialize the sentence transformer model...
 
@@ -8672,7 +8532,7 @@ Args:
 ### `services\semantic_search_service.py._load_embeddings`
 
 - **File:** `services\semantic_search_service.py`
-- **Line:** 69
+- **Line:** 70
 - **Arguments:** self
 - **Docstring:** Load existing embeddings from cache...
 
@@ -8681,7 +8541,7 @@ Args:
 ### `services\semantic_search_service.py._save_embeddings`
 
 - **File:** `services\semantic_search_service.py`
-- **Line:** 103
+- **Line:** 104
 - **Arguments:** self
 - **Docstring:** Save embeddings to cache...
 
@@ -8690,7 +8550,7 @@ Args:
 ### `services\semantic_search_service.py.add_memory`
 
 - **File:** `services\semantic_search_service.py`
-- **Line:** 137
+- **Line:** 138
 - **Arguments:** self, memory_id, content, memory_type, importance, tags, metadata
 - **Returns:** bool
 - **Docstring:** Add a new memory with vector embedding...
@@ -8700,26 +8560,26 @@ Args:
 ### `services\semantic_search_service.py.clear_all`
 
 - **File:** `services\semantic_search_service.py`
-- **Line:** 418
+- **Line:** 427
 - **Arguments:** self
-- **Docstring:** Clear all vectorized memories...
+- **Docstring:** Clear all memories and embeddings...
 
 ---
 
 ### `services\semantic_search_service.py.get_memory_stats`
 
 - **File:** `services\semantic_search_service.py`
-- **Line:** 377
+- **Line:** 380
 - **Arguments:** self
 - **Returns:** Dict
-- **Docstring:** Get statistics about the vectorized memories...
+- **Docstring:** Get statistics about the semantic search service...
 
 ---
 
 ### `services\semantic_search_service.py.is_ready`
 
 - **File:** `services\semantic_search_service.py`
-- **Line:** 439
+- **Line:** 454
 - **Arguments:** self
 - **Returns:** bool
 - **Docstring:** Check if the semantic search service is ready...
@@ -8729,7 +8589,7 @@ Args:
 ### `services\semantic_search_service.py.remove_memory`
 
 - **File:** `services\semantic_search_service.py`
-- **Line:** 184
+- **Line:** 192
 - **Arguments:** self, memory_id
 - **Returns:** bool
 - **Docstring:** Remove a memory and its embedding...
@@ -8739,125 +8599,28 @@ Args:
 ### `services\semantic_search_service.py.search_hybrid`
 
 - **File:** `services\semantic_search_service.py`
-- **Line:** 270
+- **Line:** 274
 - **Arguments:** self, query, max_results, min_similarity, memory_types, keyword_weight, semantic_weight
-- **Docstring:** Hybrid search combining semantic similarity and keyword matching
-
-Args:
-    query: Search query
-    ...
+- **Docstring:** Search memories using both semantic and keyword matching...
 
 ---
 
 ### `services\semantic_search_service.py.search_semantic`
 
 - **File:** `services\semantic_search_service.py`
-- **Line:** 207
+- **Line:** 221
 - **Arguments:** self, query, max_results, min_similarity, memory_types
-- **Docstring:** Search memories using semantic similarity
-
-Returns:
-    List of tuples: (memory_id, similarity_score...
+- **Docstring:** Search memories using semantic similarity...
 
 ---
 
 ### `services\semantic_search_service.py.update_memory_importance`
 
 - **File:** `services\semantic_search_service.py`
-- **Line:** 356
+- **Line:** 353
 - **Arguments:** self, memory_id, new_importance
 - **Returns:** bool
 - **Docstring:** Update the importance of a memory...
-
----
-
-### `services\start_up\check_dependencies.py.__init__`
-
-- **File:** `services\start_up\check_dependencies.py`
-- **Line:** 25
-- **Arguments:** self
-
----
-
-### `services\start_up\check_dependencies.py.check_core_dependencies`
-
-- **File:** `services\start_up\check_dependencies.py`
-- **Line:** 72
-- **Arguments:** self
-- **Docstring:** Check core application dependencies....
-
----
-
-### `services\start_up\check_dependencies.py.check_ml_dependencies`
-
-- **File:** `services\start_up\check_dependencies.py`
-- **Line:** 116
-- **Arguments:** self
-- **Docstring:** Check machine learning dependencies....
-
----
-
-### `services\start_up\check_dependencies.py.check_package_versions`
-
-- **File:** `services\start_up\check_dependencies.py`
-- **Line:** 151
-- **Arguments:** self
-- **Docstring:** Check for version conflicts....
-
----
-
-### `services\start_up\check_dependencies.py.execute_fix_plan`
-
-- **File:** `services\start_up\check_dependencies.py`
-- **Line:** 298
-- **Arguments:** self, fix_steps
-- **Docstring:** Execute the fix plan....
-
----
-
-### `services\start_up\check_dependencies.py.generate_fix_plan`
-
-- **File:** `services\start_up\check_dependencies.py`
-- **Line:** 204
-- **Arguments:** self
-- **Docstring:** Generate a comprehensive fix plan....
-
----
-
-### `services\start_up\check_dependencies.py.main`
-
-- **File:** `services\start_up\check_dependencies.py`
-- **Line:** 367
-- **Arguments:** 
-
----
-
-### `services\start_up\check_dependencies.py.run_comprehensive_check`
-
-- **File:** `services\start_up\check_dependencies.py`
-- **Line:** 332
-- **Arguments:** self
-- **Returns:** bool
-- **Docstring:** Run the complete dependency check and return if fixes are needed....
-
----
-
-### `services\start_up\check_dependencies.py.run_pip_command`
-
-- **File:** `services\start_up\check_dependencies.py`
-- **Line:** 47
-- **Arguments:** self, command, description
-- **Returns:** bool
-- **Docstring:** Run a pip command with better error handling....
-
----
-
-### `services\start_up\check_dependencies.py.test_import`
-
-- **File:** `services\start_up\check_dependencies.py`
-- **Line:** 31
-- **Arguments:** self, module_name, description
-- **Docstring:** Test if a module can be imported successfully and return version....
 
 ---
 
@@ -9202,15 +8965,34 @@ Args:
 ### `services\worker\worker.py.__init__`
 
 - **File:** `services\worker\worker.py`
-- **Line:** 11
+- **Line:** 16
 - **Arguments:** self, parent
+
+---
+
+### `services\worker\worker.py._log_thread_info`
+
+- **File:** `services\worker\worker.py`
+- **Line:** 28
+- **Arguments:** self, action
+- **Docstring:** Log thread information for debugging...
+
+---
+
+### `services\worker\worker.py.get_stats`
+
+- **File:** `services\worker\worker.py`
+- **Line:** 197
+- **Arguments:** self
+- **Returns:** dict
+- **Docstring:** Get worker statistics for debugging...
 
 ---
 
 ### `services\worker\worker.py.is_running`
 
 - **File:** `services\worker\worker.py`
-- **Line:** 38
+- **Line:** 88
 - **Arguments:** self
 - **Docstring:** Check if the worker is currently running....
 
@@ -9219,7 +9001,7 @@ Args:
 ### `services\worker\worker.py.run`
 
 - **File:** `services\worker\worker.py`
-- **Line:** 16
+- **Line:** 35
 - **Arguments:** self, message
 - **Docstring:** Run the worker task....
 
@@ -9228,7 +9010,7 @@ Args:
 ### `services\worker\worker.py.run_stream`
 
 - **File:** `services\worker\worker.py`
-- **Line:** 44
+- **Line:** 94
 - **Arguments:** self, messages, model, temperature, ollama_url, max_tokens, top_p, frequency_penalty, presence_penalty
 
 ---
@@ -9236,9 +9018,9 @@ Args:
 ### `services\worker\worker.py.stop`
 
 - **File:** `services\worker\worker.py`
-- **Line:** 31
+- **Line:** 66
 - **Arguments:** self
-- **Docstring:** Stop the worker....
+- **Docstring:** Stop the worker safely....
 
 ---
 
@@ -11103,593 +10885,20 @@ Args:
 
 ---
 
-### `ui\chat_tab.py.__init__`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 51
-- **Arguments:** self, parent, conversation_manager, summarization_service, config_manager
-
----
-
-### `ui\chat_tab.py._reset_voice_button`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 1492
-- **Arguments:** self
-- **Docstring:** Reset voice button to ready state...
-
----
-
-### `ui\chat_tab.py.append_response_chunk`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 1709
-- **Arguments:** self, chunk, model_name
-- **Docstring:** Append a streaming response chunk...
-
----
-
-### `ui\chat_tab.py.append_to_chat`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 1689
-- **Arguments:** self, sender, message, is_code
-- **Docstring:** Add a message to the chat display...
-
----
-
-### `ui\chat_tab.py.cancel_message`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 1684
-- **Arguments:** self
-- **Docstring:** Cancel the current message...
-
----
-
-### `ui\chat_tab.py.chat_display_mouse_move_event`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 285
-- **Arguments:** self, event
-- **Docstring:** Handle mouse move events to show/hide edit buttons...
-
----
-
-### `ui\chat_tab.py.clear_chat`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 1141
-- **Arguments:** self
-- **Docstring:** Clear the chat display...
-
----
-
-### `ui\chat_tab.py.edit_message_at_index`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 354
-- **Arguments:** self, message_index
-- **Docstring:** Edit message at specific index...
-
----
-
-### `ui\chat_tab.py.enforce_voice_mode_ui`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 1764
-- **Arguments:** self
-- **Docstring:** Ensure chat input and send button are always hidden in Voice mode....
-
----
-
-### `ui\chat_tab.py.eventFilter`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 1773
-- **Arguments:** self, obj, event
-- **Docstring:** Handle key events in message input...
-
----
-
-### `ui\chat_tab.py.force_enable_send_button`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 1249
-- **Arguments:** self
-- **Docstring:** Force enable the send button and ensure UI is updated...
-
----
-
-### `ui\chat_tab.py.get_ai_name`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 1134
-- **Arguments:** self
-- **Returns:** str
-- **Docstring:** Get the AI name based on current personality...
-
----
-
-### `ui\chat_tab.py.get_current_model`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 1118
-- **Arguments:** self
-- **Returns:** str
-- **Docstring:** Get the currently selected model...
-
----
-
-### `ui\chat_tab.py.get_current_personality`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 1130
-- **Arguments:** self
-- **Returns:** str
-- **Docstring:** Get the currently selected personality...
-
----
-
-### `ui\chat_tab.py.get_current_response`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 1126
-- **Arguments:** self
-- **Returns:** str
-- **Docstring:** Get the current streaming response...
-
----
-
-### `ui\chat_tab.py.get_temperature`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 1122
-- **Arguments:** self
-- **Returns:** float
-- **Docstring:** Get the current temperature setting...
-
----
-
-### `ui\chat_tab.py.hide_edit_button`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 346
-- **Arguments:** self
-- **Docstring:** Hide the edit button...
-
----
-
-### `ui\chat_tab.py.is_eq_visualizer_active`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 1424
-- **Arguments:** self
-- **Docstring:** Check if EQ visualizer should be active...
-
----
-
-### `ui\chat_tab.py.load_chat`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 1178
-- **Arguments:** self
-- **Docstring:** Load a chat from file...
-
----
-
-### `ui\chat_tab.py.load_conversation`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 1187
-- **Arguments:** self, filepath
-- **Docstring:** Load a conversation from file...
-
----
-
-### `ui\chat_tab.py.on_audio_level_changed`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 1005
-- **Arguments:** self, audio_level
-- **Docstring:** Handle audio level changes for EQ visualizer...
-
----
-
-### `ui\chat_tab.py.on_message_cancelled`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 1243
-- **Arguments:** self
-- **Docstring:** Handle message cancellation...
-
----
-
-### `ui\chat_tab.py.on_message_edited`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 1419
-- **Arguments:** self, message_index, new_content
-- **Docstring:** Handle message edit...
-
----
-
-### `ui\chat_tab.py.on_model_changed`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 1113
-- **Arguments:** self, model_name
-- **Docstring:** Handle model combo box change...
-
----
-
-### `ui\chat_tab.py.on_personality_changed`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 1108
-- **Arguments:** self, personality_name
-- **Docstring:** Handle personality change...
-
----
-
-### `ui\chat_tab.py.on_personality_combo_changed`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 1103
-- **Arguments:** self, personality_name
-- **Docstring:** Handle personality combo box change...
-
----
-
-### `ui\chat_tab.py.on_recording_error`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 1593
-- **Arguments:** self, error
-- **Docstring:** Handle recording error...
-
----
-
-### `ui\chat_tab.py.on_recording_started`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 1558
-- **Arguments:** self
-- **Docstring:** Handle recording started...
-
----
-
-### `ui\chat_tab.py.on_recording_stopped`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 1579
-- **Arguments:** self
-- **Docstring:** Handle recording stopped...
-
----
-
-### `ui\chat_tab.py.on_temperature_changed`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 1074
-- **Arguments:** self, value
-- **Docstring:** Handle temperature slider value change...
-
----
-
-### `ui\chat_tab.py.on_tts_error`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 1553
-- **Arguments:** self, error
-- **Docstring:** Handle TTS error...
-
----
-
-### `ui\chat_tab.py.on_tts_finished`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 1549
-- **Arguments:** self
-
----
-
-### `ui\chat_tab.py.on_tts_settings_changed`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 1304
-- **Arguments:** self, settings
-
----
-
-### `ui\chat_tab.py.on_tts_started`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 1545
-- **Arguments:** self
-
----
-
-### `ui\chat_tab.py.on_voice_input_error`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 1528
-- **Arguments:** self, error
-- **Docstring:** Handle voice input error...
-
----
-
-### `ui\chat_tab.py.on_voice_input_received`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 1507
-- **Arguments:** self, text
-- **Docstring:** Handle voice input converted to text...
-
----
-
-### `ui\chat_tab.py.on_voice_processing_finished`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 1615
-- **Arguments:** self
-- **Docstring:** Handle voice processing finished...
-
----
-
-### `ui\chat_tab.py.on_voice_processing_started`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 1609
-- **Arguments:** self
-- **Docstring:** Handle voice processing started...
-
----
-
-### `ui\chat_tab.py.on_voice_settings_changed`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 1653
-- **Arguments:** self, settings
-- **Docstring:** Handle voice settings changes...
-
----
-
-### `ui\chat_tab.py.open_tts_settings`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 1297
-- **Arguments:** self
-
----
-
-### `ui\chat_tab.py.open_voice_settings`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 1634
-- **Arguments:** self
-- **Docstring:** Open voice settings dialog...
-
----
-
-### `ui\chat_tab.py.refresh_navigation`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 1233
-- **Arguments:** self
-- **Docstring:** Refresh the navigation widget...
-
----
-
-### `ui\chat_tab.py.save_chat`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 1148
-- **Arguments:** self
-- **Docstring:** Save the current chat...
-
----
-
-### `ui\chat_tab.py.save_message_edit`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 1403
-- **Arguments:** self, dialog, message_index, new_content
-- **Docstring:** Save the edited message...
-
----
-
-### `ui\chat_tab.py.send_message`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 1666
-- **Arguments:** self
-- **Docstring:** Send the current message...
-
----
-
-### `ui\chat_tab.py.set_current_conversation_file`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 1238
-- **Arguments:** self, filepath
-- **Docstring:** Set the current conversation file in the navigation widget...
-
----
-
-### `ui\chat_tab.py.set_input_mode`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 1261
-- **Arguments:** self, mode
-
----
-
-### `ui\chat_tab.py.setup_chat_display`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 249
-- **Arguments:** self, parent
-- **Docstring:** Setup the chat display area...
-
----
-
-### `ui\chat_tab.py.setup_connections`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 638
-- **Arguments:** self
-- **Docstring:** Setup signal connections...
-
----
-
-### `ui\chat_tab.py.setup_controls`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 365
-- **Arguments:** self, parent
-- **Docstring:** Setup the controls area...
-
----
-
-### `ui\chat_tab.py.setup_eq_visualizers`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 235
-- **Arguments:** self
-- **Docstring:** Initialize EQ visualizer widgets...
-
----
-
-### `ui\chat_tab.py.setup_streaming_handler`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 632
-- **Arguments:** self
-- **Docstring:** Setup the streaming handler for chat display...
-
----
-
-### `ui\chat_tab.py.setup_ui`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 99
-- **Arguments:** self
-- **Docstring:** Setup the chat interface UI...
-
----
-
-### `ui\chat_tab.py.show_edit_button`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 311
-- **Arguments:** self, pos, message_index
-- **Docstring:** Show edit button for a specific message...
-
----
-
-### `ui\chat_tab.py.show_message_edit_dialog`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 1313
-- **Arguments:** self, message_index, current_content
-- **Docstring:** Show dialog to edit a message...
-
----
-
-### `ui\chat_tab.py.speak_ai_response`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 1620
-- **Arguments:** self, text
-- **Docstring:** Trigger TTS for AI response...
-
----
-
-### `ui\chat_tab.py.start_streaming`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 1725
-- **Arguments:** self
-- **Docstring:** Start streaming state...
-
----
-
-### `ui\chat_tab.py.stop_streaming`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 1743
-- **Arguments:** self
-- **Docstring:** Stop streaming state...
-
----
-
-### `ui\chat_tab.py.switch_to_chat_display`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 797
-- **Arguments:** self
-- **Docstring:** Switch back to chat display mode...
-
----
-
-### `ui\chat_tab.py.switch_to_eq_visualizer`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 700
-- **Arguments:** self
-- **Docstring:** Switch the chat display to EQ visualizer mode...
-
----
-
-### `ui\chat_tab.py.toggle_voice_mode`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 1461
-- **Arguments:** self
-
----
-
-### `ui\chat_tab.py.update_eq_visualizer`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 893
-- **Arguments:** self, audio_level
-- **Docstring:** Update the EQ visualizer with audio level data....
-
----
-
-### `ui\chat_tab.py.update_eq_visualizer_mode`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 1431
-- **Arguments:** self, mode
-- **Docstring:** Update the EQ visualizer mode and switch display if needed...
-
----
-
-### `ui\chat_tab.py.update_model_list`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 1079
-- **Arguments:** self, models
-- **Docstring:** Update the model combo box with available models...
-
----
-
-### `ui\chat_tab.py.update_personality_list`
-
-- **File:** `ui\chat_tab.py`
-- **Line:** 1091
-- **Arguments:** self, personalities
-- **Docstring:** Update the personality combo box with available personalities...
+### `ui\styles\message_formatter.py._protect_code_blocks`
+
+- **File:** `ui\styles\message_formatter.py`
+- **Line:** 133
+- **Arguments:** message
+- **Decorators:** staticmethod
+- **Docstring:** Helper function to protect code blocks from processing...
 
 ---
 
 ### `ui\styles\message_formatter.py.cleanup_message`
 
 - **File:** `ui\styles\message_formatter.py`
-- **Line:** 253
+- **Line:** 250
 - **Arguments:** sender, message, is_code
 - **Returns:** str
 - **Decorators:** staticmethod
@@ -11742,7 +10951,7 @@ Returns True if code is detected, False oth...
 ### `ui\styles\message_formatter.py.format_chat_message`
 
 - **File:** `ui\styles\message_formatter.py`
-- **Line:** 281
+- **Line:** 278
 - **Arguments:** sender, message, is_code
 - **Returns:** str
 - **Decorators:** staticmethod
@@ -11753,7 +10962,7 @@ Returns True if code is detected, False oth...
 ### `ui\styles\message_formatter.py.format_markdown`
 
 - **File:** `ui\styles\message_formatter.py`
-- **Line:** 133
+- **Line:** 149
 - **Arguments:** message
 - **Returns:** str
 - **Decorators:** staticmethod
@@ -11765,7 +10974,7 @@ Handles headers, lists, emphasis, an...
 ### `ui\styles\message_formatter.py.handle_html_tags`
 
 - **File:** `ui\styles\message_formatter.py`
-- **Line:** 214
+- **Line:** 221
 - **Arguments:** message
 - **Returns:** str
 - **Decorators:** staticmethod
@@ -11777,7 +10986,7 @@ but...
 ### `ui\styles\message_formatter.py.protect_code_blocks`
 
 - **File:** `ui\styles\message_formatter.py`
-- **Line:** 222
+- **Line:** 137
 - **Arguments:** match
 
 ---
@@ -11785,7 +10994,7 @@ but...
 ### `ui\styles\message_formatter.py.split_thoughts_and_answer`
 
 - **File:** `ui\styles\message_formatter.py`
-- **Line:** 318
+- **Line:** 315
 - **Arguments:** message
 - **Decorators:** staticmethod
 - **Docstring:** Splits a message into (thoughts, main_answer) if <think>...</think> is present.
@@ -11807,7 +11016,7 @@ Returns a tuple (tho...
 ### `ui\styles\message_formatter.py.to_plain_text`
 
 - **File:** `ui\styles\message_formatter.py`
-- **Line:** 334
+- **Line:** 331
 - **Arguments:** message
 - **Returns:** str
 - **Decorators:** staticmethod
@@ -12001,7 +11210,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\chat_tab\chat_tab.py._append_response_chunk_safe`
 
 - **File:** `ui\tabs\chat_tab\chat_tab.py`
-- **Line:** 514
+- **Line:** 517
 - **Arguments:** self, chunk, model_name
 - **Docstring:** Append a streaming response chunk safely in the main thread...
 
@@ -12010,7 +11219,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\chat_tab\chat_tab.py._force_enable_send_button_safe`
 
 - **File:** `ui\tabs\chat_tab\chat_tab.py`
-- **Line:** 611
+- **Line:** 614
 - **Arguments:** self
 - **Docstring:** Force enable the send button safely in the main thread...
 
@@ -12019,7 +11228,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\chat_tab\chat_tab.py._start_streaming_safe`
 
 - **File:** `ui\tabs\chat_tab\chat_tab.py`
-- **Line:** 538
+- **Line:** 541
 - **Arguments:** self
 - **Docstring:** Start streaming state safely in the main thread...
 
@@ -12028,7 +11237,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\chat_tab\chat_tab.py._stop_streaming_safe`
 
 - **File:** `ui\tabs\chat_tab\chat_tab.py`
-- **Line:** 573
+- **Line:** 576
 - **Arguments:** self
 - **Docstring:** Stop streaming state safely in the main thread...
 
@@ -12037,7 +11246,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\chat_tab\chat_tab.py.append_response_chunk`
 
 - **File:** `ui\tabs\chat_tab\chat_tab.py`
-- **Line:** 508
+- **Line:** 511
 - **Arguments:** self, chunk, model_name
 - **Docstring:** Append a streaming response chunk...
 
@@ -12046,7 +11255,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\chat_tab\chat_tab.py.append_to_chat`
 
 - **File:** `ui\tabs\chat_tab\chat_tab.py`
-- **Line:** 499
+- **Line:** 502
 - **Arguments:** self, sender, message, is_code
 - **Docstring:** Add a message to the chat display...
 
@@ -12055,7 +11264,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\chat_tab\chat_tab.py.clear_chat`
 
 - **File:** `ui\tabs\chat_tab\chat_tab.py`
-- **Line:** 633
+- **Line:** 636
 - **Arguments:** self
 - **Docstring:** Clear the chat display...
 
@@ -12064,7 +11273,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\chat_tab\chat_tab.py.force_enable_send_button`
 
 - **File:** `ui\tabs\chat_tab\chat_tab.py`
-- **Line:** 605
+- **Line:** 608
 - **Arguments:** self
 - **Docstring:** Force enable the send button and ensure UI is updated...
 
@@ -12073,7 +11282,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\chat_tab\chat_tab.py.get_ai_name`
 
 - **File:** `ui\tabs\chat_tab\chat_tab.py`
-- **Line:** 476
+- **Line:** 479
 - **Arguments:** self
 - **Returns:** str
 - **Docstring:** Get the AI name based on current personality...
@@ -12083,7 +11292,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\chat_tab\chat_tab.py.get_current_model`
 
 - **File:** `ui\tabs\chat_tab\chat_tab.py`
-- **Line:** 487
+- **Line:** 490
 - **Arguments:** self
 - **Returns:** str
 - **Docstring:** Get the currently selected model...
@@ -12093,7 +11302,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\chat_tab\chat_tab.py.get_current_personality`
 
 - **File:** `ui\tabs\chat_tab\chat_tab.py`
-- **Line:** 483
+- **Line:** 486
 - **Arguments:** self
 - **Returns:** str
 - **Docstring:** Get the currently selected personality...
@@ -12103,7 +11312,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\chat_tab\chat_tab.py.get_current_response`
 
 - **File:** `ui\tabs\chat_tab\chat_tab.py`
-- **Line:** 495
+- **Line:** 498
 - **Arguments:** self
 - **Returns:** str
 - **Docstring:** Get the current streaming response...
@@ -12113,7 +11322,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\chat_tab\chat_tab.py.get_streaming_handler`
 
 - **File:** `ui\tabs\chat_tab\chat_tab.py`
-- **Line:** 734
+- **Line:** 737
 - **Arguments:** self
 - **Docstring:** Get the streaming handler for backward compatibility...
 
@@ -12122,7 +11331,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\chat_tab\chat_tab.py.get_temperature`
 
 - **File:** `ui\tabs\chat_tab\chat_tab.py`
-- **Line:** 491
+- **Line:** 494
 - **Arguments:** self
 - **Returns:** float
 - **Docstring:** Get the current temperature setting...
@@ -12132,7 +11341,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\chat_tab\chat_tab.py.load_conversation`
 
 - **File:** `ui\tabs\chat_tab\chat_tab.py`
-- **Line:** 677
+- **Line:** 680
 - **Arguments:** self, filepath
 - **Docstring:** Load a conversation from file...
 
@@ -12141,7 +11350,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\chat_tab\chat_tab.py.on_audio_level_changed`
 
 - **File:** `ui\tabs\chat_tab\chat_tab.py`
-- **Line:** 458
+- **Line:** 461
 - **Arguments:** self, audio_level
 - **Docstring:** Handle audio level changes...
 
@@ -12177,7 +11386,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\chat_tab\chat_tab.py.on_message_edited`
 
 - **File:** `ui\tabs\chat_tab\chat_tab.py`
-- **Line:** 470
+- **Line:** 473
 - **Arguments:** self, message_index, new_content
 - **Docstring:** Handle message edit...
 
@@ -12213,7 +11422,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\chat_tab\chat_tab.py.on_recording_error`
 
 - **File:** `ui\tabs\chat_tab\chat_tab.py`
-- **Line:** 446
+- **Line:** 449
 - **Arguments:** self, error
 - **Docstring:** Handle recording error...
 
@@ -12222,7 +11431,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\chat_tab\chat_tab.py.on_recording_started`
 
 - **File:** `ui\tabs\chat_tab\chat_tab.py`
-- **Line:** 438
+- **Line:** 441
 - **Arguments:** self
 - **Docstring:** Handle recording started...
 
@@ -12231,7 +11440,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\chat_tab\chat_tab.py.on_recording_stopped`
 
 - **File:** `ui\tabs\chat_tab\chat_tab.py`
-- **Line:** 442
+- **Line:** 445
 - **Arguments:** self
 - **Docstring:** Handle recording stopped...
 
@@ -12249,7 +11458,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\chat_tab\chat_tab.py.on_tts_error`
 
 - **File:** `ui\tabs\chat_tab\chat_tab.py`
-- **Line:** 434
+- **Line:** 437
 - **Arguments:** self, error
 - **Docstring:** Handle TTS error...
 
@@ -12258,7 +11467,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\chat_tab\chat_tab.py.on_tts_finished`
 
 - **File:** `ui\tabs\chat_tab\chat_tab.py`
-- **Line:** 408
+- **Line:** 411
 - **Arguments:** self
 - **Docstring:** Handle TTS finished...
 
@@ -12267,7 +11476,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\chat_tab\chat_tab.py.on_tts_started`
 
 - **File:** `ui\tabs\chat_tab\chat_tab.py`
-- **Line:** 398
+- **Line:** 401
 - **Arguments:** self
 - **Docstring:** Handle TTS started...
 
@@ -12276,7 +11485,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\chat_tab\chat_tab.py.on_voice_input_error`
 
 - **File:** `ui\tabs\chat_tab\chat_tab.py`
-- **Line:** 393
+- **Line:** 396
 - **Arguments:** self, error
 - **Docstring:** Handle voice input error...
 
@@ -12294,7 +11503,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\chat_tab\chat_tab.py.on_voice_processing_finished`
 
 - **File:** `ui\tabs\chat_tab\chat_tab.py`
-- **Line:** 454
+- **Line:** 457
 - **Arguments:** self
 - **Docstring:** Handle voice processing finished...
 
@@ -12303,7 +11512,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\chat_tab\chat_tab.py.on_voice_processing_started`
 
 - **File:** `ui\tabs\chat_tab\chat_tab.py`
-- **Line:** 450
+- **Line:** 453
 - **Arguments:** self
 - **Docstring:** Handle voice processing started...
 
@@ -12312,7 +11521,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\chat_tab\chat_tab.py.on_voice_settings_changed`
 
 - **File:** `ui\tabs\chat_tab\chat_tab.py`
-- **Line:** 667
+- **Line:** 670
 - **Arguments:** self, settings
 - **Docstring:** Handle voice settings changes...
 
@@ -12321,7 +11530,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\chat_tab\chat_tab.py.open_voice_settings`
 
 - **File:** `ui\tabs\chat_tab\chat_tab.py`
-- **Line:** 649
+- **Line:** 652
 - **Arguments:** self
 - **Docstring:** Open voice settings dialog...
 
@@ -12330,7 +11539,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\chat_tab\chat_tab.py.refresh_navigation`
 
 - **File:** `ui\tabs\chat_tab\chat_tab.py`
-- **Line:** 724
+- **Line:** 727
 - **Arguments:** self
 - **Docstring:** Refresh the navigation widget...
 
@@ -12339,7 +11548,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\chat_tab\chat_tab.py.set_current_conversation_file`
 
 - **File:** `ui\tabs\chat_tab\chat_tab.py`
-- **Line:** 729
+- **Line:** 732
 - **Arguments:** self, filepath
 - **Docstring:** Set the current conversation file in the navigation widget...
 
@@ -12375,7 +11584,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\chat_tab\chat_tab.py.speak_ai_response`
 
 - **File:** `ui\tabs\chat_tab\chat_tab.py`
-- **Line:** 645
+- **Line:** 648
 - **Arguments:** self, text
 - **Docstring:** Trigger TTS for AI response...
 
@@ -12384,7 +11593,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\chat_tab\chat_tab.py.start_streaming`
 
 - **File:** `ui\tabs\chat_tab\chat_tab.py`
-- **Line:** 532
+- **Line:** 535
 - **Arguments:** self
 - **Docstring:** Start streaming state...
 
@@ -12393,7 +11602,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\chat_tab\chat_tab.py.stop_streaming`
 
 - **File:** `ui\tabs\chat_tab\chat_tab.py`
-- **Line:** 567
+- **Line:** 570
 - **Arguments:** self
 - **Docstring:** Stop streaming state...
 
@@ -12402,7 +11611,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\chat_tab\chat_tab.py.streaming_handler`
 
 - **File:** `ui\tabs\chat_tab\chat_tab.py`
-- **Line:** 739
+- **Line:** 742
 - **Arguments:** self
 - **Decorators:** property
 - **Docstring:** Property to access streaming handler for backward compatibility...
@@ -12412,7 +11621,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\chat_tab\chat_tab.py.update_model_list`
 
 - **File:** `ui\tabs\chat_tab\chat_tab.py`
-- **Line:** 637
+- **Line:** 640
 - **Arguments:** self, models
 - **Docstring:** Update the model combo box with available models...
 
@@ -12421,7 +11630,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\chat_tab\chat_tab.py.update_personality_list`
 
 - **File:** `ui\tabs\chat_tab\chat_tab.py`
-- **Line:** 641
+- **Line:** 644
 - **Arguments:** self, personalities
 - **Docstring:** Update the personality combo box with available personalities...
 
@@ -12737,10 +11946,28 @@ Removes formatting, code bloc...
 
 ---
 
+### `ui\tabs\chat_tab\voice_controls.py._attempt_recovery`
+
+- **File:** `ui\tabs\chat_tab\voice_controls.py`
+- **Line:** 219
+- **Arguments:** self
+- **Docstring:** Attempt to recover voice service...
+
+---
+
+### `ui\tabs\chat_tab\voice_controls.py._disable_voice_features`
+
+- **File:** `ui\tabs\chat_tab\voice_controls.py`
+- **Line:** 259
+- **Arguments:** self
+- **Docstring:** Disable voice features after failed recovery...
+
+---
+
 ### `ui\tabs\chat_tab\voice_controls.py._handle_recording_error_safe`
 
 - **File:** `ui\tabs\chat_tab\voice_controls.py`
-- **Line:** 439
+- **Line:** 565
 - **Arguments:** self, error
 - **Docstring:** Handle recording error safely in the main thread...
 
@@ -12749,7 +11976,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\chat_tab\voice_controls.py._handle_recording_started_safe`
 
 - **File:** `ui\tabs\chat_tab\voice_controls.py`
-- **Line:** 390
+- **Line:** 516
 - **Arguments:** self
 - **Docstring:** Handle recording started safely in the main thread...
 
@@ -12758,25 +11985,52 @@ Removes formatting, code bloc...
 ### `ui\tabs\chat_tab\voice_controls.py._handle_recording_stopped_safe`
 
 - **File:** `ui\tabs\chat_tab\voice_controls.py`
-- **Line:** 418
+- **Line:** 544
 - **Arguments:** self
 - **Docstring:** Handle recording stopped safely in the main thread...
+
+---
+
+### `ui\tabs\chat_tab\voice_controls.py._handle_service_error`
+
+- **File:** `ui\tabs\chat_tab\voice_controls.py`
+- **Line:** 272
+- **Arguments:** self, error
+- **Docstring:** Handle service errors with exponential backoff...
+
+---
+
+### `ui\tabs\chat_tab\voice_controls.py._handle_tts_error_safe`
+
+- **File:** `ui\tabs\chat_tab\voice_controls.py`
+- **Line:** 505
+- **Arguments:** self, error
+- **Docstring:** Handle TTS error safely in the main thread...
 
 ---
 
 ### `ui\tabs\chat_tab\voice_controls.py._handle_tts_finished_continuous`
 
 - **File:** `ui\tabs\chat_tab\voice_controls.py`
-- **Line:** 286
+- **Line:** 400
 - **Arguments:** self
 - **Docstring:** Handle TTS finished in continuous voice mode...
+
+---
+
+### `ui\tabs\chat_tab\voice_controls.py._handle_voice_crash`
+
+- **File:** `ui\tabs\chat_tab\voice_controls.py`
+- **Line:** 206
+- **Arguments:** self
+- **Docstring:** Handle voice service crashes gracefully...
 
 ---
 
 ### `ui\tabs\chat_tab\voice_controls.py._handle_voice_input_error_safe`
 
 - **File:** `ui\tabs\chat_tab\voice_controls.py`
-- **Line:** 347
+- **Line:** 464
 - **Arguments:** self, error
 - **Docstring:** Handle voice input error safely in the main thread...
 
@@ -12785,25 +12039,52 @@ Removes formatting, code bloc...
 ### `ui\tabs\chat_tab\voice_controls.py._handle_voice_input_safe`
 
 - **File:** `ui\tabs\chat_tab\voice_controls.py`
-- **Line:** 269
+- **Line:** 383
 - **Arguments:** self, text
 - **Docstring:** Handle voice input safely in the main thread...
+
+---
+
+### `ui\tabs\chat_tab\voice_controls.py._reinitialize_voice_service`
+
+- **File:** `ui\tabs\chat_tab\voice_controls.py`
+- **Line:** 251
+- **Arguments:** self
+- **Docstring:** Reinitialize voice service...
+
+---
+
+### `ui\tabs\chat_tab\voice_controls.py._reset_error_count`
+
+- **File:** `ui\tabs\chat_tab\voice_controls.py`
+- **Line:** 268
+- **Arguments:** self
+- **Docstring:** Reset error count after timeout...
 
 ---
 
 ### `ui\tabs\chat_tab\voice_controls.py._reset_voice_button`
 
 - **File:** `ui\tabs\chat_tab\voice_controls.py`
-- **Line:** 310
+- **Line:** 424
 - **Arguments:** self
 - **Docstring:** Reset voice button to initial state...
+
+---
+
+### `ui\tabs\chat_tab\voice_controls.py._reset_voice_ui`
+
+- **File:** `ui\tabs\chat_tab\voice_controls.py`
+- **Line:** 240
+- **Arguments:** self
+- **Docstring:** Reset voice UI to safe state...
 
 ---
 
 ### `ui\tabs\chat_tab\voice_controls.py._restart_voice_input`
 
 - **File:** `ui\tabs\chat_tab\voice_controls.py`
-- **Line:** 296
+- **Line:** 410
 - **Arguments:** self
 - **Docstring:** Restart voice input for continuous mode...
 
@@ -12812,25 +12093,43 @@ Removes formatting, code bloc...
 ### `ui\tabs\chat_tab\voice_controls.py._start_continuous_voice_mode`
 
 - **File:** `ui\tabs\chat_tab\voice_controls.py`
-- **Line:** 252
+- **Line:** 366
 - **Arguments:** self
 - **Docstring:** Start continuous voice mode cycle...
+
+---
+
+### `ui\tabs\chat_tab\voice_controls.py._stop_all_voice_operations`
+
+- **File:** `ui\tabs\chat_tab\voice_controls.py`
+- **Line:** 229
+- **Arguments:** self
+- **Docstring:** Stop all voice operations safely...
 
 ---
 
 ### `ui\tabs\chat_tab\voice_controls.py._update_audio_level_ui_safe`
 
 - **File:** `ui\tabs\chat_tab\voice_controls.py`
-- **Line:** 477
+- **Line:** 603
 - **Arguments:** self, audio_level
 - **Docstring:** Update audio level UI safely in the main thread...
+
+---
+
+### `ui\tabs\chat_tab\voice_controls.py._update_voice_state`
+
+- **File:** `ui\tabs\chat_tab\voice_controls.py`
+- **Line:** 196
+- **Arguments:** self, key, value
+- **Docstring:** Thread-safe voice state update...
 
 ---
 
 ### `ui\tabs\chat_tab\voice_controls.py.get_ui_components`
 
 - **File:** `ui\tabs\chat_tab\voice_controls.py`
-- **Line:** 574
+- **Line:** 700
 - **Arguments:** self
 - **Returns:** dict
 - **Docstring:** Get UI components for integration with parent...
@@ -12840,7 +12139,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\chat_tab\voice_controls.py.get_voice_settings`
 
 - **File:** `ui\tabs\chat_tab\voice_controls.py`
-- **Line:** 556
+- **Line:** 682
 - **Arguments:** self
 - **Returns:** dict
 - **Docstring:** Get current voice settings...
@@ -12850,17 +12149,27 @@ Removes formatting, code bloc...
 ### `ui\tabs\chat_tab\voice_controls.py.is_tts_playing`
 
 - **File:** `ui\tabs\chat_tab\voice_controls.py`
-- **Line:** 564
+- **Line:** 690
 - **Arguments:** self
 - **Returns:** bool
 - **Docstring:** Check if TTS is currently playing...
 
 ---
 
+### `ui\tabs\chat_tab\voice_controls.py.is_voice_busy`
+
+- **File:** `ui\tabs\chat_tab\voice_controls.py`
+- **Line:** 201
+- **Arguments:** self
+- **Returns:** bool
+- **Docstring:** Thread-safe check if voice is busy...
+
+---
+
 ### `ui\tabs\chat_tab\voice_controls.py.is_voice_mode_active`
 
 - **File:** `ui\tabs\chat_tab\voice_controls.py`
-- **Line:** 560
+- **Line:** 686
 - **Arguments:** self
 - **Returns:** bool
 - **Docstring:** Check if voice mode is active...
@@ -12870,7 +12179,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\chat_tab\voice_controls.py.on_audio_level_changed`
 
 - **File:** `ui\tabs\chat_tab\voice_controls.py`
-- **Line:** 467
+- **Line:** 593
 - **Arguments:** self, audio_level
 - **Docstring:** Handle audio level changes...
 
@@ -12879,7 +12188,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\chat_tab\voice_controls.py.on_recording_error`
 
 - **File:** `ui\tabs\chat_tab\voice_controls.py`
-- **Line:** 432
+- **Line:** 558
 - **Arguments:** self, error
 - **Docstring:** Handle recording error...
 
@@ -12888,7 +12197,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\chat_tab\voice_controls.py.on_recording_started`
 
 - **File:** `ui\tabs\chat_tab\voice_controls.py`
-- **Line:** 383
+- **Line:** 509
 - **Arguments:** self
 - **Docstring:** Handle recording started...
 
@@ -12897,7 +12206,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\chat_tab\voice_controls.py.on_recording_stopped`
 
 - **File:** `ui\tabs\chat_tab\voice_controls.py`
-- **Line:** 411
+- **Line:** 537
 - **Arguments:** self
 - **Docstring:** Handle recording stopped...
 
@@ -12906,7 +12215,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\chat_tab\voice_controls.py.on_tts_error`
 
 - **File:** `ui\tabs\chat_tab\voice_controls.py`
-- **Line:** 378
+- **Line:** 495
 - **Arguments:** self, error
 - **Docstring:** Handle TTS error...
 
@@ -12915,7 +12224,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\chat_tab\voice_controls.py.on_tts_finished`
 
 - **File:** `ui\tabs\chat_tab\voice_controls.py`
-- **Line:** 367
+- **Line:** 484
 - **Arguments:** self
 - **Docstring:** Handle TTS finished...
 
@@ -12924,7 +12233,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\chat_tab\voice_controls.py.on_tts_started`
 
 - **File:** `ui\tabs\chat_tab\voice_controls.py`
-- **Line:** 362
+- **Line:** 479
 - **Arguments:** self
 - **Docstring:** Handle TTS started...
 
@@ -12933,7 +12242,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\chat_tab\voice_controls.py.on_voice_input_error`
 
 - **File:** `ui\tabs\chat_tab\voice_controls.py`
-- **Line:** 340
+- **Line:** 454
 - **Arguments:** self, error
 - **Docstring:** Handle voice input error...
 
@@ -12942,7 +12251,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\chat_tab\voice_controls.py.on_voice_input_received`
 
 - **File:** `ui\tabs\chat_tab\voice_controls.py`
-- **Line:** 332
+- **Line:** 446
 - **Arguments:** self, text
 - **Docstring:** Handle voice input received...
 
@@ -12951,7 +12260,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\chat_tab\voice_controls.py.on_voice_processing_finished`
 
 - **File:** `ui\tabs\chat_tab\voice_controls.py`
-- **Line:** 461
+- **Line:** 587
 - **Arguments:** self
 - **Docstring:** Handle voice processing finished...
 
@@ -12960,7 +12269,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\chat_tab\voice_controls.py.on_voice_processing_started`
 
 - **File:** `ui\tabs\chat_tab\voice_controls.py`
-- **Line:** 454
+- **Line:** 580
 - **Arguments:** self
 - **Docstring:** Handle voice processing started...
 
@@ -12969,7 +12278,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\chat_tab\voice_controls.py.setup_connections`
 
 - **File:** `ui\tabs\chat_tab\voice_controls.py`
-- **Line:** 171
+- **Line:** 284
 - **Arguments:** self
 - **Docstring:** Setup signal connections...
 
@@ -12978,7 +12287,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\chat_tab\voice_controls.py.setup_ui_components`
 
 - **File:** `ui\tabs\chat_tab\voice_controls.py`
-- **Line:** 87
+- **Line:** 112
 - **Arguments:** self
 - **Docstring:** Setup UI components for voice controls...
 
@@ -12987,7 +12296,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\chat_tab\voice_controls.py.speak_ai_response`
 
 - **File:** `ui\tabs\chat_tab\voice_controls.py`
-- **Line:** 536
+- **Line:** 662
 - **Arguments:** self, text
 - **Docstring:** Speak AI response using TTS...
 
@@ -12996,7 +12305,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\chat_tab\voice_controls.py.toggle_voice_mode`
 
 - **File:** `ui\tabs\chat_tab\voice_controls.py`
-- **Line:** 200
+- **Line:** 314
 - **Arguments:** self
 - **Docstring:** Toggle voice mode on/off...
 
@@ -13005,7 +12314,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\chat_tab\voice_controls.py.update_voice_settings`
 
 - **File:** `ui\tabs\chat_tab\voice_controls.py`
-- **Line:** 547
+- **Line:** 673
 - **Arguments:** self, settings
 - **Docstring:** Update voice settings...
 
@@ -13014,7 +12323,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\memory_tab.py.__init__`
 
 - **File:** `ui\tabs\memory_tab.py`
-- **Line:** 21
+- **Line:** 23
 - **Arguments:** self, memory_service
 
 ---
@@ -13022,7 +12331,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\memory_tab.py._summarize_with_service`
 
 - **File:** `ui\tabs\memory_tab.py`
-- **Line:** 479
+- **Line:** 491
 - **Arguments:** self
 - **Docstring:** Summarize the current conversation using the conversation service...
 
@@ -13031,7 +12340,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\memory_tab.py.cleanup_memory_entries`
 
 - **File:** `ui\tabs\memory_tab.py`
-- **Line:** 513
+- **Line:** 525
 - **Arguments:** self
 - **Docstring:** Clean up duplicate and conflicting memory entries...
 
@@ -13040,7 +12349,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\memory_tab.py.clear_all_memories`
 
 - **File:** `ui\tabs\memory_tab.py`
-- **Line:** 500
+- **Line:** 512
 - **Arguments:** self
 - **Docstring:** Clear all memories...
 
@@ -13049,7 +12358,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\memory_tab.py.create_memories_tab`
 
 - **File:** `ui\tabs\memory_tab.py`
-- **Line:** 174
+- **Line:** 176
 - **Arguments:** self
 - **Docstring:** Create the memories management tab...
 
@@ -13058,7 +12367,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\memory_tab.py.create_overview_tab`
 
 - **File:** `ui\tabs\memory_tab.py`
-- **Line:** 114
+- **Line:** 116
 - **Arguments:** self
 - **Docstring:** Create the memory overview tab...
 
@@ -13067,7 +12376,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\memory_tab.py.create_settings_tab`
 
 - **File:** `ui\tabs\memory_tab.py`
-- **Line:** 54
+- **Line:** 56
 - **Arguments:** self
 - **Docstring:** Create the memory settings tab...
 
@@ -13076,7 +12385,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\memory_tab.py.create_summaries_tab`
 
 - **File:** `ui\tabs\memory_tab.py`
-- **Line:** 239
+- **Line:** 241
 - **Arguments:** self
 - **Docstring:** Create the summaries management tab...
 
@@ -13085,7 +12394,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\memory_tab.py.delete_selected_memory`
 
 - **File:** `ui\tabs\memory_tab.py`
-- **Line:** 529
+- **Line:** 541
 - **Arguments:** self
 - **Docstring:** Delete the selected memory...
 
@@ -13094,7 +12403,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\memory_tab.py.refresh_data`
 
 - **File:** `ui\tabs\memory_tab.py`
-- **Line:** 298
+- **Line:** 300
 - **Arguments:** self
 - **Docstring:** Refresh all data displays...
 
@@ -13103,7 +12412,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\memory_tab.py.refresh_memories`
 
 - **File:** `ui\tabs\memory_tab.py`
-- **Line:** 363
+- **Line:** 362
 - **Arguments:** self
 - **Docstring:** Refresh the memories table based on STM/LTM filter...
 
@@ -13112,7 +12421,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\memory_tab.py.refresh_overview`
 
 - **File:** `ui\tabs\memory_tab.py`
-- **Line:** 304
+- **Line:** 306
 - **Arguments:** self
 - **Docstring:** Refresh the overview tab data...
 
@@ -13121,7 +12430,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\memory_tab.py.refresh_summaries`
 
 - **File:** `ui\tabs\memory_tab.py`
-- **Line:** 394
+- **Line:** 393
 - **Arguments:** self
 - **Docstring:** Refresh the summaries list...
 
@@ -13130,7 +12439,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\memory_tab.py.search_memories`
 
 - **File:** `ui\tabs\memory_tab.py`
-- **Line:** 407
+- **Line:** 406
 - **Arguments:** self
 - **Docstring:** Search memories based on input...
 
@@ -13139,7 +12448,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\memory_tab.py.set_conversation_service`
 
 - **File:** `ui\tabs\memory_tab.py`
-- **Line:** 472
+- **Line:** 484
 - **Arguments:** self, conversation_service
 - **Docstring:** Set the conversation service for summarization...
 
@@ -13148,7 +12457,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\memory_tab.py.setup_connections`
 
 - **File:** `ui\tabs\memory_tab.py`
-- **Line:** 269
+- **Line:** 271
 - **Arguments:** self
 - **Docstring:** Setup signal connections...
 
@@ -13157,7 +12466,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\memory_tab.py.setup_ui`
 
 - **File:** `ui\tabs\memory_tab.py`
-- **Line:** 28
+- **Line:** 30
 - **Arguments:** self
 - **Docstring:** Setup the memory tab UI...
 
@@ -13166,7 +12475,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\memory_tab.py.show_memory_details`
 
 - **File:** `ui\tabs\memory_tab.py`
-- **Line:** 429
+- **Line:** 428
 - **Arguments:** self
 - **Docstring:** Show details for selected memory...
 
@@ -13175,7 +12484,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\memory_tab.py.show_summary_details`
 
 - **File:** `ui\tabs\memory_tab.py`
-- **Line:** 450
+- **Line:** 462
 - **Arguments:** self
 - **Docstring:** Show details for selected summary...
 
@@ -13184,7 +12493,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\memory_tab.py.summarize_current_conversation`
 
 - **File:** `ui\tabs\memory_tab.py`
-- **Line:** 466
+- **Line:** 478
 - **Arguments:** self
 - **Docstring:** Summarize the current conversation...
 
@@ -13193,7 +12502,7 @@ Removes formatting, code bloc...
 ### `ui\tabs\memory_tab.py.update_context_messages`
 
 - **File:** `ui\tabs\memory_tab.py`
-- **Line:** 293
+- **Line:** 295
 - **Arguments:** self, value
 - **Docstring:** Update the maximum context messages...
 
@@ -13687,51 +12996,162 @@ Removes formatting, code bloc...
 
 ---
 
-### `utils\Logging\logging_helpers.py.log_context_messages`
+### `utils\Logging\logging_helpers.py.__init__`
 
 - **File:** `utils\Logging\logging_helpers.py`
-- **Line:** 136
-- **Arguments:** context_messages
+- **Line:** 214
+- **Arguments:** self
+
+---
+
+### `utils\Logging\logging_helpers.py._on_thread_finished`
+
+- **File:** `utils\Logging\logging_helpers.py`
+- **Line:** 284
+- **Arguments:** self, thread_name
+- **Docstring:** Handle thread finished signal...
+
+---
+
+### `utils\Logging\logging_helpers.py._on_thread_started`
+
+- **File:** `utils\Logging\logging_helpers.py`
+- **Line:** 272
+- **Arguments:** self, thread_name
+- **Docstring:** Handle thread started signal...
+
+---
+
+### `utils\Logging\logging_helpers.py.cleanup`
+
+- **File:** `utils\Logging\logging_helpers.py`
+- **Line:** 350
+- **Arguments:** self
+- **Docstring:** Clean up the thread monitor...
+
+---
+
+### `utils\Logging\logging_helpers.py.cleanup_thread_monitor`
+
+- **File:** `utils\Logging\logging_helpers.py`
+- **Line:** 424
+- **Arguments:** 
+- **Docstring:** Clean up the global thread monitor...
+
+---
+
+### `utils\Logging\logging_helpers.py.get_all_threads`
+
+- **File:** `utils\Logging\logging_helpers.py`
+- **Line:** 302
+- **Arguments:** self
+- **Docstring:** Get information about all active threads...
+
+---
+
+### `utils\Logging\logging_helpers.py.get_thread_history`
+
+- **File:** `utils\Logging\logging_helpers.py`
+- **Line:** 306
+- **Arguments:** self
+- **Docstring:** Get history of completed threads...
+
+---
+
+### `utils\Logging\logging_helpers.py.get_thread_info`
+
+- **File:** `utils\Logging\logging_helpers.py`
+- **Line:** 298
+- **Arguments:** self, thread_name
+- **Docstring:** Get information about a specific thread...
+
+---
+
+### `utils\Logging\logging_helpers.py.get_thread_monitor`
+
+- **File:** `utils\Logging\logging_helpers.py`
+- **Line:** 417
+- **Arguments:** 
+- **Returns:** ThreadMonitor
+- **Docstring:** Get the global thread monitor instance...
+
+---
+
+### `utils\Logging\logging_helpers.py.get_thread_stats`
+
+- **File:** `utils\Logging\logging_helpers.py`
+- **Line:** 310
+- **Arguments:** self
+- **Returns:** Dict
+- **Docstring:** Get statistics about thread usage...
+
+---
+
+### `utils\Logging\logging_helpers.py.log_audio_operation`
+
+- **File:** `utils\Logging\logging_helpers.py`
+- **Line:** 70
+- **Arguments:** operation, success, error, details
 - **Decorators:** staticmethod
-- **Docstring:** Log context messages being sent to AI...
+- **Docstring:** Log audio operation information...
 
 ---
 
 ### `utils\Logging\logging_helpers.py.log_conversation_detection`
 
 - **File:** `utils\Logging\logging_helpers.py`
-- **Line:** 130
-- **Arguments:** is_new, method
+- **Line:** 193
+- **Arguments:** conversation_type
 - **Decorators:** staticmethod
 - **Docstring:** Log conversation detection...
+
+---
+
+### `utils\Logging\logging_helpers.py.log_critical_error`
+
+- **File:** `utils\Logging\logging_helpers.py`
+- **Line:** 111
+- **Arguments:** component, error, recovery_action
+- **Decorators:** staticmethod
+- **Docstring:** Log a critical error with recovery action...
 
 ---
 
 ### `utils\Logging\logging_helpers.py.log_debug`
 
 - **File:** `utils\Logging\logging_helpers.py`
-- **Line:** 151
+- **Line:** 42
 - **Arguments:** message
 - **Decorators:** staticmethod
-- **Docstring:** Log debug message...
+- **Docstring:** Log a debug message...
 
 ---
 
 ### `utils\Logging\logging_helpers.py.log_error`
 
 - **File:** `utils\Logging\logging_helpers.py`
-- **Line:** 145
-- **Arguments:** operation, error
+- **Line:** 47
+- **Arguments:** message
 - **Decorators:** staticmethod
-- **Docstring:** Log error with operation context...
+- **Docstring:** Log an error message...
+
+---
+
+### `utils\Logging\logging_helpers.py.log_exception_with_context`
+
+- **File:** `utils\Logging\logging_helpers.py`
+- **Line:** 23
+- **Arguments:** operation, exception, context
+- **Decorators:** staticmethod
+- **Docstring:** Log an exception with context information...
 
 ---
 
 ### `utils\Logging\logging_helpers.py.log_fact_extraction_end`
 
 - **File:** `utils\Logging\logging_helpers.py`
-- **Line:** 47
-- **Arguments:** 
+- **Line:** 123
+- **Arguments:** facts_count
 - **Decorators:** staticmethod
 - **Docstring:** Log fact extraction end...
 
@@ -13740,7 +13160,7 @@ Removes formatting, code bloc...
 ### `utils\Logging\logging_helpers.py.log_fact_extraction_result`
 
 - **File:** `utils\Logging\logging_helpers.py`
-- **Line:** 85
+- **Line:** 128
 - **Arguments:** facts
 - **Decorators:** staticmethod
 - **Docstring:** Log fact extraction result...
@@ -13750,8 +13170,8 @@ Removes formatting, code bloc...
 ### `utils\Logging\logging_helpers.py.log_fact_extraction_start`
 
 - **File:** `utils\Logging\logging_helpers.py`
-- **Line:** 40
-- **Arguments:** message
+- **Line:** 118
+- **Arguments:** query
 - **Decorators:** staticmethod
 - **Docstring:** Log fact extraction start...
 
@@ -13760,28 +13180,28 @@ Removes formatting, code bloc...
 ### `utils\Logging\logging_helpers.py.log_fact_processing`
 
 - **File:** `utils\Logging\logging_helpers.py`
-- **Line:** 65
-- **Arguments:** key, value, stored_count
+- **Line:** 133
+- **Arguments:** fact_type, fact_count
 - **Decorators:** staticmethod
-- **Docstring:** Log individual fact processing...
+- **Docstring:** Log fact processing...
 
 ---
 
 ### `utils\Logging\logging_helpers.py.log_fact_skipped`
 
 - **File:** `utils\Logging\logging_helpers.py`
-- **Line:** 72
-- **Arguments:** reason, key, value
+- **Line:** 153
+- **Arguments:** reason, fact_type
 - **Decorators:** staticmethod
-- **Docstring:** Log skipped fact with reason...
+- **Docstring:** Log skipped fact...
 
 ---
 
 ### `utils\Logging\logging_helpers.py.log_fact_storage_end`
 
 - **File:** `utils\Logging\logging_helpers.py`
-- **Line:** 35
-- **Arguments:** 
+- **Line:** 143
+- **Arguments:** fact_type, stored_count
 - **Decorators:** staticmethod
 - **Docstring:** Log fact storage end...
 
@@ -13790,8 +13210,8 @@ Removes formatting, code bloc...
 ### `utils\Logging\logging_helpers.py.log_fact_storage_start`
 
 - **File:** `utils\Logging\logging_helpers.py`
-- **Line:** 29
-- **Arguments:** message
+- **Line:** 138
+- **Arguments:** fact_type, fact_count
 - **Decorators:** staticmethod
 - **Docstring:** Log fact storage start...
 
@@ -13800,27 +13220,47 @@ Removes formatting, code bloc...
 ### `utils\Logging\logging_helpers.py.log_fact_storage_summary`
 
 - **File:** `utils\Logging\logging_helpers.py`
-- **Line:** 80
-- **Arguments:** stored_count, skipped_count
+- **Line:** 148
+- **Arguments:** total_facts, stored_facts
 - **Decorators:** staticmethod
 - **Docstring:** Log fact storage summary...
+
+---
+
+### `utils\Logging\logging_helpers.py.log_file_operation`
+
+- **File:** `utils\Logging\logging_helpers.py`
+- **Line:** 62
+- **Arguments:** operation, filepath, success, error
+- **Decorators:** staticmethod
+- **Docstring:** Log file operation information...
+
+---
+
+### `utils\Logging\logging_helpers.py.log_info_with_context`
+
+- **File:** `utils\Logging\logging_helpers.py`
+- **Line:** 36
+- **Arguments:** message, context
+- **Decorators:** staticmethod
+- **Docstring:** Log an info message with context information...
 
 ---
 
 ### `utils\Logging\logging_helpers.py.log_json_extraction`
 
 - **File:** `utils\Logging\logging_helpers.py`
-- **Line:** 107
-- **Arguments:** json_str, method
+- **Line:** 178
+- **Arguments:** json_data
 - **Decorators:** staticmethod
-- **Docstring:** Log JSON extraction attempt...
+- **Docstring:** Log JSON extraction...
 
 ---
 
 ### `utils\Logging\logging_helpers.py.log_json_parsing_error`
 
 - **File:** `utils\Logging\logging_helpers.py`
-- **Line:** 122
+- **Line:** 100
 - **Arguments:** error, json_str
 - **Decorators:** staticmethod
 - **Docstring:** Log JSON parsing error...
@@ -13830,8 +13270,8 @@ Removes formatting, code bloc...
 ### `utils\Logging\logging_helpers.py.log_json_parsing_success`
 
 - **File:** `utils\Logging\logging_helpers.py`
-- **Line:** 112
-- **Arguments:** facts
+- **Line:** 106
+- **Arguments:** json_str
 - **Decorators:** staticmethod
 - **Docstring:** Log successful JSON parsing...
 
@@ -13840,60 +13280,168 @@ Removes formatting, code bloc...
 ### `utils\Logging\logging_helpers.py.log_llm_call`
 
 - **File:** `utils\Logging\logging_helpers.py`
-- **Line:** 95
-- **Arguments:** model, prompt
+- **Line:** 168
+- **Arguments:** model, prompt_length
 - **Decorators:** staticmethod
-- **Docstring:** Log LLM call details...
+- **Docstring:** Log LLM call...
 
 ---
 
 ### `utils\Logging\logging_helpers.py.log_llm_response`
 
 - **File:** `utils\Logging\logging_helpers.py`
-- **Line:** 101
-- **Arguments:** response
+- **Line:** 173
+- **Arguments:** model, response_length
 - **Decorators:** staticmethod
-- **Docstring:** Log LLM response details...
+- **Docstring:** Log LLM response...
 
 ---
 
 ### `utils\Logging\logging_helpers.py.log_memory_ltm_status`
 
 - **File:** `utils\Logging\logging_helpers.py`
-- **Line:** 57
-- **Arguments:** qualified
+- **Line:** 163
+- **Arguments:** ltm_count, stm_count
 - **Decorators:** staticmethod
-- **Docstring:** Log LTM qualification status...
+- **Docstring:** Log memory status...
+
+---
+
+### `utils\Logging\logging_helpers.py.log_memory_operation`
+
+- **File:** `utils\Logging\logging_helpers.py`
+- **Line:** 78
+- **Arguments:** operation, memory_type, success, error
+- **Decorators:** staticmethod
+- **Docstring:** Log memory operation information...
 
 ---
 
 ### `utils\Logging\logging_helpers.py.log_memory_result`
 
 - **File:** `utils\Logging\logging_helpers.py`
-- **Line:** 52
-- **Arguments:** result
+- **Line:** 158
+- **Arguments:** query, memory_count
 - **Decorators:** staticmethod
-- **Docstring:** Log memory operation result...
+- **Docstring:** Log memory search result...
 
 ---
 
 ### `utils\Logging\logging_helpers.py.log_message_sent`
 
 - **File:** `utils\Logging\logging_helpers.py`
-- **Line:** 18
-- **Arguments:** message
+- **Line:** 183
+- **Arguments:** message_length
 - **Decorators:** staticmethod
-- **Docstring:** Log message sent event...
+- **Docstring:** Log message sent...
 
 ---
 
 ### `utils\Logging\logging_helpers.py.log_message_sent_end`
 
 - **File:** `utils\Logging\logging_helpers.py`
-- **Line:** 24
-- **Arguments:** 
+- **Line:** 188
+- **Arguments:** message_length, response_length
 - **Decorators:** staticmethod
-- **Docstring:** Log message sent end event...
+- **Docstring:** Log message sent end...
+
+---
+
+### `utils\Logging\logging_helpers.py.log_network_request`
+
+- **File:** `utils\Logging\logging_helpers.py`
+- **Line:** 52
+- **Arguments:** url, method, status_code, error
+- **Decorators:** staticmethod
+- **Docstring:** Log network request information...
+
+---
+
+### `utils\Logging\logging_helpers.py.log_performance_metric`
+
+- **File:** `utils\Logging\logging_helpers.py`
+- **Line:** 94
+- **Arguments:** operation, duration, context
+- **Decorators:** staticmethod
+- **Docstring:** Log performance metric...
+
+---
+
+### `utils\Logging\logging_helpers.py.log_service_initialization`
+
+- **File:** `utils\Logging\logging_helpers.py`
+- **Line:** 198
+- **Arguments:** service_name, success, error
+- **Decorators:** staticmethod
+- **Docstring:** Log service initialization...
+
+---
+
+### `utils\Logging\logging_helpers.py.log_thread_context`
+
+- **File:** `utils\Logging\logging_helpers.py`
+- **Line:** 374
+- **Arguments:** message, thread
+- **Decorators:** staticmethod
+- **Docstring:** Log a message with thread context information...
+
+---
+
+### `utils\Logging\logging_helpers.py.log_thread_operation`
+
+- **File:** `utils\Logging\logging_helpers.py`
+- **Line:** 407
+- **Arguments:** operation, thread_name, details
+- **Decorators:** staticmethod
+- **Docstring:** Log thread operation...
+
+---
+
+### `utils\Logging\logging_helpers.py.log_thread_safety_check`
+
+- **File:** `utils\Logging\logging_helpers.py`
+- **Line:** 392
+- **Arguments:** operation, current_thread, target_thread
+- **Decorators:** staticmethod
+- **Docstring:** Log thread safety check...
+
+---
+
+### `utils\Logging\logging_helpers.py.log_ui_operation`
+
+- **File:** `utils\Logging\logging_helpers.py`
+- **Line:** 86
+- **Arguments:** component, operation, success, error
+- **Decorators:** staticmethod
+- **Docstring:** Log UI operation information...
+
+---
+
+### `utils\Logging\logging_helpers.py.log_warning_with_context`
+
+- **File:** `utils\Logging\logging_helpers.py`
+- **Line:** 30
+- **Arguments:** message, context
+- **Decorators:** staticmethod
+- **Docstring:** Log a warning with context information...
+
+---
+
+### `utils\Logging\logging_helpers.py.register_thread`
+
+- **File:** `utils\Logging\logging_helpers.py`
+- **Line:** 222
+- **Arguments:** self, thread, thread_type
+- **Docstring:** Register a thread for monitoring...
+
+---
+
+### `utils\Logging\logging_helpers.py.unregister_thread`
+
+- **File:** `utils\Logging\logging_helpers.py`
+- **Line:** 252
+- **Arguments:** self, thread_name
+- **Docstring:** Unregister a thread from monitoring...
 
 ---
 
@@ -14134,6 +13682,302 @@ Args:
 
 ---
 
+### `utils\error_handler.py.audio_operation_context`
+
+- **File:** `utils\error_handler.py`
+- **Line:** 286
+- **Arguments:** operation
+- **Decorators:** contextmanager
+- **Docstring:** Context manager for audio operations with error handling
+
+Args:
+    operation: Audio operation being...
+
+---
+
+### `utils\error_handler.py.cleanup_resources`
+
+- **File:** `utils\error_handler.py`
+- **Line:** 448
+- **Arguments:** resources
+- **Docstring:** Safely cleanup a list of resources
+
+Args:
+    resources: List of resources to cleanup...
+
+---
+
+### `utils\error_handler.py.error_context`
+
+- **File:** `utils\error_handler.py`
+- **Line:** 229
+- **Arguments:** operation, context
+- **Decorators:** contextmanager
+- **Docstring:** Context manager for error handling with automatic logging
+
+Args:
+    operation: Name of the operatio...
+
+---
+
+### `utils\error_handler.py.file_operation_context`
+
+- **File:** `utils\error_handler.py`
+- **Line:** 269
+- **Arguments:** operation, filepath
+- **Decorators:** contextmanager
+- **Docstring:** Context manager for file operations with error handling
+
+Args:
+    operation: File operation being p...
+
+---
+
+### `utils\error_handler.py.handle_audio_operations`
+
+- **File:** `utils\error_handler.py`
+- **Line:** 159
+- **Arguments:** func
+- **Returns:** Callable
+- **Decorators:** staticmethod
+- **Docstring:** Decorator to handle audio operation errors
+
+Args:
+    func: Function to decorate
+    
+Returns:
+    D...
+
+---
+
+### `utils\error_handler.py.handle_critical_error`
+
+- **File:** `utils\error_handler.py`
+- **Line:** 467
+- **Arguments:** error, component, recovery_action
+- **Docstring:** Handle critical errors that may require application restart
+
+Args:
+    error: The critical error
+   ...
+
+---
+
+### `utils\error_handler.py.handle_file_operations`
+
+- **File:** `utils\error_handler.py`
+- **Line:** 125
+- **Arguments:** func
+- **Returns:** Callable
+- **Decorators:** staticmethod
+- **Docstring:** Decorator to handle file operation errors
+
+Args:
+    func: Function to decorate
+    
+Returns:
+    De...
+
+---
+
+### `utils\error_handler.py.handle_memory_operations`
+
+- **File:** `utils\error_handler.py`
+- **Line:** 182
+- **Arguments:** func
+- **Returns:** Callable
+- **Decorators:** staticmethod
+- **Docstring:** Decorator to handle memory operation errors
+
+Args:
+    func: Function to decorate
+    
+Returns:
+    ...
+
+---
+
+### `utils\error_handler.py.handle_network_errors`
+
+- **File:** `utils\error_handler.py`
+- **Line:** 91
+- **Arguments:** func
+- **Returns:** Callable
+- **Decorators:** staticmethod
+- **Docstring:** Decorator to handle network-related errors specifically
+
+Args:
+    func: Function to decorate
+    
+R...
+
+---
+
+### `utils\error_handler.py.handle_ui_operations`
+
+- **File:** `utils\error_handler.py`
+- **Line:** 205
+- **Arguments:** func
+- **Returns:** Callable
+- **Decorators:** staticmethod
+- **Docstring:** Decorator to handle UI operation errors
+
+Args:
+    func: Function to decorate
+    
+Returns:
+    Deco...
+
+---
+
+### `utils\error_handler.py.memory_operation_context`
+
+- **File:** `utils\error_handler.py`
+- **Line:** 302
+- **Arguments:** operation, memory_type
+- **Decorators:** contextmanager
+- **Docstring:** Context manager for memory operations with error handling
+
+Args:
+    operation: Memory operation bei...
+
+---
+
+### `utils\error_handler.py.network_error_context`
+
+- **File:** `utils\error_handler.py`
+- **Line:** 252
+- **Arguments:** url, method
+- **Decorators:** contextmanager
+- **Docstring:** Context manager for network operations with error handling
+
+Args:
+    url: URL being accessed
+    me...
+
+---
+
+### `utils\error_handler.py.retry_on_failure`
+
+- **File:** `utils\error_handler.py`
+- **Line:** 49
+- **Arguments:** func, max_attempts, delay_seconds, exceptions
+- **Returns:** Callable
+- **Decorators:** staticmethod
+- **Docstring:** Decorator to retry a function on failure
+
+Args:
+    func: Function to retry
+    max_attempts: Maximu...
+
+---
+
+### `utils\error_handler.py.safe_execute`
+
+- **File:** `utils\error_handler.py`
+- **Line:** 24
+- **Arguments:** func
+- **Returns:** Any
+- **Decorators:** staticmethod
+- **Docstring:** Safely execute a function with comprehensive error handling
+
+Args:
+    func: Function to execute
+   ...
+
+---
+
+### `utils\error_handler.py.safe_file_read`
+
+- **File:** `utils\error_handler.py`
+- **Line:** 357
+- **Arguments:** filepath, encoding, default
+- **Returns:** Any
+- **Docstring:** Safely read a file with error handling
+
+Args:
+    filepath: Path to the file
+    encoding: File enco...
+
+---
+
+### `utils\error_handler.py.safe_file_write`
+
+- **File:** `utils\error_handler.py`
+- **Line:** 377
+- **Arguments:** filepath, content, encoding
+- **Returns:** bool
+- **Docstring:** Safely write to a file with error handling
+
+Args:
+    filepath: Path to the file
+    content: Conten...
+
+---
+
+### `utils\error_handler.py.safe_json_parse`
+
+- **File:** `utils\error_handler.py`
+- **Line:** 335
+- **Arguments:** json_str, default
+- **Returns:** Any
+- **Docstring:** Safely parse JSON string with error handling
+
+Args:
+    json_str: JSON string to parse
+    default: ...
+
+---
+
+### `utils\error_handler.py.safe_network_request`
+
+- **File:** `utils\error_handler.py`
+- **Line:** 401
+- **Arguments:** url, method
+- **Docstring:** Safely make a network request with error handling
+
+Args:
+    url: URL to request
+    method: HTTP me...
+
+---
+
+### `utils\error_handler.py.ui_operation_context`
+
+- **File:** `utils\error_handler.py`
+- **Line:** 319
+- **Arguments:** component, operation
+- **Decorators:** contextmanager
+- **Docstring:** Context manager for UI operations with error handling
+
+Args:
+    component: UI component being opera...
+
+---
+
+### `utils\error_handler.py.validate_input`
+
+- **File:** `utils\error_handler.py`
+- **Line:** 423
+- **Arguments:** data, expected_type, field_name
+- **Returns:** bool
+- **Docstring:** Validate input data with error handling
+
+Args:
+    data: Data to validate
+    expected_type: Expecte...
+
+---
+
+### `utils\error_handler.py.wrapper`
+
+- **File:** `utils\error_handler.py`
+- **Line:** 216
+- **Arguments:** 
+- **Decorators:** functools.wraps
+
+---
+
 ### `utils\internet_connection.py.__init__`
 
 - **File:** `utils\internet_connection.py`
@@ -14331,7 +14175,7 @@ Args:
 ### `utils\streaming_handler.py.__init__`
 
 - **File:** `utils\streaming_handler.py`
-- **Line:** 21
+- **Line:** 23
 - **Arguments:** self, chat_display, ai_name
 
 ---
@@ -14339,42 +14183,25 @@ Args:
 ### `utils\streaming_handler.py._flush_stream_buffer`
 
 - **File:** `utils\streaming_handler.py`
-- **Line:** 115
+- **Line:** 41
 - **Arguments:** self
+- **Docstring:** Flush the stream buffer and update the display...
 
 ---
 
 ### `utils\streaming_handler.py._get_next_message_id`
 
 - **File:** `utils\streaming_handler.py`
-- **Line:** 34
+- **Line:** 36
 - **Arguments:** self
 - **Docstring:** Generate a unique message ID...
-
----
-
-### `utils\streaming_handler.py._on_message_edit_cancelled`
-
-- **File:** `utils\streaming_handler.py`
-- **Line:** 311
-- **Arguments:** self
-- **Docstring:** Handle message edit cancellation...
-
----
-
-### `utils\streaming_handler.py._on_message_edited`
-
-- **File:** `utils\streaming_handler.py`
-- **Line:** 305
-- **Arguments:** self, message_id, new_content
-- **Docstring:** Handle message edit from widget...
 
 ---
 
 ### `utils\streaming_handler.py._render_chat_display`
 
 - **File:** `utils\streaming_handler.py`
-- **Line:** 163
+- **Line:** 127
 - **Arguments:** self
 - **Docstring:** Re-render the entire chat display from the message list using tables for alignment and content-width...
 
@@ -14383,16 +14210,25 @@ Args:
 ### `utils\streaming_handler.py._render_chat_display_safe`
 
 - **File:** `utils\streaming_handler.py`
-- **Line:** 169
+- **Line:** 133
 - **Arguments:** self
 - **Docstring:** Re-render the chat display safely in the main thread...
+
+---
+
+### `utils\streaming_handler.py._safe_ui_update`
+
+- **File:** `utils\streaming_handler.py`
+- **Line:** 279
+- **Arguments:** self, update_func
+- **Docstring:** Safely update UI in the main thread...
 
 ---
 
 ### `utils\streaming_handler.py.append_message`
 
 - **File:** `utils\streaming_handler.py`
-- **Line:** 39
+- **Line:** 60
 - **Arguments:** self, sender, content, is_code, tag
 - **Docstring:** Append a new message (user or system) and re-render chat display...
 
@@ -14401,24 +14237,25 @@ Args:
 ### `utils\streaming_handler.py.cleanup`
 
 - **File:** `utils\streaming_handler.py`
-- **Line:** 325
+- **Line:** 384
 - **Arguments:** self
+- **Docstring:** Clean up safely...
 
 ---
 
 ### `utils\streaming_handler.py.clear_chat`
 
 - **File:** `utils\streaming_handler.py`
-- **Line:** 330
+- **Line:** 396
 - **Arguments:** self
-- **Docstring:** Clear all messages and re-render chat display...
+- **Docstring:** Clear all messages safely...
 
 ---
 
 ### `utils\streaming_handler.py.edit_message`
 
 - **File:** `utils\streaming_handler.py`
-- **Line:** 69
+- **Line:** 90
 - **Arguments:** self, message_index, new_content
 - **Docstring:** Edit a specific message by index...
 
@@ -14427,16 +14264,16 @@ Args:
 ### `utils\streaming_handler.py.finalize_streaming_message`
 
 - **File:** `utils\streaming_handler.py`
-- **Line:** 133
+- **Line:** 320
 - **Arguments:** self
-- **Docstring:** Mark the last streaming message as complete and re-render chat display (flush buffer)...
+- **Docstring:** Finalize the last streaming message safely...
 
 ---
 
 ### `utils\streaming_handler.py.get_editable_messages`
 
 - **File:** `utils\streaming_handler.py`
-- **Line:** 89
+- **Line:** 110
 - **Arguments:** self
 - **Docstring:** Get list of messages that can be edited (non-streaming, non-system)...
 
@@ -14445,7 +14282,7 @@ Args:
 ### `utils\streaming_handler.py.get_message_by_id`
 
 - **File:** `utils\streaming_handler.py`
-- **Line:** 82
+- **Line:** 103
 - **Arguments:** self, message_id
 - **Docstring:** Get message index by message_id...
 
@@ -14454,7 +14291,7 @@ Args:
 ### `utils\streaming_handler.py.get_messages`
 
 - **File:** `utils\streaming_handler.py`
-- **Line:** 102
+- **Line:** 123
 - **Arguments:** self
 - **Docstring:** Get all messages as a list of dictionaries...
 
@@ -14463,16 +14300,16 @@ Args:
 ### `utils\streaming_handler.py.remove_streaming_placeholder`
 
 - **File:** `utils\streaming_handler.py`
-- **Line:** 316
+- **Line:** 366
 - **Arguments:** self
-- **Docstring:** Remove the last streaming message (if any) and re-render chat display...
+- **Docstring:** Remove the last streaming message safely...
 
 ---
 
 ### `utils\streaming_handler.py.start_streaming_message`
 
 - **File:** `utils\streaming_handler.py`
-- **Line:** 55
+- **Line:** 76
 - **Arguments:** self, sender, tag
 - **Docstring:** Append a streaming placeholder message and re-render chat display...
 
@@ -14481,7 +14318,7 @@ Args:
 ### `utils\streaming_handler.py.update_ai_name`
 
 - **File:** `utils\streaming_handler.py`
-- **Line:** 336
+- **Line:** 408
 - **Arguments:** self, ai_name
 - **Docstring:** Update the AI name used for thoughts display...
 
@@ -14490,18 +14327,18 @@ Args:
 ### `utils\streaming_handler.py.update_last_system_switch`
 
 - **File:** `utils\streaming_handler.py`
-- **Line:** 154
+- **Line:** 349
 - **Arguments:** self, message
-- **Docstring:** Update the last system switch message ("Switched to ...") and re-render chat display...
+- **Docstring:** Update the last system switch message safely...
 
 ---
 
 ### `utils\streaming_handler.py.update_streaming_message`
 
 - **File:** `utils\streaming_handler.py`
-- **Line:** 106
+- **Line:** 298
 - **Arguments:** self, content, sender, message_id, is_code, tag
-- **Docstring:** Update the last streaming message and re-render chat display (throttled)...
+- **Docstring:** Update the last streaming message safely...
 
 ---
 
@@ -14509,79 +14346,78 @@ Args:
 
 ### `MainApp\app_lifecycle.py`
 
-- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
-- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_error
 - calls_method:utils\prompts.py.PromptFormatter.format_error_message
+- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_error
+- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
 
 ### `MainApp\event_handler.py`
 
-- calls_function:models\conversation_metadata.py.update_model
-- calls_function:services\ollama_service.py.update_model
-- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_debug
-- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
-- calls_method:utils\prompts.py.PromptFormatter.format_status_message
-- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_error
 - calls_function:models\conversation_metadata.py.update_personality
+- calls_method:utils\prompts.py.PromptFormatter.format_status_message
+- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_debug
+- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_error
+- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
+- calls_function:services\ollama_service.py.update_model
 - calls_method:utils\prompts.py.PromptFormatter.format_auto_model_selection_info
+- calls_function:models\conversation_metadata.py.update_model
 
 ### `MainApp\ollama_chat.py`
 
-- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
-- calls_function:utils\internet_connection.py.__init__
-- calls_function:ui\Widgets\personality_widget.py.__init__
-- calls_function:services\worker\worker.py.__init__
-- calls_function:models\conversation_metadata.py.__init__
-- calls_function:MainApp\ui_manager.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
-- calls_function:MainApp\service_manager.py.__init__
-- calls_function:MainApp\ollama_chat.py.showEvent
-- calls_function:Personalities\services\personality_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
-- calls_function:MainApp\ollama_chat.py.__init__
-- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
-- calls_function:services\summarization_service.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
-- calls_function:utils\streaming_handler.py.__init__
-- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
-- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
-- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
-- calls_function:ui\tabs\personality_tab.py.__init__
-- calls_function:services\start_up\dependency_checker.py.__init__
-- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
-- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
-- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
-- calls_function:services\enhancement_service.py.__init__
-- calls_function:services\memory_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
-- calls_function:ui\Widgets\chat_navigation.py.__init__
-- calls_function:ui\Widgets\spellchecker_widget.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
-- calls_function:Personalities\services\personality_loader.py.__init__
-- calls_function:services\ollama_service.py.__init__
-- calls_function:services\semantic_search_service.py.__init__
-- calls_function:MainApp\event_handler.py.__init__
-- calls_function:Personalities\personality_model.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
-- calls_function:MainApp\app_lifecycle.py.__init__
-- calls_function:utils\complexity_analyzer.py.__init__
-- calls_function:services\start_up\install_dependencies.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
-- calls_function:ui\chat_tab.py.__init__
-- calls_function:ui\tabs\model_tab.py.__init__
-- calls_function:controllers\chat_controller.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
-- calls_function:utils\complexity_widget.py.__init__
-- calls_function:ui\tabs\memory_tab.py.__init__
 - calls_function:services\Voice_STT_TTS_SERVICES\voice_service_wrapper.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\tabs\personality_tab.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
+- calls_function:Personalities\services\personality_loader.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
+- calls_function:MainApp\ui_manager.py.__init__
+- calls_function:services\worker\worker.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
 - calls_function:ui\Widgets\settings_dialog.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
+- calls_function:MainApp\app_lifecycle.py.__init__
+- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
+- calls_function:utils\complexity_widget.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
+- calls_function:MainApp\event_handler.py.__init__
+- calls_function:MainApp\ollama_chat.py.showEvent
+- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
+- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
+- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
+- calls_function:controllers\chat_controller.py.__init__
+- calls_function:models\conversation_metadata.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
+- calls_function:ui\Widgets\chat_navigation.py.__init__
+- calls_function:ui\Widgets\personality_widget.py.__init__
+- calls_function:utils\complexity_analyzer.py.__init__
+- calls_function:utils\streaming_handler.py.__init__
+- calls_function:services\semantic_search_service.py.__init__
+- calls_function:services\summarization_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
 - calls_function:ui\Widgets\editable_message_widget.py.__init__
-- calls_function:services\conversation_service.py.__init__
-- calls_function:services\start_up\check_dependencies.py.__init__
+- calls_function:services\memory_service.py.__init__
+- calls_function:services\ollama_service.py.__init__
+- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
+- calls_function:Personalities\personality_model.py.__init__
+- calls_function:services\enhancement_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
+- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
+- calls_function:ui\tabs\model_tab.py.__init__
+- calls_function:utils\internet_connection.py.__init__
+- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
+- calls_function:ui\tabs\memory_tab.py.__init__
+- calls_function:MainApp\ollama_chat.py.__init__
+- calls_function:Personalities\services\personality_service.py.__init__
 - calls_function:config\config_manager.py.__init__
+- calls_function:ui\Widgets\spellchecker_widget.py.__init__
+- calls_function:services\start_up\install_dependencies.py.__init__
+- calls_function:services\conversation_service.py.__init__
+- calls_function:utils\Logging\logging_helpers.py.__init__
+- calls_function:MainApp\service_manager.py.__init__
+- calls_function:services\start_up\dependency_checker.py.__init__
 
 ### `MainApp\service_manager.py`
 
@@ -14589,21 +14425,81 @@ Args:
 
 ### `MainApp\ui_manager.py`
 
-- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
-- calls_method:utils\prompts.py.PromptFormatter.format_status_message
 - calls_method:utils\prompts.py.PromptFormatter.get_menu_text
+- calls_method:utils\prompts.py.PromptFormatter.format_status_message
 - calls_method:ui\styles\tab_styles.py.TabStyles.get_tab_style
+- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
+
+### `Personalities\personality_model.py`
+
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_service_wrapper.py.__init__
+- calls_function:ui\tabs\personality_tab.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
+- calls_function:Personalities\services\personality_loader.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
+- calls_function:MainApp\ui_manager.py.__init__
+- calls_function:services\worker\worker.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
+- calls_function:ui\Widgets\settings_dialog.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
+- calls_function:MainApp\app_lifecycle.py.__init__
+- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
+- calls_function:utils\complexity_widget.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
+- calls_function:MainApp\event_handler.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
+- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
+- calls_function:controllers\chat_controller.py.__init__
+- calls_function:models\conversation_metadata.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
+- calls_function:ui\Widgets\chat_navigation.py.__init__
+- calls_function:ui\Widgets\personality_widget.py.__init__
+- calls_function:utils\complexity_analyzer.py.__init__
+- calls_function:utils\streaming_handler.py.__init__
+- calls_function:services\semantic_search_service.py.__init__
+- calls_function:services\summarization_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
+- calls_function:ui\Widgets\editable_message_widget.py.__init__
+- calls_function:services\memory_service.py.__init__
+- calls_function:services\ollama_service.py.__init__
+- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
+- calls_function:Personalities\personality_model.py.__init__
+- calls_function:services\enhancement_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
+- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
+- calls_function:ui\tabs\model_tab.py.__init__
+- calls_function:utils\internet_connection.py.__init__
+- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
+- calls_function:ui\tabs\memory_tab.py.__init__
+- calls_function:MainApp\ollama_chat.py.__init__
+- calls_function:Personalities\services\personality_service.py.__init__
+- calls_function:config\config_manager.py.__init__
+- calls_function:ui\Widgets\spellchecker_widget.py.__init__
+- calls_function:services\start_up\install_dependencies.py.__init__
+- calls_function:services\conversation_service.py.__init__
+- calls_function:utils\Logging\logging_helpers.py.__init__
+- calls_function:MainApp\service_manager.py.__init__
+- calls_function:services\start_up\dependency_checker.py.__init__
+
+### `Personalities\personality_model.py.PersonalityModel`
+
+- inherits_from:Personalities\services\personality_service.py.PersonalityService
 
 ### `Personalities\services\personality_loader.py`
 
-- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
 - calls_method:Personalities\utils\personality_formatter.py.PersonalityFormatter.validate_personality_data
+- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
 
 ### `Personalities\services\personality_service.py`
 
 - calls_function:config\config_manager.py.set
-- calls_function:config\config_manager.py.get
 - calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
+- calls_function:config\config_manager.py.get
 
 ### `Personalities\utils\personality_formatter.py`
 
@@ -14616,1985 +14512,1908 @@ Args:
 
 ### `controllers\chat_controller.py`
 
-- calls_function:services\worker\worker.py.__init__
-- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_json_parsing_success
-- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
-- calls_function:MainApp\service_manager.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
-- calls_function:MainApp\ollama_chat.py.__init__
-- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
-- calls_function:services\start_up\dependency_checker.py.__init__
-- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
-- calls_function:models\conversation_metadata.py.update_model
-- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_fact_extraction_end
-- calls_function:services\ollama_service.py.__init__
-- calls_method:utils\prompts.py.PromptFormatter.format_auto_model_selection_info
-- calls_function:services\start_up\install_dependencies.py.__init__
-- calls_function:ui\chat_tab.py.__init__
-- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_json_extraction
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
-- calls_method:utils\prompts.py.PromptFormatter.format_error_message
-- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_llm_response
-- calls_function:utils\complexity_analyzer.py.__init__
-- calls_function:services\conversation_service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
-- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_fact_storage_summary
-- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_fact_processing
-- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_memory_result
-- calls_function:models\conversation_metadata.py.__init__
 - calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_llm_call
 - calls_function:MainApp\ui_manager.py.__init__
-- calls_function:Personalities\services\personality_service.py.__init__
-- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
-- calls_function:services\summarization_service.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
-- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
-- calls_function:services\enhancement_service.py.__init__
-- calls_function:ui\Widgets\spellchecker_widget.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
-- calls_function:Personalities\personality_model.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
-- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
-- calls_function:ui\tabs\model_tab.py.__init__
-- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_fact_extraction_result
-- calls_function:controllers\chat_controller.py.__init__
-- calls_method:utils\prompts.py.PromptFormatter.format_fact_extraction_prompt
-- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_message_sent_end
-- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
-- calls_function:utils\streaming_handler.py.__init__
-- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_fact_storage_end
-- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
-- calls_function:ui\tabs\personality_tab.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
-- calls_function:Personalities\services\personality_loader.py.__init__
-- calls_function:services\semantic_search_service.py.__init__
-- calls_function:MainApp\app_lifecycle.py.__init__
-- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_fact_storage_start
-- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
-- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_memory_ltm_status
-- calls_function:services\ollama_service.py.update_model
-- calls_function:ui\tabs\memory_tab.py.__init__
-- calls_function:ui\Widgets\settings_dialog.py.__init__
-- calls_function:ui\Widgets\editable_message_widget.py.__init__
-- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_fact_extraction_start
+- calls_function:services\worker\worker.py.__init__
+- calls_function:models\conversation_metadata.py.update_model
 - calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_conversation_detection
-- calls_function:utils\internet_connection.py.__init__
-- calls_function:ui\Widgets\personality_widget.py.__init__
-- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_debug
-- calls_method:utils\prompts.py.PromptFormatter.format_status_message
-- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
-- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
-- calls_function:services\memory_service.py.__init__
-- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_fact_skipped
+- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
+- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_fact_storage_end
+- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_json_extraction
+- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
 - calls_function:ui\Widgets\chat_navigation.py.__init__
-- calls_function:MainApp\event_handler.py.__init__
-- calls_function:controllers\chat_controller.py.remove_emojis
-- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_error
-- calls_function:utils\complexity_widget.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_service_wrapper.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
-- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_message_sent
+- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_exception_with_context
+- calls_function:ui\Widgets\editable_message_widget.py.__init__
+- calls_function:services\memory_service.py.__init__
+- calls_function:Personalities\personality_model.py.__init__
+- calls_method:utils\prompts.py.PromptFormatter.format_auto_model_selection_info
+- calls_function:ui\tabs\memory_tab.py.__init__
+- calls_function:Personalities\services\personality_service.py.__init__
+- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_debug
+- calls_function:services\conversation_service.py.__init__
+- calls_function:MainApp\service_manager.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
+- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_fact_extraction_end
 - calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_json_parsing_error
-- calls_function:services\start_up\check_dependencies.py.__init__
+- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_fact_skipped
+- calls_function:ui\Widgets\settings_dialog.py.__init__
+- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_fact_storage_start
+- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_memory_result
+- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
+- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
+- calls_function:ui\Widgets\personality_widget.py.__init__
+- calls_function:models\conversation_metadata.py.__init__
+- calls_function:utils\streaming_handler.py.__init__
+- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_message_sent
+- calls_function:services\semantic_search_service.py.__init__
+- calls_function:services\summarization_service.py.__init__
+- calls_function:services\ollama_service.py.__init__
+- calls_function:utils\internet_connection.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
 - calls_function:config\config_manager.py.__init__
+- calls_function:ui\Widgets\spellchecker_widget.py.__init__
+- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_fact_processing
+- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_fact_extraction_start
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_service_wrapper.py.__init__
+- calls_function:ui\tabs\personality_tab.py.__init__
+- calls_function:Personalities\services\personality_loader.py.__init__
+- calls_function:services\ollama_service.py.update_model
+- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_json_parsing_success
+- calls_method:utils\prompts.py.PromptFormatter.format_fact_extraction_prompt
+- calls_function:MainApp\app_lifecycle.py.__init__
+- calls_function:MainApp\event_handler.py.__init__
+- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
+- calls_function:controllers\chat_controller.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
+- calls_function:utils\complexity_analyzer.py.__init__
+- calls_function:ui\tabs\model_tab.py.__init__
+- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
+- calls_function:controllers\chat_controller.py.remove_emojis
+- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_fact_storage_summary
+- calls_function:utils\Logging\logging_helpers.py.__init__
+- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_fact_extraction_result
+- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
+- calls_function:utils\complexity_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
+- calls_method:utils\prompts.py.PromptFormatter.format_error_message
+- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_llm_response
+- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
+- calls_function:services\enhancement_service.py.__init__
+- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
+- calls_function:MainApp\ollama_chat.py.__init__
+- calls_method:utils\prompts.py.PromptFormatter.format_status_message
+- calls_function:services\start_up\install_dependencies.py.__init__
+- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_message_sent_end
+- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_memory_ltm_status
+- calls_function:services\start_up\dependency_checker.py.__init__
 
 ### `models\conversation_metadata.py`
 
-- calls_method:models\conversation_metadata.py.ConversationMetadata.from_dict
-- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
-- calls_function:utils\internet_connection.py.__init__
-- calls_function:ui\Widgets\personality_widget.py.__init__
-- calls_function:services\worker\worker.py.__init__
-- calls_function:models\conversation_metadata.py.__init__
-- calls_function:MainApp\ui_manager.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
-- calls_function:MainApp\service_manager.py.__init__
-- calls_function:Personalities\services\personality_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
-- calls_function:MainApp\ollama_chat.py.__init__
-- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
-- calls_function:services\summarization_service.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
-- calls_function:utils\streaming_handler.py.__init__
-- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
-- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
-- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
-- calls_function:ui\tabs\personality_tab.py.__init__
-- calls_function:services\start_up\dependency_checker.py.__init__
-- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
-- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
-- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
-- calls_function:config\config_manager.py.get
-- calls_function:services\enhancement_service.py.__init__
-- calls_function:services\memory_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
-- calls_function:ui\Widgets\chat_navigation.py.__init__
-- calls_function:ui\Widgets\spellchecker_widget.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
-- calls_function:Personalities\services\personality_loader.py.__init__
-- calls_function:services\ollama_service.py.__init__
-- calls_function:services\semantic_search_service.py.__init__
-- calls_function:MainApp\event_handler.py.__init__
-- calls_function:Personalities\personality_model.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
-- calls_function:MainApp\app_lifecycle.py.__init__
-- calls_function:utils\complexity_analyzer.py.__init__
-- calls_function:services\start_up\install_dependencies.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
-- calls_function:ui\chat_tab.py.__init__
-- calls_function:ui\tabs\model_tab.py.__init__
-- calls_function:controllers\chat_controller.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
-- calls_function:utils\complexity_widget.py.__init__
-- calls_function:ui\tabs\memory_tab.py.__init__
 - calls_function:services\Voice_STT_TTS_SERVICES\voice_service_wrapper.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\tabs\personality_tab.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
+- calls_function:Personalities\services\personality_loader.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
+- calls_function:MainApp\ui_manager.py.__init__
+- calls_function:services\worker\worker.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
 - calls_function:ui\Widgets\settings_dialog.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
+- calls_function:MainApp\app_lifecycle.py.__init__
+- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
+- calls_function:utils\complexity_widget.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
+- calls_function:MainApp\event_handler.py.__init__
+- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
+- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
+- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
+- calls_function:controllers\chat_controller.py.__init__
+- calls_function:models\conversation_metadata.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
+- calls_function:ui\Widgets\chat_navigation.py.__init__
+- calls_function:ui\Widgets\personality_widget.py.__init__
+- calls_function:utils\complexity_analyzer.py.__init__
+- calls_function:config\config_manager.py.get
+- calls_function:utils\streaming_handler.py.__init__
+- calls_function:services\semantic_search_service.py.__init__
+- calls_function:services\summarization_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
 - calls_function:ui\Widgets\editable_message_widget.py.__init__
-- calls_function:services\conversation_service.py.__init__
-- calls_function:services\start_up\check_dependencies.py.__init__
+- calls_function:services\memory_service.py.__init__
+- calls_function:services\ollama_service.py.__init__
+- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
+- calls_function:Personalities\personality_model.py.__init__
+- calls_function:services\enhancement_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
+- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
+- calls_function:ui\tabs\model_tab.py.__init__
+- calls_function:utils\internet_connection.py.__init__
+- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
+- calls_function:ui\tabs\memory_tab.py.__init__
+- calls_function:MainApp\ollama_chat.py.__init__
+- calls_function:Personalities\services\personality_service.py.__init__
+- calls_method:models\conversation_metadata.py.ConversationMetadata.from_dict
 - calls_function:config\config_manager.py.__init__
+- calls_function:ui\Widgets\spellchecker_widget.py.__init__
+- calls_function:services\start_up\install_dependencies.py.__init__
+- calls_function:services\conversation_service.py.__init__
+- calls_function:utils\Logging\logging_helpers.py.__init__
+- calls_function:MainApp\service_manager.py.__init__
+- calls_function:services\start_up\dependency_checker.py.__init__
 
 ### `services\Voice_STT_TTS_SERVICES\Recording_Service.py`
 
-- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
-- calls_function:utils\internet_connection.py.__init__
-- calls_function:ui\Widgets\personality_widget.py.__init__
-- calls_function:services\worker\worker.py.__init__
-- calls_function:models\conversation_metadata.py.__init__
-- calls_function:MainApp\ui_manager.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
-- calls_function:MainApp\service_manager.py.__init__
-- calls_function:Personalities\services\personality_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
-- calls_function:MainApp\ollama_chat.py.__init__
-- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
-- calls_function:services\summarization_service.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
-- calls_function:utils\streaming_handler.py.__init__
-- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
-- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
-- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
-- calls_function:ui\tabs\personality_tab.py.__init__
-- calls_function:services\start_up\dependency_checker.py.__init__
-- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
-- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
-- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
-- calls_function:services\enhancement_service.py.__init__
-- calls_function:services\memory_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
-- calls_function:ui\Widgets\chat_navigation.py.__init__
-- calls_function:ui\Widgets\spellchecker_widget.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
-- calls_function:Personalities\services\personality_loader.py.__init__
-- calls_function:services\ollama_service.py.__init__
-- calls_function:services\semantic_search_service.py.__init__
-- calls_function:MainApp\event_handler.py.__init__
-- calls_function:Personalities\personality_model.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
-- calls_function:MainApp\app_lifecycle.py.__init__
-- calls_function:utils\complexity_analyzer.py.__init__
-- calls_function:services\start_up\install_dependencies.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
-- calls_function:ui\chat_tab.py.__init__
-- calls_function:ui\tabs\model_tab.py.__init__
-- calls_function:controllers\chat_controller.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
-- calls_function:utils\complexity_widget.py.__init__
-- calls_function:ui\tabs\memory_tab.py.__init__
 - calls_function:services\Voice_STT_TTS_SERVICES\voice_service_wrapper.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\tabs\personality_tab.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
+- calls_function:Personalities\services\personality_loader.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
+- calls_function:MainApp\ui_manager.py.__init__
+- calls_function:services\worker\worker.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
 - calls_function:ui\Widgets\settings_dialog.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
+- calls_function:MainApp\app_lifecycle.py.__init__
+- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
+- calls_function:utils\complexity_widget.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
+- calls_function:MainApp\event_handler.py.__init__
+- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
+- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
+- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
+- calls_function:controllers\chat_controller.py.__init__
+- calls_function:models\conversation_metadata.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
+- calls_function:ui\Widgets\chat_navigation.py.__init__
+- calls_function:ui\Widgets\personality_widget.py.__init__
+- calls_function:utils\complexity_analyzer.py.__init__
+- calls_function:utils\streaming_handler.py.__init__
+- calls_function:services\semantic_search_service.py.__init__
+- calls_function:services\summarization_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
 - calls_function:ui\Widgets\editable_message_widget.py.__init__
-- calls_function:services\conversation_service.py.__init__
-- calls_function:services\start_up\check_dependencies.py.__init__
+- calls_function:services\memory_service.py.__init__
+- calls_function:services\ollama_service.py.__init__
+- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
+- calls_function:Personalities\personality_model.py.__init__
+- calls_function:services\enhancement_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
+- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
+- calls_function:ui\tabs\model_tab.py.__init__
+- calls_function:utils\internet_connection.py.__init__
+- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
+- calls_function:ui\tabs\memory_tab.py.__init__
+- calls_function:MainApp\ollama_chat.py.__init__
+- calls_function:Personalities\services\personality_service.py.__init__
 - calls_function:config\config_manager.py.__init__
+- calls_function:ui\Widgets\spellchecker_widget.py.__init__
+- calls_function:services\start_up\install_dependencies.py.__init__
+- calls_function:services\conversation_service.py.__init__
+- calls_function:utils\Logging\logging_helpers.py.__init__
+- calls_function:MainApp\service_manager.py.__init__
+- calls_function:services\start_up\dependency_checker.py.__init__
 
 ### `services\Voice_STT_TTS_SERVICES\STT_Service.py`
 
-- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
-- calls_function:utils\internet_connection.py.__init__
-- calls_function:ui\Widgets\personality_widget.py.__init__
-- calls_function:services\worker\worker.py.__init__
-- calls_function:models\conversation_metadata.py.__init__
-- calls_function:MainApp\ui_manager.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
-- calls_function:MainApp\service_manager.py.__init__
-- calls_function:Personalities\services\personality_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
-- calls_function:MainApp\ollama_chat.py.__init__
-- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
-- calls_function:services\summarization_service.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
-- calls_function:utils\streaming_handler.py.__init__
-- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
-- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
-- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
-- calls_function:ui\tabs\personality_tab.py.__init__
-- calls_function:services\start_up\dependency_checker.py.__init__
-- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
-- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
-- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
-- calls_function:services\enhancement_service.py.__init__
-- calls_function:services\memory_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
-- calls_function:ui\Widgets\chat_navigation.py.__init__
-- calls_function:ui\Widgets\spellchecker_widget.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
-- calls_function:Personalities\services\personality_loader.py.__init__
-- calls_function:services\ollama_service.py.__init__
-- calls_function:services\semantic_search_service.py.__init__
-- calls_function:MainApp\event_handler.py.__init__
-- calls_function:Personalities\personality_model.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
-- calls_function:MainApp\app_lifecycle.py.__init__
-- calls_function:utils\complexity_analyzer.py.__init__
-- calls_function:services\start_up\install_dependencies.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
-- calls_function:ui\chat_tab.py.__init__
-- calls_function:ui\tabs\model_tab.py.__init__
-- calls_function:controllers\chat_controller.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
-- calls_function:utils\complexity_widget.py.__init__
-- calls_function:ui\tabs\memory_tab.py.__init__
 - calls_function:services\Voice_STT_TTS_SERVICES\voice_service_wrapper.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\tabs\personality_tab.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
+- calls_function:Personalities\services\personality_loader.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
+- calls_function:MainApp\ui_manager.py.__init__
+- calls_function:services\worker\worker.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
 - calls_function:ui\Widgets\settings_dialog.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
+- calls_function:MainApp\app_lifecycle.py.__init__
+- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
+- calls_function:utils\complexity_widget.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
+- calls_function:MainApp\event_handler.py.__init__
+- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
+- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
+- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
+- calls_function:controllers\chat_controller.py.__init__
+- calls_function:models\conversation_metadata.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
+- calls_function:ui\Widgets\chat_navigation.py.__init__
+- calls_function:ui\Widgets\personality_widget.py.__init__
+- calls_function:utils\complexity_analyzer.py.__init__
+- calls_function:utils\streaming_handler.py.__init__
+- calls_function:services\semantic_search_service.py.__init__
+- calls_function:services\summarization_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
 - calls_function:ui\Widgets\editable_message_widget.py.__init__
-- calls_function:services\conversation_service.py.__init__
-- calls_function:services\start_up\check_dependencies.py.__init__
+- calls_function:services\memory_service.py.__init__
+- calls_function:services\ollama_service.py.__init__
+- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
+- calls_function:Personalities\personality_model.py.__init__
+- calls_function:services\enhancement_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
+- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
+- calls_function:ui\tabs\model_tab.py.__init__
+- calls_function:utils\internet_connection.py.__init__
+- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
+- calls_function:ui\tabs\memory_tab.py.__init__
+- calls_function:MainApp\ollama_chat.py.__init__
+- calls_function:Personalities\services\personality_service.py.__init__
 - calls_function:config\config_manager.py.__init__
+- calls_function:ui\Widgets\spellchecker_widget.py.__init__
+- calls_function:services\start_up\install_dependencies.py.__init__
+- calls_function:services\conversation_service.py.__init__
+- calls_function:utils\Logging\logging_helpers.py.__init__
+- calls_function:MainApp\service_manager.py.__init__
+- calls_function:services\start_up\dependency_checker.py.__init__
 
 ### `services\Voice_STT_TTS_SERVICES\TTS_Service.py`
 
-- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
-- calls_function:utils\internet_connection.py.__init__
-- calls_function:ui\Widgets\personality_widget.py.__init__
-- calls_function:services\worker\worker.py.__init__
-- calls_function:models\conversation_metadata.py.__init__
-- calls_function:MainApp\ui_manager.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
-- calls_function:MainApp\service_manager.py.__init__
-- calls_function:Personalities\services\personality_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
-- calls_function:MainApp\ollama_chat.py.__init__
-- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
-- calls_function:services\summarization_service.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
-- calls_function:utils\streaming_handler.py.__init__
-- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
-- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
-- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
-- calls_function:ui\tabs\personality_tab.py.__init__
-- calls_function:services\start_up\dependency_checker.py.__init__
-- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
-- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
-- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
-- calls_function:services\enhancement_service.py.__init__
-- calls_function:services\memory_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
-- calls_function:ui\Widgets\chat_navigation.py.__init__
-- calls_function:ui\Widgets\spellchecker_widget.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
-- calls_function:Personalities\services\personality_loader.py.__init__
-- calls_function:services\ollama_service.py.__init__
-- calls_function:services\semantic_search_service.py.__init__
-- calls_function:MainApp\event_handler.py.__init__
-- calls_function:Personalities\personality_model.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
-- calls_function:MainApp\app_lifecycle.py.__init__
-- calls_function:utils\complexity_analyzer.py.__init__
-- calls_function:services\start_up\install_dependencies.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
-- calls_function:ui\chat_tab.py.__init__
-- calls_function:ui\tabs\model_tab.py.__init__
-- calls_function:controllers\chat_controller.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
-- calls_function:utils\complexity_widget.py.__init__
-- calls_function:ui\tabs\memory_tab.py.__init__
 - calls_function:services\Voice_STT_TTS_SERVICES\voice_service_wrapper.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\tabs\personality_tab.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
+- calls_function:Personalities\services\personality_loader.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
+- calls_function:MainApp\ui_manager.py.__init__
+- calls_function:services\worker\worker.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
 - calls_function:ui\Widgets\settings_dialog.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
+- calls_function:MainApp\app_lifecycle.py.__init__
+- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
+- calls_function:utils\complexity_widget.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
+- calls_function:MainApp\event_handler.py.__init__
+- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
+- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
+- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
+- calls_function:controllers\chat_controller.py.__init__
+- calls_function:models\conversation_metadata.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
+- calls_function:ui\Widgets\chat_navigation.py.__init__
+- calls_function:ui\Widgets\personality_widget.py.__init__
+- calls_function:utils\complexity_analyzer.py.__init__
+- calls_function:utils\streaming_handler.py.__init__
+- calls_function:services\semantic_search_service.py.__init__
+- calls_function:services\summarization_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
 - calls_function:ui\Widgets\editable_message_widget.py.__init__
-- calls_function:services\conversation_service.py.__init__
-- calls_function:services\start_up\check_dependencies.py.__init__
+- calls_function:services\memory_service.py.__init__
+- calls_function:services\ollama_service.py.__init__
+- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
+- calls_function:Personalities\personality_model.py.__init__
+- calls_function:services\enhancement_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
+- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
+- calls_function:ui\tabs\model_tab.py.__init__
+- calls_function:utils\internet_connection.py.__init__
+- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
+- calls_function:ui\tabs\memory_tab.py.__init__
+- calls_function:MainApp\ollama_chat.py.__init__
+- calls_function:Personalities\services\personality_service.py.__init__
 - calls_function:config\config_manager.py.__init__
+- calls_function:ui\Widgets\spellchecker_widget.py.__init__
+- calls_function:services\start_up\install_dependencies.py.__init__
+- calls_function:services\conversation_service.py.__init__
+- calls_function:utils\Logging\logging_helpers.py.__init__
+- calls_function:MainApp\service_manager.py.__init__
+- calls_function:services\start_up\dependency_checker.py.__init__
 
 ### `services\Voice_STT_TTS_SERVICES\coqui_tts_service.py`
 
-- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
-- calls_function:utils\internet_connection.py.__init__
-- calls_function:ui\Widgets\personality_widget.py.__init__
-- calls_function:services\worker\worker.py.__init__
-- calls_function:models\conversation_metadata.py.__init__
-- calls_function:config\config_manager.py.set
-- calls_function:MainApp\ui_manager.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
-- calls_function:MainApp\service_manager.py.__init__
-- calls_function:Personalities\services\personality_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
-- calls_function:MainApp\ollama_chat.py.__init__
-- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
-- calls_function:services\summarization_service.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
-- calls_function:utils\streaming_handler.py.__init__
-- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
-- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
-- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
-- calls_function:ui\tabs\personality_tab.py.__init__
-- calls_function:services\start_up\dependency_checker.py.__init__
-- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
-- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
-- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
-- calls_function:services\enhancement_service.py.__init__
-- calls_function:services\memory_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
-- calls_function:ui\Widgets\chat_navigation.py.__init__
-- calls_function:ui\Widgets\spellchecker_widget.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
-- calls_function:Personalities\services\personality_loader.py.__init__
-- calls_function:services\ollama_service.py.__init__
-- calls_function:services\semantic_search_service.py.__init__
-- calls_function:MainApp\event_handler.py.__init__
-- calls_function:Personalities\personality_model.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
-- calls_function:MainApp\app_lifecycle.py.__init__
-- calls_function:utils\complexity_analyzer.py.__init__
-- calls_function:services\start_up\install_dependencies.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
-- calls_function:ui\chat_tab.py.__init__
-- calls_function:ui\tabs\model_tab.py.__init__
-- calls_function:controllers\chat_controller.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
-- calls_function:utils\complexity_widget.py.__init__
-- calls_function:ui\tabs\memory_tab.py.__init__
 - calls_function:services\Voice_STT_TTS_SERVICES\voice_service_wrapper.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\tabs\personality_tab.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
+- calls_function:Personalities\services\personality_loader.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
+- calls_function:MainApp\ui_manager.py.__init__
+- calls_function:services\worker\worker.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
 - calls_function:ui\Widgets\settings_dialog.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
+- calls_function:MainApp\app_lifecycle.py.__init__
+- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
+- calls_function:utils\complexity_widget.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
+- calls_function:utils\Logging\Custom_Logger.py.__new__
+- calls_function:MainApp\event_handler.py.__init__
+- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
+- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
+- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
+- calls_function:controllers\chat_controller.py.__init__
+- calls_function:models\conversation_metadata.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
+- calls_function:ui\Widgets\chat_navigation.py.__init__
+- calls_function:ui\Widgets\personality_widget.py.__init__
+- calls_function:utils\complexity_analyzer.py.__init__
+- calls_function:utils\streaming_handler.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__new__
+- calls_function:services\semantic_search_service.py.__init__
+- calls_function:services\summarization_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
 - calls_function:ui\Widgets\editable_message_widget.py.__init__
-- calls_function:services\conversation_service.py.__init__
-- calls_function:services\start_up\check_dependencies.py.__init__
+- calls_function:config\config_manager.py.set
+- calls_function:services\memory_service.py.__init__
+- calls_function:services\ollama_service.py.__init__
+- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
+- calls_function:Personalities\personality_model.py.__init__
+- calls_function:services\enhancement_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
+- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
+- calls_function:ui\tabs\model_tab.py.__init__
+- calls_function:utils\internet_connection.py.__init__
+- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
+- calls_function:ui\tabs\memory_tab.py.__init__
+- calls_function:MainApp\ollama_chat.py.__init__
+- calls_function:Personalities\services\personality_service.py.__init__
 - calls_function:config\config_manager.py.__init__
+- calls_function:ui\Widgets\spellchecker_widget.py.__init__
+- calls_function:services\start_up\install_dependencies.py.__init__
+- calls_function:services\conversation_service.py.__init__
+- calls_function:utils\Logging\logging_helpers.py.__init__
+- calls_function:MainApp\service_manager.py.__init__
+- calls_function:services\start_up\dependency_checker.py.__init__
 
 ### `services\Voice_STT_TTS_SERVICES\voice_process_manager.py`
 
-- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
-- calls_function:utils\internet_connection.py.__init__
-- calls_function:ui\Widgets\personality_widget.py.__init__
-- calls_function:services\worker\worker.py.__init__
-- calls_function:models\conversation_metadata.py.__init__
-- calls_function:MainApp\ui_manager.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
-- calls_function:MainApp\service_manager.py.__init__
-- calls_function:Personalities\services\personality_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
-- calls_function:MainApp\ollama_chat.py.__init__
-- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
-- calls_function:services\summarization_service.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
-- calls_function:utils\streaming_handler.py.__init__
-- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
-- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
-- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
-- calls_function:ui\tabs\personality_tab.py.__init__
-- calls_function:services\start_up\dependency_checker.py.__init__
-- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
-- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
-- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
-- calls_function:services\enhancement_service.py.__init__
-- calls_function:services\memory_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
-- calls_function:ui\Widgets\chat_navigation.py.__init__
-- calls_function:ui\Widgets\spellchecker_widget.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
-- calls_function:Personalities\services\personality_loader.py.__init__
-- calls_function:services\ollama_service.py.__init__
-- calls_function:services\semantic_search_service.py.__init__
-- calls_function:MainApp\event_handler.py.__init__
-- calls_function:Personalities\personality_model.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
-- calls_function:MainApp\app_lifecycle.py.__init__
-- calls_function:utils\complexity_analyzer.py.__init__
-- calls_function:services\start_up\install_dependencies.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
-- calls_function:ui\chat_tab.py.__init__
-- calls_function:ui\tabs\model_tab.py.__init__
-- calls_function:controllers\chat_controller.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
-- calls_function:utils\complexity_widget.py.__init__
-- calls_function:ui\tabs\memory_tab.py.__init__
 - calls_function:services\Voice_STT_TTS_SERVICES\voice_service_wrapper.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\tabs\personality_tab.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
+- calls_function:Personalities\services\personality_loader.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
+- calls_function:MainApp\ui_manager.py.__init__
+- calls_function:services\worker\worker.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
 - calls_function:ui\Widgets\settings_dialog.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
+- calls_function:MainApp\app_lifecycle.py.__init__
+- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
+- calls_function:utils\complexity_widget.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
+- calls_function:MainApp\event_handler.py.__init__
+- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
+- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
+- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
+- calls_function:controllers\chat_controller.py.__init__
+- calls_function:models\conversation_metadata.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
+- calls_function:ui\Widgets\chat_navigation.py.__init__
+- calls_function:ui\Widgets\personality_widget.py.__init__
+- calls_function:utils\complexity_analyzer.py.__init__
+- calls_function:utils\streaming_handler.py.__init__
+- calls_function:services\semantic_search_service.py.__init__
+- calls_function:services\summarization_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
 - calls_function:ui\Widgets\editable_message_widget.py.__init__
-- calls_function:services\conversation_service.py.__init__
-- calls_function:services\start_up\check_dependencies.py.__init__
+- calls_function:services\memory_service.py.__init__
+- calls_function:services\ollama_service.py.__init__
+- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
+- calls_function:Personalities\personality_model.py.__init__
+- calls_function:services\enhancement_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
+- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
+- calls_function:ui\tabs\model_tab.py.__init__
+- calls_function:utils\internet_connection.py.__init__
+- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
+- calls_function:ui\tabs\memory_tab.py.__init__
+- calls_function:MainApp\ollama_chat.py.__init__
+- calls_function:Personalities\services\personality_service.py.__init__
 - calls_function:config\config_manager.py.__init__
+- calls_function:ui\Widgets\spellchecker_widget.py.__init__
+- calls_function:services\start_up\install_dependencies.py.__init__
+- calls_function:services\conversation_service.py.__init__
+- calls_function:utils\Logging\logging_helpers.py.__init__
+- calls_function:MainApp\service_manager.py.__init__
+- calls_function:services\start_up\dependency_checker.py.__init__
 
 ### `services\Voice_STT_TTS_SERVICES\voice_service.py`
 
-- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
-- calls_function:utils\internet_connection.py.__init__
-- calls_function:ui\Widgets\personality_widget.py.__init__
-- calls_function:services\worker\worker.py.__init__
-- calls_function:models\conversation_metadata.py.__init__
-- calls_function:MainApp\ui_manager.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
-- calls_function:MainApp\service_manager.py.__init__
-- calls_function:Personalities\services\personality_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
-- calls_function:MainApp\ollama_chat.py.__init__
-- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
-- calls_function:services\summarization_service.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
-- calls_function:utils\streaming_handler.py.__init__
-- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
-- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
-- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
-- calls_function:ui\tabs\personality_tab.py.__init__
-- calls_function:services\start_up\dependency_checker.py.__init__
-- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
-- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
-- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
-- calls_function:config\config_manager.py.get
-- calls_function:services\enhancement_service.py.__init__
-- calls_function:services\memory_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
-- calls_function:ui\Widgets\chat_navigation.py.__init__
-- calls_function:ui\Widgets\spellchecker_widget.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
-- calls_function:Personalities\services\personality_loader.py.__init__
-- calls_function:services\ollama_service.py.__init__
-- calls_function:services\semantic_search_service.py.__init__
-- calls_function:MainApp\event_handler.py.__init__
-- calls_function:Personalities\personality_model.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
-- calls_function:MainApp\app_lifecycle.py.__init__
-- calls_function:utils\complexity_analyzer.py.__init__
-- calls_function:services\start_up\install_dependencies.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
-- calls_function:ui\chat_tab.py.__init__
-- calls_function:ui\tabs\model_tab.py.__init__
-- calls_function:controllers\chat_controller.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
-- calls_function:utils\complexity_widget.py.__init__
-- calls_function:ui\tabs\memory_tab.py.__init__
 - calls_function:services\Voice_STT_TTS_SERVICES\voice_service_wrapper.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\tabs\personality_tab.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
+- calls_function:Personalities\services\personality_loader.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
+- calls_function:MainApp\ui_manager.py.__init__
+- calls_function:services\worker\worker.py.__init__
+- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_warning_with_context
+- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
 - calls_function:ui\Widgets\settings_dialog.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
+- calls_function:MainApp\app_lifecycle.py.__init__
+- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
+- calls_function:utils\complexity_widget.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
+- calls_function:MainApp\event_handler.py.__init__
+- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
+- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
+- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
+- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_info_with_context
+- calls_function:controllers\chat_controller.py.__init__
+- calls_function:models\conversation_metadata.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
+- calls_function:ui\Widgets\chat_navigation.py.__init__
+- calls_function:ui\Widgets\personality_widget.py.__init__
+- calls_function:utils\complexity_analyzer.py.__init__
+- calls_function:utils\streaming_handler.py.__init__
+- calls_function:config\config_manager.py.get
+- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_exception_with_context
+- calls_function:services\semantic_search_service.py.__init__
+- calls_function:services\summarization_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
 - calls_function:ui\Widgets\editable_message_widget.py.__init__
-- calls_function:services\conversation_service.py.__init__
-- calls_function:services\start_up\check_dependencies.py.__init__
+- calls_function:services\memory_service.py.__init__
+- calls_function:services\ollama_service.py.__init__
+- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
+- calls_function:Personalities\personality_model.py.__init__
+- calls_function:services\enhancement_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
+- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
+- calls_function:ui\tabs\model_tab.py.__init__
+- calls_function:utils\internet_connection.py.__init__
+- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
+- calls_function:ui\tabs\memory_tab.py.__init__
+- calls_function:MainApp\ollama_chat.py.__init__
+- calls_function:Personalities\services\personality_service.py.__init__
+- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_audio_operation
 - calls_function:config\config_manager.py.__init__
+- calls_function:ui\Widgets\spellchecker_widget.py.__init__
+- calls_function:services\start_up\install_dependencies.py.__init__
+- calls_function:services\conversation_service.py.__init__
+- calls_function:utils\Logging\logging_helpers.py.__init__
+- calls_function:MainApp\service_manager.py.__init__
+- calls_function:services\start_up\dependency_checker.py.__init__
 
 ### `services\Voice_STT_TTS_SERVICES\voice_service_wrapper.py`
 
-- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
-- calls_function:utils\internet_connection.py.__init__
-- calls_function:ui\Widgets\personality_widget.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.create_voice_process_manager
-- calls_function:services\worker\worker.py.__init__
-- calls_function:models\conversation_metadata.py.__init__
-- calls_function:MainApp\ui_manager.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
-- calls_function:MainApp\service_manager.py.__init__
-- calls_function:Personalities\services\personality_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
-- calls_function:MainApp\ollama_chat.py.__init__
-- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
-- calls_function:services\summarization_service.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
-- calls_function:utils\streaming_handler.py.__init__
-- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
-- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
-- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
-- calls_function:ui\tabs\personality_tab.py.__init__
-- calls_function:services\start_up\dependency_checker.py.__init__
-- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
-- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
-- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
-- calls_function:services\enhancement_service.py.__init__
-- calls_function:services\memory_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
-- calls_function:ui\Widgets\chat_navigation.py.__init__
-- calls_function:ui\Widgets\spellchecker_widget.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
-- calls_function:Personalities\services\personality_loader.py.__init__
-- calls_function:services\ollama_service.py.__init__
-- calls_function:services\semantic_search_service.py.__init__
-- calls_function:MainApp\event_handler.py.__init__
-- calls_function:Personalities\personality_model.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
-- calls_function:MainApp\app_lifecycle.py.__init__
-- calls_function:utils\complexity_analyzer.py.__init__
-- calls_function:services\start_up\install_dependencies.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
-- calls_function:ui\chat_tab.py.__init__
-- calls_function:ui\tabs\model_tab.py.__init__
-- calls_function:controllers\chat_controller.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
-- calls_function:utils\complexity_widget.py.__init__
-- calls_function:ui\tabs\memory_tab.py.__init__
 - calls_function:services\Voice_STT_TTS_SERVICES\voice_service_wrapper.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\tabs\personality_tab.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
+- calls_function:Personalities\services\personality_loader.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
+- calls_function:MainApp\ui_manager.py.__init__
+- calls_function:services\worker\worker.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
 - calls_function:ui\Widgets\settings_dialog.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
+- calls_function:MainApp\app_lifecycle.py.__init__
+- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
+- calls_function:utils\complexity_widget.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
+- calls_function:MainApp\event_handler.py.__init__
+- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
+- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
+- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
+- calls_function:controllers\chat_controller.py.__init__
+- calls_function:models\conversation_metadata.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
+- calls_function:ui\Widgets\chat_navigation.py.__init__
+- calls_function:ui\Widgets\personality_widget.py.__init__
+- calls_function:utils\complexity_analyzer.py.__init__
+- calls_function:utils\streaming_handler.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.create_voice_process_manager
+- calls_function:services\semantic_search_service.py.__init__
+- calls_function:services\summarization_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
 - calls_function:ui\Widgets\editable_message_widget.py.__init__
-- calls_function:services\conversation_service.py.__init__
-- calls_function:services\start_up\check_dependencies.py.__init__
+- calls_function:services\memory_service.py.__init__
+- calls_function:services\ollama_service.py.__init__
+- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
+- calls_function:Personalities\personality_model.py.__init__
+- calls_function:services\enhancement_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
+- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
+- calls_function:ui\tabs\model_tab.py.__init__
+- calls_function:utils\internet_connection.py.__init__
+- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
+- calls_function:ui\tabs\memory_tab.py.__init__
+- calls_function:MainApp\ollama_chat.py.__init__
+- calls_function:Personalities\services\personality_service.py.__init__
 - calls_function:config\config_manager.py.__init__
+- calls_function:ui\Widgets\spellchecker_widget.py.__init__
+- calls_function:services\start_up\install_dependencies.py.__init__
+- calls_function:services\conversation_service.py.__init__
+- calls_function:utils\Logging\logging_helpers.py.__init__
+- calls_function:MainApp\service_manager.py.__init__
+- calls_function:services\start_up\dependency_checker.py.__init__
 
 ### `services\conversation_service.py`
 
-- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
-- calls_function:utils\internet_connection.py.__init__
-- calls_function:ui\Widgets\personality_widget.py.__init__
-- calls_function:services\worker\worker.py.__init__
-- calls_function:models\conversation_metadata.py.__init__
-- calls_function:MainApp\ui_manager.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
-- calls_function:MainApp\service_manager.py.__init__
-- calls_function:Personalities\services\personality_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
-- calls_function:MainApp\ollama_chat.py.__init__
-- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
-- calls_function:services\summarization_service.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
-- calls_function:utils\streaming_handler.py.__init__
-- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
-- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
-- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
-- calls_function:ui\tabs\personality_tab.py.__init__
-- calls_function:services\start_up\dependency_checker.py.__init__
-- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
-- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
-- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
-- calls_function:services\enhancement_service.py.__init__
-- calls_function:services\memory_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
-- calls_function:ui\Widgets\chat_navigation.py.__init__
-- calls_function:ui\Widgets\spellchecker_widget.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
-- calls_function:Personalities\services\personality_loader.py.__init__
-- calls_function:services\ollama_service.py.__init__
-- calls_function:services\semantic_search_service.py.__init__
-- calls_function:MainApp\event_handler.py.__init__
-- calls_function:Personalities\personality_model.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
-- calls_function:MainApp\app_lifecycle.py.__init__
-- calls_function:utils\complexity_analyzer.py.__init__
-- calls_function:services\start_up\install_dependencies.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
-- calls_function:ui\chat_tab.py.__init__
-- calls_function:ui\tabs\model_tab.py.__init__
-- calls_function:controllers\chat_controller.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
-- calls_function:utils\complexity_widget.py.__init__
-- calls_function:ui\tabs\memory_tab.py.__init__
 - calls_function:services\Voice_STT_TTS_SERVICES\voice_service_wrapper.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\tabs\personality_tab.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
+- calls_function:Personalities\services\personality_loader.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
+- calls_function:MainApp\ui_manager.py.__init__
+- calls_function:services\worker\worker.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
 - calls_function:ui\Widgets\settings_dialog.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
+- calls_function:MainApp\app_lifecycle.py.__init__
+- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
+- calls_function:utils\complexity_widget.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
+- calls_function:MainApp\event_handler.py.__init__
+- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
+- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
+- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
+- calls_function:controllers\chat_controller.py.__init__
+- calls_function:models\conversation_metadata.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
+- calls_function:ui\Widgets\chat_navigation.py.__init__
+- calls_function:ui\Widgets\personality_widget.py.__init__
+- calls_function:utils\complexity_analyzer.py.__init__
+- calls_function:utils\streaming_handler.py.__init__
+- calls_function:services\semantic_search_service.py.__init__
+- calls_function:services\summarization_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
 - calls_function:ui\Widgets\editable_message_widget.py.__init__
-- calls_function:services\conversation_service.py.__init__
-- calls_function:services\start_up\check_dependencies.py.__init__
+- calls_function:services\memory_service.py.__init__
+- calls_function:services\ollama_service.py.__init__
+- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
+- calls_function:Personalities\personality_model.py.__init__
+- calls_function:services\enhancement_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
+- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
+- calls_function:ui\tabs\model_tab.py.__init__
+- calls_function:utils\internet_connection.py.__init__
+- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
+- calls_function:ui\tabs\memory_tab.py.__init__
+- calls_function:MainApp\ollama_chat.py.__init__
+- calls_function:Personalities\services\personality_service.py.__init__
 - calls_function:config\config_manager.py.__init__
+- calls_function:ui\Widgets\spellchecker_widget.py.__init__
+- calls_function:services\start_up\install_dependencies.py.__init__
+- calls_function:services\conversation_service.py.__init__
+- calls_function:utils\Logging\logging_helpers.py.__init__
+- calls_function:MainApp\service_manager.py.__init__
+- calls_function:services\start_up\dependency_checker.py.__init__
 
 ### `services\memory_service.py`
 
-- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
-- calls_function:utils\internet_connection.py.__init__
-- calls_function:ui\Widgets\personality_widget.py.__init__
-- calls_function:services\worker\worker.py.__init__
-- calls_function:models\conversation_metadata.py.__init__
-- calls_function:config\config_manager.py.set
-- calls_function:MainApp\ui_manager.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
-- calls_function:MainApp\service_manager.py.__init__
-- calls_function:Personalities\services\personality_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
-- calls_function:MainApp\ollama_chat.py.__init__
-- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
-- calls_function:services\summarization_service.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
-- calls_function:utils\streaming_handler.py.__init__
-- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
-- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
-- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
-- calls_function:ui\tabs\personality_tab.py.__init__
-- calls_function:services\start_up\dependency_checker.py.__init__
-- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
-- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
-- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
-- calls_function:services\enhancement_service.py.__init__
-- calls_function:services\memory_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
-- calls_function:ui\Widgets\chat_navigation.py.__init__
-- calls_function:ui\Widgets\spellchecker_widget.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
-- calls_function:Personalities\services\personality_loader.py.__init__
-- calls_function:services\ollama_service.py.__init__
-- calls_function:services\semantic_search_service.py.__init__
-- calls_function:MainApp\event_handler.py.__init__
-- calls_function:Personalities\personality_model.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
-- calls_function:MainApp\app_lifecycle.py.__init__
-- calls_function:utils\complexity_analyzer.py.__init__
-- calls_function:services\start_up\install_dependencies.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
-- calls_function:ui\chat_tab.py.__init__
-- calls_function:ui\tabs\model_tab.py.__init__
-- calls_function:controllers\chat_controller.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
-- calls_function:utils\complexity_widget.py.__init__
-- calls_function:ui\tabs\memory_tab.py.__init__
+- calls_method:services\memory_service.py.MemoryRetriever.get_relevant_memories
 - calls_function:services\Voice_STT_TTS_SERVICES\voice_service_wrapper.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\tabs\personality_tab.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
+- calls_function:Personalities\services\personality_loader.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
+- calls_function:MainApp\ui_manager.py.__init__
+- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_memory_operation
+- calls_function:services\worker\worker.py.__init__
+- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_warning_with_context
+- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_file_operation
+- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
 - calls_function:ui\Widgets\settings_dialog.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
+- calls_function:MainApp\app_lifecycle.py.__init__
+- calls_method:services\memory_service.py.MemoryClassifier.classify_message
+- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
+- calls_function:utils\complexity_widget.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
+- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_service_initialization
+- calls_function:MainApp\event_handler.py.__init__
+- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
+- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
+- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
+- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_info_with_context
+- calls_method:services\memory_service.py.PronounNormalizer.should_normalize
+- calls_function:controllers\chat_controller.py.__init__
+- calls_function:models\conversation_metadata.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
+- calls_function:ui\Widgets\chat_navigation.py.__init__
+- calls_function:ui\Widgets\personality_widget.py.__init__
+- calls_function:utils\complexity_analyzer.py.__init__
+- calls_function:utils\streaming_handler.py.__init__
+- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_exception_with_context
+- calls_function:services\semantic_search_service.py.__init__
+- calls_function:services\summarization_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
 - calls_function:ui\Widgets\editable_message_widget.py.__init__
-- calls_function:services\conversation_service.py.__init__
-- calls_function:services\start_up\check_dependencies.py.__init__
+- calls_function:config\config_manager.py.set
+- calls_function:services\memory_service.py.__init__
+- calls_function:services\ollama_service.py.__init__
+- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
+- calls_function:Personalities\personality_model.py.__init__
+- calls_function:services\enhancement_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
+- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
+- calls_function:ui\tabs\model_tab.py.__init__
+- calls_function:utils\internet_connection.py.__init__
+- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
+- calls_function:ui\tabs\memory_tab.py.__init__
+- calls_function:MainApp\ollama_chat.py.__init__
+- calls_function:Personalities\services\personality_service.py.__init__
 - calls_function:config\config_manager.py.__init__
 - calls_method:services\memory_service.py.MemoryRetriever.calculate_relevance
+- calls_function:ui\Widgets\spellchecker_widget.py.__init__
+- calls_function:services\start_up\install_dependencies.py.__init__
+- calls_function:services\conversation_service.py.__init__
+- calls_method:services\memory_service.py.PronounNormalizer.normalize_pronouns
+- calls_function:utils\Logging\logging_helpers.py.__init__
+- calls_function:MainApp\service_manager.py.__init__
+- calls_function:services\start_up\dependency_checker.py.__init__
 
 ### `services\ollama_service.py`
 
-- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
-- calls_function:utils\internet_connection.py.__init__
-- calls_function:ui\Widgets\personality_widget.py.__init__
-- calls_function:services\worker\worker.py.__init__
-- calls_function:models\conversation_metadata.py.__init__
-- calls_function:MainApp\ui_manager.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
-- calls_function:MainApp\service_manager.py.__init__
-- calls_function:Personalities\services\personality_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
-- calls_function:MainApp\ollama_chat.py.__init__
-- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
-- calls_function:services\summarization_service.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
-- calls_function:utils\streaming_handler.py.__init__
-- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
-- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
-- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
-- calls_function:ui\tabs\personality_tab.py.__init__
-- calls_function:services\start_up\dependency_checker.py.__init__
-- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
-- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
-- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
-- calls_function:config\config_manager.py.get
-- calls_function:services\enhancement_service.py.__init__
-- calls_function:services\memory_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
-- calls_function:ui\Widgets\chat_navigation.py.__init__
-- calls_function:ui\Widgets\spellchecker_widget.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
-- calls_function:Personalities\services\personality_loader.py.__init__
-- calls_function:services\ollama_service.py.__init__
-- calls_function:services\semantic_search_service.py.__init__
-- calls_function:MainApp\event_handler.py.__init__
-- calls_function:Personalities\personality_model.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
-- calls_function:MainApp\app_lifecycle.py.__init__
-- calls_function:utils\complexity_analyzer.py.__init__
-- calls_function:services\start_up\install_dependencies.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
-- calls_function:ui\chat_tab.py.__init__
-- calls_function:ui\tabs\model_tab.py.__init__
-- calls_function:controllers\chat_controller.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
-- calls_function:utils\complexity_widget.py.__init__
-- calls_function:ui\tabs\memory_tab.py.__init__
 - calls_function:services\Voice_STT_TTS_SERVICES\voice_service_wrapper.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\tabs\personality_tab.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
+- calls_function:Personalities\services\personality_loader.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
+- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_performance_metric
+- calls_function:MainApp\ui_manager.py.__init__
+- calls_function:services\worker\worker.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
 - calls_function:ui\Widgets\settings_dialog.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
+- calls_function:MainApp\app_lifecycle.py.__init__
+- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
+- calls_function:utils\complexity_widget.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
+- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_service_initialization
+- calls_function:MainApp\event_handler.py.__init__
+- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
+- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_network_request
+- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
+- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
+- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_info_with_context
+- calls_function:controllers\chat_controller.py.__init__
+- calls_function:models\conversation_metadata.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
+- calls_function:ui\Widgets\chat_navigation.py.__init__
+- calls_function:ui\Widgets\personality_widget.py.__init__
+- calls_function:utils\complexity_analyzer.py.__init__
+- calls_function:utils\streaming_handler.py.__init__
+- calls_function:config\config_manager.py.get
+- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_exception_with_context
+- calls_function:services\semantic_search_service.py.__init__
+- calls_function:services\summarization_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
 - calls_function:ui\Widgets\editable_message_widget.py.__init__
-- calls_function:services\conversation_service.py.__init__
-- calls_function:services\start_up\check_dependencies.py.__init__
+- calls_function:services\memory_service.py.__init__
+- calls_function:services\ollama_service.py.__init__
+- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
+- calls_function:Personalities\personality_model.py.__init__
+- calls_function:services\enhancement_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
+- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
+- calls_function:ui\tabs\model_tab.py.__init__
+- calls_function:utils\internet_connection.py.__init__
+- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
+- calls_function:ui\tabs\memory_tab.py.__init__
+- calls_function:MainApp\ollama_chat.py.__init__
+- calls_function:Personalities\services\personality_service.py.__init__
 - calls_function:config\config_manager.py.__init__
+- calls_function:ui\Widgets\spellchecker_widget.py.__init__
+- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_debug
+- calls_function:services\start_up\install_dependencies.py.__init__
+- calls_function:services\conversation_service.py.__init__
+- calls_function:utils\Logging\logging_helpers.py.__init__
+- calls_function:MainApp\service_manager.py.__init__
+- calls_function:services\start_up\dependency_checker.py.__init__
 
 ### `services\semantic_search_service.py`
 
-- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
-- calls_function:utils\internet_connection.py.__init__
-- calls_function:ui\Widgets\personality_widget.py.__init__
-- calls_function:services\worker\worker.py.__init__
-- calls_function:models\conversation_metadata.py.__init__
-- calls_function:config\config_manager.py.set
-- calls_function:MainApp\ui_manager.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
-- calls_function:MainApp\service_manager.py.__init__
-- calls_function:Personalities\services\personality_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
-- calls_function:MainApp\ollama_chat.py.__init__
-- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
-- calls_function:services\summarization_service.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
-- calls_function:utils\streaming_handler.py.__init__
-- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
-- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
-- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
-- calls_function:ui\tabs\personality_tab.py.__init__
-- calls_function:services\start_up\dependency_checker.py.__init__
-- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
-- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
-- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
-- calls_function:services\enhancement_service.py.__init__
-- calls_function:services\memory_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
-- calls_function:ui\Widgets\chat_navigation.py.__init__
-- calls_function:ui\Widgets\spellchecker_widget.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
-- calls_function:Personalities\services\personality_loader.py.__init__
-- calls_function:services\ollama_service.py.__init__
-- calls_function:services\semantic_search_service.py.__init__
-- calls_function:MainApp\event_handler.py.__init__
-- calls_function:Personalities\personality_model.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
-- calls_function:MainApp\app_lifecycle.py.__init__
-- calls_function:utils\complexity_analyzer.py.__init__
-- calls_function:services\start_up\install_dependencies.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
-- calls_function:ui\chat_tab.py.__init__
-- calls_function:ui\tabs\model_tab.py.__init__
-- calls_function:controllers\chat_controller.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
-- calls_function:utils\complexity_widget.py.__init__
-- calls_function:ui\tabs\memory_tab.py.__init__
 - calls_function:services\Voice_STT_TTS_SERVICES\voice_service_wrapper.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\tabs\personality_tab.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
+- calls_function:Personalities\services\personality_loader.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
+- calls_function:MainApp\ui_manager.py.__init__
+- calls_function:services\worker\worker.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
 - calls_function:ui\Widgets\settings_dialog.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
+- calls_function:MainApp\app_lifecycle.py.__init__
+- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
+- calls_function:utils\complexity_widget.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
+- calls_function:MainApp\event_handler.py.__init__
+- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
+- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
+- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
+- calls_function:controllers\chat_controller.py.__init__
+- calls_function:models\conversation_metadata.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
+- calls_function:ui\Widgets\chat_navigation.py.__init__
+- calls_function:ui\Widgets\personality_widget.py.__init__
+- calls_function:utils\complexity_analyzer.py.__init__
+- calls_function:utils\streaming_handler.py.__init__
+- calls_function:services\semantic_search_service.py.__init__
+- calls_function:services\summarization_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
 - calls_function:ui\Widgets\editable_message_widget.py.__init__
-- calls_function:services\conversation_service.py.__init__
-- calls_function:services\start_up\check_dependencies.py.__init__
+- calls_function:services\memory_service.py.__init__
+- calls_function:services\ollama_service.py.__init__
+- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
+- calls_function:Personalities\personality_model.py.__init__
+- calls_function:services\enhancement_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
+- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
+- calls_function:ui\tabs\model_tab.py.__init__
+- calls_function:utils\internet_connection.py.__init__
+- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
+- calls_function:ui\tabs\memory_tab.py.__init__
+- calls_function:MainApp\ollama_chat.py.__init__
+- calls_function:Personalities\services\personality_service.py.__init__
 - calls_function:config\config_manager.py.__init__
-
-### `services\start_up\check_dependencies.py`
-
-- calls_function:services\start_up\check_dependencies.py.main
-- calls_function:services\start_up\install_dependencies.py.main
+- calls_function:ui\Widgets\spellchecker_widget.py.__init__
+- calls_function:services\start_up\install_dependencies.py.__init__
+- calls_function:services\conversation_service.py.__init__
+- calls_function:utils\Logging\logging_helpers.py.__init__
+- calls_function:MainApp\service_manager.py.__init__
+- calls_function:services\start_up\dependency_checker.py.__init__
 
 ### `services\start_up\install_dependencies.py`
 
-- calls_function:services\start_up\check_dependencies.py.main
-- calls_function:services\start_up\install_dependencies.py.get_version
 - calls_function:services\start_up\install_dependencies.py.main
+- calls_function:services\start_up\install_dependencies.py.get_version
 
 ### `services\summarization_service.py`
 
-- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
-- calls_function:utils\internet_connection.py.__init__
-- calls_function:ui\Widgets\personality_widget.py.__init__
-- calls_function:services\worker\worker.py.__init__
-- calls_function:models\conversation_metadata.py.__init__
-- calls_function:MainApp\ui_manager.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
-- calls_function:MainApp\service_manager.py.__init__
-- calls_function:Personalities\services\personality_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
-- calls_function:MainApp\ollama_chat.py.__init__
-- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
-- calls_function:services\summarization_service.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
-- calls_function:utils\streaming_handler.py.__init__
-- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
-- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
-- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
-- calls_function:ui\tabs\personality_tab.py.__init__
-- calls_function:services\start_up\dependency_checker.py.__init__
-- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
-- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
-- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
-- calls_function:services\enhancement_service.py.__init__
-- calls_function:services\memory_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
-- calls_function:ui\Widgets\chat_navigation.py.__init__
-- calls_function:ui\Widgets\spellchecker_widget.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
-- calls_function:Personalities\services\personality_loader.py.__init__
-- calls_function:services\ollama_service.py.__init__
-- calls_function:services\semantic_search_service.py.__init__
-- calls_function:MainApp\event_handler.py.__init__
-- calls_function:Personalities\personality_model.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
-- calls_function:MainApp\app_lifecycle.py.__init__
-- calls_function:utils\complexity_analyzer.py.__init__
-- calls_function:services\start_up\install_dependencies.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
-- calls_function:ui\chat_tab.py.__init__
-- calls_function:ui\tabs\model_tab.py.__init__
-- calls_function:controllers\chat_controller.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
-- calls_function:utils\complexity_widget.py.__init__
-- calls_function:ui\tabs\memory_tab.py.__init__
 - calls_function:services\Voice_STT_TTS_SERVICES\voice_service_wrapper.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\tabs\personality_tab.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
+- calls_function:Personalities\services\personality_loader.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
+- calls_function:MainApp\ui_manager.py.__init__
+- calls_function:services\worker\worker.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
 - calls_function:ui\Widgets\settings_dialog.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
+- calls_function:MainApp\app_lifecycle.py.__init__
+- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
+- calls_function:utils\complexity_widget.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
+- calls_function:MainApp\event_handler.py.__init__
+- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
+- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
+- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
+- calls_function:controllers\chat_controller.py.__init__
+- calls_function:models\conversation_metadata.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
+- calls_function:ui\Widgets\chat_navigation.py.__init__
+- calls_function:ui\Widgets\personality_widget.py.__init__
+- calls_function:utils\complexity_analyzer.py.__init__
+- calls_function:utils\streaming_handler.py.__init__
+- calls_function:services\semantic_search_service.py.__init__
+- calls_function:services\summarization_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
 - calls_function:ui\Widgets\editable_message_widget.py.__init__
-- calls_function:services\conversation_service.py.__init__
-- calls_function:services\start_up\check_dependencies.py.__init__
+- calls_function:services\memory_service.py.__init__
+- calls_function:services\ollama_service.py.__init__
+- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
+- calls_function:Personalities\personality_model.py.__init__
+- calls_function:services\enhancement_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
+- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
+- calls_function:ui\tabs\model_tab.py.__init__
+- calls_function:utils\internet_connection.py.__init__
+- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
+- calls_function:ui\tabs\memory_tab.py.__init__
+- calls_function:MainApp\ollama_chat.py.__init__
+- calls_function:Personalities\services\personality_service.py.__init__
 - calls_function:config\config_manager.py.__init__
+- calls_function:ui\Widgets\spellchecker_widget.py.__init__
+- calls_function:services\start_up\install_dependencies.py.__init__
+- calls_function:services\conversation_service.py.__init__
+- calls_function:utils\Logging\logging_helpers.py.__init__
+- calls_function:MainApp\service_manager.py.__init__
+- calls_function:services\start_up\dependency_checker.py.__init__
 
 ### `services\worker\worker.py`
 
-- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
-- calls_function:utils\internet_connection.py.__init__
-- calls_function:ui\Widgets\personality_widget.py.__init__
-- calls_function:services\worker\worker.py.__init__
-- calls_function:models\conversation_metadata.py.__init__
-- calls_function:MainApp\ui_manager.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
-- calls_function:MainApp\service_manager.py.__init__
-- calls_function:Personalities\services\personality_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
-- calls_function:MainApp\ollama_chat.py.__init__
-- calls_function:services\summarization_service.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
-- calls_function:utils\streaming_handler.py.__init__
-- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
-- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
-- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
-- calls_function:ui\tabs\personality_tab.py.__init__
-- calls_function:services\start_up\dependency_checker.py.__init__
-- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
-- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
-- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
-- calls_function:config\config_manager.py.get
-- calls_function:services\enhancement_service.py.__init__
-- calls_function:services\memory_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
-- calls_function:ui\Widgets\chat_navigation.py.__init__
-- calls_function:ui\Widgets\spellchecker_widget.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
-- calls_function:Personalities\services\personality_loader.py.__init__
-- calls_function:services\ollama_service.py.__init__
-- calls_function:services\semantic_search_service.py.__init__
-- calls_function:MainApp\event_handler.py.__init__
-- calls_function:Personalities\personality_model.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
-- calls_function:MainApp\app_lifecycle.py.__init__
-- calls_function:utils\complexity_analyzer.py.__init__
-- calls_function:services\start_up\install_dependencies.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
-- calls_function:ui\chat_tab.py.__init__
-- calls_function:ui\tabs\model_tab.py.__init__
-- calls_function:controllers\chat_controller.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
-- calls_function:utils\complexity_widget.py.__init__
-- calls_function:ui\tabs\memory_tab.py.__init__
 - calls_function:services\Voice_STT_TTS_SERVICES\voice_service_wrapper.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\tabs\personality_tab.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
+- calls_function:Personalities\services\personality_loader.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
+- calls_function:MainApp\ui_manager.py.__init__
+- calls_function:services\worker\worker.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
 - calls_function:ui\Widgets\settings_dialog.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
+- calls_function:MainApp\app_lifecycle.py.__init__
+- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
+- calls_function:utils\complexity_widget.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
+- calls_function:MainApp\event_handler.py.__init__
+- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
+- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
+- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
+- calls_function:controllers\chat_controller.py.__init__
+- calls_function:models\conversation_metadata.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
+- calls_function:ui\Widgets\chat_navigation.py.__init__
+- calls_function:ui\Widgets\personality_widget.py.__init__
+- calls_function:utils\complexity_analyzer.py.__init__
+- calls_function:config\config_manager.py.get
+- calls_function:utils\streaming_handler.py.__init__
+- calls_function:services\semantic_search_service.py.__init__
+- calls_function:services\summarization_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
 - calls_function:ui\Widgets\editable_message_widget.py.__init__
-- calls_function:services\conversation_service.py.__init__
-- calls_function:services\start_up\check_dependencies.py.__init__
+- calls_function:services\memory_service.py.__init__
+- calls_function:services\ollama_service.py.__init__
+- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
+- calls_function:Personalities\personality_model.py.__init__
+- calls_function:services\enhancement_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
+- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
+- calls_function:ui\tabs\model_tab.py.__init__
+- calls_function:utils\internet_connection.py.__init__
+- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
+- calls_function:ui\tabs\memory_tab.py.__init__
+- calls_function:MainApp\ollama_chat.py.__init__
+- calls_function:Personalities\services\personality_service.py.__init__
 - calls_function:config\config_manager.py.__init__
+- calls_function:ui\Widgets\spellchecker_widget.py.__init__
+- calls_function:services\start_up\install_dependencies.py.__init__
+- calls_function:services\conversation_service.py.__init__
+- calls_function:utils\Logging\logging_helpers.py.__init__
+- calls_function:MainApp\service_manager.py.__init__
+- calls_function:services\start_up\dependency_checker.py.__init__
 
 ### `ui\Audio_visualisers\eq_orchestrator.py`
 
-- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
-- calls_function:utils\internet_connection.py.__init__
-- calls_function:ui\Widgets\personality_widget.py.__init__
-- calls_function:services\worker\worker.py.__init__
-- calls_function:models\conversation_metadata.py.__init__
-- calls_function:ui\Audio_visualisers\eq_orchestrator.py.band_energy
-- calls_function:MainApp\ui_manager.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
-- calls_function:MainApp\service_manager.py.__init__
-- calls_function:Personalities\services\personality_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_orchestrator.py.map_frequency_to_bars
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
-- calls_function:MainApp\ollama_chat.py.__init__
-- calls_function:services\summarization_service.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
-- calls_function:utils\streaming_handler.py.__init__
-- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
-- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
-- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
-- calls_function:ui\tabs\personality_tab.py.__init__
-- calls_function:services\start_up\dependency_checker.py.__init__
-- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
-- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
-- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
-- calls_function:services\enhancement_service.py.__init__
-- calls_function:services\memory_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
-- calls_function:ui\Widgets\chat_navigation.py.__init__
-- calls_function:ui\Audio_visualisers\voice_ring_animation.py.band_energy
-- calls_function:ui\Widgets\spellchecker_widget.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
-- calls_function:Personalities\services\personality_loader.py.__init__
-- calls_function:services\ollama_service.py.__init__
-- calls_function:services\semantic_search_service.py.__init__
-- calls_function:ui\Audio_visualisers\voice_ring_animation.py.map_frequency_to_bars
-- calls_function:MainApp\event_handler.py.__init__
-- calls_function:Personalities\personality_model.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
-- calls_function:MainApp\app_lifecycle.py.__init__
-- calls_function:utils\complexity_analyzer.py.__init__
-- calls_function:services\start_up\install_dependencies.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
-- calls_function:ui\chat_tab.py.__init__
-- calls_function:ui\tabs\model_tab.py.__init__
-- calls_function:controllers\chat_controller.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
-- calls_function:utils\complexity_widget.py.__init__
-- calls_function:ui\tabs\memory_tab.py.__init__
 - calls_function:services\Voice_STT_TTS_SERVICES\voice_service_wrapper.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
-- calls_function:ui\Widgets\settings_dialog.py.__init__
-- calls_function:ui\Audio_visualisers\voice_ring_animation.py.resizeEvent
+- calls_function:ui\tabs\personality_tab.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
+- calls_function:Personalities\services\personality_loader.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
+- calls_function:MainApp\ui_manager.py.__init__
 - calls_function:ui\Audio_visualisers\eq_orchestrator.py.resizeEvent
+- calls_function:services\worker\worker.py.__init__
+- calls_function:ui\Audio_visualisers\eq_orchestrator.py.map_frequency_to_bars
+- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
+- calls_function:ui\Widgets\settings_dialog.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
+- calls_function:ui\Audio_visualisers\voice_ring_animation.py.resizeEvent
+- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
+- calls_function:MainApp\app_lifecycle.py.__init__
+- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
+- calls_function:utils\complexity_widget.py.__init__
+- calls_function:ui\Audio_visualisers\voice_ring_animation.py.band_energy
+- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
+- calls_function:MainApp\event_handler.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
+- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
+- calls_function:controllers\chat_controller.py.__init__
+- calls_function:models\conversation_metadata.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
+- calls_function:ui\Widgets\chat_navigation.py.__init__
+- calls_function:ui\Widgets\personality_widget.py.__init__
+- calls_function:utils\complexity_analyzer.py.__init__
+- calls_function:utils\streaming_handler.py.__init__
+- calls_function:services\semantic_search_service.py.__init__
+- calls_function:services\summarization_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
 - calls_function:ui\Widgets\editable_message_widget.py.__init__
-- calls_function:services\conversation_service.py.__init__
-- calls_function:services\start_up\check_dependencies.py.__init__
+- calls_function:services\memory_service.py.__init__
+- calls_function:services\ollama_service.py.__init__
+- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
+- calls_function:Personalities\personality_model.py.__init__
+- calls_function:services\enhancement_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
+- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
+- calls_function:ui\tabs\model_tab.py.__init__
+- calls_function:utils\internet_connection.py.__init__
+- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
+- calls_function:ui\tabs\memory_tab.py.__init__
+- calls_function:MainApp\ollama_chat.py.__init__
+- calls_function:Personalities\services\personality_service.py.__init__
 - calls_function:config\config_manager.py.__init__
+- calls_function:ui\Widgets\spellchecker_widget.py.__init__
+- calls_function:ui\Audio_visualisers\eq_orchestrator.py.band_energy
+- calls_function:services\start_up\install_dependencies.py.__init__
+- calls_function:services\conversation_service.py.__init__
+- calls_function:utils\Logging\logging_helpers.py.__init__
+- calls_function:ui\Audio_visualisers\voice_ring_animation.py.map_frequency_to_bars
+- calls_function:MainApp\service_manager.py.__init__
+- calls_function:services\start_up\dependency_checker.py.__init__
 
 ### `ui\Audio_visualisers\eq_widgets\bar_eq_widget.py`
 
-- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
-- calls_function:utils\internet_connection.py.__init__
-- calls_function:ui\Widgets\personality_widget.py.__init__
-- calls_function:services\worker\worker.py.__init__
-- calls_function:models\conversation_metadata.py.__init__
-- calls_function:MainApp\ui_manager.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
-- calls_function:MainApp\service_manager.py.__init__
-- calls_function:Personalities\services\personality_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
-- calls_function:MainApp\ollama_chat.py.__init__
-- calls_function:services\summarization_service.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
-- calls_function:utils\streaming_handler.py.__init__
-- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
-- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
-- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
-- calls_function:ui\tabs\personality_tab.py.__init__
-- calls_function:services\start_up\dependency_checker.py.__init__
-- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
-- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
-- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
-- calls_function:services\enhancement_service.py.__init__
-- calls_function:services\memory_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
-- calls_function:ui\Widgets\chat_navigation.py.__init__
-- calls_function:ui\Widgets\spellchecker_widget.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
-- calls_function:Personalities\services\personality_loader.py.__init__
-- calls_function:services\ollama_service.py.__init__
-- calls_function:services\semantic_search_service.py.__init__
-- calls_function:MainApp\event_handler.py.__init__
-- calls_function:Personalities\personality_model.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
-- calls_function:MainApp\app_lifecycle.py.__init__
-- calls_function:utils\complexity_analyzer.py.__init__
-- calls_function:services\start_up\install_dependencies.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
-- calls_function:ui\chat_tab.py.__init__
-- calls_function:ui\tabs\model_tab.py.__init__
-- calls_function:controllers\chat_controller.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
-- calls_function:utils\complexity_widget.py.__init__
-- calls_function:ui\tabs\memory_tab.py.__init__
 - calls_function:services\Voice_STT_TTS_SERVICES\voice_service_wrapper.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\tabs\personality_tab.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
+- calls_function:Personalities\services\personality_loader.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
+- calls_function:MainApp\ui_manager.py.__init__
+- calls_function:services\worker\worker.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
 - calls_function:ui\Widgets\settings_dialog.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
+- calls_function:MainApp\app_lifecycle.py.__init__
+- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
+- calls_function:utils\complexity_widget.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
+- calls_function:MainApp\event_handler.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
+- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
+- calls_function:controllers\chat_controller.py.__init__
+- calls_function:models\conversation_metadata.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
+- calls_function:ui\Widgets\chat_navigation.py.__init__
+- calls_function:ui\Widgets\personality_widget.py.__init__
+- calls_function:utils\complexity_analyzer.py.__init__
+- calls_function:utils\streaming_handler.py.__init__
+- calls_function:services\semantic_search_service.py.__init__
+- calls_function:services\summarization_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
 - calls_function:ui\Widgets\editable_message_widget.py.__init__
-- calls_function:services\conversation_service.py.__init__
-- calls_function:services\start_up\check_dependencies.py.__init__
+- calls_function:services\memory_service.py.__init__
+- calls_function:services\ollama_service.py.__init__
+- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
+- calls_function:Personalities\personality_model.py.__init__
+- calls_function:services\enhancement_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
+- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
+- calls_function:ui\tabs\model_tab.py.__init__
+- calls_function:utils\internet_connection.py.__init__
+- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
+- calls_function:ui\tabs\memory_tab.py.__init__
+- calls_function:MainApp\ollama_chat.py.__init__
+- calls_function:Personalities\services\personality_service.py.__init__
 - calls_function:config\config_manager.py.__init__
+- calls_function:ui\Widgets\spellchecker_widget.py.__init__
+- calls_function:services\start_up\install_dependencies.py.__init__
+- calls_function:services\conversation_service.py.__init__
+- calls_function:utils\Logging\logging_helpers.py.__init__
+- calls_function:MainApp\service_manager.py.__init__
+- calls_function:services\start_up\dependency_checker.py.__init__
 
 ### `ui\Audio_visualisers\eq_widgets\circle_eq_widget.py`
 
-- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
-- calls_function:utils\internet_connection.py.__init__
-- calls_function:ui\Widgets\personality_widget.py.__init__
-- calls_function:services\worker\worker.py.__init__
-- calls_function:models\conversation_metadata.py.__init__
-- calls_function:MainApp\ui_manager.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
-- calls_function:MainApp\service_manager.py.__init__
-- calls_function:Personalities\services\personality_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
-- calls_function:MainApp\ollama_chat.py.__init__
-- calls_function:services\summarization_service.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
-- calls_function:utils\streaming_handler.py.__init__
-- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
-- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
-- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
-- calls_function:ui\tabs\personality_tab.py.__init__
-- calls_function:services\start_up\dependency_checker.py.__init__
-- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
-- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
-- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
-- calls_function:services\enhancement_service.py.__init__
-- calls_function:services\memory_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
-- calls_function:ui\Widgets\chat_navigation.py.__init__
-- calls_function:ui\Widgets\spellchecker_widget.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
-- calls_function:Personalities\services\personality_loader.py.__init__
-- calls_function:services\ollama_service.py.__init__
-- calls_function:services\semantic_search_service.py.__init__
-- calls_function:MainApp\event_handler.py.__init__
-- calls_function:Personalities\personality_model.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
-- calls_function:MainApp\app_lifecycle.py.__init__
-- calls_function:utils\complexity_analyzer.py.__init__
-- calls_function:services\start_up\install_dependencies.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
-- calls_function:ui\chat_tab.py.__init__
-- calls_function:ui\tabs\model_tab.py.__init__
-- calls_function:controllers\chat_controller.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
-- calls_function:utils\complexity_widget.py.__init__
-- calls_function:ui\tabs\memory_tab.py.__init__
 - calls_function:services\Voice_STT_TTS_SERVICES\voice_service_wrapper.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\tabs\personality_tab.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
+- calls_function:Personalities\services\personality_loader.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
+- calls_function:MainApp\ui_manager.py.__init__
+- calls_function:services\worker\worker.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
 - calls_function:ui\Widgets\settings_dialog.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
+- calls_function:MainApp\app_lifecycle.py.__init__
+- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
+- calls_function:utils\complexity_widget.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
+- calls_function:MainApp\event_handler.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
+- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
+- calls_function:controllers\chat_controller.py.__init__
+- calls_function:models\conversation_metadata.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
+- calls_function:ui\Widgets\chat_navigation.py.__init__
+- calls_function:ui\Widgets\personality_widget.py.__init__
+- calls_function:utils\complexity_analyzer.py.__init__
+- calls_function:utils\streaming_handler.py.__init__
+- calls_function:services\semantic_search_service.py.__init__
+- calls_function:services\summarization_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
 - calls_function:ui\Widgets\editable_message_widget.py.__init__
-- calls_function:services\conversation_service.py.__init__
-- calls_function:services\start_up\check_dependencies.py.__init__
+- calls_function:services\memory_service.py.__init__
+- calls_function:services\ollama_service.py.__init__
+- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
+- calls_function:Personalities\personality_model.py.__init__
+- calls_function:services\enhancement_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
+- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
+- calls_function:ui\tabs\model_tab.py.__init__
+- calls_function:utils\internet_connection.py.__init__
+- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
+- calls_function:ui\tabs\memory_tab.py.__init__
+- calls_function:MainApp\ollama_chat.py.__init__
+- calls_function:Personalities\services\personality_service.py.__init__
 - calls_function:config\config_manager.py.__init__
+- calls_function:ui\Widgets\spellchecker_widget.py.__init__
+- calls_function:services\start_up\install_dependencies.py.__init__
+- calls_function:services\conversation_service.py.__init__
+- calls_function:utils\Logging\logging_helpers.py.__init__
+- calls_function:MainApp\service_manager.py.__init__
+- calls_function:services\start_up\dependency_checker.py.__init__
 
 ### `ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py`
 
-- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
-- calls_function:utils\internet_connection.py.__init__
-- calls_function:ui\Widgets\personality_widget.py.__init__
-- calls_function:services\worker\worker.py.__init__
-- calls_function:models\conversation_metadata.py.__init__
-- calls_function:MainApp\ui_manager.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
-- calls_function:MainApp\service_manager.py.__init__
-- calls_function:Personalities\services\personality_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
-- calls_function:MainApp\ollama_chat.py.__init__
-- calls_function:services\summarization_service.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
-- calls_function:utils\streaming_handler.py.__init__
-- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
-- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
-- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
-- calls_function:ui\tabs\personality_tab.py.__init__
-- calls_function:services\start_up\dependency_checker.py.__init__
-- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
-- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
-- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
-- calls_function:services\enhancement_service.py.__init__
-- calls_function:services\memory_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
-- calls_function:ui\Widgets\chat_navigation.py.__init__
-- calls_function:ui\Widgets\spellchecker_widget.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
-- calls_function:Personalities\services\personality_loader.py.__init__
-- calls_function:services\ollama_service.py.__init__
-- calls_function:services\semantic_search_service.py.__init__
-- calls_function:MainApp\event_handler.py.__init__
-- calls_function:Personalities\personality_model.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
-- calls_function:MainApp\app_lifecycle.py.__init__
-- calls_function:utils\complexity_analyzer.py.__init__
-- calls_function:services\start_up\install_dependencies.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
-- calls_function:ui\chat_tab.py.__init__
-- calls_function:ui\tabs\model_tab.py.__init__
-- calls_function:controllers\chat_controller.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
-- calls_function:utils\complexity_widget.py.__init__
-- calls_function:ui\tabs\memory_tab.py.__init__
 - calls_function:services\Voice_STT_TTS_SERVICES\voice_service_wrapper.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\tabs\personality_tab.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
+- calls_function:Personalities\services\personality_loader.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
+- calls_function:MainApp\ui_manager.py.__init__
+- calls_function:services\worker\worker.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
 - calls_function:ui\Widgets\settings_dialog.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
+- calls_function:MainApp\app_lifecycle.py.__init__
+- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
+- calls_function:utils\complexity_widget.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
+- calls_function:MainApp\event_handler.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
+- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
+- calls_function:controllers\chat_controller.py.__init__
+- calls_function:models\conversation_metadata.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
+- calls_function:ui\Widgets\chat_navigation.py.__init__
+- calls_function:ui\Widgets\personality_widget.py.__init__
+- calls_function:utils\complexity_analyzer.py.__init__
+- calls_function:utils\streaming_handler.py.__init__
+- calls_function:services\semantic_search_service.py.__init__
+- calls_function:services\summarization_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
 - calls_function:ui\Widgets\editable_message_widget.py.__init__
-- calls_function:services\conversation_service.py.__init__
-- calls_function:services\start_up\check_dependencies.py.__init__
+- calls_function:services\memory_service.py.__init__
+- calls_function:services\ollama_service.py.__init__
+- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
+- calls_function:Personalities\personality_model.py.__init__
+- calls_function:services\enhancement_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
+- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
+- calls_function:ui\tabs\model_tab.py.__init__
+- calls_function:utils\internet_connection.py.__init__
+- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
+- calls_function:ui\tabs\memory_tab.py.__init__
+- calls_function:MainApp\ollama_chat.py.__init__
+- calls_function:Personalities\services\personality_service.py.__init__
 - calls_function:config\config_manager.py.__init__
+- calls_function:ui\Widgets\spellchecker_widget.py.__init__
+- calls_function:services\start_up\install_dependencies.py.__init__
+- calls_function:services\conversation_service.py.__init__
+- calls_function:utils\Logging\logging_helpers.py.__init__
+- calls_function:MainApp\service_manager.py.__init__
+- calls_function:services\start_up\dependency_checker.py.__init__
 
 ### `ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py`
 
-- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
-- calls_function:utils\internet_connection.py.__init__
-- calls_function:ui\Widgets\personality_widget.py.__init__
-- calls_function:services\worker\worker.py.__init__
-- calls_function:models\conversation_metadata.py.__init__
-- calls_function:MainApp\ui_manager.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
-- calls_function:MainApp\service_manager.py.__init__
-- calls_function:Personalities\services\personality_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
-- calls_function:MainApp\ollama_chat.py.__init__
-- calls_function:services\summarization_service.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
-- calls_function:utils\streaming_handler.py.__init__
-- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
-- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
-- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
-- calls_function:ui\tabs\personality_tab.py.__init__
-- calls_function:services\start_up\dependency_checker.py.__init__
-- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
-- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
-- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
-- calls_function:services\enhancement_service.py.__init__
-- calls_function:services\memory_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
-- calls_function:ui\Widgets\chat_navigation.py.__init__
-- calls_function:ui\Widgets\spellchecker_widget.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
-- calls_function:Personalities\services\personality_loader.py.__init__
-- calls_function:services\ollama_service.py.__init__
-- calls_function:services\semantic_search_service.py.__init__
-- calls_function:MainApp\event_handler.py.__init__
-- calls_function:Personalities\personality_model.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
-- calls_function:MainApp\app_lifecycle.py.__init__
-- calls_function:utils\complexity_analyzer.py.__init__
-- calls_function:services\start_up\install_dependencies.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
-- calls_function:ui\chat_tab.py.__init__
-- calls_function:ui\tabs\model_tab.py.__init__
-- calls_function:controllers\chat_controller.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
-- calls_function:utils\complexity_widget.py.__init__
-- calls_function:ui\tabs\memory_tab.py.__init__
 - calls_function:services\Voice_STT_TTS_SERVICES\voice_service_wrapper.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\tabs\personality_tab.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
+- calls_function:Personalities\services\personality_loader.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
+- calls_function:MainApp\ui_manager.py.__init__
+- calls_function:services\worker\worker.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
 - calls_function:ui\Widgets\settings_dialog.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
+- calls_function:MainApp\app_lifecycle.py.__init__
+- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
+- calls_function:utils\complexity_widget.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
+- calls_function:MainApp\event_handler.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
+- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
+- calls_function:controllers\chat_controller.py.__init__
+- calls_function:models\conversation_metadata.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
+- calls_function:ui\Widgets\chat_navigation.py.__init__
+- calls_function:ui\Widgets\personality_widget.py.__init__
+- calls_function:utils\complexity_analyzer.py.__init__
+- calls_function:utils\streaming_handler.py.__init__
+- calls_function:services\semantic_search_service.py.__init__
+- calls_function:services\summarization_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
 - calls_function:ui\Widgets\editable_message_widget.py.__init__
-- calls_function:services\conversation_service.py.__init__
-- calls_function:services\start_up\check_dependencies.py.__init__
+- calls_function:services\memory_service.py.__init__
+- calls_function:services\ollama_service.py.__init__
+- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
+- calls_function:Personalities\personality_model.py.__init__
+- calls_function:services\enhancement_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
+- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
+- calls_function:ui\tabs\model_tab.py.__init__
+- calls_function:utils\internet_connection.py.__init__
+- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
+- calls_function:ui\tabs\memory_tab.py.__init__
+- calls_function:MainApp\ollama_chat.py.__init__
+- calls_function:Personalities\services\personality_service.py.__init__
 - calls_function:config\config_manager.py.__init__
+- calls_function:ui\Widgets\spellchecker_widget.py.__init__
+- calls_function:services\start_up\install_dependencies.py.__init__
+- calls_function:services\conversation_service.py.__init__
+- calls_function:utils\Logging\logging_helpers.py.__init__
+- calls_function:MainApp\service_manager.py.__init__
+- calls_function:services\start_up\dependency_checker.py.__init__
 
 ### `ui\Audio_visualisers\voice_ring_animation.py`
 
-- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
-- calls_function:utils\internet_connection.py.__init__
-- calls_function:ui\Widgets\personality_widget.py.__init__
-- calls_function:services\worker\worker.py.__init__
-- calls_function:models\conversation_metadata.py.__init__
-- calls_function:ui\Audio_visualisers\eq_orchestrator.py.band_energy
-- calls_function:MainApp\ui_manager.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
-- calls_function:MainApp\service_manager.py.__init__
-- calls_function:Personalities\services\personality_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_orchestrator.py.map_frequency_to_bars
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
-- calls_function:MainApp\ollama_chat.py.__init__
-- calls_function:services\summarization_service.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
-- calls_function:utils\streaming_handler.py.__init__
-- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
-- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
-- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
-- calls_function:ui\tabs\personality_tab.py.__init__
-- calls_function:services\start_up\dependency_checker.py.__init__
-- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
-- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
-- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
-- calls_function:services\enhancement_service.py.__init__
-- calls_function:services\memory_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
-- calls_function:ui\Widgets\chat_navigation.py.__init__
-- calls_function:ui\Audio_visualisers\voice_ring_animation.py.band_energy
-- calls_function:ui\Widgets\spellchecker_widget.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
-- calls_function:Personalities\services\personality_loader.py.__init__
-- calls_function:services\ollama_service.py.__init__
-- calls_function:services\semantic_search_service.py.__init__
-- calls_function:ui\Audio_visualisers\voice_ring_animation.py.map_frequency_to_bars
-- calls_function:MainApp\event_handler.py.__init__
-- calls_function:Personalities\personality_model.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
-- calls_function:MainApp\app_lifecycle.py.__init__
-- calls_function:utils\complexity_analyzer.py.__init__
-- calls_function:services\start_up\install_dependencies.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
-- calls_function:ui\chat_tab.py.__init__
-- calls_function:ui\tabs\model_tab.py.__init__
-- calls_function:controllers\chat_controller.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
-- calls_function:utils\complexity_widget.py.__init__
-- calls_function:ui\tabs\memory_tab.py.__init__
 - calls_function:services\Voice_STT_TTS_SERVICES\voice_service_wrapper.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
-- calls_function:ui\Widgets\settings_dialog.py.__init__
-- calls_function:ui\Audio_visualisers\voice_ring_animation.py.resizeEvent
+- calls_function:ui\tabs\personality_tab.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
+- calls_function:Personalities\services\personality_loader.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
+- calls_function:MainApp\ui_manager.py.__init__
 - calls_function:ui\Audio_visualisers\eq_orchestrator.py.resizeEvent
+- calls_function:services\worker\worker.py.__init__
+- calls_function:ui\Audio_visualisers\eq_orchestrator.py.map_frequency_to_bars
+- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
+- calls_function:ui\Widgets\settings_dialog.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
+- calls_function:ui\Audio_visualisers\voice_ring_animation.py.resizeEvent
+- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
+- calls_function:MainApp\app_lifecycle.py.__init__
+- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
+- calls_function:utils\complexity_widget.py.__init__
+- calls_function:ui\Audio_visualisers\voice_ring_animation.py.band_energy
+- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
+- calls_function:MainApp\event_handler.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
+- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
+- calls_function:controllers\chat_controller.py.__init__
+- calls_function:models\conversation_metadata.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
+- calls_function:ui\Widgets\chat_navigation.py.__init__
+- calls_function:ui\Widgets\personality_widget.py.__init__
+- calls_function:utils\complexity_analyzer.py.__init__
+- calls_function:utils\streaming_handler.py.__init__
+- calls_function:services\semantic_search_service.py.__init__
+- calls_function:services\summarization_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
 - calls_function:ui\Widgets\editable_message_widget.py.__init__
-- calls_function:services\conversation_service.py.__init__
-- calls_function:services\start_up\check_dependencies.py.__init__
+- calls_function:services\memory_service.py.__init__
+- calls_function:services\ollama_service.py.__init__
+- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
+- calls_function:Personalities\personality_model.py.__init__
+- calls_function:services\enhancement_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
+- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
+- calls_function:ui\tabs\model_tab.py.__init__
+- calls_function:utils\internet_connection.py.__init__
+- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
+- calls_function:ui\tabs\memory_tab.py.__init__
+- calls_function:MainApp\ollama_chat.py.__init__
+- calls_function:Personalities\services\personality_service.py.__init__
 - calls_function:config\config_manager.py.__init__
+- calls_function:ui\Widgets\spellchecker_widget.py.__init__
+- calls_function:ui\Audio_visualisers\eq_orchestrator.py.band_energy
+- calls_function:services\start_up\install_dependencies.py.__init__
+- calls_function:services\conversation_service.py.__init__
+- calls_function:utils\Logging\logging_helpers.py.__init__
+- calls_function:ui\Audio_visualisers\voice_ring_animation.py.map_frequency_to_bars
+- calls_function:MainApp\service_manager.py.__init__
+- calls_function:services\start_up\dependency_checker.py.__init__
 
 ### `ui\Widgets\chat_navigation.py`
 
-- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
-- calls_function:utils\internet_connection.py.__init__
-- calls_function:ui\Widgets\personality_widget.py.__init__
-- calls_function:services\worker\worker.py.__init__
-- calls_function:models\conversation_metadata.py.__init__
-- calls_function:MainApp\ui_manager.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
-- calls_function:MainApp\service_manager.py.__init__
-- calls_function:Personalities\services\personality_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
-- calls_function:MainApp\ollama_chat.py.__init__
-- calls_function:services\summarization_service.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
-- calls_function:utils\streaming_handler.py.__init__
-- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
-- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
-- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
-- calls_function:ui\tabs\personality_tab.py.__init__
-- calls_function:services\start_up\dependency_checker.py.__init__
-- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
-- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
-- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
-- calls_function:services\enhancement_service.py.__init__
-- calls_function:services\memory_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
-- calls_function:ui\Widgets\chat_navigation.py.__init__
-- calls_function:ui\Widgets\spellchecker_widget.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
-- calls_function:Personalities\services\personality_loader.py.__init__
-- calls_function:services\ollama_service.py.__init__
-- calls_function:services\semantic_search_service.py.__init__
-- calls_function:MainApp\event_handler.py.__init__
-- calls_function:Personalities\personality_model.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
-- calls_function:MainApp\app_lifecycle.py.__init__
-- calls_function:utils\complexity_analyzer.py.__init__
-- calls_function:services\start_up\install_dependencies.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
-- calls_function:ui\chat_tab.py.__init__
-- calls_function:ui\tabs\model_tab.py.__init__
-- calls_function:controllers\chat_controller.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
-- calls_function:utils\complexity_widget.py.__init__
-- calls_function:ui\tabs\memory_tab.py.__init__
 - calls_function:services\Voice_STT_TTS_SERVICES\voice_service_wrapper.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\tabs\personality_tab.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
+- calls_function:Personalities\services\personality_loader.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
+- calls_function:MainApp\ui_manager.py.__init__
+- calls_function:services\worker\worker.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
 - calls_function:ui\Widgets\settings_dialog.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
+- calls_function:MainApp\app_lifecycle.py.__init__
+- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
+- calls_function:utils\complexity_widget.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
+- calls_function:MainApp\event_handler.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
+- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
+- calls_function:controllers\chat_controller.py.__init__
+- calls_function:models\conversation_metadata.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
+- calls_function:ui\Widgets\chat_navigation.py.__init__
+- calls_function:ui\Widgets\personality_widget.py.__init__
+- calls_function:utils\complexity_analyzer.py.__init__
+- calls_function:utils\streaming_handler.py.__init__
+- calls_function:services\semantic_search_service.py.__init__
+- calls_function:services\summarization_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
 - calls_function:ui\Widgets\editable_message_widget.py.__init__
-- calls_function:services\conversation_service.py.__init__
-- calls_function:services\start_up\check_dependencies.py.__init__
+- calls_function:services\memory_service.py.__init__
+- calls_function:services\ollama_service.py.__init__
+- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
+- calls_function:Personalities\personality_model.py.__init__
+- calls_function:services\enhancement_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
+- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
+- calls_function:ui\tabs\model_tab.py.__init__
+- calls_function:utils\internet_connection.py.__init__
+- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
+- calls_function:ui\tabs\memory_tab.py.__init__
+- calls_function:MainApp\ollama_chat.py.__init__
+- calls_function:Personalities\services\personality_service.py.__init__
 - calls_function:config\config_manager.py.__init__
+- calls_function:ui\Widgets\spellchecker_widget.py.__init__
+- calls_function:services\start_up\install_dependencies.py.__init__
+- calls_function:services\conversation_service.py.__init__
+- calls_function:utils\Logging\logging_helpers.py.__init__
+- calls_function:MainApp\service_manager.py.__init__
+- calls_function:services\start_up\dependency_checker.py.__init__
 
 ### `ui\Widgets\coqui_model_dialog.py`
 
-- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
-- calls_function:utils\internet_connection.py.__init__
-- calls_function:ui\Widgets\personality_widget.py.__init__
-- calls_function:services\worker\worker.py.__init__
-- calls_function:models\conversation_metadata.py.__init__
-- calls_function:MainApp\ui_manager.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
-- calls_function:MainApp\service_manager.py.__init__
-- calls_function:Personalities\services\personality_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
-- calls_function:MainApp\ollama_chat.py.__init__
-- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
-- calls_function:services\summarization_service.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
-- calls_function:utils\streaming_handler.py.__init__
-- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
-- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
-- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
-- calls_function:ui\tabs\personality_tab.py.__init__
-- calls_function:services\start_up\dependency_checker.py.__init__
-- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
-- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
-- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
-- calls_function:services\enhancement_service.py.__init__
-- calls_function:services\memory_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
-- calls_function:ui\Widgets\chat_navigation.py.__init__
-- calls_function:ui\Widgets\spellchecker_widget.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
-- calls_function:Personalities\services\personality_loader.py.__init__
-- calls_function:services\ollama_service.py.__init__
-- calls_function:services\semantic_search_service.py.__init__
-- calls_function:MainApp\event_handler.py.__init__
-- calls_function:Personalities\personality_model.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
-- calls_function:MainApp\app_lifecycle.py.__init__
-- calls_function:utils\complexity_analyzer.py.__init__
-- calls_function:services\start_up\install_dependencies.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
-- calls_function:ui\chat_tab.py.__init__
-- calls_function:ui\tabs\model_tab.py.__init__
-- calls_function:controllers\chat_controller.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
-- calls_function:utils\complexity_widget.py.__init__
-- calls_function:ui\tabs\memory_tab.py.__init__
 - calls_function:services\Voice_STT_TTS_SERVICES\voice_service_wrapper.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\tabs\personality_tab.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
+- calls_function:Personalities\services\personality_loader.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
+- calls_function:MainApp\ui_manager.py.__init__
+- calls_function:services\worker\worker.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
 - calls_function:ui\Widgets\settings_dialog.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
+- calls_function:MainApp\app_lifecycle.py.__init__
+- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
+- calls_function:utils\complexity_widget.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
+- calls_function:MainApp\event_handler.py.__init__
+- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
+- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
+- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
+- calls_function:controllers\chat_controller.py.__init__
+- calls_function:models\conversation_metadata.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
+- calls_function:ui\Widgets\chat_navigation.py.__init__
+- calls_function:ui\Widgets\personality_widget.py.__init__
+- calls_function:utils\complexity_analyzer.py.__init__
+- calls_function:utils\streaming_handler.py.__init__
+- calls_function:services\semantic_search_service.py.__init__
+- calls_function:services\summarization_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
 - calls_function:ui\Widgets\editable_message_widget.py.__init__
-- calls_function:services\conversation_service.py.__init__
-- calls_function:services\start_up\check_dependencies.py.__init__
+- calls_function:services\memory_service.py.__init__
+- calls_function:services\ollama_service.py.__init__
+- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
+- calls_function:Personalities\personality_model.py.__init__
+- calls_function:services\enhancement_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
+- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
+- calls_function:ui\tabs\model_tab.py.__init__
+- calls_function:utils\internet_connection.py.__init__
+- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
+- calls_function:ui\tabs\memory_tab.py.__init__
+- calls_function:MainApp\ollama_chat.py.__init__
+- calls_function:Personalities\services\personality_service.py.__init__
 - calls_function:config\config_manager.py.__init__
+- calls_function:ui\Widgets\spellchecker_widget.py.__init__
+- calls_function:services\start_up\install_dependencies.py.__init__
+- calls_function:services\conversation_service.py.__init__
+- calls_function:utils\Logging\logging_helpers.py.__init__
+- calls_function:MainApp\service_manager.py.__init__
+- calls_function:services\start_up\dependency_checker.py.__init__
 
 ### `ui\Widgets\editable_message_widget.py`
 
-- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
-- calls_function:utils\internet_connection.py.__init__
-- calls_function:ui\Widgets\personality_widget.py.__init__
-- calls_function:services\worker\worker.py.__init__
-- calls_function:models\conversation_metadata.py.__init__
-- calls_function:MainApp\ui_manager.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
-- calls_function:MainApp\service_manager.py.__init__
-- calls_function:Personalities\services\personality_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
-- calls_function:MainApp\ollama_chat.py.__init__
-- calls_function:services\summarization_service.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
-- calls_function:utils\streaming_handler.py.__init__
-- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
-- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
-- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
-- calls_function:ui\tabs\personality_tab.py.__init__
-- calls_function:services\start_up\dependency_checker.py.__init__
-- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
-- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
-- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
-- calls_function:services\enhancement_service.py.__init__
-- calls_function:services\memory_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
-- calls_function:ui\Widgets\chat_navigation.py.__init__
-- calls_function:ui\Widgets\spellchecker_widget.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
-- calls_function:Personalities\services\personality_loader.py.__init__
-- calls_function:services\ollama_service.py.__init__
-- calls_function:services\semantic_search_service.py.__init__
-- calls_function:MainApp\event_handler.py.__init__
-- calls_function:Personalities\personality_model.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
-- calls_function:MainApp\app_lifecycle.py.__init__
-- calls_function:utils\complexity_analyzer.py.__init__
-- calls_function:services\start_up\install_dependencies.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
-- calls_function:ui\chat_tab.py.__init__
-- calls_function:ui\tabs\model_tab.py.__init__
-- calls_function:controllers\chat_controller.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
-- calls_function:utils\complexity_widget.py.__init__
-- calls_function:ui\tabs\memory_tab.py.__init__
 - calls_function:services\Voice_STT_TTS_SERVICES\voice_service_wrapper.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\tabs\personality_tab.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
+- calls_function:Personalities\services\personality_loader.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
+- calls_function:MainApp\ui_manager.py.__init__
+- calls_function:services\worker\worker.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
 - calls_function:ui\Widgets\settings_dialog.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
+- calls_function:MainApp\app_lifecycle.py.__init__
+- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
+- calls_function:utils\complexity_widget.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
+- calls_function:MainApp\event_handler.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
+- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
+- calls_function:controllers\chat_controller.py.__init__
+- calls_function:models\conversation_metadata.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
+- calls_function:ui\Widgets\chat_navigation.py.__init__
+- calls_function:ui\Widgets\personality_widget.py.__init__
+- calls_function:utils\complexity_analyzer.py.__init__
+- calls_function:utils\streaming_handler.py.__init__
+- calls_function:services\semantic_search_service.py.__init__
+- calls_function:services\summarization_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
 - calls_function:ui\Widgets\editable_message_widget.py.__init__
-- calls_function:services\conversation_service.py.__init__
-- calls_function:services\start_up\check_dependencies.py.__init__
+- calls_function:services\memory_service.py.__init__
+- calls_function:services\ollama_service.py.__init__
+- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
+- calls_function:Personalities\personality_model.py.__init__
+- calls_function:services\enhancement_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
+- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
+- calls_function:ui\tabs\model_tab.py.__init__
+- calls_function:utils\internet_connection.py.__init__
+- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
+- calls_function:ui\tabs\memory_tab.py.__init__
+- calls_function:MainApp\ollama_chat.py.__init__
+- calls_function:Personalities\services\personality_service.py.__init__
 - calls_function:config\config_manager.py.__init__
+- calls_function:ui\Widgets\spellchecker_widget.py.__init__
+- calls_function:services\start_up\install_dependencies.py.__init__
+- calls_function:services\conversation_service.py.__init__
+- calls_function:utils\Logging\logging_helpers.py.__init__
+- calls_function:MainApp\service_manager.py.__init__
+- calls_function:services\start_up\dependency_checker.py.__init__
 
 ### `ui\Widgets\personality_widget.py`
 
-- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
-- calls_function:utils\internet_connection.py.__init__
-- calls_function:ui\Widgets\personality_widget.py.__init__
-- calls_function:services\worker\worker.py.__init__
-- calls_function:models\conversation_metadata.py.__init__
-- calls_function:MainApp\ui_manager.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
-- calls_function:MainApp\service_manager.py.__init__
-- calls_function:Personalities\services\personality_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
-- calls_function:MainApp\ollama_chat.py.__init__
-- calls_function:services\summarization_service.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
-- calls_function:utils\streaming_handler.py.__init__
-- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
-- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
-- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
-- calls_function:ui\tabs\personality_tab.py.__init__
-- calls_function:services\start_up\dependency_checker.py.__init__
-- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
-- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
-- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
-- calls_function:services\enhancement_service.py.__init__
-- calls_function:services\memory_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
-- calls_function:ui\Widgets\chat_navigation.py.__init__
-- calls_function:ui\Widgets\spellchecker_widget.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
-- calls_function:Personalities\services\personality_loader.py.__init__
-- calls_function:services\ollama_service.py.__init__
-- calls_function:services\semantic_search_service.py.__init__
-- calls_function:MainApp\event_handler.py.__init__
-- calls_function:Personalities\personality_model.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
-- calls_function:MainApp\app_lifecycle.py.__init__
-- calls_function:utils\complexity_analyzer.py.__init__
-- calls_function:services\start_up\install_dependencies.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
-- calls_function:ui\chat_tab.py.__init__
-- calls_function:ui\tabs\model_tab.py.__init__
-- calls_function:controllers\chat_controller.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
-- calls_function:utils\complexity_widget.py.__init__
-- calls_function:ui\tabs\memory_tab.py.__init__
 - calls_function:services\Voice_STT_TTS_SERVICES\voice_service_wrapper.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\tabs\personality_tab.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
+- calls_function:Personalities\services\personality_loader.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
+- calls_function:MainApp\ui_manager.py.__init__
+- calls_function:services\worker\worker.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
 - calls_function:ui\Widgets\settings_dialog.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
+- calls_function:MainApp\app_lifecycle.py.__init__
+- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
+- calls_function:utils\complexity_widget.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
+- calls_function:MainApp\event_handler.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
+- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
+- calls_function:controllers\chat_controller.py.__init__
+- calls_function:models\conversation_metadata.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
+- calls_function:ui\Widgets\chat_navigation.py.__init__
+- calls_function:ui\Widgets\personality_widget.py.__init__
+- calls_function:utils\complexity_analyzer.py.__init__
+- calls_function:utils\streaming_handler.py.__init__
+- calls_function:services\semantic_search_service.py.__init__
+- calls_function:services\summarization_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
 - calls_function:ui\Widgets\editable_message_widget.py.__init__
-- calls_function:services\conversation_service.py.__init__
-- calls_function:services\start_up\check_dependencies.py.__init__
+- calls_function:services\memory_service.py.__init__
+- calls_function:services\ollama_service.py.__init__
+- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
+- calls_function:Personalities\personality_model.py.__init__
+- calls_function:services\enhancement_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
+- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
+- calls_function:ui\tabs\model_tab.py.__init__
+- calls_function:utils\internet_connection.py.__init__
+- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
+- calls_function:ui\tabs\memory_tab.py.__init__
+- calls_function:MainApp\ollama_chat.py.__init__
+- calls_function:Personalities\services\personality_service.py.__init__
 - calls_function:config\config_manager.py.__init__
+- calls_function:ui\Widgets\spellchecker_widget.py.__init__
+- calls_function:services\start_up\install_dependencies.py.__init__
+- calls_function:services\conversation_service.py.__init__
+- calls_function:utils\Logging\logging_helpers.py.__init__
+- calls_function:MainApp\service_manager.py.__init__
+- calls_function:services\start_up\dependency_checker.py.__init__
 
 ### `ui\Widgets\settings_dialog.py`
 
-- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
-- calls_function:utils\internet_connection.py.__init__
-- calls_function:ui\Widgets\personality_widget.py.__init__
-- calls_function:services\worker\worker.py.__init__
-- calls_function:models\conversation_metadata.py.__init__
-- calls_function:MainApp\ui_manager.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
-- calls_function:MainApp\service_manager.py.__init__
-- calls_function:Personalities\services\personality_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
-- calls_function:MainApp\ollama_chat.py.__init__
-- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
-- calls_function:services\summarization_service.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
-- calls_function:utils\streaming_handler.py.__init__
-- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
-- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
-- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
-- calls_function:ui\tabs\personality_tab.py.__init__
-- calls_function:services\start_up\dependency_checker.py.__init__
-- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
-- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
-- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
-- calls_function:services\enhancement_service.py.__init__
-- calls_function:services\memory_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
-- calls_function:ui\Widgets\chat_navigation.py.__init__
-- calls_function:ui\Widgets\spellchecker_widget.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
-- calls_function:Personalities\services\personality_loader.py.__init__
-- calls_function:services\ollama_service.py.__init__
-- calls_function:services\semantic_search_service.py.__init__
-- calls_function:MainApp\event_handler.py.__init__
-- calls_function:Personalities\personality_model.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
-- calls_function:MainApp\app_lifecycle.py.__init__
-- calls_function:utils\complexity_analyzer.py.__init__
-- calls_function:services\start_up\install_dependencies.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
-- calls_function:ui\chat_tab.py.__init__
-- calls_function:ui\tabs\model_tab.py.__init__
-- calls_function:controllers\chat_controller.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
-- calls_function:utils\complexity_widget.py.__init__
-- calls_function:ui\tabs\memory_tab.py.__init__
 - calls_function:services\Voice_STT_TTS_SERVICES\voice_service_wrapper.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\tabs\personality_tab.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
+- calls_function:Personalities\services\personality_loader.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
+- calls_function:MainApp\ui_manager.py.__init__
+- calls_function:services\worker\worker.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
 - calls_function:ui\Widgets\settings_dialog.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
+- calls_function:MainApp\app_lifecycle.py.__init__
+- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
+- calls_function:utils\complexity_widget.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
+- calls_function:MainApp\event_handler.py.__init__
+- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
+- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
+- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
+- calls_function:controllers\chat_controller.py.__init__
+- calls_function:models\conversation_metadata.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
+- calls_function:ui\Widgets\chat_navigation.py.__init__
+- calls_function:ui\Widgets\personality_widget.py.__init__
+- calls_function:utils\complexity_analyzer.py.__init__
+- calls_function:utils\streaming_handler.py.__init__
+- calls_function:services\semantic_search_service.py.__init__
+- calls_function:services\summarization_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
 - calls_function:ui\Widgets\editable_message_widget.py.__init__
-- calls_function:services\conversation_service.py.__init__
-- calls_function:services\start_up\check_dependencies.py.__init__
+- calls_function:services\memory_service.py.__init__
+- calls_function:services\ollama_service.py.__init__
+- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
+- calls_function:Personalities\personality_model.py.__init__
+- calls_function:services\enhancement_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
+- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
+- calls_function:ui\tabs\model_tab.py.__init__
+- calls_function:utils\internet_connection.py.__init__
+- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
+- calls_function:ui\tabs\memory_tab.py.__init__
+- calls_function:MainApp\ollama_chat.py.__init__
+- calls_function:Personalities\services\personality_service.py.__init__
 - calls_function:config\config_manager.py.__init__
+- calls_function:ui\Widgets\spellchecker_widget.py.__init__
+- calls_function:services\start_up\install_dependencies.py.__init__
+- calls_function:services\conversation_service.py.__init__
+- calls_function:utils\Logging\logging_helpers.py.__init__
+- calls_function:MainApp\service_manager.py.__init__
+- calls_function:services\start_up\dependency_checker.py.__init__
 
 ### `ui\Widgets\spellchecker_widget.py`
 
-- calls_function:ui\Widgets\spellchecker_widget.py.keyPressEvent
-- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
-- calls_function:utils\internet_connection.py.__init__
-- calls_function:ui\Widgets\personality_widget.py.__init__
-- calls_function:services\worker\worker.py.__init__
-- calls_function:models\conversation_metadata.py.__init__
-- calls_function:MainApp\ui_manager.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
-- calls_function:MainApp\service_manager.py.__init__
-- calls_function:Personalities\services\personality_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
-- calls_function:MainApp\ollama_chat.py.__init__
-- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
-- calls_function:services\summarization_service.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
-- calls_function:utils\streaming_handler.py.__init__
-- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
-- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
-- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
-- calls_function:ui\tabs\personality_tab.py.__init__
-- calls_function:services\start_up\dependency_checker.py.__init__
-- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
-- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
-- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
-- calls_function:services\enhancement_service.py.__init__
-- calls_function:services\memory_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
-- calls_function:ui\Widgets\chat_navigation.py.__init__
-- calls_function:ui\Widgets\spellchecker_widget.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
-- calls_function:Personalities\services\personality_loader.py.__init__
-- calls_function:services\ollama_service.py.__init__
-- calls_function:services\semantic_search_service.py.__init__
-- calls_function:MainApp\event_handler.py.__init__
-- calls_function:Personalities\personality_model.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
-- calls_function:MainApp\app_lifecycle.py.__init__
-- calls_function:utils\complexity_analyzer.py.__init__
-- calls_function:services\start_up\install_dependencies.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
-- calls_function:ui\chat_tab.py.__init__
-- calls_function:ui\tabs\model_tab.py.__init__
-- calls_function:controllers\chat_controller.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
-- calls_function:utils\complexity_widget.py.__init__
-- calls_function:ui\tabs\memory_tab.py.__init__
 - calls_function:services\Voice_STT_TTS_SERVICES\voice_service_wrapper.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\tabs\personality_tab.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
+- calls_function:Personalities\services\personality_loader.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
+- calls_function:MainApp\ui_manager.py.__init__
+- calls_function:ui\Widgets\spellchecker_widget.py.keyPressEvent
+- calls_function:services\worker\worker.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
 - calls_function:ui\Widgets\settings_dialog.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
+- calls_function:MainApp\app_lifecycle.py.__init__
+- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
+- calls_function:utils\complexity_widget.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
+- calls_function:MainApp\event_handler.py.__init__
+- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
+- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
+- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
+- calls_function:controllers\chat_controller.py.__init__
+- calls_function:models\conversation_metadata.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
+- calls_function:ui\Widgets\chat_navigation.py.__init__
+- calls_function:ui\Widgets\personality_widget.py.__init__
+- calls_function:utils\complexity_analyzer.py.__init__
+- calls_function:utils\streaming_handler.py.__init__
+- calls_function:services\semantic_search_service.py.__init__
+- calls_function:services\summarization_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
 - calls_function:ui\Widgets\editable_message_widget.py.__init__
-- calls_function:services\conversation_service.py.__init__
-- calls_function:services\start_up\check_dependencies.py.__init__
+- calls_function:services\memory_service.py.__init__
+- calls_function:services\ollama_service.py.__init__
+- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
+- calls_function:Personalities\personality_model.py.__init__
+- calls_function:services\enhancement_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
+- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
+- calls_function:ui\tabs\model_tab.py.__init__
+- calls_function:utils\internet_connection.py.__init__
+- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
+- calls_function:ui\tabs\memory_tab.py.__init__
+- calls_function:MainApp\ollama_chat.py.__init__
+- calls_function:Personalities\services\personality_service.py.__init__
 - calls_function:config\config_manager.py.__init__
+- calls_function:ui\Widgets\spellchecker_widget.py.__init__
+- calls_function:services\start_up\install_dependencies.py.__init__
+- calls_function:services\conversation_service.py.__init__
+- calls_function:utils\Logging\logging_helpers.py.__init__
+- calls_function:MainApp\service_manager.py.__init__
+- calls_function:services\start_up\dependency_checker.py.__init__
 
 ### `ui\Widgets\voice_settings_dialog.py`
 
-- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
-- calls_function:utils\internet_connection.py.__init__
-- calls_function:ui\Widgets\personality_widget.py.__init__
-- calls_function:services\worker\worker.py.__init__
-- calls_function:models\conversation_metadata.py.__init__
-- calls_function:MainApp\ui_manager.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
-- calls_function:MainApp\service_manager.py.__init__
-- calls_function:Personalities\services\personality_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
-- calls_function:MainApp\ollama_chat.py.__init__
-- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
-- calls_function:services\summarization_service.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
-- calls_function:utils\streaming_handler.py.__init__
-- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
-- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
-- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_service_wrapper.py.__init__
 - calls_function:ui\tabs\personality_tab.py.__init__
-- calls_function:services\start_up\dependency_checker.py.__init__
-- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
-- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
-- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
-- calls_function:services\enhancement_service.py.__init__
-- calls_function:services\memory_service.py.__init__
 - calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
-- calls_function:ui\Widgets\chat_navigation.py.__init__
-- calls_function:ui\Widgets\spellchecker_widget.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
 - calls_function:Personalities\services\personality_loader.py.__init__
-- calls_function:services\ollama_service.py.__init__
-- calls_function:services\semantic_search_service.py.__init__
-- calls_function:MainApp\event_handler.py.__init__
-- calls_function:Personalities\personality_model.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
+- calls_function:MainApp\ui_manager.py.__init__
+- calls_function:services\worker\worker.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
+- calls_function:ui\Widgets\settings_dialog.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
 - calls_function:MainApp\app_lifecycle.py.__init__
-- calls_function:utils\complexity_analyzer.py.__init__
-- calls_function:services\start_up\install_dependencies.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
-- calls_function:ui\chat_tab.py.__init__
-- calls_function:ui\tabs\model_tab.py.__init__
-- calls_function:controllers\chat_controller.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
+- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
 - calls_function:utils\complexity_widget.py.__init__
-- calls_function:ui\tabs\memory_tab.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
+- calls_function:MainApp\event_handler.py.__init__
+- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
 - calls_function:utils\internet_connection.py.test_internet_connection
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_service_wrapper.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
-- calls_function:ui\Widgets\settings_dialog.py.__init__
-- calls_function:ui\Widgets\editable_message_widget.py.__init__
-- calls_function:services\conversation_service.py.__init__
-- calls_function:services\start_up\check_dependencies.py.__init__
-- calls_function:config\config_manager.py.__init__
-
-### `ui\chat_tab.py`
-
-- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
-- calls_function:utils\internet_connection.py.__init__
-- calls_function:ui\Widgets\personality_widget.py.__init__
-- calls_function:services\worker\worker.py.__init__
-- calls_function:ui\chat_tab.py.eventFilter
-- calls_function:ui\tabs\chat_tab\input_controls.py.eventFilter
-- calls_function:models\conversation_metadata.py.__init__
-- calls_method:ui\styles\message_formatter.py.MessageFormatter.to_plain_text
-- calls_function:MainApp\ui_manager.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
-- calls_function:MainApp\service_manager.py.__init__
-- calls_function:Personalities\services\personality_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
-- calls_function:MainApp\ollama_chat.py.__init__
-- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
-- calls_function:services\summarization_service.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
-- calls_function:utils\streaming_handler.py.__init__
-- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
-- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
-- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
-- calls_function:ui\tabs\personality_tab.py.__init__
-- calls_function:services\start_up\dependency_checker.py.__init__
-- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
-- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
-- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
 - calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
-- calls_function:services\enhancement_service.py.__init__
-- calls_function:services\memory_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
-- calls_function:ui\Widgets\chat_navigation.py.__init__
-- calls_function:ui\Widgets\spellchecker_widget.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
-- calls_function:Personalities\services\personality_loader.py.__init__
-- calls_function:services\ollama_service.py.__init__
-- calls_function:services\semantic_search_service.py.__init__
-- calls_function:MainApp\event_handler.py.__init__
-- calls_function:Personalities\personality_model.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
-- calls_function:MainApp\app_lifecycle.py.__init__
-- calls_function:utils\complexity_analyzer.py.__init__
-- calls_function:services\start_up\install_dependencies.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
-- calls_function:ui\chat_tab.py.__init__
-- calls_function:ui\tabs\model_tab.py.__init__
+- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
+- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
 - calls_function:controllers\chat_controller.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
-- calls_function:utils\complexity_widget.py.__init__
-- calls_function:ui\tabs\memory_tab.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_service_wrapper.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
-- calls_function:ui\Widgets\settings_dialog.py.__init__
+- calls_function:models\conversation_metadata.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
+- calls_function:ui\Widgets\chat_navigation.py.__init__
+- calls_function:ui\Widgets\personality_widget.py.__init__
+- calls_function:utils\complexity_analyzer.py.__init__
+- calls_function:utils\streaming_handler.py.__init__
+- calls_function:services\semantic_search_service.py.__init__
+- calls_function:services\summarization_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
 - calls_function:ui\Widgets\editable_message_widget.py.__init__
-- calls_function:services\conversation_service.py.__init__
-- calls_function:services\start_up\check_dependencies.py.__init__
+- calls_function:services\memory_service.py.__init__
+- calls_function:services\ollama_service.py.__init__
+- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
+- calls_function:Personalities\personality_model.py.__init__
+- calls_function:services\enhancement_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
+- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
+- calls_function:ui\tabs\model_tab.py.__init__
+- calls_function:utils\internet_connection.py.__init__
+- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
+- calls_function:ui\tabs\memory_tab.py.__init__
+- calls_function:MainApp\ollama_chat.py.__init__
+- calls_function:Personalities\services\personality_service.py.__init__
 - calls_function:config\config_manager.py.__init__
+- calls_function:ui\Widgets\spellchecker_widget.py.__init__
+- calls_function:services\start_up\install_dependencies.py.__init__
+- calls_function:services\conversation_service.py.__init__
+- calls_function:utils\Logging\logging_helpers.py.__init__
+- calls_function:MainApp\service_manager.py.__init__
+- calls_function:services\start_up\dependency_checker.py.__init__
 
 ### `ui\styles\message_formatter.py`
 
-- calls_method:ui\styles\message_formatter.py.MessageFormatter.handle_html_tags
-- calls_method:ui\styles\message_formatter.py.MessageFormatter.detect_code_type
 - calls_method:ui\styles\message_formatter.py.MessageFormatter.format_markdown
+- calls_method:ui\styles\message_formatter.py.MessageFormatter._protect_code_blocks
 - calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
-- calls_method:ui\styles\message_formatter.py.MessageFormatter.cleanup_message
 - calls_method:ui\styles\message_formatter.py.MessageFormatter.syntax_highlight_code
+- calls_method:ui\styles\message_formatter.py.MessageFormatter.detect_code_type
 - calls_method:ui\styles\message_formatter.py.MessageFormatter.detect_and_format_code
+- calls_method:ui\styles\message_formatter.py.MessageFormatter.handle_html_tags
+- calls_method:ui\styles\message_formatter.py.MessageFormatter.cleanup_message
 
 ### `ui\tabs\chat_tab\chat_display.py`
 
-- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
-- calls_function:utils\internet_connection.py.__init__
-- calls_function:ui\Widgets\personality_widget.py.__init__
-- calls_function:services\worker\worker.py.__init__
-- calls_function:models\conversation_metadata.py.__init__
-- calls_function:MainApp\ui_manager.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
-- calls_function:MainApp\service_manager.py.__init__
-- calls_function:Personalities\services\personality_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
-- calls_function:MainApp\ollama_chat.py.__init__
-- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
-- calls_function:services\summarization_service.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
-- calls_function:utils\streaming_handler.py.__init__
-- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
-- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
-- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
-- calls_function:ui\tabs\personality_tab.py.__init__
-- calls_function:services\start_up\dependency_checker.py.__init__
-- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
-- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
-- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
-- calls_function:services\enhancement_service.py.__init__
-- calls_function:services\memory_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
-- calls_function:ui\Widgets\chat_navigation.py.__init__
-- calls_function:ui\Widgets\spellchecker_widget.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
-- calls_function:Personalities\services\personality_loader.py.__init__
-- calls_function:services\ollama_service.py.__init__
-- calls_function:services\semantic_search_service.py.__init__
-- calls_function:MainApp\event_handler.py.__init__
-- calls_function:Personalities\personality_model.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
-- calls_function:MainApp\app_lifecycle.py.__init__
-- calls_function:utils\complexity_analyzer.py.__init__
-- calls_function:services\start_up\install_dependencies.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
-- calls_function:ui\chat_tab.py.__init__
-- calls_function:ui\tabs\model_tab.py.__init__
-- calls_function:controllers\chat_controller.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
-- calls_function:utils\complexity_widget.py.__init__
-- calls_function:ui\tabs\memory_tab.py.__init__
 - calls_function:services\Voice_STT_TTS_SERVICES\voice_service_wrapper.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\tabs\personality_tab.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
+- calls_function:Personalities\services\personality_loader.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
+- calls_function:MainApp\ui_manager.py.__init__
+- calls_function:services\worker\worker.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
 - calls_function:ui\Widgets\settings_dialog.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
+- calls_function:MainApp\app_lifecycle.py.__init__
+- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
+- calls_function:utils\complexity_widget.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
+- calls_function:MainApp\event_handler.py.__init__
+- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
+- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
+- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
+- calls_function:controllers\chat_controller.py.__init__
+- calls_function:models\conversation_metadata.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
+- calls_function:ui\Widgets\chat_navigation.py.__init__
+- calls_function:ui\Widgets\personality_widget.py.__init__
+- calls_function:utils\complexity_analyzer.py.__init__
+- calls_function:utils\streaming_handler.py.__init__
+- calls_function:services\semantic_search_service.py.__init__
+- calls_function:services\summarization_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
 - calls_function:ui\Widgets\editable_message_widget.py.__init__
-- calls_function:services\conversation_service.py.__init__
-- calls_function:services\start_up\check_dependencies.py.__init__
+- calls_function:services\memory_service.py.__init__
+- calls_function:services\ollama_service.py.__init__
+- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
+- calls_function:Personalities\personality_model.py.__init__
+- calls_function:services\enhancement_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
+- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
+- calls_function:ui\tabs\model_tab.py.__init__
+- calls_function:utils\internet_connection.py.__init__
+- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
+- calls_function:ui\tabs\memory_tab.py.__init__
+- calls_function:MainApp\ollama_chat.py.__init__
+- calls_function:Personalities\services\personality_service.py.__init__
 - calls_function:config\config_manager.py.__init__
+- calls_function:ui\Widgets\spellchecker_widget.py.__init__
+- calls_function:services\start_up\install_dependencies.py.__init__
+- calls_function:services\conversation_service.py.__init__
+- calls_function:utils\Logging\logging_helpers.py.__init__
+- calls_function:MainApp\service_manager.py.__init__
+- calls_function:services\start_up\dependency_checker.py.__init__
 
 ### `ui\tabs\chat_tab\chat_tab.py`
 
-- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
-- calls_function:utils\internet_connection.py.__init__
-- calls_function:ui\Widgets\personality_widget.py.__init__
-- calls_function:services\worker\worker.py.__init__
-- calls_function:models\conversation_metadata.py.__init__
-- calls_function:MainApp\ui_manager.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
-- calls_function:MainApp\service_manager.py.__init__
-- calls_function:Personalities\services\personality_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
-- calls_function:MainApp\ollama_chat.py.__init__
-- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
-- calls_function:services\summarization_service.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
-- calls_function:utils\streaming_handler.py.__init__
-- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
-- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
-- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
-- calls_function:ui\tabs\personality_tab.py.__init__
-- calls_function:services\start_up\dependency_checker.py.__init__
-- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
-- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
-- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
-- calls_function:config\config_manager.py.get
-- calls_function:services\enhancement_service.py.__init__
-- calls_function:services\memory_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
-- calls_function:ui\Widgets\chat_navigation.py.__init__
-- calls_function:ui\Widgets\spellchecker_widget.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
-- calls_function:Personalities\services\personality_loader.py.__init__
-- calls_function:services\ollama_service.py.__init__
-- calls_function:services\semantic_search_service.py.__init__
-- calls_function:MainApp\event_handler.py.__init__
-- calls_function:Personalities\personality_model.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
-- calls_function:MainApp\app_lifecycle.py.__init__
-- calls_function:utils\complexity_analyzer.py.__init__
-- calls_function:services\start_up\install_dependencies.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
-- calls_function:ui\chat_tab.py.__init__
-- calls_function:ui\tabs\model_tab.py.__init__
-- calls_function:controllers\chat_controller.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
-- calls_function:utils\complexity_widget.py.__init__
-- calls_function:ui\tabs\memory_tab.py.__init__
 - calls_function:services\Voice_STT_TTS_SERVICES\voice_service_wrapper.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\tabs\personality_tab.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
+- calls_function:Personalities\services\personality_loader.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
+- calls_function:MainApp\ui_manager.py.__init__
+- calls_function:services\worker\worker.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
 - calls_function:ui\Widgets\settings_dialog.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
+- calls_function:MainApp\app_lifecycle.py.__init__
+- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
+- calls_function:utils\complexity_widget.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
+- calls_function:MainApp\event_handler.py.__init__
+- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
+- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
+- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
+- calls_function:controllers\chat_controller.py.__init__
+- calls_function:models\conversation_metadata.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
+- calls_function:ui\Widgets\chat_navigation.py.__init__
+- calls_function:ui\Widgets\personality_widget.py.__init__
+- calls_function:utils\complexity_analyzer.py.__init__
+- calls_function:config\config_manager.py.get
+- calls_function:utils\streaming_handler.py.__init__
+- calls_function:services\semantic_search_service.py.__init__
+- calls_function:services\summarization_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
 - calls_function:ui\Widgets\editable_message_widget.py.__init__
-- calls_function:services\conversation_service.py.__init__
-- calls_function:services\start_up\check_dependencies.py.__init__
+- calls_function:services\memory_service.py.__init__
+- calls_function:services\ollama_service.py.__init__
+- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
+- calls_function:Personalities\personality_model.py.__init__
+- calls_function:services\enhancement_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
+- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
+- calls_function:ui\tabs\model_tab.py.__init__
+- calls_function:utils\internet_connection.py.__init__
+- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
+- calls_function:ui\tabs\memory_tab.py.__init__
+- calls_function:MainApp\ollama_chat.py.__init__
+- calls_function:Personalities\services\personality_service.py.__init__
 - calls_function:config\config_manager.py.__init__
+- calls_function:ui\Widgets\spellchecker_widget.py.__init__
+- calls_function:services\start_up\install_dependencies.py.__init__
+- calls_function:services\conversation_service.py.__init__
+- calls_function:utils\Logging\logging_helpers.py.__init__
+- calls_function:MainApp\service_manager.py.__init__
+- calls_function:services\start_up\dependency_checker.py.__init__
 
 ### `ui\tabs\chat_tab\eq_visualizer.py`
 
-- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
-- calls_function:utils\internet_connection.py.__init__
-- calls_function:ui\Widgets\personality_widget.py.__init__
-- calls_function:services\worker\worker.py.__init__
-- calls_function:models\conversation_metadata.py.__init__
-- calls_function:MainApp\ui_manager.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
-- calls_function:MainApp\service_manager.py.__init__
-- calls_function:Personalities\services\personality_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
-- calls_function:MainApp\ollama_chat.py.__init__
-- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
-- calls_function:services\summarization_service.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
-- calls_function:utils\streaming_handler.py.__init__
-- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
-- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
-- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
-- calls_function:ui\tabs\personality_tab.py.__init__
-- calls_function:services\start_up\dependency_checker.py.__init__
-- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
-- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
-- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
-- calls_function:services\enhancement_service.py.__init__
-- calls_function:services\memory_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
-- calls_function:ui\Widgets\chat_navigation.py.__init__
-- calls_function:ui\Widgets\spellchecker_widget.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
-- calls_function:Personalities\services\personality_loader.py.__init__
-- calls_function:services\ollama_service.py.__init__
-- calls_function:services\semantic_search_service.py.__init__
-- calls_function:MainApp\event_handler.py.__init__
-- calls_function:Personalities\personality_model.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
-- calls_function:MainApp\app_lifecycle.py.__init__
-- calls_function:utils\complexity_analyzer.py.__init__
-- calls_function:services\start_up\install_dependencies.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
-- calls_function:ui\chat_tab.py.__init__
-- calls_function:ui\tabs\model_tab.py.__init__
-- calls_function:controllers\chat_controller.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
-- calls_function:utils\complexity_widget.py.__init__
-- calls_function:ui\tabs\memory_tab.py.__init__
 - calls_function:services\Voice_STT_TTS_SERVICES\voice_service_wrapper.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\tabs\personality_tab.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
+- calls_function:Personalities\services\personality_loader.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
+- calls_function:MainApp\ui_manager.py.__init__
+- calls_function:services\worker\worker.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
 - calls_function:ui\Widgets\settings_dialog.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
+- calls_function:MainApp\app_lifecycle.py.__init__
+- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
+- calls_function:utils\complexity_widget.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
+- calls_function:MainApp\event_handler.py.__init__
+- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
+- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
+- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
+- calls_function:controllers\chat_controller.py.__init__
+- calls_function:models\conversation_metadata.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
+- calls_function:ui\Widgets\chat_navigation.py.__init__
+- calls_function:ui\Widgets\personality_widget.py.__init__
+- calls_function:utils\complexity_analyzer.py.__init__
+- calls_function:utils\streaming_handler.py.__init__
+- calls_function:services\semantic_search_service.py.__init__
+- calls_function:services\summarization_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
 - calls_function:ui\Widgets\editable_message_widget.py.__init__
-- calls_function:services\conversation_service.py.__init__
-- calls_function:services\start_up\check_dependencies.py.__init__
+- calls_function:services\memory_service.py.__init__
+- calls_function:services\ollama_service.py.__init__
+- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
+- calls_function:Personalities\personality_model.py.__init__
+- calls_function:services\enhancement_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
+- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
+- calls_function:ui\tabs\model_tab.py.__init__
+- calls_function:utils\internet_connection.py.__init__
+- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
+- calls_function:ui\tabs\memory_tab.py.__init__
+- calls_function:MainApp\ollama_chat.py.__init__
+- calls_function:Personalities\services\personality_service.py.__init__
 - calls_function:config\config_manager.py.__init__
+- calls_function:ui\Widgets\spellchecker_widget.py.__init__
+- calls_function:services\start_up\install_dependencies.py.__init__
+- calls_function:services\conversation_service.py.__init__
+- calls_function:utils\Logging\logging_helpers.py.__init__
+- calls_function:MainApp\service_manager.py.__init__
+- calls_function:services\start_up\dependency_checker.py.__init__
 
 ### `ui\tabs\chat_tab\input_controls.py`
 
-- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
-- calls_function:utils\internet_connection.py.__init__
-- calls_function:ui\Widgets\personality_widget.py.__init__
-- calls_function:services\worker\worker.py.__init__
-- calls_function:ui\chat_tab.py.eventFilter
-- calls_function:ui\tabs\chat_tab\input_controls.py.eventFilter
-- calls_function:models\conversation_metadata.py.__init__
-- calls_function:MainApp\ui_manager.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
-- calls_function:MainApp\service_manager.py.__init__
-- calls_function:Personalities\services\personality_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
-- calls_function:MainApp\ollama_chat.py.__init__
-- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
-- calls_function:services\summarization_service.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
-- calls_function:utils\streaming_handler.py.__init__
-- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
-- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
-- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
-- calls_function:ui\tabs\personality_tab.py.__init__
-- calls_function:services\start_up\dependency_checker.py.__init__
-- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
-- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
-- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
-- calls_function:services\enhancement_service.py.__init__
-- calls_function:services\memory_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
-- calls_function:ui\Widgets\chat_navigation.py.__init__
-- calls_function:ui\Widgets\spellchecker_widget.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
-- calls_function:Personalities\services\personality_loader.py.__init__
-- calls_function:services\ollama_service.py.__init__
-- calls_function:services\semantic_search_service.py.__init__
-- calls_function:MainApp\event_handler.py.__init__
-- calls_function:Personalities\personality_model.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
-- calls_function:MainApp\app_lifecycle.py.__init__
-- calls_function:utils\complexity_analyzer.py.__init__
-- calls_function:services\start_up\install_dependencies.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
-- calls_function:ui\chat_tab.py.__init__
-- calls_function:ui\tabs\model_tab.py.__init__
-- calls_function:controllers\chat_controller.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
-- calls_function:utils\complexity_widget.py.__init__
-- calls_function:ui\tabs\memory_tab.py.__init__
 - calls_function:services\Voice_STT_TTS_SERVICES\voice_service_wrapper.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\tabs\personality_tab.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
+- calls_function:Personalities\services\personality_loader.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
+- calls_function:MainApp\ui_manager.py.__init__
+- calls_function:services\worker\worker.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
 - calls_function:ui\Widgets\settings_dialog.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
+- calls_function:MainApp\app_lifecycle.py.__init__
+- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
+- calls_function:utils\complexity_widget.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
+- calls_function:MainApp\event_handler.py.__init__
+- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
+- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
+- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
+- calls_function:controllers\chat_controller.py.__init__
+- calls_function:models\conversation_metadata.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
+- calls_function:ui\Widgets\chat_navigation.py.__init__
+- calls_function:ui\Widgets\personality_widget.py.__init__
+- calls_function:utils\complexity_analyzer.py.__init__
+- calls_function:utils\streaming_handler.py.__init__
+- calls_function:services\semantic_search_service.py.__init__
+- calls_function:services\summarization_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
 - calls_function:ui\Widgets\editable_message_widget.py.__init__
-- calls_function:services\conversation_service.py.__init__
-- calls_function:services\start_up\check_dependencies.py.__init__
+- calls_function:services\memory_service.py.__init__
+- calls_function:services\ollama_service.py.__init__
+- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
+- calls_function:Personalities\personality_model.py.__init__
+- calls_function:services\enhancement_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
+- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
+- calls_function:ui\tabs\model_tab.py.__init__
+- calls_function:utils\internet_connection.py.__init__
+- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
+- calls_function:ui\tabs\memory_tab.py.__init__
+- calls_function:MainApp\ollama_chat.py.__init__
+- calls_function:Personalities\services\personality_service.py.__init__
 - calls_function:config\config_manager.py.__init__
+- calls_function:ui\Widgets\spellchecker_widget.py.__init__
+- calls_function:services\start_up\install_dependencies.py.__init__
+- calls_function:services\conversation_service.py.__init__
+- calls_function:utils\Logging\logging_helpers.py.__init__
+- calls_function:ui\tabs\chat_tab\input_controls.py.eventFilter
+- calls_function:MainApp\service_manager.py.__init__
+- calls_function:services\start_up\dependency_checker.py.__init__
 
 ### `ui\tabs\chat_tab\test_modular_imports.py`
 
@@ -16607,246 +16426,243 @@ Args:
 
 ### `ui\tabs\chat_tab\voice_controls.py`
 
-- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
-- calls_function:utils\internet_connection.py.__init__
-- calls_function:ui\Widgets\personality_widget.py.__init__
-- calls_function:services\worker\worker.py.__init__
-- calls_function:models\conversation_metadata.py.__init__
-- calls_function:MainApp\ui_manager.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
-- calls_function:MainApp\service_manager.py.__init__
-- calls_function:Personalities\services\personality_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
-- calls_function:MainApp\ollama_chat.py.__init__
-- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
-- calls_function:services\summarization_service.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
-- calls_function:utils\streaming_handler.py.__init__
-- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
-- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
-- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
-- calls_function:ui\tabs\personality_tab.py.__init__
-- calls_function:services\start_up\dependency_checker.py.__init__
-- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
-- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
-- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
-- calls_function:services\enhancement_service.py.__init__
-- calls_function:services\memory_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
-- calls_function:ui\Widgets\chat_navigation.py.__init__
-- calls_function:ui\Widgets\spellchecker_widget.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
-- calls_function:Personalities\services\personality_loader.py.__init__
-- calls_function:services\ollama_service.py.__init__
-- calls_function:services\semantic_search_service.py.__init__
-- calls_function:MainApp\event_handler.py.__init__
-- calls_function:Personalities\personality_model.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
-- calls_function:MainApp\app_lifecycle.py.__init__
-- calls_function:utils\complexity_analyzer.py.__init__
-- calls_function:services\start_up\install_dependencies.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
-- calls_function:ui\chat_tab.py.__init__
-- calls_function:ui\tabs\model_tab.py.__init__
-- calls_function:controllers\chat_controller.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
-- calls_function:utils\complexity_widget.py.__init__
-- calls_function:ui\tabs\memory_tab.py.__init__
 - calls_function:services\Voice_STT_TTS_SERVICES\voice_service_wrapper.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\tabs\personality_tab.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
+- calls_function:Personalities\services\personality_loader.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
+- calls_function:MainApp\ui_manager.py.__init__
+- calls_function:services\worker\worker.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
 - calls_function:ui\Widgets\settings_dialog.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
+- calls_function:MainApp\app_lifecycle.py.__init__
+- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
+- calls_function:utils\complexity_widget.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
+- calls_function:MainApp\event_handler.py.__init__
+- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
+- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
+- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
+- calls_function:controllers\chat_controller.py.__init__
+- calls_function:models\conversation_metadata.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
+- calls_function:ui\Widgets\chat_navigation.py.__init__
+- calls_function:ui\Widgets\personality_widget.py.__init__
+- calls_function:utils\complexity_analyzer.py.__init__
+- calls_function:utils\streaming_handler.py.__init__
+- calls_function:services\semantic_search_service.py.__init__
+- calls_function:services\summarization_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
 - calls_function:ui\Widgets\editable_message_widget.py.__init__
-- calls_function:services\conversation_service.py.__init__
-- calls_function:services\start_up\check_dependencies.py.__init__
+- calls_function:services\memory_service.py.__init__
+- calls_function:services\ollama_service.py.__init__
+- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
+- calls_function:Personalities\personality_model.py.__init__
+- calls_function:services\enhancement_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
+- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
+- calls_function:ui\tabs\model_tab.py.__init__
+- calls_function:utils\internet_connection.py.__init__
+- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
+- calls_function:ui\tabs\memory_tab.py.__init__
+- calls_function:MainApp\ollama_chat.py.__init__
+- calls_function:Personalities\services\personality_service.py.__init__
 - calls_function:config\config_manager.py.__init__
+- calls_function:ui\Widgets\spellchecker_widget.py.__init__
+- calls_function:services\start_up\install_dependencies.py.__init__
+- calls_function:services\conversation_service.py.__init__
+- calls_function:utils\Logging\logging_helpers.py.__init__
+- calls_function:MainApp\service_manager.py.__init__
+- calls_function:services\start_up\dependency_checker.py.__init__
 
 ### `ui\tabs\memory_tab.py`
 
-- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
-- calls_function:utils\internet_connection.py.__init__
-- calls_function:ui\Widgets\personality_widget.py.__init__
-- calls_function:services\worker\worker.py.__init__
-- calls_function:models\conversation_metadata.py.__init__
-- calls_function:MainApp\ui_manager.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
-- calls_function:MainApp\service_manager.py.__init__
-- calls_function:Personalities\services\personality_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
-- calls_function:MainApp\ollama_chat.py.__init__
-- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
-- calls_function:services\summarization_service.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
-- calls_function:utils\streaming_handler.py.__init__
-- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
-- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
-- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
-- calls_function:ui\tabs\personality_tab.py.__init__
-- calls_function:services\start_up\dependency_checker.py.__init__
-- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
-- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
-- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
-- calls_function:services\enhancement_service.py.__init__
-- calls_function:services\memory_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
-- calls_function:ui\Widgets\chat_navigation.py.__init__
-- calls_function:ui\Widgets\spellchecker_widget.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
-- calls_function:Personalities\services\personality_loader.py.__init__
-- calls_function:services\ollama_service.py.__init__
-- calls_function:services\semantic_search_service.py.__init__
-- calls_function:MainApp\event_handler.py.__init__
-- calls_function:Personalities\personality_model.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
-- calls_function:MainApp\app_lifecycle.py.__init__
-- calls_function:utils\complexity_analyzer.py.__init__
-- calls_function:services\start_up\install_dependencies.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
-- calls_function:ui\chat_tab.py.__init__
-- calls_function:ui\tabs\model_tab.py.__init__
-- calls_function:controllers\chat_controller.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
-- calls_function:utils\complexity_widget.py.__init__
-- calls_function:ui\tabs\memory_tab.py.__init__
 - calls_function:services\Voice_STT_TTS_SERVICES\voice_service_wrapper.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\tabs\personality_tab.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
+- calls_function:Personalities\services\personality_loader.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
+- calls_function:MainApp\ui_manager.py.__init__
+- calls_function:services\worker\worker.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
 - calls_function:ui\Widgets\settings_dialog.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
+- calls_function:MainApp\app_lifecycle.py.__init__
+- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
+- calls_function:utils\complexity_widget.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
+- calls_function:MainApp\event_handler.py.__init__
+- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
+- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
+- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
+- calls_function:controllers\chat_controller.py.__init__
+- calls_function:models\conversation_metadata.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
+- calls_function:ui\Widgets\chat_navigation.py.__init__
+- calls_function:ui\Widgets\personality_widget.py.__init__
+- calls_function:utils\complexity_analyzer.py.__init__
+- calls_function:utils\streaming_handler.py.__init__
+- calls_function:services\semantic_search_service.py.__init__
+- calls_function:services\summarization_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
 - calls_function:ui\Widgets\editable_message_widget.py.__init__
-- calls_function:services\conversation_service.py.__init__
-- calls_function:services\start_up\check_dependencies.py.__init__
+- calls_function:services\memory_service.py.__init__
+- calls_function:services\ollama_service.py.__init__
+- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
+- calls_function:Personalities\personality_model.py.__init__
+- calls_function:services\enhancement_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
+- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
+- calls_function:ui\tabs\model_tab.py.__init__
+- calls_function:utils\internet_connection.py.__init__
+- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
+- calls_function:ui\tabs\memory_tab.py.__init__
+- calls_function:MainApp\ollama_chat.py.__init__
+- calls_function:Personalities\services\personality_service.py.__init__
 - calls_function:config\config_manager.py.__init__
+- calls_function:ui\Widgets\spellchecker_widget.py.__init__
+- calls_function:services\start_up\install_dependencies.py.__init__
+- calls_function:services\conversation_service.py.__init__
+- calls_function:utils\Logging\logging_helpers.py.__init__
+- calls_function:MainApp\service_manager.py.__init__
+- calls_function:services\start_up\dependency_checker.py.__init__
 
 ### `ui\tabs\model_tab.py`
 
-- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
-- calls_function:utils\internet_connection.py.__init__
-- calls_function:ui\Widgets\personality_widget.py.__init__
-- calls_function:services\worker\worker.py.__init__
-- calls_function:models\conversation_metadata.py.__init__
-- calls_function:MainApp\ui_manager.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
-- calls_function:MainApp\service_manager.py.__init__
-- calls_function:Personalities\services\personality_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
-- calls_function:MainApp\ollama_chat.py.__init__
-- calls_function:services\summarization_service.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
-- calls_function:utils\streaming_handler.py.__init__
-- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
-- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
-- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
-- calls_function:ui\tabs\personality_tab.py.__init__
-- calls_function:services\start_up\dependency_checker.py.__init__
-- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
-- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
-- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
-- calls_function:services\enhancement_service.py.__init__
-- calls_function:services\memory_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
-- calls_function:ui\Widgets\chat_navigation.py.__init__
-- calls_function:ui\Widgets\spellchecker_widget.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
-- calls_function:Personalities\services\personality_loader.py.__init__
-- calls_function:services\ollama_service.py.__init__
-- calls_function:services\semantic_search_service.py.__init__
-- calls_function:MainApp\event_handler.py.__init__
-- calls_function:Personalities\personality_model.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
-- calls_function:MainApp\app_lifecycle.py.__init__
-- calls_function:utils\complexity_analyzer.py.__init__
-- calls_function:services\start_up\install_dependencies.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
-- calls_function:ui\chat_tab.py.__init__
-- calls_function:ui\tabs\model_tab.py.__init__
-- calls_function:controllers\chat_controller.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
-- calls_function:utils\complexity_widget.py.__init__
-- calls_function:ui\tabs\memory_tab.py.__init__
 - calls_function:services\Voice_STT_TTS_SERVICES\voice_service_wrapper.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\tabs\personality_tab.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
+- calls_function:Personalities\services\personality_loader.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
+- calls_function:MainApp\ui_manager.py.__init__
+- calls_function:services\worker\worker.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
 - calls_function:ui\Widgets\settings_dialog.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
+- calls_function:MainApp\app_lifecycle.py.__init__
+- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
+- calls_function:utils\complexity_widget.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
+- calls_function:MainApp\event_handler.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
+- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
+- calls_function:controllers\chat_controller.py.__init__
+- calls_function:models\conversation_metadata.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
+- calls_function:ui\Widgets\chat_navigation.py.__init__
+- calls_function:ui\Widgets\personality_widget.py.__init__
+- calls_function:utils\complexity_analyzer.py.__init__
+- calls_function:utils\streaming_handler.py.__init__
+- calls_function:services\semantic_search_service.py.__init__
+- calls_function:services\summarization_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
 - calls_function:ui\Widgets\editable_message_widget.py.__init__
-- calls_function:services\conversation_service.py.__init__
-- calls_function:services\start_up\check_dependencies.py.__init__
+- calls_function:services\memory_service.py.__init__
+- calls_function:services\ollama_service.py.__init__
+- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
+- calls_function:Personalities\personality_model.py.__init__
+- calls_function:services\enhancement_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
+- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
+- calls_function:ui\tabs\model_tab.py.__init__
+- calls_function:utils\internet_connection.py.__init__
+- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
+- calls_function:ui\tabs\memory_tab.py.__init__
+- calls_function:MainApp\ollama_chat.py.__init__
+- calls_function:Personalities\services\personality_service.py.__init__
 - calls_function:config\config_manager.py.__init__
+- calls_function:ui\Widgets\spellchecker_widget.py.__init__
+- calls_function:services\start_up\install_dependencies.py.__init__
+- calls_function:services\conversation_service.py.__init__
+- calls_function:utils\Logging\logging_helpers.py.__init__
+- calls_function:MainApp\service_manager.py.__init__
+- calls_function:services\start_up\dependency_checker.py.__init__
 
 ### `ui\tabs\personality_tab.py`
 
-- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
-- calls_function:utils\internet_connection.py.__init__
-- calls_function:ui\Widgets\personality_widget.py.__init__
-- calls_function:services\worker\worker.py.__init__
-- calls_function:models\conversation_metadata.py.__init__
-- calls_function:MainApp\ui_manager.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
-- calls_function:MainApp\service_manager.py.__init__
-- calls_function:Personalities\services\personality_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
-- calls_function:MainApp\ollama_chat.py.__init__
-- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
-- calls_function:services\summarization_service.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
-- calls_function:utils\streaming_handler.py.__init__
-- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
-- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
-- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
-- calls_function:ui\tabs\personality_tab.py.__init__
-- calls_function:services\start_up\dependency_checker.py.__init__
-- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
-- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
-- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
-- calls_function:services\enhancement_service.py.__init__
-- calls_function:services\memory_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
-- calls_function:ui\Widgets\chat_navigation.py.__init__
-- calls_function:ui\Widgets\spellchecker_widget.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
-- calls_function:Personalities\services\personality_loader.py.__init__
-- calls_function:services\ollama_service.py.__init__
-- calls_function:services\semantic_search_service.py.__init__
-- calls_function:MainApp\event_handler.py.__init__
-- calls_function:Personalities\personality_model.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
-- calls_function:MainApp\app_lifecycle.py.__init__
-- calls_function:utils\complexity_analyzer.py.__init__
-- calls_function:services\start_up\install_dependencies.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
-- calls_function:ui\chat_tab.py.__init__
-- calls_function:ui\tabs\model_tab.py.__init__
-- calls_function:controllers\chat_controller.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
-- calls_function:utils\complexity_widget.py.__init__
-- calls_function:ui\tabs\memory_tab.py.__init__
 - calls_function:services\Voice_STT_TTS_SERVICES\voice_service_wrapper.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\tabs\personality_tab.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
+- calls_function:Personalities\services\personality_loader.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
+- calls_function:MainApp\ui_manager.py.__init__
+- calls_function:services\worker\worker.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
 - calls_function:ui\Widgets\settings_dialog.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
+- calls_function:MainApp\app_lifecycle.py.__init__
+- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
+- calls_function:utils\complexity_widget.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
+- calls_function:MainApp\event_handler.py.__init__
+- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
+- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
+- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
+- calls_function:controllers\chat_controller.py.__init__
+- calls_function:models\conversation_metadata.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
+- calls_function:ui\Widgets\chat_navigation.py.__init__
+- calls_function:ui\Widgets\personality_widget.py.__init__
+- calls_function:utils\complexity_analyzer.py.__init__
+- calls_function:utils\streaming_handler.py.__init__
+- calls_function:services\semantic_search_service.py.__init__
+- calls_function:services\summarization_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
 - calls_function:ui\Widgets\editable_message_widget.py.__init__
-- calls_function:services\conversation_service.py.__init__
-- calls_function:services\start_up\check_dependencies.py.__init__
+- calls_function:services\memory_service.py.__init__
+- calls_function:services\ollama_service.py.__init__
+- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
+- calls_function:Personalities\personality_model.py.__init__
+- calls_function:services\enhancement_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
+- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
+- calls_function:ui\tabs\model_tab.py.__init__
+- calls_function:utils\internet_connection.py.__init__
+- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
+- calls_function:ui\tabs\memory_tab.py.__init__
+- calls_function:MainApp\ollama_chat.py.__init__
+- calls_function:Personalities\services\personality_service.py.__init__
 - calls_function:config\config_manager.py.__init__
+- calls_function:ui\Widgets\spellchecker_widget.py.__init__
+- calls_function:services\start_up\install_dependencies.py.__init__
+- calls_function:services\conversation_service.py.__init__
+- calls_function:utils\Logging\logging_helpers.py.__init__
+- calls_function:MainApp\service_manager.py.__init__
+- calls_function:services\start_up\dependency_checker.py.__init__
 
 ### `utils\Logging\Custom_Logger.py`
 
+- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__new__
+- calls_function:utils\Logging\Custom_Logger.py.error
+- calls_function:utils\Logging\Custom_Logger.py.info
+- calls_function:utils\Logging\Custom_Logger.py._sanitize_filename
+- calls_function:utils\Logging\Custom_Logger.py.debug
+- calls_function:config\config_manager.py.set
 - calls_function:utils\Logging\Custom_Logger.py.strip_emojis
 - calls_function:utils\Logging\Custom_Logger.py.warning
 - calls_function:utils\Logging\Custom_Logger.py.__new__
-- calls_function:utils\Logging\Custom_Logger.py.info
 - calls_function:utils\Logging\Custom_Logger.py.critical
-- calls_function:utils\Logging\Custom_Logger.py.debug
-- calls_function:utils\Logging\Custom_Logger.py.error
-- calls_function:config\config_manager.py.set
-- calls_function:utils\Logging\Custom_Logger.py._sanitize_filename
 
 ### `utils\Logging\Custom_Logger.py.PrintLogger`
 
@@ -16854,132 +16670,197 @@ Args:
 
 ### `utils\Logging\logging_helpers.py`
 
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_service_wrapper.py.__init__
+- calls_function:ui\tabs\personality_tab.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
+- calls_function:Personalities\services\personality_loader.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
+- calls_function:MainApp\ui_manager.py.__init__
+- calls_function:services\worker\worker.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
+- calls_function:ui\Widgets\settings_dialog.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
+- calls_function:MainApp\app_lifecycle.py.__init__
+- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
+- calls_function:utils\complexity_widget.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
+- calls_function:MainApp\event_handler.py.__init__
 - calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
+- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
+- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
+- calls_function:controllers\chat_controller.py.__init__
+- calls_function:models\conversation_metadata.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
+- calls_function:ui\Widgets\chat_navigation.py.__init__
+- calls_function:ui\Widgets\personality_widget.py.__init__
+- calls_function:utils\complexity_analyzer.py.__init__
+- calls_function:utils\streaming_handler.py.__init__
+- calls_function:services\semantic_search_service.py.__init__
+- calls_function:services\summarization_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
+- calls_function:ui\Widgets\editable_message_widget.py.__init__
+- calls_function:services\memory_service.py.__init__
+- calls_function:services\ollama_service.py.__init__
+- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
+- calls_function:Personalities\personality_model.py.__init__
+- calls_function:services\enhancement_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
+- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
+- calls_function:ui\tabs\model_tab.py.__init__
+- calls_function:utils\internet_connection.py.__init__
+- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
+- calls_function:ui\tabs\memory_tab.py.__init__
+- calls_function:MainApp\ollama_chat.py.__init__
+- calls_function:Personalities\services\personality_service.py.__init__
+- calls_function:config\config_manager.py.__init__
+- calls_function:ui\Widgets\spellchecker_widget.py.__init__
+- calls_function:services\start_up\install_dependencies.py.__init__
+- calls_function:services\conversation_service.py.__init__
+- calls_function:utils\Logging\logging_helpers.py.__init__
+- calls_function:MainApp\service_manager.py.__init__
+- calls_function:services\start_up\dependency_checker.py.__init__
 
 ### `utils\complexity_widget.py`
 
-- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
-- calls_function:utils\internet_connection.py.__init__
-- calls_function:ui\Widgets\personality_widget.py.__init__
-- calls_function:services\worker\worker.py.__init__
-- calls_function:models\conversation_metadata.py.__init__
-- calls_function:MainApp\ui_manager.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
-- calls_function:MainApp\service_manager.py.__init__
-- calls_function:Personalities\services\personality_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
-- calls_function:MainApp\ollama_chat.py.__init__
-- calls_function:services\summarization_service.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
-- calls_function:utils\streaming_handler.py.__init__
-- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
-- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
-- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
-- calls_function:ui\tabs\personality_tab.py.__init__
-- calls_function:services\start_up\dependency_checker.py.__init__
-- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
-- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
-- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
-- calls_function:services\enhancement_service.py.__init__
-- calls_function:services\memory_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
-- calls_function:ui\Widgets\chat_navigation.py.__init__
-- calls_function:ui\Widgets\spellchecker_widget.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
-- calls_function:Personalities\services\personality_loader.py.__init__
-- calls_function:services\ollama_service.py.__init__
-- calls_function:services\semantic_search_service.py.__init__
-- calls_function:MainApp\event_handler.py.__init__
-- calls_function:Personalities\personality_model.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
-- calls_function:MainApp\app_lifecycle.py.__init__
-- calls_function:utils\complexity_analyzer.py.__init__
-- calls_function:services\start_up\install_dependencies.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
-- calls_function:ui\chat_tab.py.__init__
-- calls_function:ui\tabs\model_tab.py.__init__
-- calls_function:controllers\chat_controller.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
-- calls_function:utils\complexity_widget.py.__init__
-- calls_function:ui\tabs\memory_tab.py.__init__
 - calls_function:services\Voice_STT_TTS_SERVICES\voice_service_wrapper.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\tabs\personality_tab.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
+- calls_function:Personalities\services\personality_loader.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
+- calls_function:MainApp\ui_manager.py.__init__
+- calls_function:services\worker\worker.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
 - calls_function:ui\Widgets\settings_dialog.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
+- calls_function:MainApp\app_lifecycle.py.__init__
+- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
+- calls_function:utils\complexity_widget.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
+- calls_function:MainApp\event_handler.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
+- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
+- calls_function:controllers\chat_controller.py.__init__
+- calls_function:models\conversation_metadata.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
+- calls_function:ui\Widgets\chat_navigation.py.__init__
+- calls_function:ui\Widgets\personality_widget.py.__init__
+- calls_function:utils\complexity_analyzer.py.__init__
+- calls_function:utils\streaming_handler.py.__init__
+- calls_function:services\semantic_search_service.py.__init__
+- calls_function:services\summarization_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
 - calls_function:ui\Widgets\editable_message_widget.py.__init__
-- calls_function:services\conversation_service.py.__init__
-- calls_function:services\start_up\check_dependencies.py.__init__
+- calls_function:services\memory_service.py.__init__
+- calls_function:services\ollama_service.py.__init__
+- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
+- calls_function:Personalities\personality_model.py.__init__
+- calls_function:services\enhancement_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
+- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
+- calls_function:ui\tabs\model_tab.py.__init__
+- calls_function:utils\internet_connection.py.__init__
+- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
+- calls_function:ui\tabs\memory_tab.py.__init__
+- calls_function:MainApp\ollama_chat.py.__init__
+- calls_function:Personalities\services\personality_service.py.__init__
 - calls_function:config\config_manager.py.__init__
+- calls_function:ui\Widgets\spellchecker_widget.py.__init__
+- calls_function:services\start_up\install_dependencies.py.__init__
+- calls_function:services\conversation_service.py.__init__
+- calls_function:utils\Logging\logging_helpers.py.__init__
+- calls_function:MainApp\service_manager.py.__init__
+- calls_function:services\start_up\dependency_checker.py.__init__
+
+### `utils\error_handler.py`
+
+- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_exception_with_context
+- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_performance_metric
+- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_critical_error
+- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_json_parsing_error
+- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_network_request
+- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_memory_operation
+- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
+- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_ui_operation
+- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_warning_with_context
+- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_file_operation
+- calls_method:utils\Logging\logging_helpers.py.LoggingHelpers.log_audio_operation
 
 ### `utils\internet_connection.py`
 
-- calls_function:utils\internet_connection.py.test_internet_connection_detailed
 - calls_function:utils\internet_connection.py.test_internet_connection
+- calls_function:utils\internet_connection.py.test_internet_connection_detailed
 - calls_function:utils\internet_connection.py.is_online
 
 ### `utils\streaming_handler.py`
 
-- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
-- calls_function:utils\internet_connection.py.__init__
-- calls_function:ui\Widgets\personality_widget.py.__init__
-- calls_function:services\worker\worker.py.__init__
-- calls_function:models\conversation_metadata.py.__init__
-- calls_method:ui\styles\message_formatter.py.MessageFormatter.syntax_highlight_code
-- calls_method:ui\styles\message_formatter.py.MessageFormatter.detect_and_format_code
-- calls_function:MainApp\ui_manager.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
-- calls_function:MainApp\service_manager.py.__init__
-- calls_function:Personalities\services\personality_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
-- calls_function:MainApp\ollama_chat.py.__init__
-- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
-- calls_function:services\summarization_service.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
-- calls_function:utils\streaming_handler.py.__init__
-- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
-- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
-- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
-- calls_function:ui\tabs\personality_tab.py.__init__
-- calls_function:services\start_up\dependency_checker.py.__init__
-- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
-- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
-- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
-- calls_function:services\enhancement_service.py.__init__
-- calls_function:services\memory_service.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
-- calls_function:ui\Widgets\chat_navigation.py.__init__
-- calls_function:ui\Widgets\spellchecker_widget.py.__init__
-- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
-- calls_function:Personalities\services\personality_loader.py.__init__
-- calls_function:services\ollama_service.py.__init__
-- calls_function:services\semantic_search_service.py.__init__
-- calls_function:MainApp\event_handler.py.__init__
-- calls_function:Personalities\personality_model.py.__init__
-- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
-- calls_method:ui\styles\message_formatter.py.MessageFormatter.split_thoughts_and_answer
-- calls_function:MainApp\app_lifecycle.py.__init__
-- calls_function:utils\complexity_analyzer.py.__init__
-- calls_function:services\start_up\install_dependencies.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
-- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
-- calls_function:ui\chat_tab.py.__init__
-- calls_function:ui\tabs\model_tab.py.__init__
-- calls_function:controllers\chat_controller.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
 - calls_method:ui\styles\message_formatter.py.MessageFormatter.format_markdown
-- calls_function:utils\complexity_widget.py.__init__
-- calls_function:ui\tabs\memory_tab.py.__init__
 - calls_function:services\Voice_STT_TTS_SERVICES\voice_service_wrapper.py.__init__
-- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\tabs\personality_tab.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_service.py.__init__
+- calls_function:Personalities\services\personality_loader.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circle_eq_widget.py.__init__
+- calls_function:MainApp\ui_manager.py.__init__
+- calls_method:ui\styles\message_formatter.py.MessageFormatter.syntax_highlight_code
+- calls_function:services\worker\worker.py.__init__
+- calls_method:ui\styles\message_formatter.py.MessageFormatter.detect_and_format_code
+- calls_function:ui\tabs\chat_tab\chat_display.py.__init__
 - calls_function:ui\Widgets\settings_dialog.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_gradient_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\voice_controls.py.__init__
+- calls_function:MainApp\app_lifecycle.py.__init__
+- calls_function:ui\Widgets\coqui_model_dialog.py.__init__
+- calls_function:utils\complexity_widget.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\STT_Service.py.__init__
+- calls_function:ui\Audio_visualisers\eq_widgets\circular_net_eq_widget.py.__init__
+- calls_function:MainApp\event_handler.py.__init__
+- calls_method:utils\Logging\Custom_Logger.py.CustomLogger.get_logger
+- calls_function:ui\Audio_visualisers\eq_widgets\bar_eq_widget.py.__init__
+- calls_function:ui\tabs\chat_tab\input_controls.py.__init__
+- calls_function:ui\Widgets\voice_settings_dialog.py.__init__
+- calls_function:controllers\chat_controller.py.__init__
+- calls_function:models\conversation_metadata.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\Recording_Service.py.__init__
+- calls_function:ui\tabs\chat_tab\chat_tab.py.__init__
+- calls_function:ui\Widgets\chat_navigation.py.__init__
+- calls_function:ui\Widgets\personality_widget.py.__init__
+- calls_function:utils\complexity_analyzer.py.__init__
+- calls_function:utils\streaming_handler.py.__init__
+- calls_function:services\semantic_search_service.py.__init__
+- calls_function:services\summarization_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\coqui_tts_service.py.__init__
 - calls_function:ui\Widgets\editable_message_widget.py.__init__
-- calls_function:services\conversation_service.py.__init__
-- calls_function:services\start_up\check_dependencies.py.__init__
+- calls_method:ui\styles\message_formatter.py.MessageFormatter.split_thoughts_and_answer
+- calls_function:services\memory_service.py.__init__
+- calls_function:services\ollama_service.py.__init__
+- calls_function:ui\Audio_visualisers\voice_ring_animation.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\TTS_Service.py.__init__
+- calls_function:Personalities\personality_model.py.__init__
+- calls_function:services\enhancement_service.py.__init__
+- calls_function:services\Voice_STT_TTS_SERVICES\voice_process_manager.py.__init__
+- calls_function:ui\Audio_visualisers\eq_orchestrator.py.__init__
+- calls_function:ui\tabs\model_tab.py.__init__
+- calls_function:utils\internet_connection.py.__init__
+- calls_function:ui\tabs\chat_tab\eq_visualizer.py.__init__
+- calls_function:ui\tabs\memory_tab.py.__init__
+- calls_function:MainApp\ollama_chat.py.__init__
+- calls_function:Personalities\services\personality_service.py.__init__
 - calls_function:config\config_manager.py.__init__
+- calls_function:ui\Widgets\spellchecker_widget.py.__init__
+- calls_function:services\start_up\install_dependencies.py.__init__
+- calls_function:services\conversation_service.py.__init__
+- calls_function:utils\Logging\logging_helpers.py.__init__
+- calls_function:MainApp\service_manager.py.__init__
+- calls_function:services\start_up\dependency_checker.py.__init__
 
 ## 📦 Imports
 
@@ -17014,6 +16895,7 @@ Args:
 - `pyside_chat.utils.Logging.logging_helpers.LoggingHelpers`
 - `pyside_chat.utils.complexity_analyzer.RequestComplexityAnalyzer`
 - `pyside_chat.utils.prompts.PromptFormatter`
+- `traceback`
 - `typing.Callable`
 - `typing.Optional`
 
@@ -17291,7 +17173,6 @@ Args:
 - `PySide6.QtCore.QObject`
 - `PySide6.QtCore.QThread`
 - `PySide6.QtCore.QTimer`
-- `PySide6.QtCore.Qt`
 - `PySide6.QtCore.Signal`
 - `PySide6.QtWidgets.QApplication`
 - `multiprocessing`
@@ -17302,6 +17183,7 @@ Args:
 - `queue`
 - `sys`
 - `time`
+- `traceback`
 - `typing.Any`
 - `typing.Callable`
 - `typing.Dict`
@@ -17324,6 +17206,7 @@ Args:
 - `platform`
 - `pyaudio`
 - `pyside_chat.utils.Logging.Custom_Logger.CustomLogger`
+- `pyside_chat.utils.Logging.logging_helpers.LoggingHelpers`
 - `speech_recognition`
 - `subprocess`
 - `tempfile`
@@ -17375,6 +17258,7 @@ Args:
 - `os`
 - `pyside_chat.services.semantic_search_service.SemanticSearchService`
 - `pyside_chat.utils.Logging.Custom_Logger.CustomLogger`
+- `pyside_chat.utils.Logging.logging_helpers.LoggingHelpers`
 - `re`
 - `typing.Dict`
 - `typing.List`
@@ -17388,9 +17272,11 @@ Args:
 - `PySide6.QtCore.Signal`
 - `json`
 - `pyside_chat.utils.Logging.Custom_Logger.CustomLogger`
+- `pyside_chat.utils.Logging.logging_helpers.LoggingHelpers`
 - `requests`
 - `subprocess`
 - `threading.Thread`
+- `time`
 - `typing.Dict`
 - `typing.Generator`
 - `typing.List`
@@ -17411,6 +17297,7 @@ Args:
 - `pyside_chat.utils.Logging.Custom_Logger.CustomLogger`
 - `sentence_transformers.SentenceTransformer`
 - `sklearn.metrics.pairwise.cosine_similarity`
+- `traceback`
 - `typing.Dict`
 - `typing.List`
 - `typing.Optional`
@@ -17420,19 +17307,6 @@ Args:
 
 - `dependency_checker.DependencyChecker`
 - `dependency_checker.check_and_install_dependencies`
-
-### `services\start_up\check_dependencies.py`
-
-- `importlib`
-- `os`
-- `subprocess`
-- `sys`
-- `time`
-- `tqdm.tqdm`
-- `typing.Dict`
-- `typing.List`
-- `typing.Optional`
-- `typing.Tuple`
 
 ### `services\start_up\dependency_checker.py`
 
@@ -17474,10 +17348,13 @@ Args:
 ### `services\worker\worker.py`
 
 - `PySide6.QtCore.QObject`
+- `PySide6.QtCore.QThread`
 - `PySide6.QtCore.Signal`
 - `json`
+- `pyside_chat.utils.Logging.Custom_Logger.CustomLogger`
 - `requests`
 - `time`
+- `traceback`
 
 ### `ui\Audio_visualisers\eq_orchestrator.py`
 
@@ -17774,67 +17651,6 @@ Args:
 - `typing.List`
 - `typing.Optional`
 
-### `ui\chat_tab.py`
-
-- `PySide6.QtCore.QEvent`
-- `PySide6.QtCore.QMutex`
-- `PySide6.QtCore.QThread`
-- `PySide6.QtCore.QTimer`
-- `PySide6.QtCore.QWaitCondition`
-- `PySide6.QtCore.Qt`
-- `PySide6.QtCore.Signal`
-- `PySide6.QtGui.QColor`
-- `PySide6.QtGui.QFont`
-- `PySide6.QtGui.QPalette`
-- `PySide6.QtGui.QTextCharFormat`
-- `PySide6.QtGui.QTextCursor`
-- `PySide6.QtWidgets.QApplication`
-- `PySide6.QtWidgets.QCheckBox`
-- `PySide6.QtWidgets.QComboBox`
-- `PySide6.QtWidgets.QDialog`
-- `PySide6.QtWidgets.QFileDialog`
-- `PySide6.QtWidgets.QFrame`
-- `PySide6.QtWidgets.QGroupBox`
-- `PySide6.QtWidgets.QHBoxLayout`
-- `PySide6.QtWidgets.QLabel`
-- `PySide6.QtWidgets.QLineEdit`
-- `PySide6.QtWidgets.QMessageBox`
-- `PySide6.QtWidgets.QProgressBar`
-- `PySide6.QtWidgets.QPushButton`
-- `PySide6.QtWidgets.QScrollArea`
-- `PySide6.QtWidgets.QSizePolicy`
-- `PySide6.QtWidgets.QSlider`
-- `PySide6.QtWidgets.QSpinBox`
-- `PySide6.QtWidgets.QSplitter`
-- `PySide6.QtWidgets.QTextEdit`
-- `PySide6.QtWidgets.QVBoxLayout`
-- `PySide6.QtWidgets.QWidget`
-- `json`
-- `logging`
-- `os`
-- `pyside_chat.models.conversation_metadata.ConversationMetadata`
-- `pyside_chat.services.Voice_STT_TTS_SERVICES.voice_service.VoiceService`
-- `pyside_chat.services.Voice_STT_TTS_SERVICES.voice_service_wrapper.VoiceServiceWrapper`
-- `pyside_chat.services.conversation_service.ConversationService`
-- `pyside_chat.services.ollama_service.OllamaService`
-- `pyside_chat.ui.Audio_visualisers.eq_orchestrator.map_frequency_to_bars`
-- `pyside_chat.ui.Audio_visualisers.eq_widgets.bar_eq_widget.BarEQWidget`
-- `pyside_chat.ui.Audio_visualisers.eq_widgets.circle_eq_widget.CircleEQWidget`
-- `pyside_chat.ui.Audio_visualisers.eq_widgets.circular_gradient_eq_widget.CircularGradientEQWidget`
-- `pyside_chat.ui.Audio_visualisers.eq_widgets.circular_net_eq_widget.CircularNetEQWidget`
-- `pyside_chat.ui.Widgets.chat_navigation.ChatNavigationWidget`
-- `pyside_chat.ui.Widgets.voice_settings_dialog.VoiceSettingsDialog`
-- `pyside_chat.ui.styles.message_formatter.MessageFormatter`
-- `pyside_chat.utils.Logging.Custom_Logger.CustomLogger`
-- `pyside_chat.utils.streaming_handler.StreamingHandler`
-- `random`
-- `sys`
-- `time`
-- `traceback`
-- `typing.Any`
-- `typing.Dict`
-- `typing.Optional`
-
 ### `ui\styles\message_formatter.py`
 
 - `html.escape`
@@ -17990,6 +17806,8 @@ Args:
 
 ### `ui\tabs\chat_tab\voice_controls.py`
 
+- `PySide6.QtCore.QMutex`
+- `PySide6.QtCore.QMutexLocker`
 - `PySide6.QtCore.QObject`
 - `PySide6.QtCore.QTimer`
 - `PySide6.QtCore.Qt`
@@ -18039,9 +17857,11 @@ Args:
 - `PySide6.QtWidgets.QVBoxLayout`
 - `PySide6.QtWidgets.QWidget`
 - `datetime.datetime`
+- `hashlib`
 - `pyside_chat.services.memory_service.MemoryEntry`
 - `pyside_chat.services.memory_service.MemoryService`
 - `pyside_chat.utils.Logging.Custom_Logger.CustomLogger`
+- `typing.Dict`
 
 ### `ui\tabs\model_tab.py`
 
@@ -18102,9 +17922,16 @@ Args:
 
 ### `utils\Logging\logging_helpers.py`
 
+- `PySide6.QtCore.QObject`
+- `PySide6.QtCore.QThread`
+- `PySide6.QtCore.Signal`
+- `logging`
 - `pyside_chat.utils.Logging.Custom_Logger.CustomLogger`
-- `typing.Any`
+- `threading`
+- `time`
+- `traceback`
 - `typing.Dict`
+- `typing.List`
 - `typing.Optional`
 
 ### `utils\__init__.py`
@@ -18150,6 +17977,24 @@ Args:
 - `pyside_chat.utils.complexity_analyzer.ComplexityLevel`
 - `pyside_chat.utils.complexity_analyzer.RequestComplexityAnalyzer`
 
+### `utils\error_handler.py`
+
+- `contextlib.contextmanager`
+- `functools`
+- `json`
+- `os`
+- `pyside_chat.utils.Logging.Custom_Logger.CustomLogger`
+- `pyside_chat.utils.Logging.logging_helpers.LoggingHelpers`
+- `requests`
+- `time`
+- `traceback`
+- `typing.Any`
+- `typing.Callable`
+- `typing.Dict`
+- `typing.Optional`
+- `typing.Type`
+- `typing.Union`
+
 ### `utils\internet_connection.py`
 
 - `socket`
@@ -18178,6 +18023,7 @@ Args:
 - `html.escape`
 - `pyside_chat.ui.styles.message_formatter.MessageFormatter`
 - `pyside_chat.utils.Logging.Custom_Logger.CustomLogger`
+- `time`
 - `traceback`
 
 ## 📞 Function Call Analysis
@@ -18200,7 +18046,9 @@ Args:
 - `SettingsDialog`
 - `Worker`
 - `hasattr`
+- `id`
 - `len`
+- `objectName`
 - `str`
 - `update_model`
 - `update_personality`
@@ -18252,7 +18100,8 @@ Args:
 ### `Personalities\personality_model.py`
 
 **Function Calls:**
-- `PersonalityService`
+- `__init__`
+- `super`
 
 ### `Personalities\services\personality_loader.py`
 
@@ -18359,6 +18208,7 @@ Args:
 - `__init__`
 - `join`
 - `len`
+- `print`
 - `str`
 - `strip`
 - `super`
@@ -18382,11 +18232,13 @@ Args:
 - `QAudioOutput`
 - `QMediaPlayer`
 - `QThread`
+- `QTimer`
 - `Signal`
 - `StreamingAudioPlayer`
 - `StreamingAudioWorker`
 - `TTS`
 - `__init__`
+- `__new__`
 - `any`
 - `enumerate`
 - `hasattr`
@@ -18398,11 +18250,11 @@ Args:
 - `min`
 - `open`
 - `print`
-- `range`
 - `set`
 - `setattr`
 - `str`
 - `strftime`
+- `sum`
 - `super`
 
 ### `services\Voice_STT_TTS_SERVICES\voice_process_manager.py`
@@ -18414,12 +18266,16 @@ Args:
 - `VoiceProcessMonitor`
 - `VoiceService`
 - `__init__`
+- `hasattr`
+- `id`
+- `objectName`
 - `str`
 - `super`
 
 ### `services\Voice_STT_TTS_SERVICES\voice_service.py`
 
 **Function Calls:**
+- `Exception`
 - `QTimer`
 - `RecordingService`
 - `STTService`
@@ -18468,49 +18324,44 @@ Args:
 ### `services\memory_service.py`
 
 **Function Calls:**
+- `FileNotFoundError`
 - `LongTermMemoryEntry`
 - `LongTermMemoryService`
-- `MemoryClassifier`
 - `MemoryEntry`
-- `MemoryRetriever`
-- `PronounNormalizer`
 - `SemanticSearchService`
 - `ShortTermMemoryService`
 - `Signal`
 - `__init__`
-- `any`
-- `append`
 - `asdict`
 - `encode`
+- `getattr`
+- `hasattr`
 - `hexdigest`
 - `isinstance`
 - `isoformat`
-- `join`
 - `len`
 - `list`
-- `lower`
-- `max`
 - `min`
-- `next`
 - `open`
 - `set`
-- `split`
-- `strip`
-- `sum`
+- `str`
 - `super`
-- `title`
-- `type`
+- `timedelta`
 
 ### `services\ollama_service.py`
 
 **Function Calls:**
+- `Exception`
 - `Signal`
 - `Thread`
 - `__init__`
 - `get`
 - `insert`
+- `isinstance`
 - `iter`
 - `join`
+- `len`
+- `map`
 - `next`
 - `reversed`
 - `str`
@@ -18532,30 +18383,9 @@ Args:
 - `min`
 - `next`
 - `open`
-- `reshape`
-- `set`
-- `split`
 - `str`
-- `super`
-
-### `services\start_up\check_dependencies.py`
-
-**Function Calls:**
-- `DependencyManager`
-- `any`
-- `getattr`
-- `hasattr`
-- `input`
-- `join`
-- `len`
-- `lower`
-- `main`
-- `print`
-- `split`
-- `str`
-- `strip`
 - `sum`
-- `tqdm`
+- `super`
 
 ### `services\start_up\dependency_checker.py`
 
@@ -18611,6 +18441,9 @@ Args:
 - `Signal`
 - `__init__`
 - `get`
+- `id`
+- `len`
+- `objectName`
 - `str`
 - `super`
 
@@ -18935,50 +18768,6 @@ Args:
 - `super`
 - `test_internet_connection`
 
-### `ui\chat_tab.py`
-
-**Function Calls:**
-- `BarEQWidget`
-- `ChatNavigationWidget`
-- `CircleEQWidget`
-- `CircularGradientEQWidget`
-- `CircularNetEQWidget`
-- `QComboBox`
-- `QDialog`
-- `QGroupBox`
-- `QHBoxLayout`
-- `QLabel`
-- `QProgressBar`
-- `QPushButton`
-- `QScrollArea`
-- `QSlider`
-- `QSplitter`
-- `QTextEdit`
-- `QVBoxLayout`
-- `QWidget`
-- `Signal`
-- `StreamingHandler`
-- `VoiceServiceWrapper`
-- `VoiceSettingsDialog`
-- `__init__`
-- `enumerate`
-- `eventFilter`
-- `hasattr`
-- `int`
-- `isinstance`
-- `len`
-- `list`
-- `max`
-- `min`
-- `mouseMoveEvent`
-- `open`
-- `range`
-- `startswith`
-- `str`
-- `strip`
-- `super`
-- `type`
-
 ### `ui\styles\message_formatter.py`
 
 **Function Calls:**
@@ -19100,14 +18889,18 @@ Args:
 
 **Function Calls:**
 - `QLabel`
+- `QMutex`
+- `QMutexLocker`
 - `QProgressBar`
 - `QPushButton`
+- `QTimer`
 - `QVBoxLayout`
 - `QWidget`
 - `Signal`
 - `VoiceService`
 - `VoiceServiceWrapper`
 - `__init__`
+- `any`
 - `hasattr`
 - `int`
 - `max`
@@ -19135,8 +18928,10 @@ Args:
 - `QVBoxLayout`
 - `QWidget`
 - `__init__`
+- `encode`
 - `enumerate`
 - `hasattr`
+- `hexdigest`
 - `items`
 - `join`
 - `len`
@@ -19222,10 +19017,15 @@ Args:
 ### `utils\Logging\logging_helpers.py`
 
 **Function Calls:**
-- `enumerate`
-- `isinstance`
+- `Signal`
+- `ThreadMonitor`
+- `__init__`
+- `hasattr`
+- `id`
 - `len`
-- `type`
+- `str`
+- `sum`
+- `super`
 
 ### `utils\complexity_analyzer.py`
 
@@ -19264,6 +19064,17 @@ Args:
 - `super`
 - `title`
 
+### `utils\error_handler.py`
+
+**Function Calls:**
+- `func`
+- `hasattr`
+- `isinstance`
+- `open`
+- `range`
+- `str`
+- `type`
+
 ### `utils\internet_connection.py`
 
 **Function Calls:**
@@ -19284,16 +19095,17 @@ Args:
 - `QTimer`
 - `Signal`
 - `__init__`
-- `any`
 - `enumerate`
 - `escape`
 - `join`
 - `len`
+- `objectName`
 - `range`
 - `reversed`
 - `startswith`
 - `strip`
 - `super`
+- `update_func`
 
 
 ### Method Calls
@@ -19318,6 +19130,7 @@ Args:
 - `ollama_service.test_connection`
 - `self._show_initialization_error`
 - `self.event_handler._on_refresh_models`
+- `self.event_handler.cleanup_on_exit`
 - `self.main_window.height`
 - `self.main_window.resize`
 - `self.main_window.width`
@@ -19338,6 +19151,7 @@ Args:
 - `PromptFormatter.format_auto_model_selection_info`
 - `PromptFormatter.format_status_message`
 - `QMessageBox.critical`
+- `QThread.currentThread`
 - `QTimer.singleShot`
 - `about_action.triggered.connect`
 - `analyzer.analyze_complexity`
@@ -19423,6 +19237,7 @@ Args:
 - `self._connect_menu_actions`
 - `self._create_chat_controller`
 - `self._create_worker_thread`
+- `self._final_worker_cleanup`
 - `self._on_new_conversation`
 - `self._on_refresh_models`
 - `self._on_refresh_personalities`
@@ -19431,6 +19246,7 @@ Args:
 - `self._setup_connections`
 - `self._setup_ui_with_new_services`
 - `self._show_ollama_connection_error`
+- `self._start_worker_stream`
 - `self.chat_controller.accumulate_assistant_response`
 - `self.chat_controller.conversation_updated.connect`
 - `self.chat_controller.delete_conversation`
@@ -19461,20 +19277,26 @@ Args:
 - `self.ui_manager.show_about_dialog`
 - `self.ui_manager.show_clear_chat_dialog`
 - `self.ui_manager.update_status`
+- `self.worker.error_signal.connect`
+- `self.worker.error_signal.emit`
 - `self.worker.finished_signal.connect`
+- `self.worker.get_stats`
 - `self.worker.moveToThread`
 - `self.worker.run_stream`
 - `self.worker.stop`
 - `self.worker.stream_chunk_signal.connect`
 - `self.worker.update_message_signal.connect`
 - `self.worker_thread.deleteLater`
+- `self.worker_thread.finished.connect`
 - `self.worker_thread.isRunning`
 - `self.worker_thread.quit`
+- `self.worker_thread.setObjectName`
 - `self.worker_thread.start`
 - `self.worker_thread.started.connect`
 - `self.worker_thread.wait`
 - `settings_action.triggered.connect`
 - `summarization_service.generate_chat_name`
+- `traceback.format_exc`
 
 **`MainApp\ollama_chat.py`:**
 - `CustomLogger.get_logger`
@@ -19498,6 +19320,7 @@ Args:
 - `self.ui_manager.get_chat_tab`
 - `self.ui_manager.setup_menu_bar`
 - `self.ui_manager.setup_ui`
+- `traceback.format_exc`
 - `traceback.print_exc`
 
 **`MainApp\service_manager.py`:**
@@ -19572,35 +19395,11 @@ Args:
 - `title.strip`
 
 **`Personalities\personality_model.py`:**
-- `self.service._initialize_personalities`
-- `self.service.build_comprehensive_system_prompt`
-- `self.service.create_custom_personality`
-- `self.service.delete_custom_personality`
-- `self.service.format_prompt_with_personality`
-- `self.service.get_ai_name`
-- `self.service.get_available_personalities`
-- `self.service.get_current_personality`
-- `self.service.get_custom_personalities`
-- `self.service.get_personalities_by_category`
-- `self.service.get_personality`
-- `self.service.get_personality_categories`
-- `self.service.get_personality_config`
-- `self.service.get_personality_info`
-- `self.service.get_selected_model`
-- `self.service.get_system_personalities`
-- `self.service.get_system_prompt`
-- `self.service.get_user_context_messages`
-- `self.service.is_custom_personality`
-- `self.service.is_system_personality`
-- `self.service.loader.extract_personality_name`
-- `self.service.loader.find_personality_file_by_name`
-- `self.service.loader.find_personality_files`
-- `self.service.loader.save_personality_to_file`
-- `self.service.refresh_personalities`
-- `self.service.search_personalities`
-- `self.service.set_current_personality`
-- `self.service.update_custom_personality`
-- `self.service.update_personality_metadata`
+- `self._initialize_personalities`
+- `self.loader.extract_personality_name`
+- `self.loader.find_personality_file_by_name`
+- `self.loader.find_personality_files`
+- `self.loader.save_personality_to_file`
 
 **`Personalities\services\personality_loader.py`:**
 - `CustomLogger.get_logger`
@@ -19720,7 +19519,7 @@ Args:
 - `CustomLogger.get_logger`
 - `LoggingHelpers.log_conversation_detection`
 - `LoggingHelpers.log_debug`
-- `LoggingHelpers.log_error`
+- `LoggingHelpers.log_exception_with_context`
 - `LoggingHelpers.log_fact_extraction_end`
 - `LoggingHelpers.log_fact_extraction_result`
 - `LoggingHelpers.log_fact_extraction_start`
@@ -19910,8 +19709,6 @@ Args:
 - `logger.debug`
 - `logger.error`
 - `logger.info`
-- `os.path.exists`
-- `os.remove`
 - `platform.system`
 - `self._check_availability`
 - `self._speak_with_espeak`
@@ -19944,6 +19741,7 @@ Args:
 - `audio.astype`
 - `audio_chunk.astype`
 - `cache_dirs.append`
+- `cached_data.get`
 - `config.get`
 - `datetime.datetime.now`
 - `downloaded.add`
@@ -19985,24 +19783,34 @@ Args:
 - `self._get_tts_model_cache_dirs`
 - `self._initialize_service`
 - `self._is_model_fully_downloaded`
-- `self._load_available_voices`
 - `self._load_default_model`
+- `self._loaded_models.clear`
+- `self._loaded_models.keys`
 - `self._model_name_to_folder`
 - `self._play_audio`
 - `self._process_audio_chunk`
 - `self._speak_text_streaming`
 - `self._split_text_into_sentences`
 - `self.audio_chunk_ready.emit`
+- `self.audio_level_buffer.append`
+- `self.audio_level_buffer.pop`
 - `self.audio_level_changed.emit`
+- `self.audio_level_timer.isActive`
+- `self.audio_level_timer.setInterval`
+- `self.audio_level_timer.start`
+- `self.audio_level_timer.stop`
+- `self.audio_level_timer.timeout.connect`
 - `self.audio_output.setVolume`
 - `self.audio_queue.append`
 - `self.audio_queue.pop`
+- `self.clear_model_cache`
 - `self.get_comprehensive_model_list`
 - `self.get_downloaded_models`
 - `self.get_model_config`
 - `self.get_model_download_size`
 - `self.is_available`
 - `self.is_model_downloaded`
+- `self.load_model`
 - `self.media_player.mediaStatusChanged.connect`
 - `self.media_player.play`
 - `self.media_player.setAudioOutput`
@@ -20060,13 +19868,14 @@ Args:
 - `thread.is_alive`
 - `thread.join`
 - `thread.start`
+- `threading.Lock`
 - `threading.Thread`
 - `time.sleep`
-- `time.time`
 
 **`services\Voice_STT_TTS_SERVICES\voice_process_manager.py`:**
 - `CustomLogger.get_logger`
 - `QApplication.instance`
+- `QThread.currentThread`
 - `app.processEvents`
 - `command_queue.get`
 - `logger.debug`
@@ -20081,21 +19890,31 @@ Args:
 - `mp.set_start_method`
 - `response.get`
 - `response_queue.put`
+- `self.command_queue.empty`
+- `self.command_queue.get_nowait`
 - `self.command_queue.put`
 - `self.is_process_running`
+- `self.monitor_error.emit`
+- `self.monitor_thread.deleteLater`
+- `self.monitor_thread.get_stats`
+- `self.monitor_thread.isRunning`
+- `self.monitor_thread.monitor_error.connect`
+- `self.monitor_thread.response_received.connect`
+- `self.monitor_thread.start`
+- `self.monitor_thread.stop`
+- `self.monitor_thread.wait`
 - `self.process_status_changed.emit`
-- `self.process_thread.deleteLater`
-- `self.process_thread.response_received.connect`
-- `self.process_thread.start`
-- `self.process_thread.stop`
-- `self.process_thread.wait`
 - `self.recording_error.emit`
 - `self.recording_started.emit`
 - `self.recording_stopped.emit`
+- `self.response_queue.empty`
 - `self.response_queue.get`
+- `self.response_queue.get_nowait`
 - `self.response_received.emit`
 - `self.send_command`
+- `self.setObjectName`
 - `self.state_updated.emit`
+- `self.stop_voice_process`
 - `self.tts_error.emit`
 - `self.tts_finished.emit`
 - `self.tts_started.emit`
@@ -20109,7 +19928,7 @@ Args:
 - `self.voice_processing_finished.emit`
 - `self.voice_processing_started.emit`
 - `time.sleep`
-- `time.time`
+- `traceback.format_exc`
 - `voice_service.cleanup_on_exit`
 - `voice_service.set_continuous_voice_mode`
 - `voice_service.speak_text`
@@ -20122,6 +19941,10 @@ Args:
 
 **`services\Voice_STT_TTS_SERVICES\voice_service.py`:**
 - `CustomLogger.get_logger`
+- `LoggingHelpers.log_audio_operation`
+- `LoggingHelpers.log_exception_with_context`
+- `LoggingHelpers.log_info_with_context`
+- `LoggingHelpers.log_warning_with_context`
 - `QTimer.singleShot`
 - `audio_files.append`
 - `audio_files.sort`
@@ -20139,6 +19962,13 @@ Args:
 - `os.path.getsize`
 - `os.path.join`
 - `os.remove`
+- `self._cleanup_timer.setSingleShot`
+- `self._cleanup_timer.start`
+- `self._cleanup_timer.timeout.connect`
+- `self._connect_signals`
+- `self._error_reset_timer.setSingleShot`
+- `self._error_reset_timer.timeout.connect`
+- `self._initialize_services`
 - `self.cleanup_all_audio_files`
 - `self.get_audio_folder_path`
 - `self.list_audio_files`
@@ -20276,107 +20106,84 @@ Args:
 
 **`services\memory_service.py`:**
 - `CustomLogger.get_logger`
+- `LoggingHelpers.log_configuration_change`
+- `LoggingHelpers.log_exception_with_context`
+- `LoggingHelpers.log_file_operation`
+- `LoggingHelpers.log_info_with_context`
+- `LoggingHelpers.log_memory_operation`
+- `LoggingHelpers.log_service_initialization`
+- `LoggingHelpers.log_warning_with_context`
+- `MemoryClassifier.classify_message`
 - `MemoryRetriever.calculate_relevance`
+- `MemoryRetriever.get_relevant_memories`
 - `PronounNormalizer.FIRST_PERSON_CONTRACTIONS.items`
-- `PronounNormalizer.FIRST_PERSON_CONTRACTIONS.keys`
 - `PronounNormalizer.FIRST_PERSON_PRONOUNS.items`
-- `PronounNormalizer.FIRST_PERSON_PRONOUNS.keys`
-- `classification.get`
-- `cleaned_entries.append`
-- `content.lower`
-- `content.strip`
-- `context.append`
-- `context.extend`
-- `contraction.startswith`
-- `current_query.strip`
+- `PronounNormalizer.normalize_pronouns`
+- `PronounNormalizer.should_normalize`
+- `context_messages.append`
+- `context_messages.extend`
 - `datetime.fromisoformat`
 - `datetime.now`
-- `e.value.lower`
-- `entries.sort`
-- `entries_by_key.items`
-- `fact.key.replace`
-- `fact.key.startswith`
-- `facts.items`
-- `filtered_stm.append`
+- `entry_keywords.update`
 - `hashlib.md5`
-- `item.lower`
 - `json.dump`
 - `json.load`
-- `key.strip`
-- `key_points.append`
-- `location.lower`
-- `logger.debug`
-- `logger.error`
-- `logger.warning`
-- `match.group`
-- `memory.content.lower`
-- `memory_types.get`
+- `memory_entries.append`
+- `memory_entry.key.lower`
+- `memory_entry.summary.lower`
+- `memory_entry.value.lower`
 - `message.get`
 - `message.lower`
+- `metadata.get`
 - `msg.get`
 - `os.makedirs`
+- `os.path.dirname`
 - `os.path.exists`
-- `os.path.join`
-- `pattern.sub`
-- `potential_name.lower`
 - `query.lower`
 - `query_words.intersection`
-- `re.compile`
+- `query_words.union`
 - `re.escape`
 - `re.findall`
-- `re.search`
 - `re.sub`
 - `relevant_memories.append`
-- `replacement.replace`
-- `results.append`
-- `scored_memories.append`
-- `scored_memories.sort`
+- `relevant_memories.sort`
 - `self._load`
 - `self._load_memory`
 - `self._save`
-- `self._save_memory`
-- `self._verify_memory_files_cleared`
-- `self.add_fact`
 - `self.add_summary`
-- `self.classifier.classify_message`
-- `self.cleanup_memory_entries`
 - `self.clear_memory`
 - `self.entries.append`
 - `self.entries.copy`
-- `self.extract_facts_from_message`
-- `self.get_user_name`
+- `self.get_relevant_memories`
+- `self.get_user_info`
 - `self.intelligent_add_message`
-- `self.ltm._save`
-- `self.ltm.add_entry`
-- `self.ltm.get_entries`
-- `self.ltm.update_access_stats`
-- `self.memories.append`
-- `self.memory_updated.emit`
+- `self.ltm_service._save`
+- `self.ltm_service.add_entry`
+- `self.ltm_service.get_entries`
+- `self.ltm_service.update_access_stats`
 - `self.messages.append`
 - `self.messages.copy`
-- `self.pronoun_normalizer.normalize_pronouns`
-- `self.pronoun_normalizer.should_normalize`
-- `self.retriever.get_relevant_memories`
-- `self.semantic_search.add_memory`
-- `self.semantic_search.clear_all`
-- `self.semantic_search.embeddings_updated.connect`
-- `self.semantic_search.get_memory_stats`
-- `self.semantic_search.is_ready`
-- `self.semantic_search.remove_memory`
-- `self.semantic_search.search_hybrid`
-- `self.stm._save`
-- `self.stm.add_message`
-- `self.stm.clear`
-- `self.stm.get_messages`
+- `self.semantic_search.search_semantic`
+- `self.semantic_search.update_embeddings`
+- `self.stm_service.add_message`
+- `self.stm_service.clear`
+- `self.stm_service.get_messages`
 - `self.summary_updated.emit`
-- `tag.lower`
 - `text.lower`
-- `valid_names.sort`
-- `value.strip`
+- `type_counts.get`
+- `user_info.get`
 - `words.intersection`
+- `x.metadata.get`
 
 **`services\ollama_service.py`:**
 - `CustomLogger.get_logger`
+- `LoggingHelpers.log_debug`
+- `LoggingHelpers.log_exception_with_context`
+- `LoggingHelpers.log_info_with_context`
+- `LoggingHelpers.log_network_request`
+- `LoggingHelpers.log_performance_metric`
+- `LoggingHelpers.log_service_initialization`
+- `LoggingHelpers.log_thread_operation`
 - `base_url.rstrip`
 - `chunk.get`
 - `commands.append`
@@ -20387,8 +20194,8 @@ Args:
 - `logger.debug`
 - `logger.info`
 - `m.get`
-- `message.get`
 - `model_name.strip`
+- `msg.get`
 - `process.stdout.close`
 - `process.terminate`
 - `process.wait`
@@ -20397,8 +20204,6 @@ Args:
 - `response.iter_lines`
 - `response.json`
 - `response.raise_for_status`
-- `result.stderr.strip`
-- `result.stdout.strip`
 - `self._build_session_commands`
 - `self._extract_system_prompt`
 - `self.model_list_updated.emit`
@@ -20406,26 +20211,24 @@ Args:
 - `self.model_operation_finished.emit`
 - `self.model_operation_progress.emit`
 - `self.model_operation_started.emit`
-- `session_variables.get`
+- `self.test_connection`
+- `session_variables.items`
 - `subprocess.Popen`
-- `subprocess.run`
 - `thread.start`
+- `time.time`
 
 **`services\semantic_search_service.py`:**
 - `CustomLogger.get_logger`
-- `content_words.union`
-- `data.get`
+- `combined_scores.items`
 - `datetime.now`
 - `embeddings_data.items`
-- `hybrid_scores.append`
-- `hybrid_scores.sort`
 - `json.dump`
 - `json.load`
+- `keyword_results.append`
 - `logger.debug`
 - `logger.error`
 - `logger.info`
 - `logger.warning`
-- `memory_types.get`
 - `meta.get`
 - `os.makedirs`
 - `os.path.exists`
@@ -20434,7 +20237,8 @@ Args:
 - `pickle.dump`
 - `pickle.load`
 - `query.lower`
-- `query_words.intersection`
+- `query_lower.split`
+- `results.sort`
 - `self._init_model`
 - `self._load_embeddings`
 - `self._save_embeddings`
@@ -20442,43 +20246,14 @@ Args:
 - `self.model.encode`
 - `self.mutex.lock`
 - `self.mutex.unlock`
+- `self.search_semantic`
 - `self.vectorized_memories.append`
 - `self.vectorized_memories.clear`
 - `self.vectorized_memories.remove`
 - `similarities.append`
 - `similarities.sort`
-- `tag.lower`
-- `tag_words.update`
+- `traceback.format_exc`
 - `vm.content.lower`
-- `vm.embedding.reshape`
-
-**`services\start_up\check_dependencies.py`:**
-- `command.split`
-- `e.stderr.strip`
-- `expected_versions.items`
-- `fix_steps.append`
-- `importlib.import_module`
-- `line.split`
-- `line.strip`
-- `manager.execute_fix_plan`
-- `manager.generate_fix_plan`
-- `manager.run_comprehensive_check`
-- `manager2.run_comprehensive_check`
-- `missing_packages.append`
-- `module_with_version.split`
-- `pbar.set_description`
-- `result.stdout.strip`
-- `self.broken_imports.append`
-- `self.check_core_dependencies`
-- `self.check_ml_dependencies`
-- `self.check_package_versions`
-- `self.generate_fix_plan`
-- `self.run_pip_command`
-- `self.test_import`
-- `self.version_conflicts.append`
-- `self.working_imports.append`
-- `subprocess.run`
-- `time.sleep`
 
 **`services\start_up\dependency_checker.py`:**
 - `checker.get_dependency_summary`
@@ -20559,14 +20334,25 @@ Args:
 - `self.summarization_failed.emit`
 
 **`services\worker\worker.py`:**
+- `CustomLogger.get_logger`
+- `QThread.currentThread`
 - `chunk.get`
+- `current_thread.objectName`
 - `json.loads`
+- `logger.debug`
+- `logger.error`
+- `logger.warning`
 - `requests.post`
 - `response.iter_lines`
 - `response.raise_for_status`
+- `self._log_thread_info`
+- `self.error_signal.emit`
 - `self.finished_signal.emit`
 - `self.stream_chunk_signal.emit`
 - `self.update_message_signal.emit`
+- `time.sleep`
+- `time.time`
+- `traceback.format_exc`
 
 **`ui\Audio_visualisers\eq_orchestrator.py`:**
 - `AUDIO_PRESETS.items`
@@ -21753,278 +21539,9 @@ Args:
 - `tts_layout.addWidget`
 - `voice_layout.addWidget`
 
-**`ui\chat_tab.py`:**
-- `ConversationMetadata.from_file`
-- `CustomLogger.get_logger`
-- `MessageFormatter.to_plain_text`
-- `QApplication.processEvents`
-- `QFileDialog.getOpenFileName`
-- `QFileDialog.getSaveFileName`
-- `QMessageBox.critical`
-- `QMessageBox.warning`
-- `audio_level_layout.addWidget`
-- `audio_level_layout.setContentsMargins`
-- `bar_values.append`
-- `block.text`
-- `block_text.strip`
-- `button_layout.addWidget`
-- `button_pos.setX`
-- `button_pos.setY`
-- `button_pos.x`
-- `button_pos.y`
-- `cancel_button.clicked.connect`
-- `cancel_button.setStyleSheet`
-- `chat_layout.addWidget`
-- `chat_layout.setContentsMargins`
-- `chat_splitter.setSizes`
-- `controls_layout.addWidget`
-- `controls_layout.setContentsMargins`
-- `current_parent.parent`
-- `cursor.block`
-- `cursor.insertText`
-- `dialog.accept`
-- `dialog.exec`
-- `dialog.get_settings`
-- `dialog.setMinimumSize`
-- `dialog.setModal`
-- `dialog.setStyleSheet`
-- `dialog.setWindowTitle`
-- `dialog.set_settings`
-- `dialog.settings_changed.connect`
-- `event.key`
-- `event.modifiers`
-- `event.pos`
-- `event.type`
-- `json.dump`
-- `json.load`
-- `layout.addLayout`
-- `layout.addWidget`
-- `layout.setContentsMargins`
-- `logger.debug`
-- `logger.error`
-- `logger.warning`
-- `main_splitter.addWidget`
-- `main_splitter.setSizes`
-- `message.get`
-- `message.startswith`
-- `model_layout.addWidget`
-- `msg.get`
-- `new_content.strip`
-- `parent.addWidget`
-- `personality_layout.addWidget`
-- `random.random`
-- `save_button.clicked.connect`
-- `scroll_area.setHorizontalScrollBarPolicy`
-- `scroll_area.setVerticalScrollBarPolicy`
-- `scroll_area.setWidget`
-- `scroll_area.setWidgetResizable`
-- `scroll_area.takeWidget`
-- `scroll_area.update`
-- `scroll_area.updateGeometry`
-- `scroll_area.widget`
-- `self.append_to_chat`
-- `self.audio_level_label.setAlignment`
-- `self.audio_level_label.setStyleSheet`
-- `self.audio_level_label.setText`
-- `self.audio_level_label.setToolTip`
-- `self.audio_level_meter.setRange`
-- `self.audio_level_meter.setStyleSheet`
-- `self.audio_level_meter.setValue`
-- `self.audio_level_widget.hide`
-- `self.audio_level_widget.setVisible`
-- `self.audio_level_widget.show`
-- `self.cancel_button.clicked.connect`
-- `self.cancel_button.isVisible`
-- `self.cancel_button.setStyleSheet`
-- `self.cancel_button.setVisible`
-- `self.cancel_button.update`
-- `self.chat_display.clear`
-- `self.chat_display.cursorForPosition`
-- `self.chat_display.hide`
-- `self.chat_display.isVisible`
-- `self.chat_display.mapFromGlobal`
-- `self.chat_display.parent`
-- `self.chat_display.setEnabled`
-- `self.chat_display.setLineWrapMode`
-- `self.chat_display.setMouseTracking`
-- `self.chat_display.setReadOnly`
-- `self.chat_display.setStyleSheet`
-- `self.chat_display.setVisible`
-- `self.chat_display.show`
-- `self.chat_display.update`
-- `self.chat_display.updateGeometry`
-- `self.clear_chat`
-- `self.config_manager.get_voice_settings`
-- `self.current_eq_widget.hide`
-- `self.current_eq_widget.isVisible`
-- `self.current_eq_widget.parent`
-- `self.current_eq_widget.set_eq_bars`
-- `self.current_eq_widget.show`
-- `self.current_eq_widget.start_animation`
-- `self.current_eq_widget.stop_animation`
-- `self.current_eq_widget.update`
-- `self.current_eq_widget.updateGeometry`
-- `self.edit_button_widget.clicked.connect`
-- `self.edit_button_widget.deleteLater`
-- `self.edit_button_widget.hide`
-- `self.edit_button_widget.move`
-- `self.edit_button_widget.setFixedSize`
-- `self.edit_button_widget.setStyleSheet`
-- `self.edit_button_widget.show`
-- `self.edit_message_at_index`
-- `self.enforce_voice_mode_ui`
-- `self.eq_widgets.keys`
-- `self.get_ai_name`
-- `self.get_current_personality`
-- `self.hide_edit_button`
-- `self.input_layout.addWidget`
-- `self.input_layout.indexOf`
-- `self.input_layout.insertWidget`
-- `self.input_layout.removeWidget`
-- `self.input_layout.setContentsMargins`
-- `self.input_layout.update`
-- `self.is_eq_visualizer_active`
-- `self.load_conversation`
-- `self.mapToGlobal`
-- `self.message_cancelled.emit`
-- `self.message_edited.emit`
-- `self.message_input.clear`
-- `self.message_input.hide`
-- `self.message_input.installEventFilter`
-- `self.message_input.setMaximumHeight`
-- `self.message_input.setPlaceholderText`
-- `self.message_input.setStyleSheet`
-- `self.message_input.setVisible`
-- `self.message_input.show`
-- `self.message_input.textCursor`
-- `self.message_input.toPlainText`
-- `self.message_sent.emit`
-- `self.mode_combo.addItems`
-- `self.mode_combo.currentTextChanged.connect`
-- `self.mode_combo.setCurrentText`
-- `self.mode_combo.setMinimumWidth`
-- `self.mode_combo.setStyleSheet`
-- `self.mode_combo.setToolTip`
-- `self.model_combo.addItems`
-- `self.model_combo.clear`
-- `self.model_combo.count`
-- `self.model_combo.currentText`
-- `self.model_combo.currentTextChanged.connect`
-- `self.model_combo.itemText`
-- `self.model_combo.setCurrentIndex`
-- `self.model_combo.setCurrentText`
-- `self.navigation_widget.conversation_deleted.connect`
-- `self.navigation_widget.conversation_renamed.connect`
-- `self.navigation_widget.conversation_selected.connect`
-- `self.navigation_widget.new_conversation_requested.connect`
-- `self.navigation_widget.refresh_conversations`
-- `self.navigation_widget.setMaximumWidth`
-- `self.navigation_widget.setMinimumWidth`
-- `self.navigation_widget.set_current_conversation`
-- `self.on_personality_changed`
-- `self.personality_combo.addItems`
-- `self.personality_combo.clear`
-- `self.personality_combo.count`
-- `self.personality_combo.currentText`
-- `self.personality_combo.currentTextChanged.connect`
-- `self.personality_combo.itemText`
-- `self.personality_combo.setCurrentIndex`
-- `self.personality_combo.setCurrentText`
-- `self.refresh_navigation`
-- `self.save_message_edit`
-- `self.send_button.clicked.connect`
-- `self.send_button.hide`
-- `self.send_button.isEnabled`
-- `self.send_button.setEnabled`
-- `self.send_button.setStyleSheet`
-- `self.send_button.setVisible`
-- `self.send_button.show`
-- `self.send_button.update`
-- `self.send_message`
-- `self.setStyleSheet`
-- `self.set_current_conversation_file`
-- `self.set_input_mode`
-- `self.setup_chat_display`
-- `self.setup_connections`
-- `self.setup_controls`
-- `self.setup_eq_visualizers`
-- `self.setup_streaming_handler`
-- `self.setup_ui`
-- `self.show_edit_button`
-- `self.show_message_edit_dialog`
-- `self.start_streaming`
-- `self.stop_streaming`
-- `self.streaming_handler.append_message`
-- `self.streaming_handler.clear_chat`
-- `self.streaming_handler.edit_message`
-- `self.streaming_handler.finalize_streaming_message`
-- `self.streaming_handler.get_messages`
-- `self.streaming_handler.message_edited.connect`
-- `self.streaming_handler.remove_streaming_placeholder`
-- `self.streaming_handler.start_streaming_message`
-- `self.streaming_handler.update_last_system_switch`
-- `self.streaming_handler.update_streaming_message`
-- `self.switch_to_chat_display`
-- `self.switch_to_eq_visualizer`
-- `self.temperature_label.setAlignment`
-- `self.temperature_label.setStyleSheet`
-- `self.temperature_slider.setRange`
-- `self.temperature_slider.setStyleSheet`
-- `self.temperature_slider.setValue`
-- `self.temperature_slider.valueChanged.connect`
-- `self.tts_service.load_model`
-- `self.tts_service.set_voice`
-- `self.update`
-- `self.update_eq_visualizer`
-- `self.update_eq_visualizer_mode`
-- `self.voice_button.clicked.connect`
-- `self.voice_button.hide`
-- `self.voice_button.setEnabled`
-- `self.voice_button.setStyleSheet`
-- `self.voice_button.setText`
-- `self.voice_button.setToolTip`
-- `self.voice_button.show`
-- `self.voice_service.audio_level_changed.connect`
-- `self.voice_service.get_silence_duration`
-- `self.voice_service.get_silence_threshold`
-- `self.voice_service.is_continuous_voice_mode`
-- `self.voice_service.recording_error.connect`
-- `self.voice_service.recording_service.audio_level_changed.connect`
-- `self.voice_service.recording_service.audio_level_to_db`
-- `self.voice_service.recording_started.connect`
-- `self.voice_service.recording_stopped.connect`
-- `self.voice_service.set_continuous_voice_mode`
-- `self.voice_service.speak_text`
-- `self.voice_service.start_voice_input`
-- `self.voice_service.stop_voice_input`
-- `self.voice_service.tts_error.connect`
-- `self.voice_service.tts_finished.connect`
-- `self.voice_service.tts_started.connect`
-- `self.voice_service.update_settings`
-- `self.voice_service.voice_input_error.connect`
-- `self.voice_service.voice_input_received.connect`
-- `self.voice_service.voice_processing_finished.connect`
-- `self.voice_service.voice_processing_started.connect`
-- `self.voice_settings.get`
-- `self.voice_settings.update`
-- `self.voice_settings_button.clicked.connect`
-- `self.voice_settings_button.hide`
-- `self.voice_settings_button.setFixedSize`
-- `self.voice_settings_button.setStyleSheet`
-- `self.voice_settings_button.setToolTip`
-- `self.voice_settings_button.show`
-- `settings.get`
-- `settings_layout.addWidget`
-- `settings_layout.setContentsMargins`
-- `temperature_layout.addWidget`
-- `text_edit.setMaximumHeight`
-- `text_edit.setPlainText`
-- `text_edit.toPlainText`
-- `time.time`
-- `traceback.format_exc`
-
 **`ui\styles\message_formatter.py`:**
 - `CustomLogger.get_logger`
+- `MessageFormatter._protect_code_blocks`
 - `MessageFormatter.cleanup_message`
 - `MessageFormatter.detect_and_format_code`
 - `MessageFormatter.detect_code_type`
@@ -22138,6 +21655,7 @@ Args:
 - `layout.setContentsMargins`
 - `logger.debug`
 - `logger.error`
+- `logger.info`
 - `logger.warning`
 - `main_splitter.addWidget`
 - `main_splitter.setSizes`
@@ -22349,13 +21867,27 @@ Args:
 - `logger.error`
 - `logger.info`
 - `logger.warning`
+- `self._crash_recovery_timer.setSingleShot`
+- `self._crash_recovery_timer.start`
+- `self._crash_recovery_timer.timeout.connect`
+- `self._disable_voice_features`
+- `self._error_reset_timer.setSingleShot`
+- `self._error_reset_timer.start`
+- `self._error_reset_timer.timeout.connect`
 - `self._handle_recording_error_safe`
+- `self._handle_service_error`
+- `self._handle_tts_error_safe`
 - `self._handle_tts_finished_continuous`
 - `self._handle_voice_input_error_safe`
 - `self._handle_voice_input_safe`
+- `self._reinitialize_voice_service`
 - `self._reset_voice_button`
+- `self._reset_voice_ui`
 - `self._start_continuous_voice_mode`
+- `self._stop_all_voice_operations`
 - `self._update_audio_level_ui_safe`
+- `self._update_voice_state`
+- `self._voice_state.values`
 - `self.audio_level_changed.emit`
 - `self.audio_level_label.setAlignment`
 - `self.audio_level_label.setStyleSheet`
@@ -22440,6 +21972,7 @@ Args:
 - `details_layout.addWidget`
 - `filter_layout.addStretch`
 - `filter_layout.addWidget`
+- `hashlib.md5`
 - `item.setData`
 - `layout.addLayout`
 - `layout.addStretch`
@@ -22485,11 +22018,11 @@ Args:
 - `self.memory_service.clear_memory`
 - `self.memory_service.delete_memory`
 - `self.memory_service.get_memory_stats`
-- `self.memory_service.ltm.get_entries`
+- `self.memory_service.ltm_service.get_entries`
 - `self.memory_service.memory_updated.connect`
 - `self.memory_service.search_memories`
 - `self.memory_service.set_max_context_messages`
-- `self.memory_service.stm.get_messages`
+- `self.memory_service.stm_service.get_messages`
 - `self.memory_service.summarize_conversation`
 - `self.memory_service.summary_updated.connect`
 - `self.memory_type_filter.addItems`
@@ -22744,10 +22277,36 @@ Args:
 
 **`utils\Logging\logging_helpers.py`:**
 - `CustomLogger.get_logger`
-- `facts.items`
+- `QThread.currentThread`
+- `current_thread.objectName`
+- `get_thread_monitor._instance.cleanup`
+- `logger.critical`
 - `logger.debug`
-- `message.strip`
-- `msg.get`
+- `logger.error`
+- `logger.info`
+- `logger.warning`
+- `self._on_thread_finished`
+- `self._on_thread_started`
+- `self.active_threads.clear`
+- `self.active_threads.copy`
+- `self.active_threads.get`
+- `self.active_threads.values`
+- `self.get_thread_stats`
+- `self.thread_finished.emit`
+- `self.thread_history.append`
+- `self.thread_history.clear`
+- `self.thread_history.copy`
+- `self.thread_started.emit`
+- `target_thread.objectName`
+- `thread.finished.connect`
+- `thread.isRunning`
+- `thread.objectName`
+- `thread.priority`
+- `thread.stackSize`
+- `thread.started.connect`
+- `time.time`
+- `traceback.format_exc`
+- `type_counts.get`
 
 **`utils\complexity_analyzer.py`:**
 - `domains.values`
@@ -22824,6 +22383,30 @@ Args:
 - `widget.palette`
 - `widget.setPalette`
 
+**`utils\error_handler.py`:**
+- `CustomLogger.get_logger`
+- `LoggingHelpers.log_audio_operation`
+- `LoggingHelpers.log_critical_error`
+- `LoggingHelpers.log_exception_with_context`
+- `LoggingHelpers.log_file_operation`
+- `LoggingHelpers.log_json_parsing_error`
+- `LoggingHelpers.log_memory_operation`
+- `LoggingHelpers.log_network_request`
+- `LoggingHelpers.log_performance_metric`
+- `LoggingHelpers.log_ui_operation`
+- `LoggingHelpers.log_warning_with_context`
+- `f.read`
+- `f.write`
+- `functools.wraps`
+- `json.loads`
+- `os.makedirs`
+- `os.path.dirname`
+- `requests.request`
+- `resource.cleanup`
+- `resource.close`
+- `time.sleep`
+- `time.time`
+
 **`utils\internet_connection.py`:**
 - `failed_tests.append`
 - `self.test_http_connection`
@@ -22850,24 +22433,21 @@ Args:
 - `MessageFormatter.syntax_highlight_code`
 - `QThread.currentThread`
 - `QTimer.singleShot`
+- `current_thread.objectName`
 - `editable.append`
 - `logger.debug`
 - `logger.error`
+- `main_thread.objectName`
 - `msg.get`
-- `self._flush_stream_buffer`
 - `self._get_next_message_id`
-- `self._stream_timer.isActive`
+- `self._safe_ui_update`
 - `self._stream_timer.setInterval`
-- `self._stream_timer.start`
-- `self._stream_timer.stop`
 - `self._stream_timer.timeout.connect`
 - `self.chat_display.clear`
 - `self.chat_display.ensureCursorVisible`
 - `self.chat_display.insertHtml`
 - `self.chat_display.thread`
 - `self.chat_display.update`
-- `self.edit_message`
-- `self.get_message_by_id`
 - `self.message_edited.emit`
 - `self.messages.append`
 - `self.messages.clear`
@@ -22892,22 +22472,21 @@ Args:
 - `models/`: 2 classes
 - `services/`: 14 classes
 - `services\Voice_STT_TTS_SERVICES/`: 10 classes
-- `services\start_up/`: 3 classes
+- `services\start_up/`: 2 classes
 - `services\worker/`: 1 classes
-- `ui/`: 1 classes
 - `ui\Audio_visualisers/`: 6 classes
 - `ui\Audio_visualisers\eq_widgets/`: 4 classes
 - `ui\Widgets/`: 9 classes
 - `ui\styles/`: 2 classes
 - `ui\tabs/`: 3 classes
 - `ui\tabs\chat_tab/`: 5 classes
-- `utils/`: 8 classes
-- `utils\Logging/`: 5 classes
+- `utils/`: 9 classes
+- `utils\Logging/`: 7 classes
 
 ### Functions by Directory
 
-- `MainApp/`: 87 functions
-- `Personalities/`: 33 functions
+- `MainApp/`: 92 functions
+- `Personalities/`: 9 functions
 - `Personalities\models/`: 8 functions
 - `Personalities\services/`: 41 functions
 - `Personalities\utils/`: 7 functions
@@ -22915,22 +22494,21 @@ Args:
 - `controllers/`: 23 functions
 - `models/`: 26 functions
 - `services/`: 85 functions
-- `services\Voice_STT_TTS_SERVICES/`: 171 functions
-- `services\start_up/`: 34 functions
-- `services\worker/`: 5 functions
-- `ui/`: 65 functions
+- `services\Voice_STT_TTS_SERVICES/`: 181 functions
+- `services\start_up/`: 24 functions
+- `services\worker/`: 7 functions
 - `ui\Audio_visualisers/`: 55 functions
 - `ui\Audio_visualisers\eq_widgets/`: 37 functions
 - `ui\Widgets/`: 111 functions
-- `ui\styles/`: 13 functions
+- `ui\styles/`: 14 functions
 - `ui\tabs/`: 62 functions
-- `ui\tabs\chat_tab/`: 130 functions
-- `utils/`: 61 functions
-- `utils\Logging/`: 35 functions
+- `ui\tabs\chat_tab/`: 141 functions
+- `utils/`: 81 functions
+- `utils\Logging/`: 60 functions
 
 ### Call Statistics
 
-- **Total Function Calls:** 865
-- **Total Method Calls:** 3457
-- **Files with Function Calls:** 62
-- **Files with Method Calls:** 60
+- **Total Function Calls:** 835
+- **Total Method Calls:** 3227
+- **Files with Function Calls:** 61
+- **Files with Method Calls:** 59

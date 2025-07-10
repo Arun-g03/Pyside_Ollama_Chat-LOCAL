@@ -8,7 +8,7 @@ from typing import Dict, Optional
 from PySide6.QtCore import QObject, Signal, Qt, QTimer, QMutex, QMutexLocker
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QProgressBar, QMessageBox
 
-from pyside_chat.utils.Logging.Custom_Logger import CustomLogger
+from pyside_chat.core.logging.logger import CustomLogger
 
 logger = CustomLogger.get_logger(__name__)
 
@@ -55,14 +55,14 @@ class VoiceControls(QObject):
         # Initialize voice service with error handling
         self.voice_service = None
         try:
-            from pyside_chat.services.Voice_STT_TTS_SERVICES.voice_service_wrapper import VoiceServiceWrapper
+            from pyside_chat.features.voice.voice_service_wrapper import VoiceServiceWrapper
             self.voice_service = VoiceServiceWrapper(use_separate_process=True)
             logger.info("Voice service wrapper initialized successfully")
         except Exception as e:
             logger.error(f"Failed to initialize voice service wrapper: {e}")
             try:
                 # Fallback to direct service
-                from pyside_chat.services.Voice_STT_TTS_SERVICES.voice_service import VoiceService
+                from pyside_chat.features.voice.voice_service import VoiceService
                 self.voice_service = VoiceService()
                 logger.info("Voice service initialized with direct service (fallback)")
             except Exception as e2:

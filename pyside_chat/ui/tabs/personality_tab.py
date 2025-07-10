@@ -8,9 +8,11 @@ from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                                QFormLayout, QGroupBox, QCheckBox, QSpinBox,
                                QMessageBox, QListWidget, QSplitter, QTabWidget)
 from PySide6.QtCore import Signal, Qt
-from pyside_chat.Personalities.personality_model import PersonalityModel, PersonalityTraits, PersonalityPrompt, PersonalityConfig, PersonalityMetadata
+from pyside_chat.features.personality.models.personality_model import PersonalityModel
+from pyside_chat.features.personality.models.personality_types import PersonalityTraits, PersonalityPrompt, PersonalityConfig, PersonalityMetadata
 from datetime import datetime
-from pyside_chat.utils.Logging.Custom_Logger import CustomLogger
+from pyside_chat.core.logging.logger import CustomLogger
+import traceback
 
 logger = CustomLogger.get_logger(__name__)
 
@@ -595,7 +597,8 @@ class PersonalityTab(QWidget):
             for personality in system_personalities:
                 self.system_personalities_list.addItem(personality)
         except Exception as e:
-            logger.debug(f"[ID:0220] Failed to update system personalities list: {e}",print_to_terminal=True)
+            logger.debug(f"[ID:0097] Failed to update system personalities list: {e}",print_to_terminal=True)
+            logger.debug(traceback.format_exc(), print_to_terminal=True)
     
     def update_custom_personalities_list(self):
         """Update the custom personalities list"""
@@ -606,7 +609,7 @@ class PersonalityTab(QWidget):
             for personality in custom_personalities:
                 self.custom_personalities_list.addItem(personality)
         except Exception as e:
-            logger.debug(f"[ID:0219] Failed to update custom personalities list: {e}",print_to_terminal=True)
+            logger.debug(f"[ID:0096] Failed to update custom personalities list: {e}",print_to_terminal=True)
     
     def on_system_personality_selected(self, item):
         """Handle system personality selection"""
@@ -690,7 +693,7 @@ class PersonalityTab(QWidget):
                 return
             
             # Create personality objects
-            from pyside_chat.Personalities.personality_model import PersonalityTraits, PersonalityPrompt, PersonalityConfig, PersonalityMetadata
+            from pyside_chat.features.personality.models.personality_model import PersonalityTraits, PersonalityPrompt, PersonalityConfig, PersonalityMetadata
             
             traits = PersonalityTraits(
                 description=description,
@@ -818,5 +821,5 @@ class PersonalityTab(QWidget):
         try:
             return self.personality_model.get_available_personalities()
         except Exception as e:
-            logger.debug(f"[ID:0218] Error getting available personalities: {e}",print_to_terminal=True)
+            logger.debug(f"[ID:0095] Error getting available personalities: {e}",print_to_terminal=True)
             return [] 
