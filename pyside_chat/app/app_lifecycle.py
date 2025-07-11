@@ -11,6 +11,7 @@ from typing import Optional
 from pyside_chat.core.logging.logger import CustomLogger
 from pyside_chat.core.logging.helpers import LoggingHelpers
 from pyside_chat.core.utils.prompts import PromptFormatter
+import traceback
 
 logger = CustomLogger.get_logger(__name__)
 
@@ -33,6 +34,7 @@ class AppLifecycleManager:
         self.ollama_crash_detection_timer = QTimer()
         self.ollama_crash_detection_timer.timeout.connect(self._check_ollama_crash)
         self.ollama_crash_detection_timer.start(5000)  # Check every 5 seconds
+        logger.info("[ID:0256B] Started Ollama crash detection timer (every 5 seconds)")
         self.ollama_restart_attempts = 0
         self.max_restart_attempts = 3
         
@@ -416,17 +418,33 @@ class AppLifecycleManager:
     def _check_ollama_crash(self):
         """Check if Ollama has crashed and restart if needed"""
         try:
+            logger.debug("[ID:0256C] Ollama crash detection check called")
+            
             # Only check if we started Ollama ourselves
             if not self.ollama_process:
+                logger.debug("[ID:0256A] No Ollama process to monitor")
                 return
             
             # Check if the process is still alive
-            if self.ollama_process.poll() is not None:
-                logger.warning(f"[ID:0257] Ollama process crashed (PID: {self.ollama_process.pid})")
+            process_status = self.ollama_process.poll()
+            if process_status is not None:
+                logger.warning(f"[ID:0257] Ollama process crashed (PID: {self.ollama_process.pid}, Exit code: {process_status})")
+                
+                # Try to get any output from the crashed process
+                try:
+                    if self.ollama_process.stdout:
+                        output = self.ollama_process.stdout.read()
+                        if output:
+                            logger.error(f"[ID:0257A] Ollama process output before crash: {output}")
+                except Exception as e:
+                    logger.debug(f"[ID:0257B] Could not read Ollama process output: {e}")
                 
                 # Check if we can still connect to Ollama
-                if not self.check_ollama_connection():
-                    logger.error("[ID:0258] Ollama connection lost, attempting restart")
+                connection_ok = self.check_ollama_connection()
+                logger.info(f"[ID:0258] Ollama connection check result: {connection_ok}")
+                
+                if not connection_ok:
+                    logger.error("[ID:0258A] Ollama connection lost, attempting restart")
                     
                     if self.ollama_restart_attempts < self.max_restart_attempts:
                         self.ollama_restart_attempts += 1
@@ -434,6 +452,9 @@ class AppLifecycleManager:
                         
                         # Stop the crashed process
                         self._stop_ollama_process()
+                        
+                        # Wait a moment before restarting
+                        time.sleep(2)
                         
                         # Restart Ollama
                         if self._start_ollama_background():
@@ -444,9 +465,12 @@ class AppLifecycleManager:
                     else:
                         logger.error(f"[ID:0262] Maximum restart attempts ({self.max_restart_attempts}) reached, stopping auto-restart")
                         self.show_ollama_connection_error("crash", force_show=True)
-                        
+                else:
+                    logger.info("[ID:0258B] Ollama connection is still working despite process crash")
+                    
         except Exception as e:
             logger.error(f"[ID:0263] Error in Ollama crash detection: {e}")
+            logger.error(f"[ID:0263A] Crash detection traceback: {traceback.format_exc()}")
     
     def _reset_ollama_restart_attempts(self):
         """Reset the restart attempts counter (called on successful connection)"""

@@ -482,20 +482,26 @@ class ChatTab(QWidget):
         
         logger.debug("TTS finished in chat tab")
         
-        # Always restore chat display to ensure messages are visible
-        try:
-            self.eq_visualizer.switch_to_chat_display(self.chat_display.chat_display)
-            logger.debug("Successfully restored chat display after TTS finished")
-        except Exception as e:
-            logger.error(f"Error switching to chat display: {e}")
-            # Force show chat display even if EQ visualizer fails
+        # Only restore chat display if not in voice mode with EQ visualizer active
+        if not (self.voice_mode and 
+                self.eq_visualizer.get_eq_mode() != "None" and 
+                self.eq_visualizer.current_eq_widget and 
+                self.eq_visualizer.current_eq_widget.isVisible()):
             try:
-                self.chat_display.chat_display.show()
-                self.chat_display.chat_display.setVisible(True)
-                self.chat_display.chat_display.setEnabled(True)
-                logger.debug("Forced chat display to be visible after TTS finished")
-            except Exception as e2:
-                logger.error(f"Failed to force show chat display: {e2}")
+                self.eq_visualizer.switch_to_chat_display(self.chat_display.chat_display)
+                logger.debug("Successfully restored chat display after TTS finished")
+            except Exception as e:
+                logger.error(f"Error switching to chat display: {e}")
+                # Force show chat display even if EQ visualizer fails
+                try:
+                    self.chat_display.chat_display.show()
+                    self.chat_display.chat_display.setVisible(True)
+                    self.chat_display.chat_display.setEnabled(True)
+                    logger.debug("Forced chat display to be visible after TTS finished")
+                except Exception as e2:
+                    logger.error(f"Failed to force show chat display: {e2}")
+        else:
+            logger.debug("TTS finished but EQ visualizer is active in voice mode, keeping EQ visualizer")
         
         # Don't call Event Bus directly - let the voice service handle it
         # The Event Bus will receive the TTS finished signal from the voice service
@@ -660,6 +666,14 @@ class ChatTab(QWidget):
     def _ensure_chat_display_visible(self):
         """Ensure the chat display is visible for message display"""
         try:
+            # Don't force chat display visibility if EQ visualizer is active in voice mode
+            if (self.voice_mode and 
+                self.eq_visualizer.get_eq_mode() != "None" and 
+                self.eq_visualizer.current_eq_widget and 
+                self.eq_visualizer.current_eq_widget.isVisible()):
+                logger.debug("EQ visualizer is active in voice mode, not forcing chat display visibility")
+                return
+            
             # Check if chat display is hidden and force it to be visible
             if hasattr(self, 'chat_display') and self.chat_display.chat_display:
                 if not self.chat_display.chat_display.isVisible():

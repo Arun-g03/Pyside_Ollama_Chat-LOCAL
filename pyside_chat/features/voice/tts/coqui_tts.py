@@ -47,12 +47,10 @@ class StreamingAudioPlayer(QThread):
         self.should_stop = False
         self.volume = 0.5  # Volume control (0.0 to 1.0)
         
-        # Audio level processing improvements
-        self.audio_level_timer = QTimer()
-        self.audio_level_timer.setInterval(50)  # 20 FPS instead of 100 FPS
-        self.audio_level_timer.timeout.connect(self._emit_audio_level)
+        # Audio level processing improvements - don't create timer here
         self.current_audio_level = 0.0
         self.audio_level_buffer = []  # Buffer for averaging audio levels
+        self.last_audio_level_emit_time = 0  # Track when we last emitted audio level
         
         # PyAudio setup
         self.pyaudio = pyaudio.PyAudio()
@@ -131,25 +129,16 @@ class StreamingAudioPlayer(QThread):
             if len(self.audio_level_buffer) > 5:
                 self.audio_level_buffer.pop(0)
             
-            # Start timer for periodic emission if not already running
-            if not self.audio_level_timer.isActive():
-                self.audio_level_timer.start()
+            # Emit audio level directly (no timer needed)
+            if self.audio_level_buffer:
+                avg_level = sum(self.audio_level_buffer) / len(self.audio_level_buffer)
+                self.audio_level_changed.emit(avg_level)
             
             return audio_chunk
             
         except Exception as e:
             logger.error(f"Error processing audio chunk: {e}")
             return audio_chunk
-    
-    def _emit_audio_level(self):
-        """Emit averaged audio level for EQ visualization"""
-        try:
-            if self.audio_level_buffer:
-                # Use average of recent levels for smoother visualization
-                avg_level = sum(self.audio_level_buffer) / len(self.audio_level_buffer)
-                self.audio_level_changed.emit(avg_level)
-        except Exception as e:
-            logger.error(f"Error emitting audio level: {e}")
     
     def set_volume(self, volume: float):
         """Set playback volume (0.0 to 1.0)"""
@@ -180,8 +169,8 @@ class StreamingAudioPlayer(QThread):
         self.stop_playback()
         
         # Stop audio level timer
-        if hasattr(self, 'audio_level_timer'):
-            self.audio_level_timer.stop()
+        # if hasattr(self, 'audio_level_timer'):
+        #     self.audio_level_timer.stop()
         
         if self.pyaudio:
             try:

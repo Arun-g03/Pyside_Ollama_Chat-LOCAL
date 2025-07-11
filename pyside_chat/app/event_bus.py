@@ -3,7 +3,7 @@ Event Bus - Manages signal connections and event handling
 """
 
 from PySide6.QtCore import QTimer, QThread
-from typing import Optional, Callable, Dict, Any
+from typing import Optional, Callable, Dict, Any, List
 from pyside_chat.core.logging.logger import CustomLogger
 from pyside_chat.app.threading_integration import EventBusThreadingBridge
 import traceback
@@ -286,6 +286,10 @@ class EventBus:
             recent_messages = non_system_messages[-max_messages + len(system_messages):]
             final_context = system_messages + recent_messages
             logger.debug(f"[ID:0214] Limited context messages from {len(filtered_context)} to {len(final_context)} to prevent timeout")
+        
+        # Clean up the message structure before sending to Ollama
+        final_context = self._clean_messages_for_ollama(final_context)
+        
         context_messages = final_context
         # Reset new conversation flag
         if self.chat_controller.is_new_conversation:
@@ -317,6 +321,40 @@ class EventBus:
             temperature_to_use = temperature
         # Pass temperature_to_use to _create_worker_thread instead of temperature
         self._create_worker_thread(context_messages, chosen_model, temperature_to_use)
+    
+    def _clean_messages_for_ollama(self, messages: List[Dict]) -> List[Dict]:
+        """Clean up messages before sending to Ollama to prevent timeouts"""
+        cleaned_messages = []
+        
+        for msg in messages:
+            role = msg.get("role", "")
+            content = msg.get("content", "")
+            
+            # Skip messages with empty content (except system messages)
+            if not content.strip() and role != "system":
+                logger.debug(f"[ID:0215] Skipping message with empty content: {role}")
+                continue
+            
+            # Skip memory messages with empty content
+            if role == "memory" and not content.strip():
+                logger.debug(f"[ID:0216] Skipping empty memory message")
+                continue
+            
+            # Limit system prompt size to prevent timeouts
+            if role == "system" and len(content) > 1000:
+                logger.debug(f"[ID:0217] Truncating large system prompt from {len(content)} to 1000 characters")
+                content = content[:1000] + "..."
+                msg = {"role": role, "content": content}
+            
+            # Skip assistant messages with empty content
+            if role == "assistant" and not content.strip():
+                logger.debug(f"[ID:0218] Skipping empty assistant message")
+                continue
+            
+            cleaned_messages.append(msg)
+        
+        logger.debug(f"[ID:0219] Cleaned messages: {len(messages)} -> {len(cleaned_messages)}")
+        return cleaned_messages
     
     def _create_worker_thread(self, context_messages, chosen_model, temperature):
         """Create and start worker thread for Ollama communication using new threading architecture"""
