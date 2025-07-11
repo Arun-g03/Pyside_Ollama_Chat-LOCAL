@@ -82,9 +82,9 @@ def process_message(self, message):
     self.thread_pool_manager.start_task(task)
 ```
 
-### Phase 3: Update Event Handler
+### Phase 3: Update Event Bus
 
-#### Current Event Handler Changes
+#### Current Event Bus Changes
 
 **File: `pyside_chat/app/event_bus.py`**
 

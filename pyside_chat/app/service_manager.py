@@ -30,6 +30,10 @@ class ServiceManager:
         self.memory_enabled: bool = False
         self.session_variables: dict = {}
         
+        # Voice services - lazy loaded only when needed
+        self.voice_service: Optional[object] = None
+        self.voice_service_initialized: bool = False
+        
         self._initialize_services()
     
     def _initialize_services(self):
@@ -115,6 +119,16 @@ class ServiceManager:
         """Get the personality service instance"""
         return self.personality_service
     
+    def get_voice_service(self):
+        """Get the voice service instance (lazy loaded)"""
+        if not self.voice_service_initialized:
+            self._initialize_voice_service()
+        return self.voice_service
+    
+    def is_voice_service_initialized(self) -> bool:
+        """Check if voice service has been initialized"""
+        return self.voice_service_initialized
+    
     def is_memory_enabled(self) -> bool:
         """Check if memory is enabled"""
         return self.memory_enabled
@@ -134,7 +148,41 @@ class ServiceManager:
                 # Any cleanup needed for memory service
                 pass
             
+            # Clean up voice service if initialized
+            if self.voice_service_initialized and self.voice_service:
+                try:
+                    if hasattr(self.voice_service, 'cleanup_on_exit'):
+                        self.voice_service.cleanup_on_exit()
+                    logger.info("[ID:0091A] Voice service cleaned up successfully")
+                except Exception as e:
+                    logger.error(f"[ID:0091B] Error cleaning up voice service: {e}")
+            
             logger.info("[ID:0091] Services cleaned up successfully")
             
         except Exception as e:
             logger.error(f"[ID:0090] Error during service cleanup: {e}")
+    
+    def _initialize_voice_service(self):
+        """Initialize voice service only when needed"""
+        try:
+            logger.info("[ID:0097] Initializing voice service (lazy loading)")
+            
+            # Import and initialize voice service wrapper
+            from pyside_chat.features.voice.voice_service_wrapper import VoiceServiceWrapper
+            self.voice_service = VoiceServiceWrapper(use_separate_process=True)
+            self.voice_service_initialized = True
+            
+            logger.info("[ID:0098] Voice service initialized successfully")
+            
+        except Exception as e:
+            logger.error(f"[ID:0099] Error initializing voice service: {e}")
+            # Fallback to direct service
+            try:
+                from pyside_chat.features.voice.voice_service import VoiceService
+                self.voice_service = VoiceService()
+                self.voice_service_initialized = True
+                logger.info("[ID:0100] Voice service initialized with fallback")
+            except Exception as e2:
+                logger.error(f"[ID:0101] Failed to initialize voice service: {e2}")
+                self.voice_service = None
+                self.voice_service_initialized = False

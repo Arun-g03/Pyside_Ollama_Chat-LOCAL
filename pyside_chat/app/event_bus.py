@@ -1,16 +1,17 @@
 """
-Event Handler - Manages signal connections and event handling
+Event Bus - Manages signal connections and event handling
 """
 
 from PySide6.QtCore import QTimer, QThread
 from typing import Optional, Callable, Dict, Any
 from pyside_chat.core.logging.logger import CustomLogger
-from pyside_chat.app.threading_integration import EventHandlerThreadingBridge
+from pyside_chat.app.threading_integration import EventBusThreadingBridge
 import traceback
 
 logger = CustomLogger.get_logger(__name__)
+logger.info("Starting Event Bus", print_to_terminal=True)
 
-class EventHandler:
+class EventBus:
     """Manages signal connections and event handling"""
     
     def __init__(self, main_window, service_manager, ui_manager, chat_controller):
@@ -23,7 +24,7 @@ class EventHandler:
        
         
         # New threading architecture integration
-        self.threading_bridge = EventHandlerThreadingBridge(self)
+        self.threading_bridge = EventBusThreadingBridge(self)
         
         self._current_response_model = None
         self._tts_finished = False  # Track TTS completion
@@ -57,7 +58,9 @@ class EventHandler:
             # Connect chat tab signals
             chat_tab = self.ui_manager.get_chat_tab()
             if chat_tab:
+                logger.debug("[EVENT DEBUG] Connecting chat tab signals...")
                 chat_tab.message_sent.connect(self._on_message_sent)
+                logger.debug("[EVENT DEBUG] Connected message_sent signal")
                 chat_tab.message_cancelled.connect(self._on_message_cancelled)
                 chat_tab.conversation_selected.connect(self._on_conversation_selected)
                 chat_tab.conversation_deleted.connect(self._on_conversation_deleted)
@@ -65,6 +68,9 @@ class EventHandler:
                 chat_tab.new_conversation_requested.connect(self._on_new_conversation_requested)
                 # Connect append_response_signal to handle streaming chunks in main thread
                 # Note: We'll call the method directly instead of using signal connection
+                logger.debug("[EVENT DEBUG] All chat tab signals connected successfully")
+            else:
+                logger.error("[EVENT ERROR] Chat tab not available for signal connection")
             
             # Connect model tab signals
             model_tab = self.ui_manager.get_model_tab()
@@ -192,20 +198,36 @@ class EventHandler:
     
     def _on_message_sent(self, message):
         """Handle new message sent from chat tab"""
-        # Get current model and temperature from chat tab
-        chat_tab = self.ui_manager.get_chat_tab()
-        if not chat_tab:
-            return
+        try:
+            logger.debug(f"[EVENT DEBUG] _on_message_sent called with message: '{message}'")
             
-        model = chat_tab.get_current_model()
-        temperature = chat_tab.get_temperature()
-        
-        # Process message through controller
-        self.chat_controller.process_user_message(message, model, temperature)
-        logger.info(f"[ID:0212] Processed user message: {message}", print_to_terminal=True)
-        
-        # Send to Ollama for actual processing
-        self._send_to_ollama(message, model, temperature)
+            # Get current model and temperature from chat tab
+            chat_tab = self.ui_manager.get_chat_tab()
+            if not chat_tab:
+                    logger.error("Chat tab not available")
+                    return
+                
+            model = chat_tab.get_current_model()
+            temperature = chat_tab.get_temperature()
+            
+            # Process message through controller
+            self.chat_controller.process_user_message(message, model, temperature)
+            logger.info(f"[ID:0212] Processed user message: {message}", print_to_terminal=True)
+            
+            # Send to Ollama for actual processing
+            self._send_to_ollama(message, model, temperature)
+            
+        except Exception as e:
+            logger.error(f"[EVENT ERROR] Error in _on_message_sent: {e}")
+            logger.error(f"[EVENT ERROR] Traceback: {traceback.format_exc()}")
+            # Try to show error to user
+            try:
+                chat_tab = self.ui_manager.get_chat_tab()
+                if chat_tab:
+                    chat_tab.append_to_chat("System", f"Message processing error: {str(e)}")
+            except:
+                pass
+            self._on_error_occurred(f"Failed to process message: {str(e)}")
     
     def _send_to_ollama(self, message, model, temperature):
         """Send message to Ollama and handle response asynchronously"""
@@ -358,12 +380,17 @@ class EventHandler:
         """Handle worker chunk signal"""
         try:
             logger.debug(f"[ID:0196] Received worker chunk - Length: {len(chunk)}")
+            logger.debug(f"[ID:0196A] Chunk content: {chunk[:100]}...")
             self.chat_controller.accumulate_assistant_response(chunk)
+            logger.debug(f"[ID:0196B] Accumulated assistant response")
             
             chat_tab = self.ui_manager.get_chat_tab()
             if chat_tab:
                 # Call the method directly instead of using signal
                 chat_tab.append_response_chunk(chunk, self._current_response_model)
+                logger.debug(f"[ID:0196C] Called append_response_chunk on chat tab")
+            else:
+                logger.warning("[ID:0196D] No chat tab found")
                 
         except Exception as e:
             logger.error(f"[ID:0195] Error handling worker chunk: {e}")
@@ -379,6 +406,7 @@ class EventHandler:
             
             # Handle AI response completion
             self.chat_controller.handle_ai_response()
+            logger.debug("[ID:0193A] Called chat_controller.handle_ai_response")
             
             # Only clean up if TTS is also finished
             if self._tts_finished:
@@ -441,7 +469,7 @@ class EventHandler:
                 self.threading_bridge.stop_chat_streaming()
             
             # No legacy worker cleanup needed
-            
+                        
         except Exception as e:
             logger.error(f"[ID:0166] Error cleaning up worker thread: {e}")
             logger.error(f"[ID:0165] Worker cleanup error traceback: {traceback.format_exc()}")
@@ -456,7 +484,7 @@ class EventHandler:
     def _final_worker_cleanup(self):
         """Final cleanup to ensure worker thread is properly destroyed (legacy method - kept for compatibility)"""
         try:
-            logger.debug("[ID:0161] Final worker cleanup completed")
+                logger.debug("[ID:0161] Final worker cleanup completed")
             # No cleanup needed - handled by new threading system
         except Exception as e:
             logger.error(f"[ID:0160] Error in final worker cleanup: {e}")
@@ -816,7 +844,7 @@ class EventHandler:
             
             # Clean up any running worker threads (legacy cleanup removed)
             # All cleanup is now handled by the new threading system
-            
+                
             logger.debug("[ID:0145] Application exit cleanup completed")
             
         except Exception as e:

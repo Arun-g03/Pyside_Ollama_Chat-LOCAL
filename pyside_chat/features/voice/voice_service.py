@@ -440,9 +440,15 @@ class VoiceService(QObject):
             
         # Handle Coqui TTS model and speaker settings
         if "coqui_model" in settings and settings.get("tts_api") == "Coqui TTS":
-            self.tts_service.set_coqui_model(settings["coqui_model"])
+            logger.info(f"Setting Coqui TTS model to: {settings['coqui_model']}")
+            success = self.tts_service.set_coqui_model(settings["coqui_model"])
+            if success:
+                logger.info(f"Successfully set Coqui TTS model to: {settings['coqui_model']}")
             if "coqui_speaker" in settings:
-                self.tts_service.update_voice(settings["coqui_speaker"])
+                    logger.info(f"Setting Coqui TTS speaker to: {settings['coqui_speaker']}")
+                    self.tts_service.update_voice(settings["coqui_speaker"])
+            else:
+                logger.error(f"Failed to set Coqui TTS model to: {settings['coqui_model']}")
             
         if "voice_speed" in settings:
             # Convert speed setting to TTS speed (1.0 = normal, higher = faster)
@@ -703,6 +709,12 @@ class VoiceService(QObject):
         self._error_count = 0
         logger.info("Error count reset")
     
+    def _connect_signals(self):
+        """Connect signals from voice services"""
+        # This method is called after services are initialized
+        # The actual signal connections are handled in _initialize_services
+        pass
+    
     def _initialize_services(self):
         """Initialize voice services with error handling"""
         self.stt_service = None
@@ -787,7 +799,7 @@ class VoiceService(QObject):
         
         # Clean up all audio files on startup (since they're only for STT processing)
         if self.in_qt_context:
-            QTimer.singleShot(1000, lambda: self.cleanup_all_audio_files())
+            QTimer.singleShot(1000, lambda: self.cleanup_all_audio_files()) 
         else:
             # For non-Qt contexts, clean up immediately
             self.cleanup_all_audio_files() 

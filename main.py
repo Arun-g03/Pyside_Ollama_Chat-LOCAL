@@ -96,4 +96,4 @@ if __name__ == "__main__":
     except Exception as e:
         logger.error(f"[ID:0266] Fatal error: {str(e)}",print_to_terminal=True)
         logger.error(traceback.format_exc())
-        sys.exit(1)
+        

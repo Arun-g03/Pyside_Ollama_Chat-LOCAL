@@ -96,7 +96,7 @@ class ProgramFlowTracer:
                         'Initialize ServiceManager',
                         'Initialize ChatController',
                         'Initialize UIManager',
-                        'Initialize EventHandler',
+                        'Initialize EventBus',
                         'Initialize AppLifecycleManager',
                         'Setup UI components',
                         'Setup signal connections',
@@ -214,8 +214,8 @@ class ProgramFlowTracer:
         """Trace the event handling flow"""
         self.flow_data['event_flow'] = [
             {
-                'component': 'EventHandler.setup_connections()',
-                'description': 'Event handler initialization',
+                'component': 'EventBus.setup_connections()',
+                'description': 'Event Bus initialization',
                 'flow': [
                     'Connect controller signals',
                     'Connect Ollama service signals',
@@ -228,7 +228,7 @@ class ProgramFlowTracer:
                 ]
             },
             {
-                'component': 'EventHandler._on_message_sent()',
+                'component': 'EventBus._on_message_sent()',
                 'description': 'Message processing flow',
                 'flow': [
                     'Get current model and temperature',
@@ -486,9 +486,9 @@ class ProgramFlowTracer:
         markdown.append("")
         
         connections = [
-            ("message_sent", "ChatTab → EventHandler → ChatController"),
+            ("message_sent", "ChatTab → EventBus → ChatController"),
             ("stream_chunk_signal", "Worker → ChatTab (UI update)"),
-            ("finished_signal", "Worker → EventHandler (cleanup)"),
+            ("finished_signal", "Worker → EventBus (cleanup)"),
             ("model_list_updated", "OllamaService → UI components"),
             ("status_updated", "ChatController → UIManager"),
             ("conversation_updated", "ConversationService → UI refresh"),

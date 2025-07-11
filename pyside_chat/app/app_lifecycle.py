@@ -29,6 +29,13 @@ class AppLifecycleManager:
         self.ollama_process = None
         self.auto_start_ollama = True  # Configurable flag
         
+        # Crash detection and restart
+        self.ollama_crash_detection_timer = QTimer()
+        self.ollama_crash_detection_timer.timeout.connect(self._check_ollama_crash)
+        self.ollama_crash_detection_timer.start(5000)  # Check every 5 seconds
+        self.ollama_restart_attempts = 0
+        self.max_restart_attempts = 3
+        
     def initialize_application(self):
         """Initialize the application"""
         try:
@@ -80,7 +87,7 @@ class AppLifecycleManager:
         try:
             logger.info("[ID:0226] Handling application close event...")
             
-            # Clean up event handler resources (worker threads, etc.)
+            # Clean up Event Bus resources (worker threads, etc.)
             self.event_handler.cleanup_on_exit()
             
             # Save current conversation
@@ -95,6 +102,11 @@ class AppLifecycleManager:
             chat_tab = self.ui_manager.get_chat_tab()
             if chat_tab and hasattr(chat_tab, 'voice_service'):
                 chat_tab.voice_service.cleanup_on_exit()
+            
+            # Stop crash detection timer
+            if hasattr(self, 'ollama_crash_detection_timer'):
+                self.ollama_crash_detection_timer.stop()
+                logger.info("[ID:0248A] Stopped Ollama crash detection timer")
             
             # Stop Ollama process if we started it
             if self.ollama_process:
@@ -148,6 +160,18 @@ class AppLifecycleManager:
                 f'3. Or download from: <a href="{download_link}">{download_link}</a><br><br>'
                 "The application will continue to work, but you won't be able to send messages until Ollama is running."
             )
+        elif context == "crash":
+            title = "Ollama Crashed"
+            message = (
+                'Ollama has crashed and could not be automatically restarted.<br><br>'
+                'The application attempted to restart Ollama automatically but failed.<br><br>'
+                'To fix this:<br>'
+                "1. Close this application<br>"
+                "2. Start Ollama manually by running 'ollama serve' in a terminal<br>"
+                "3. Restart this application<br>"
+                f'4. Or download Ollama from: <a href="{download_link}">{download_link}</a><br><br>'
+                'This may be due to insufficient system resources or a model loading issue.'
+            )
         else:
             title = "Connection Error"
             message = (
@@ -199,7 +223,13 @@ class AppLifecycleManager:
     def check_ollama_connection(self):
         """Check if Ollama is running and accessible"""
         ollama_service = self.service_manager.get_ollama_service()
-        return ollama_service.test_connection()
+        connection_ok = ollama_service.test_connection()
+        
+        # Reset restart attempts if connection is successful
+        if connection_ok:
+            self._reset_ollama_restart_attempts()
+        
+        return connection_ok
     
     def is_initialization_complete(self) -> bool:
         """Check if initialization is complete"""
@@ -349,6 +379,8 @@ class AppLifecycleManager:
     
     def start_ollama_manually(self) -> bool:
         """Manually start Ollama (called from UI)"""
+        # Reset restart attempts when manually starting
+        self.ollama_restart_attempts = 0
         return self._start_ollama_background()
     
     def stop_ollama_manually(self):
@@ -379,4 +411,43 @@ class AppLifecycleManager:
     
     def get_auto_start_ollama(self) -> bool:
         """Get whether auto-start Ollama is enabled (always True)"""
-        return True 
+        return True
+    
+    def _check_ollama_crash(self):
+        """Check if Ollama has crashed and restart if needed"""
+        try:
+            # Only check if we started Ollama ourselves
+            if not self.ollama_process:
+                return
+            
+            # Check if the process is still alive
+            if self.ollama_process.poll() is not None:
+                logger.warning(f"[ID:0257] Ollama process crashed (PID: {self.ollama_process.pid})")
+                
+                # Check if we can still connect to Ollama
+                if not self.check_ollama_connection():
+                    logger.error("[ID:0258] Ollama connection lost, attempting restart")
+                    
+                    if self.ollama_restart_attempts < self.max_restart_attempts:
+                        self.ollama_restart_attempts += 1
+                        logger.info(f"[ID:0259] Attempting to restart Ollama (attempt {self.ollama_restart_attempts}/{self.max_restart_attempts})")
+                        
+                        # Stop the crashed process
+                        self._stop_ollama_process()
+                        
+                        # Restart Ollama
+                        if self._start_ollama_background():
+                            logger.info("[ID:0260] Ollama restarted successfully after crash")
+                            self.ollama_restart_attempts = 0  # Reset counter on success
+                        else:
+                            logger.error(f"[ID:0261] Failed to restart Ollama (attempt {self.ollama_restart_attempts})")
+                    else:
+                        logger.error(f"[ID:0262] Maximum restart attempts ({self.max_restart_attempts}) reached, stopping auto-restart")
+                        self.show_ollama_connection_error("crash", force_show=True)
+                        
+        except Exception as e:
+            logger.error(f"[ID:0263] Error in Ollama crash detection: {e}")
+    
+    def _reset_ollama_restart_attempts(self):
+        """Reset the restart attempts counter (called on successful connection)"""
+        self.ollama_restart_attempts = 0 

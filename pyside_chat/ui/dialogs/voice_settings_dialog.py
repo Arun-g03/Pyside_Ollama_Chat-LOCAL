@@ -1134,7 +1134,7 @@ class VoiceSettingsDialog(QDialog):
             self.coqui_service.load_model(self.selected_coqui_model)
             if self.selected_coqui_speaker:
                 self.coqui_service.set_voice(self.selected_coqui_speaker)
-    
+        
     def get_settings(self) -> dict:
         """Get current settings"""
         return self.current_settings.copy()

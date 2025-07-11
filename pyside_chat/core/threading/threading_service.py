@@ -415,8 +415,10 @@ class ThreadingService(QObject):
         """Handle chat chunk received from streaming worker."""
         try:
             logger.debug(f"[ID:TS034] Received chat chunk: {chunk[:50]}...")
+            logger.debug(f"[ID:TS034A] Chunk length: {len(chunk)}")
             # Emit signal for backward compatibility
             self.worker_chunk_received.emit(chunk)
+            logger.debug(f"[ID:TS034B] Emitted worker_chunk_received signal")
             
         except Exception as e:
             logger.error(f"[ID:TS035] Error handling chat chunk: {e}")
@@ -427,6 +429,7 @@ class ThreadingService(QObject):
             logger.debug(f"[ID:TS036] Chat progress: {progress}")
             # Emit signal for backward compatibility
             self.worker_progress_updated.emit(progress)
+            logger.debug(f"[ID:TS036A] Emitted worker_progress_updated signal")
             
         except Exception as e:
             logger.error(f"[ID:TS037] Error handling chat progress: {e}")
@@ -437,6 +440,7 @@ class ThreadingService(QObject):
             logger.debug("[ID:TS038] Chat streaming finished")
             # Emit signal for backward compatibility
             self.worker_finished.emit()
+            logger.debug(f"[ID:TS038A] Emitted worker_finished signal")
             
         except Exception as e:
             logger.error(f"[ID:TS039] Error handling chat streaming finished: {e}")
@@ -447,6 +451,7 @@ class ThreadingService(QObject):
             logger.error(f"[ID:TS040] Chat streaming error: {error}")
             # Emit signal for backward compatibility
             self.worker_error.emit(error)
+            logger.debug(f"[ID:TS040A] Emitted worker_error signal")
             
         except Exception as e:
             logger.error(f"[ID:TS041] Error handling chat streaming error: {e}")

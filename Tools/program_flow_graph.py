@@ -5,7 +5,7 @@ Program Flow Graph Utility
 This script analyzes the PySide Ollama Chat application, builds a process/component
 graph, and outputs an interactive HTML visualization using pyvis. The graph shows
 the top-down flow of the main processes/components, with nodes for main, OllamaChat,
-ServiceManager, UIManager, EventHandler, Worker, etc., and edges representing calls,
+ServiceManager, UIManager, EventBus, Worker, etc., and edges representing calls,
 initializations, and signal connections.
 """
 
@@ -20,7 +20,7 @@ COMPONENTS = [
     "OllamaChat",
     "ServiceManager",
     "UIManager",
-    "EventHandler",
+    "EventBus",
     "AppLifecycleManager",
     "ChatController",
     "Worker",
@@ -41,7 +41,7 @@ EDGES = [
     ("main.py", "OllamaChat", "creates"),
     ("OllamaChat", "ServiceManager", "initializes"),
     ("OllamaChat", "UIManager", "initializes"),
-    ("OllamaChat", "EventHandler", "initializes"),
+    ("OllamaChat", "EventBus", "initializes"),
     ("OllamaChat", "AppLifecycleManager", "initializes"),
     ("OllamaChat", "ChatController", "initializes"),
     ("ServiceManager", "OllamaService", "creates"),
@@ -54,16 +54,16 @@ EDGES = [
     ("UIManager", "ModelTab", "creates"),
     ("UIManager", "PersonalityTab", "creates"),
     ("UIManager", "MemoryTab", "creates (if enabled)"),
-    ("EventHandler", "ChatController", "connects signals"),
-    ("EventHandler", "OllamaService", "connects signals"),
-    ("EventHandler", "ChatTab", "connects signals"),
-    ("EventHandler", "ModelTab", "connects signals"),
-    ("EventHandler", "PersonalityTab", "connects signals"),
-    ("EventHandler", "ConversationManager", "connects signals"),
+    ("EventBus", "ChatController", "connects signals"),
+    ("EventBus", "OllamaService", "connects signals"),
+    ("EventBus", "ChatTab", "connects signals"),
+    ("EventBus", "ModelTab", "connects signals"),
+    ("EventBus", "PersonalityTab", "connects signals"),
+    ("EventBus", "ConversationManager", "connects signals"),
     ("ChatController", "Worker", "spawns for async"),
     ("ChatTab", "Worker", "receives stream"),
     ("Worker", "ChatTab", "emits stream_chunk_signal"),
-    ("Worker", "EventHandler", "emits finished_signal"),
+    ("Worker", "EventBus", "emits finished_signal"),
 ]
 
 

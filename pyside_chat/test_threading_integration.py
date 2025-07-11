@@ -26,8 +26,8 @@ from pyside_chat.core.logging.logger import CustomLogger
 logger = CustomLogger.get_logger(__name__)
 
 
-class MockEventHandler:
-    """Mock event handler for testing."""
+class MockEventBus:
+    """Mock Event Bus for testing."""
     
     def __init__(self):
         self.service_manager = MockServiceManager()
@@ -140,7 +140,7 @@ def test_thread_pool_manager():
         logger.info(f"✓ Pool status: {status}")
         
         # Test task creation and execution
-        mock_handler = MockEventHandler()
+        mock_handler = MockEventBus()
         
         # Create a test task
         task = MessageProcessingTask("Test message", mock_handler, "spell_check")
@@ -203,7 +203,7 @@ def test_integration():
         logger.info("✓ All threading components initialized")
         
         # Test multiple concurrent tasks
-        mock_handler = MockEventHandler()
+        mock_handler = MockEventBus()
         task_ids = []
         
         # Start multiple tasks

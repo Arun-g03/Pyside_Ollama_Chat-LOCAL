@@ -7,11 +7,12 @@ import os
 import time
 import json
 import logging
+import traceback
 from typing import Optional, Dict, Any
 from PySide6.QtCore import Qt, Signal, QTimer, QThread, QMutex, QWaitCondition, QEvent
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QSplitter, QScrollArea, QMessageBox,
-    QDialog
+    QDialog, QPushButton, QLabel
 )
 
 from pyside_chat.ui.widgets.chat_navigation import ChatNavigationWidget
@@ -70,14 +71,12 @@ class ChatTab(QWidget):
         
     def setup_components(self):
         """Initialize all modular components"""
-        # Initialize voice controls
-        self.voice_controls = VoiceControls(self, self.config_manager)
+        # Initialize voice controls with lazy loading (only when voice mode is activated)
+        self.voice_controls = None
+        self.voice_controls_initialized = False
         
-        # Initialize EQ visualizer with voice settings
+        # Initialize EQ visualizer
         self.eq_visualizer = EQVisualizer(self)
-        # Set the EQ visualizer mode from voice settings
-        voice_settings = self.voice_controls.get_voice_settings()
-        self.eq_visualizer.update_eq_visualizer_mode(voice_settings.get("eq_visualizer", "None"))
         
         # Initialize input controls
         self.input_controls = InputControls(self)
@@ -133,28 +132,25 @@ class ChatTab(QWidget):
         controls_layout.addWidget(input_components['input_widget'])
         controls_layout.addWidget(input_components['settings_widget'])
         
-        # Add voice controls to a separate section
-        voice_components = self.voice_controls.get_ui_components()
-        voice_button = voice_components['voice_button']
-        voice_settings_button = voice_components['voice_settings_button']
-        audio_level_widget = voice_components['audio_level_widget']
-        
-        # Create voice controls widget
-        voice_controls_widget = QWidget()
-        voice_controls_layout = QHBoxLayout(voice_controls_widget)
+        # Create voice controls widget (will be populated when voice controls are initialized)
+        self.voice_controls_widget = QWidget()
+        voice_controls_layout = QHBoxLayout(self.voice_controls_widget)
         voice_controls_layout.setContentsMargins(0, 0, 0, 0)
         
-        voice_controls_layout.addWidget(voice_button)
-        voice_controls_layout.addWidget(voice_settings_button)
-        voice_controls_layout.addWidget(audio_level_widget)
+        # Add placeholder widgets that will be replaced when voice controls are initialized
+        self.voice_button_placeholder = QPushButton("🎤 Voice")
+        self.voice_settings_button_placeholder = QPushButton("⚙️")
+        self.audio_level_widget_placeholder = QLabel("")
+        
+        voice_controls_layout.addWidget(self.voice_button_placeholder)
+        voice_controls_layout.addWidget(self.voice_settings_button_placeholder)
+        voice_controls_layout.addWidget(self.audio_level_widget_placeholder)
         voice_controls_layout.addStretch()  # Add stretch to push controls to the left
         
-        controls_layout.addWidget(voice_controls_widget)
+        controls_layout.addWidget(self.voice_controls_widget)
         
         # Initially hide voice-related widgets
-        voice_button.hide()
-        voice_settings_button.hide()
-        audio_level_widget.hide()
+        self.voice_controls_widget.hide()
         
         # Add controls to splitter
         chat_splitter.addWidget(controls_widget)
@@ -253,51 +249,49 @@ class ChatTab(QWidget):
         
     def setup_connections(self):
         """Setup signal connections between components"""
-        # Connect input controls signals
-        self.input_controls.message_sent.connect(self.on_message_sent)
-        self.input_controls.message_cancelled.connect(self.on_message_cancelled)
-        self.input_controls.input_mode_changed.connect(self.on_input_mode_changed)
-        self.input_controls.temperature_changed.connect(self.on_temperature_changed)
-        self.input_controls.personality_changed.connect(self.on_personality_changed)
-        self.input_controls.model_changed.connect(self.on_model_changed)
-        
-        # Connect voice controls signals
-        self.voice_controls.voice_input_received.connect(self.on_voice_input_received)
-        self.voice_controls.voice_input_error.connect(self.on_voice_input_error)
-        self.voice_controls.tts_started.connect(self.on_tts_started)
-        self.voice_controls.tts_finished.connect(self.on_tts_finished)
-        self.voice_controls.tts_error.connect(self.on_tts_error)
-        self.voice_controls.recording_started.connect(self.on_recording_started)
-        self.voice_controls.recording_stopped.connect(self.on_recording_stopped)
-        self.voice_controls.recording_error.connect(self.on_recording_error)
-        self.voice_controls.voice_processing_started.connect(self.on_voice_processing_started)
-        self.voice_controls.voice_processing_finished.connect(self.on_voice_processing_finished)
-        self.voice_controls.audio_level_changed.connect(self.on_audio_level_changed)
-        # Voice mode changes are handled by input mode changes
-        
-        # Connect chat display signals
-        self.chat_display.message_edited.connect(self.on_message_edited)
-        
-        # Connect EQ visualizer signals
-        self.eq_visualizer.eq_mode_changed.connect(self.on_eq_mode_changed)
-        
-        # Connect navigation widget signals
-        if hasattr(self, 'navigation_widget'):
-            self.navigation_widget.conversation_selected.connect(self.load_conversation)
-            self.navigation_widget.conversation_deleted.connect(self.conversation_deleted.emit)
-            self.navigation_widget.conversation_renamed.connect(self.conversation_renamed.emit)
-            self.navigation_widget.new_conversation_requested.connect(self.new_conversation_requested.emit)
-        
-        # Connect voice settings button
-        voice_components = self.voice_controls.get_ui_components()
-        voice_components['voice_settings_button'].clicked.connect(self.open_voice_settings)
+        try:
+            # Connect input controls signals
+            self.input_controls.message_sent.connect(self.on_message_sent)
+            self.input_controls.message_cancelled.connect(self.on_message_cancelled)
+            self.input_controls.input_mode_changed.connect(self.on_input_mode_changed)
+            self.input_controls.temperature_changed.connect(self.on_temperature_changed)
+            self.input_controls.personality_changed.connect(self.on_personality_changed)
+            self.input_controls.model_changed.connect(self.on_model_changed)
+            
+            # Voice controls signals will be connected when voice controls are initialized
+            # Voice mode changes are handled by input mode changes
+            
+            # Connect chat display signals
+            self.chat_display.message_edited.connect(self.on_message_edited)
+            
+            # Connect EQ visualizer signals
+            self.eq_visualizer.eq_mode_changed.connect(self.on_eq_mode_changed)
+            
+            # Connect navigation widget signals
+            if hasattr(self, 'navigation_widget'):
+                self.navigation_widget.conversation_selected.connect(self.load_conversation)
+                self.navigation_widget.conversation_deleted.connect(self.conversation_deleted.emit)
+                self.navigation_widget.conversation_renamed.connect(self.conversation_renamed.emit)
+                self.navigation_widget.new_conversation_requested.connect(self.new_conversation_requested.emit)
+            
+            # Voice settings button will be connected when voice controls are initialized
+            
+            logger.debug("[VOICE DEBUG] Signal connections setup completed successfully")
+            
+        except Exception as e:
+            logger.error(f"[VOICE ERROR] Error setting up signal connections: {e}")
+            logger.error(f"[VOICE ERROR] Traceback: {traceback.format_exc()}")
         
     def on_message_sent(self, message: str):
         """Handle message sent from input controls"""
+        logger.debug(f"[VOICE DEBUG] on_message_sent called with message: '{message}', voice_mode: {self.voice_mode}")
+        
         # Add user message to chat immediately
         self.append_to_chat("You", message)
         self.start_streaming()
+        
         # Emit signal for parent
+        logger.debug(f"[VOICE DEBUG] Emitting message_sent signal for parent")
         self.message_sent.emit(message)
         
     def on_message_cancelled(self):
@@ -305,13 +299,66 @@ class ChatTab(QWidget):
         self.stop_streaming()
         self.message_cancelled.emit()
         
+    def _ensure_voice_controls_initialized(self):
+        """Initialize voice controls if not already initialized"""
+        if not self.voice_controls_initialized:
+            try:
+                logger.info("Initializing voice controls (lazy loading)")
+                
+                # Import and initialize voice controls
+                from pyside_chat.ui.tabs.chat_tab.voice_controls import VoiceControls
+                self.voice_controls = VoiceControls(self, self.config_manager)
+                
+                # Get voice settings and update EQ visualizer
+                voice_settings = self.voice_controls.get_voice_settings()
+                self.eq_visualizer.update_eq_visualizer_mode(voice_settings.get("eq_visualizer", "None"))
+                
+                # Replace placeholder widgets with actual voice controls
+                voice_components = self.voice_controls.get_ui_components()
+                
+                # Remove placeholder widgets
+                self.voice_button_placeholder.setParent(None)
+                self.voice_settings_button_placeholder.setParent(None)
+                self.audio_level_widget_placeholder.setParent(None)
+                
+                # Add actual voice control widgets
+                voice_layout = self.voice_controls_widget.layout()
+                voice_layout.addWidget(voice_components['voice_button'])
+                voice_layout.addWidget(voice_components['voice_settings_button'])
+                voice_layout.addWidget(voice_components['audio_level_widget'])
+                
+                # Connect voice control signals
+                self.voice_controls.voice_input_received.connect(self.on_voice_input_received)
+                self.voice_controls.voice_input_error.connect(self.on_voice_input_error)
+                self.voice_controls.tts_started.connect(self.on_tts_started)
+                self.voice_controls.tts_finished.connect(self.on_tts_finished)
+                self.voice_controls.tts_error.connect(self.on_tts_error)
+                self.voice_controls.recording_started.connect(self.on_recording_started)
+                self.voice_controls.recording_stopped.connect(self.on_recording_stopped)
+                self.voice_controls.recording_error.connect(self.on_recording_error)
+                self.voice_controls.voice_processing_started.connect(self.on_voice_processing_started)
+                self.voice_controls.voice_processing_finished.connect(self.on_voice_processing_finished)
+                self.voice_controls.audio_level_changed.connect(self.on_audio_level_changed)
+                
+                # Connect voice settings button
+                voice_components = self.voice_controls.get_ui_components()
+                voice_components['voice_settings_button'].clicked.connect(self.open_voice_settings)
+                
+                self.voice_controls_initialized = True
+                logger.info("Voice controls initialized successfully")
+                
+            except Exception as e:
+                logger.error(f"Failed to initialize voice controls: {e}")
+                self.voice_controls = None
+                self.voice_controls_initialized = False
+    
     def on_input_mode_changed(self, mode: str):
         """Handle input mode change"""
         logger.debug(f"[VOICE DEBUG] on_input_mode_changed called with mode: {mode}")
         
         if mode == "Chat":
-            # If any voice process is running, stop it
-            if hasattr(self, 'voice_controls') and self.voice_controls.voice_service:
+            # If voice controls are initialized and any voice process is running, stop it
+            if self.voice_controls_initialized and self.voice_controls and self.voice_controls.voice_service:
                 try:
                     if self.voice_controls.voice_service.is_recording or self.voice_controls.voice_service.is_processing_voice:
                         self.voice_controls.voice_service.stop_voice_input()
@@ -320,39 +367,43 @@ class ChatTab(QWidget):
             
             # Show chat input widgets
             input_components = self.input_controls.get_ui_components()
-            voice_components = self.voice_controls.get_ui_components()
             
             input_components['message_input'].show()
             input_components['send_button'].show()
-            voice_components['voice_button'].hide()
-            voice_components['audio_level_widget'].hide()
-            voice_components['voice_settings_button'].hide()
+            self.voice_controls_widget.hide()
             
             self.voice_mode = False
             self.eq_visualizer.switch_to_chat_display(self.chat_display.chat_display)
             logger.debug("[VOICE DEBUG] Switched to Chat mode")
             
         elif mode == "Voice":
-            # Hide chat input widgets
-            input_components = self.input_controls.get_ui_components()
-            voice_components = self.voice_controls.get_ui_components()
+            # Initialize voice controls if not already initialized
+            self._ensure_voice_controls_initialized()
             
-            input_components['message_input'].hide()
-            input_components['send_button'].hide()
-            input_components['cancel_button'].hide()
-            voice_components['voice_button'].show()
-            voice_components['audio_level_widget'].show()
-            voice_components['voice_settings_button'].show()
-            
-            self.voice_mode = True
-            
-            # Switch to EQ visualizer if enabled
-            eq_mode = self.voice_controls.get_voice_settings().get("eq_visualizer", "None")
-            if eq_mode != "None":
-                self.eq_visualizer.switch_to_eq_visualizer(self.chat_display.chat_display, self.voice_mode)
-                logger.debug(f"[VOICE DEBUG] Switched to Voice mode with EQ: {eq_mode}")
+            if self.voice_controls_initialized and self.voice_controls:
+                # Show voice input widgets
+                input_components = self.input_controls.get_ui_components()
+                voice_components = self.voice_controls.get_ui_components()
+                
+                input_components['message_input'].hide()
+                input_components['send_button'].hide()
+                input_components['cancel_button'].hide()
+                voice_components['voice_button'].show()
+                voice_components['audio_level_widget'].show()
+                voice_components['voice_settings_button'].show()
+                self.voice_controls_widget.show()
+                
+                self.voice_mode = True
+                
+                # Switch to EQ visualizer if enabled
+                eq_mode = self.voice_controls.get_voice_settings().get("eq_visualizer", "None")
+                if eq_mode != "None":
+                    self.eq_visualizer.switch_to_eq_visualizer(self.chat_display.chat_display, self.voice_mode)
+                    logger.debug(f"[VOICE DEBUG] Switched to Voice mode with EQ: {eq_mode}")
+                else:
+                    logger.debug("[VOICE DEBUG] Switched to Voice mode without EQ")
             else:
-                logger.debug("[VOICE DEBUG] Switched to Voice mode without EQ")
+                logger.error("Failed to initialize voice controls for voice mode")
     
     def on_temperature_changed(self, temperature: float):
         """Handle temperature change"""
@@ -372,26 +423,38 @@ class ChatTab(QWidget):
     def on_eq_mode_changed(self, mode: str):
         """Handle EQ mode change"""
         logger.debug(f"EQ mode changed to: {mode}")
-        # Update voice settings
-        voice_settings = self.voice_controls.get_voice_settings()
-        voice_settings["eq_visualizer"] = mode
-        self.voice_controls.update_voice_settings(voice_settings)
+        # Update voice settings if voice controls are initialized
+        if self.voice_controls_initialized and self.voice_controls:
+            voice_settings = self.voice_controls.get_voice_settings()
+            voice_settings["eq_visualizer"] = mode
+            self.voice_controls.update_voice_settings(voice_settings)
         
     def on_voice_input_received(self, text: str):
         """Handle voice input received"""
-        logger.debug(f"Voice input received: {text}")
-        
-        # Log chat processing
-        logger.info(f"Chat processing voice input: '{text}'", print_to_terminal=True)
-        
-        # Add the voice input to the chat
-        self.append_to_chat("You", f"[Voice] {text}")
-        
-        # Send the message through the normal flow
-        self.message_sent.emit(text)
-        
-        # In voice mode, we don't need to manage UI state here
-        # The voice controls will handle the continuous cycle
+        try:
+            logger.debug(f"[VOICE DEBUG] on_voice_input_received called with text: '{text}'")
+            
+            # Log chat processing
+            logger.info(f"Chat processing voice input: '{text}'", print_to_terminal=True)
+            
+            # Add the voice input to the chat
+            self.append_to_chat("You", f"[Voice] {text}")
+            
+            # Send the message through the normal flow
+            logger.debug(f"[VOICE DEBUG] Emitting message_sent signal with text: '{text}'")
+            self.message_sent.emit(text)
+            
+            # In voice mode, we don't need to manage UI state here
+            # The voice controls will handle the continuous cycle
+            
+        except Exception as e:
+            logger.error(f"[VOICE ERROR] Error in on_voice_input_received: {e}")
+            logger.error(f"[VOICE ERROR] Traceback: {traceback.format_exc()}")
+            # Try to show error to user
+            try:
+                self.append_to_chat("System", f"Voice input error: {str(e)}")
+            except:
+                pass
     
     def on_voice_input_error(self, error: str):
         """Handle voice input error"""
@@ -403,10 +466,8 @@ class ChatTab(QWidget):
         # Show EQ visualizer if in voice mode and EQ is enabled
         if self.voice_mode and self.eq_visualizer.get_eq_mode() != "None":
             self.eq_visualizer.switch_to_eq_visualizer(self.chat_display.chat_display, self.voice_mode)
-        else:
-            # fallback: just hide chat display
-            if hasattr(self, 'chat_display'):
-                self.chat_display.chat_display.hide()
+        # Don't hide chat display - let messages continue to appear
+        # The EQ visualizer will overlay on top of the chat display
     
     def on_tts_finished(self):
         """Handle TTS finished"""
@@ -421,14 +482,23 @@ class ChatTab(QWidget):
         
         logger.debug("TTS finished in chat tab")
         
-        # Restore chat display
+        # Always restore chat display to ensure messages are visible
         try:
             self.eq_visualizer.switch_to_chat_display(self.chat_display.chat_display)
+            logger.debug("Successfully restored chat display after TTS finished")
         except Exception as e:
             logger.error(f"Error switching to chat display: {e}")
+            # Force show chat display even if EQ visualizer fails
+            try:
+                self.chat_display.chat_display.show()
+                self.chat_display.chat_display.setVisible(True)
+                self.chat_display.chat_display.setEnabled(True)
+                logger.debug("Forced chat display to be visible after TTS finished")
+            except Exception as e2:
+                logger.error(f"Failed to force show chat display: {e2}")
         
-        # Don't call event handler directly - let the voice service handle it
-        # The event handler will receive the TTS finished signal from the voice service
+        # Don't call Event Bus directly - let the voice service handle it
+        # The Event Bus will receive the TTS finished signal from the voice service
         # and handle worker thread cleanup separately
         
         # In voice mode, let the voice controls handle the continuous cycle
@@ -465,8 +535,9 @@ class ChatTab(QWidget):
         # Update EQ visualizer if in voice mode with EQ enabled
         if self.voice_mode and self.eq_visualizer.get_eq_mode() != "None":
             logger.debug(f"[EQ DEBUG] Calling update_eq_visualizer")
-            tts_playing = self.voice_controls.is_tts_playing()
-            self.eq_visualizer.update_eq_visualizer(audio_level, tts_playing)
+            if self.voice_controls_initialized and self.voice_controls:
+                tts_playing = self.voice_controls.is_tts_playing()
+                self.eq_visualizer.update_eq_visualizer(audio_level, tts_playing)
         else:
             logger.debug(f"[EQ DEBUG] Skipping EQ update - voice_mode: {self.voice_mode}, eq_mode: {self.eq_visualizer.get_eq_mode()}")
         
@@ -530,11 +601,12 @@ class ChatTab(QWidget):
         
     def append_to_chat(self, sender: str, message: str, is_code: bool = False):
         """Add a message to the chat display"""
-        # Don't append to chat if EQ visualizer is active
-        if self.eq_visualizer.is_eq_visualizer_active(self.voice_mode, self.voice_controls.is_tts_playing()):
-            logger.debug(f"[EQ DEBUG] Skipping chat append - EQ visualizer is active")
-            return
-            
+        # Always append to chat display - never skip this
+        # The EQ visualizer is just a visual overlay, it shouldn't prevent chat messages from appearing
+        
+        # Ensure chat display is visible for message display
+        self._ensure_chat_display_visible()
+        
         self.chat_display.append_to_chat(sender, message, is_code)
         
     def append_response_chunk(self, chunk: str, model_name: str = None):
@@ -545,33 +617,65 @@ class ChatTab(QWidget):
     
     def _append_response_chunk_safe(self, chunk: str, model_name: str = None):
         """Append a streaming response chunk safely in the main thread"""
-        # Don't append response chunks if EQ visualizer is active and we're in voice mode
-        tts_playing = self.voice_controls.is_tts_playing()
-        eq_active = self.eq_visualizer.is_eq_visualizer_active(self.voice_mode, tts_playing)
-        if self.voice_mode and eq_active:
-            logger.debug(f"[EQ DEBUG] Skipping response chunk append - EQ visualizer is active in voice mode")
-            return
+        try:
+            logger.debug(f"[ID:CT001] _append_response_chunk_safe called - Chunk: {chunk[:50]}...")
+            logger.debug(f"[ID:CT002] Model name: {model_name}")
             
-        if not self.is_streaming:
-            self.start_streaming()
-        self.current_response += chunk  # accumulate here only!
-        
-        # Log the full accumulated message every 10 chunks to reduce log size
-        if hasattr(self, '_chunk_count'):
-            self._chunk_count += 1
-        else:
-            self._chunk_count = 1
+            # Always append to chat display - never skip this
+            # The EQ visualizer is just a visual overlay, it shouldn't prevent chat messages from appearing
             
-        if self._chunk_count % 10 == 0:
-            logger.debug(f"[DEBUG] Streaming progress - chunks: {self._chunk_count}, full message: {self.current_response[:200]}...")
-        
-        ai_name = self.get_ai_name()
-        label = f"{ai_name} ({model_name})" if model_name else ai_name
-        streaming_handler = self.chat_display.get_streaming_handler()
-        if streaming_handler:
-            streaming_handler.update_streaming_message(
-                self.current_response, label, None, False, tag="ai"
-            )
+            # Ensure chat display is visible for message display
+            self._ensure_chat_display_visible()
+                
+            if not self.is_streaming:
+                logger.debug("[ID:CT002A] Starting streaming")
+                self.start_streaming()
+            self.current_response += chunk  # accumulate here only!
+            logger.debug(f"[ID:CT002B] Accumulated response length: {len(self.current_response)}")
+            
+            # Log the full accumulated message every 10 chunks to reduce log size
+            if hasattr(self, '_chunk_count'):
+                self._chunk_count += 1
+            else:
+                self._chunk_count = 1
+                
+            if self._chunk_count % 10 == 0:
+                logger.debug(f"[DEBUG] Streaming progress - chunks: {self._chunk_count}, full message: {self.current_response[:200]}...")
+            
+            ai_name = self.get_ai_name()
+            label = f"{ai_name} ({model_name})" if model_name else ai_name
+            streaming_handler = self.chat_display.get_streaming_handler()
+            if streaming_handler:
+                streaming_handler.update_streaming_message(
+                    self.current_response, label, None, False, tag="ai"
+                )
+                logger.debug(f"[ID:CT003] Updated streaming message with label: {label}")
+            else:
+                logger.warning("[ID:CT004] No streaming handler found")
+                
+        except Exception as e:
+            logger.error(f"[ID:CT005] Error in _append_response_chunk_safe: {e}")
+            logger.error(f"[ID:CT006] _append_response_chunk_safe traceback: {traceback.format_exc()}")
+    
+    def _ensure_chat_display_visible(self):
+        """Ensure the chat display is visible for message display"""
+        try:
+            # Check if chat display is hidden and force it to be visible
+            if hasattr(self, 'chat_display') and self.chat_display.chat_display:
+                if not self.chat_display.chat_display.isVisible():
+                    logger.debug("Chat display was hidden, forcing it to be visible")
+                    self.chat_display.chat_display.show()
+                    self.chat_display.chat_display.setVisible(True)
+                    self.chat_display.chat_display.setEnabled(True)
+                    
+                    # Force layout update
+                    self.chat_display.chat_display.updateGeometry()
+                    self.chat_display.chat_display.update()
+                    from PySide6.QtWidgets import QApplication
+                    QApplication.processEvents()
+                    logger.debug("Successfully made chat display visible")
+        except Exception as e:
+            logger.error(f"Error ensuring chat display visibility: {e}")
         
     def start_streaming(self):
         """Start streaming state"""
@@ -694,10 +798,19 @@ class ChatTab(QWidget):
     
     def speak_ai_response(self, text: str):
         """Trigger TTS for AI response"""
-        self.voice_controls.speak_ai_response(text)
+        logger.debug(f"[VOICE DEBUG] speak_ai_response called with text: '{text[:50]}...', voice_mode: {self.voice_mode}")
+        if self.voice_controls_initialized and self.voice_controls:
+            self.voice_controls.speak_ai_response(text)
     
     def open_voice_settings(self):
         """Open voice settings dialog"""
+        # Ensure voice controls are initialized
+        self._ensure_voice_controls_initialized()
+        
+        if not self.voice_controls_initialized or not self.voice_controls:
+            QMessageBox.warning(self, "Voice Settings", "Voice controls are not available.")
+            return
+        
         dialog = VoiceSettingsDialog(self, self.config_manager)
         dialog.set_settings(self.voice_controls.get_voice_settings())
         
@@ -716,13 +829,14 @@ class ChatTab(QWidget):
     
     def on_voice_settings_changed(self, settings: dict):
         """Handle voice settings changes"""
-        # Update voice controls
-        self.voice_controls.update_voice_settings(settings)
-        
-        # Update EQ visualizer mode if changed
-        new_eq_mode = settings.get("eq_visualizer", "None")
-        if new_eq_mode != self.eq_visualizer.get_eq_mode():
-            self.eq_visualizer.update_eq_visualizer_mode(new_eq_mode)
+        # Update voice controls if initialized
+        if self.voice_controls_initialized and self.voice_controls:
+            self.voice_controls.update_voice_settings(settings)
+            
+            # Update EQ visualizer mode if changed
+            new_eq_mode = settings.get("eq_visualizer", "None")
+            if new_eq_mode != self.eq_visualizer.get_eq_mode():
+                self.eq_visualizer.update_eq_visualizer_mode(new_eq_mode)
     
     def load_conversation(self, filepath: str):
         """Load a conversation from file"""

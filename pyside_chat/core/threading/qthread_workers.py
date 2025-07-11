@@ -143,6 +143,8 @@ class ChatStreamingWorker(StreamingWorker):
         """
         try:
             logger.debug(f"[ID:TH011] Chat streaming started - Model: {model}")
+            logger.debug(f"[ID:TH011A] Messages count: {len(messages)}")
+            logger.debug(f"[ID:TH011B] First message: {messages[0] if messages else 'No messages'}")
             self.progress_updated.emit("Connecting to Ollama...")
             
             # Prepare request data
@@ -160,18 +162,41 @@ class ChatStreamingWorker(StreamingWorker):
             }
             
             logger.debug(f"[ID:TH012] Making streaming request to: {url}")
+            logger.debug(f"[ID:TH012A] Request data: {data}")
             
-            # Test connection first
+            # Test connection first with more detailed error handling
             try:
-                test_response = requests.get(f"{base_url}/api/tags", timeout=10)
+                logger.debug(f"[ID:TH012B] Testing Ollama connection to: {base_url}/api/tags")
+                test_response = requests.get(f"{base_url}/api/tags", timeout=15)
+                logger.debug(f"[ID:TH012C] Test response status: {test_response.status_code}")
                 if test_response.status_code != 200:
                     raise requests.exceptions.RequestException(
                         f"Ollama not responding properly: {test_response.status_code}")
+                
+                # Check if models are available
+                try:
+                    models_data = test_response.json()
+                    models = models_data.get('models', [])
+                    if not models:
+                        logger.warning("[ID:TH013A] No models found in Ollama response")
+                        self.progress_updated.emit("Warning: No models found in Ollama")
+                    else:
+                        logger.debug(f"[ID:TH013B] Found {len(models)} models in Ollama")
+                        
+                except json.JSONDecodeError as e:
+                    logger.warning(f"[ID:TH013C] Could not parse models response: {e}")
+                
                 logger.debug(f"[ID:TH013] Ollama connection test successful")
                 self.progress_updated.emit("Connection successful, sending request...")
+                
             except requests.exceptions.ConnectionError as e:
                 error_msg = "Cannot connect to Ollama. Please make sure Ollama is running on localhost:11434"
                 logger.error(f"[ID:TH014] Ollama connection test failed: {e}")
+                self.error.emit(error_msg)
+                return
+            except requests.exceptions.Timeout as e:
+                error_msg = "Ollama connection timed out. The service might be busy or overloaded."
+                logger.error(f"[ID:TH014A] Ollama connection timeout: {e}")
                 self.error.emit(error_msg)
                 return
             except Exception as e:
@@ -181,47 +206,73 @@ class ChatStreamingWorker(StreamingWorker):
                 return
             
             # Make streaming request
-            self.progress_updated.emit("Receiving response...")
-            with requests.post(url, json=data, stream=True, timeout=120) as response:
-                response.raise_for_status()
+            logger.debug(f"[ID:TH015A] Starting streaming POST request to: {url}")
+            self.progress_updated.emit("Sending request to Ollama...")
+            with requests.post(url, json=data, stream=True, timeout=30) as response:
                 logger.debug(f"[ID:TH016] Stream response received - Status: {response.status_code}")
+                logger.debug(f"[ID:TH016A] Response headers: {dict(response.headers)}")
+                
+                if response.status_code != 200:
+                    error_msg = f"Ollama returned error status: {response.status_code}"
+                    logger.error(f"[ID:TH016C] {error_msg}")
+                    self.error.emit(error_msg)
+                    return
+                
+                self.progress_updated.emit("Receiving response from Ollama...")
                 
                 chunk_count = 0
                 start_time = time.time()
-                timeout_seconds = 10
+                timeout_seconds = 15  # Reduced from 60 to 15 seconds for local connections
                 
+                # Send initial progress message for model loading
+                self.progress_updated.emit(f"Model '{model}' is loading, please wait...")
+                
+                logger.debug(f"[ID:TH016B] Starting to iterate through response lines")
                 for line in response.iter_lines(decode_unicode=True):
                     if self._should_stop:
                         logger.debug("[ID:TH017] Chat streaming stop requested")
                         break
                     
-                    # Check for timeout
+                    # Check for timeout - only for first chunk to allow for model loading
                     if chunk_count == 0 and (time.time() - start_time) > timeout_seconds:
-                        error_msg = f"Timeout waiting for response from Ollama after {timeout_seconds} seconds"
+                        error_msg = f"Timeout waiting for first response from Ollama after {timeout_seconds} seconds. The model '{model}' might be loading or Ollama might be busy. Try again in a moment."
                         logger.error(f"[ID:TH018] {error_msg}")
                         self.error.emit(error_msg)
                         return
                     
                     if line:
+                        logger.debug(f"[ID:TH018A] Processing line: {line[:100]}...")
                         try:
                             chunk = json.loads(line)
+                            logger.debug(f"[ID:TH018B] Parsed chunk: {chunk}")
                             content = chunk.get("message", {}).get("content", "")
+                            logger.debug(f"[ID:TH018C] Extracted content: {content[:50]}...")
                             
                             if content:
                                 chunk_count += 1
                                 logger.debug(f"[ID:TH019] Emitting chunk {chunk_count}: {content[:50]}...")
                                 self.chunk_received.emit(content)
                                 
+                                # Update progress on first chunk
+                                if chunk_count == 1:
+                                    self.progress_updated.emit("Model loaded, receiving response...")
+                                
                                 # Update progress every 10 chunks
                                 if chunk_count % 10 == 0:
                                     self.progress_updated.emit(f"Received {chunk_count} chunks...")
+                            else:
+                                logger.debug(f"[ID:TH019A] Empty content in chunk: {chunk}")
                                     
                         except json.JSONDecodeError as e:
                             logger.warning(f"[ID:TH020] JSON decode error: {e}")
+                            logger.warning(f"[ID:TH020A] Problematic line: {line}")
                             continue
                         except Exception as e:
                             logger.error(f"[ID:TH021] Error processing chunk: {e}")
+                            logger.error(f"[ID:TH021A] Problematic line: {line}")
                             continue
+                    else:
+                        logger.debug(f"[ID:TH021B] Empty line received")
                 
                 logger.debug(f"[ID:TH022] Chat streaming completed - Total chunks: {chunk_count}")
                 self.progress_updated.emit(f"Completed - {chunk_count} chunks received")

@@ -99,7 +99,7 @@
 ### `MainApp\event_handler.py`
 
 **Classes:**
-- `EventHandler` (line 12)
+- `EventBus` (line 12)
 
 **Functions:**
 - `__init__` (line 15)
@@ -1865,7 +1865,7 @@
 
 ---
 
-### `MainApp\event_handler.py.EventHandler`
+### `MainApp\event_handler.py.EventBus`
 
 - **File:** `MainApp\event_handler.py`
 - **Line:** 12
@@ -4471,7 +4471,7 @@ Tests multiple reliable endpoints to determine i...
 - **File:** `MainApp\ollama_chat.py`
 - **Line:** 136
 - **Arguments:** self
-- **Docstring:** Get the event handler...
+- **Docstring:** Get the Event Bus...
 
 ---
 
@@ -16867,7 +16867,7 @@ Args:
 ### `MainApp\__init__.py`
 
 - `app_lifecycle.AppLifecycleManager`
-- `event_handler.EventHandler`
+- `event_handler.EventBus`
 - `ollama_chat.OllamaChat`
 - `service_manager.ServiceManager`
 - `ui_manager.UIManager`
@@ -16904,7 +16904,7 @@ Args:
 - `PySide6.QtCore.QEvent`
 - `PySide6.QtWidgets.QMainWindow`
 - `pyside_chat.MainApp.app_lifecycle.AppLifecycleManager`
-- `pyside_chat.MainApp.event_handler.EventHandler`
+- `pyside_chat.MainApp.event_handler.EventBus`
 - `pyside_chat.MainApp.service_manager.ServiceManager`
 - `pyside_chat.MainApp.ui_manager.UIManager`
 - `pyside_chat.config.config_manager.ConfigManager`
@@ -18059,7 +18059,7 @@ Args:
 - `AppLifecycleManager`
 - `ChatController`
 - `ConfigManager`
-- `EventHandler`
+- `EventBus`
 - `ServiceManager`
 - `UIManager`
 - `__init__`

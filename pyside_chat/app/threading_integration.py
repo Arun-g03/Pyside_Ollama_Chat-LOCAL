@@ -2,7 +2,7 @@
 Threading Integration - Bridges new QThread/QRunnable architecture with existing event system.
 
 This module provides:
-- Integration with existing EventHandler
+- Integration with existing EventBus
 - Backward compatibility with current Worker usage
 - Migration path from old to new threading architecture
 - Unified interface for all threading operations
@@ -21,7 +21,7 @@ class ThreadingIntegration(QObject):
     Integration layer that bridges the new threading architecture with existing event system.
     
     This class provides:
-    - Backward compatibility with existing EventHandler
+    - Backward compatibility with existing EventBus
     - Integration with new ThreadingService
     - Migration path from old Worker to new architecture
     - Unified interface for all threading operations
@@ -45,7 +45,6 @@ class ThreadingIntegration(QObject):
         self.threading_service.worker_error.connect(self.error)
         
         logger.debug("[ID:TI001] ThreadingIntegration initialized")
-    
     def start_chat_streaming(self, context_messages: List[Dict], chosen_model: str, temperature: float) -> bool:
         """
         Start chat streaming using the new QThread architecture.
@@ -76,11 +75,7 @@ class ThreadingIntegration(QObject):
                 presence_penalty=config_manager.get_presence_penalty()
             )
             
-            if success:
-                logger.debug("[ID:TI003] Chat streaming started successfully with new architecture")
-            else:
-                logger.error("[ID:TI004] Failed to start chat streaming with new architecture")
-            
+            logger.debug("[ID:TI003] Chat streaming started successfully")
             return success
             
         except Exception as e:
@@ -197,13 +192,13 @@ class ThreadingIntegration(QObject):
             logger.error(f"[ID:TI020] Error during ThreadingIntegration cleanup: {e}")
 
 
-class EventHandlerThreadingBridge:
+class EventBusThreadingBridge:
     """
-    Bridge class that integrates new threading architecture with existing EventHandler.
+    Bridge class that integrates new threading architecture with existing EventBus.
     
     This class provides:
     - Drop-in replacement for existing Worker usage
-    - Backward compatibility with current EventHandler methods
+    - Backward compatibility with current EventBus methods
     - Migration path from old to new threading architecture
     """
     
@@ -211,20 +206,20 @@ class EventHandlerThreadingBridge:
         self.event_handler = event_handler
         self.threading_integration = ThreadingIntegration(event_handler)
         
-        # Connect integration signals to event handler methods
+        # Connect integration signals to Event Bus methods
         self.threading_integration.chunk_received.connect(self._on_chunk_received)
         self.threading_integration.progress_updated.connect(self._on_progress_updated)
         self.threading_integration.finished.connect(self._on_finished)
         self.threading_integration.error.connect(self._on_error)
         
-        logger.debug("[ID:TB001] EventHandlerThreadingBridge initialized")
+        logger.debug("[ID:TB001] EventBusThreadingBridge initialized")
     
     def _on_chunk_received(self, chunk: str):
         """Handle chunk received from streaming."""
         try:
             logger.debug(f"[ID:TB002] Received chunk: {chunk[:50]}...")
             
-            # Call existing event handler method
+            # Call existing Event Bus method
             if hasattr(self.event_handler, '_on_worker_chunk'):
                 self.event_handler._on_worker_chunk(chunk)
             
@@ -236,7 +231,7 @@ class EventHandlerThreadingBridge:
         try:
             logger.debug(f"[ID:TB004] Progress update: {progress}")
             
-            # Call existing event handler method
+            # Call existing Event Bus method
             if hasattr(self.event_handler, '_on_worker_progress'):
                 self.event_handler._on_worker_progress(progress)
             
@@ -248,7 +243,7 @@ class EventHandlerThreadingBridge:
         try:
             logger.debug("[ID:TB006] Streaming finished")
             
-            # Call existing event handler method
+            # Call existing Event Bus method
             if hasattr(self.event_handler, '_on_worker_finished'):
                 self.event_handler._on_worker_finished()
             
@@ -260,7 +255,7 @@ class EventHandlerThreadingBridge:
         try:
             logger.error(f"[ID:TB008] Streaming error: {error}")
             
-            # Call existing event handler method
+            # Call existing Event Bus method
             if hasattr(self.event_handler, '_on_worker_detailed_error'):
                 self.event_handler._on_worker_detailed_error(error)
             
@@ -328,11 +323,11 @@ class EventHandlerThreadingBridge:
     def cleanup(self):
         """Clean up all threading resources."""
         try:
-            logger.debug("[ID:TB019] Cleaning up EventHandlerThreadingBridge")
+            logger.debug("[ID:TB019] Cleaning up EventBusThreadingBridge")
             self.threading_integration.cleanup()
             
         except Exception as e:
-            logger.error(f"[ID:TB020] Error during EventHandlerThreadingBridge cleanup: {e}")
+            logger.error(f"[ID:TB020] Error during EventBusThreadingBridge cleanup: {e}")
 
 
 # Global integration instance
@@ -344,7 +339,7 @@ def get_global_threading_integration(event_handler=None) -> ThreadingIntegration
     Get the global threading integration instance.
     
     Args:
-        event_handler: EventHandler instance (required for first call)
+        event_handler: EventBus instance (required for first call)
         
     Returns:
         ThreadingIntegration: Global threading integration

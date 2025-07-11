@@ -10,7 +10,7 @@ import traceback
 # Import our modular components
 from pyside_chat.app.service_manager import ServiceManager
 from pyside_chat.ui.ui_manager import UIManager
-from pyside_chat.app.event_bus import EventHandler
+from pyside_chat.app.event_bus import EventBus
 from pyside_chat.app.app_lifecycle import AppLifecycleManager
 
 # Import required services and controllers
@@ -45,8 +45,8 @@ class OllamaChat(QMainWindow):
             # Initialize UI manager
             self.ui_manager = UIManager(self, self.config_manager)
             
-            # Initialize event handler
-            self.event_handler = EventHandler(
+            # Initialize Event Bus
+            self.event_handler = EventBus(
                 self, 
                 self.service_manager, 
                 self.ui_manager, 
@@ -134,7 +134,7 @@ class OllamaChat(QMainWindow):
         return self.ui_manager
     
     def get_event_handler(self):
-        """Get the event handler"""
+        """Get the Event Bus"""
         return self.event_handler
     
     def get_lifecycle_manager(self):
