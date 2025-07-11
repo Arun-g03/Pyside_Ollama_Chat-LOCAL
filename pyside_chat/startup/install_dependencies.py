@@ -10,6 +10,8 @@ import sys
 import os
 import time
 from typing import List, Dict, Tuple, Optional
+import shutil
+import ctypes
 
 # Try to import tqdm for progress bars, fallback to simple progress if not available
 try:
@@ -19,6 +21,59 @@ except ImportError:
     TQDM_AVAILABLE = False
     print("Note: tqdm not available, using simple progress display")
 
+# --- SYSTEM-LEVEL SETUP: Ensure Chocolatey and espeak (Windows only) ---
+def is_admin():
+    try:
+        return ctypes.windll.shell32.IsUserAnAdmin()
+    except:
+        return False
+
+def ensure_choco_and_espeak():
+    if sys.platform == "win32" or sys.platform == "win64":
+        # 1. Ensure Chocolatey
+        if shutil.which("choco") is None:
+            if not is_admin():
+                print("Chocolatey (choco) not found. Requesting administrator privileges to install Chocolatey...")
+                params = ' '.join([f'"{arg}"' for arg in sys.argv])
+                result = subprocess.run([
+                    "powershell", "-Command",
+                    f'Start-Process python -ArgumentList {params} -Verb RunAs -Wait'
+                ], capture_output=True, text=True)
+                print("PowerShell output (stdout):", result.stdout)
+                print("PowerShell output (stderr):", result.stderr)
+                print("Chocolatey installation attempted. Please re-run this script.")
+                sys.exit(0)
+            print("Installing Chocolatey (admin rights granted)...")
+            result = subprocess.run([
+                "powershell", "-Command",
+                "Set-ExecutionPolicy Bypass -Scope Process -Force; "
+                "[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; "
+                "iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))"
+            ], capture_output=True, text=True)
+            # Check if choco is now in PATH
+            if shutil.which("choco") is not None:
+                print("Chocolatey installed successfully.")
+            else:
+                # Check for the warning in the output
+                if "An existing Chocolatey installation was detected" in result.stdout or "An existing Chocolatey installation was detected" in result.stderr:
+                    print("WARNING: Chocolatey appears to be partially installed or broken.")
+                    print("Please follow these steps:")
+                    print(" 1. Backup and remove 'C:\\ProgramData\\chocolatey' as described above.")
+                    print(" 2. Rerun this script.")
+                    sys.exit(1)
+                print("Chocolatey installation failed or is not in PATH. Please restart your terminal or fix the installation and try again.")
+                sys.exit(1)
+        # 2. Ensure espeak
+        if shutil.which("espeak") is None:
+            print("espeak not found. Installing espeak via Chocolatey...")
+            subprocess.run([
+                "powershell", "-Command",
+                "choco install espeak -y"
+            ], check=True)
+            print("espeak installed.")
+
+ensure_choco_and_espeak()
+
 
 class DependencyInstaller:
     """Handles staged installation of dependencies with error recovery."""
@@ -26,6 +81,7 @@ class DependencyInstaller:
     def __init__(self):
         self.install_stages = [
             # Progress bar dependency (needed first)
+
             {
                 "name": "tqdm",
                 "description": "Progress bars for installation feedback",
@@ -221,6 +277,7 @@ class DependencyInstaller:
                 "command": ["pip", "install", "pyvis"],
                 "skip_if_failed": True
             }
+            
         ]
         
         self.failed_stages = []
@@ -341,6 +398,16 @@ class DependencyInstaller:
                         pbar.update(1)
                         return True  # Don't stop installation for spellchecker issues
                 
+                # Special handling for espeak (Windows only)
+                if stage['name'] == "espeak (Windows)" and sys.platform != "win32":
+                    print(f"SKIPPING: {stage['name']} (Windows only) - not on Windows")
+                    self.successful_stages.append(stage['name'])
+                    pbar.update(1)
+                    return True
+                
+                if stage['name'] == "espeak (Windows)":
+                    print("Installing espeak via Chocolatey...")
+
                 try:
                     # Run the command
                     result = subprocess.run(
@@ -353,6 +420,9 @@ class DependencyInstaller:
                     elapsed_time = time.time() - start_time
                     print(f"SUCCESS: {stage['name']} installed in {elapsed_time:.1f}s")
                     
+                    if stage['name'] == "espeak (Windows)":
+                        print("espeak installation complete.")
+
                     self.successful_stages.append(stage['name'])
                     pbar.update(1)
                     return True
@@ -399,6 +469,15 @@ class DependencyInstaller:
                     self.failed_stages.append(stage['name'])
                     return True  # Don't stop installation for spellchecker issues
             
+            # Special handling for espeak (Windows only)
+            if stage['name'] == "espeak (Windows)" and sys.platform != "win32":
+                print(f"SKIPPING: {stage['name']} (Windows only) - not on Windows")
+                self.successful_stages.append(stage['name'])
+                return True
+            
+            if stage['name'] == "espeak (Windows)":
+                print("Installing espeak via Chocolatey...")
+
             try:
                 # Run the command
                 result = subprocess.run(
@@ -411,6 +490,9 @@ class DependencyInstaller:
                 elapsed_time = time.time() - start_time
                 print(f"SUCCESS: {stage['name']} installed in {elapsed_time:.1f}s")
                 
+                if stage['name'] == "espeak (Windows)":
+                    print("espeak installation complete.")
+
                 self.successful_stages.append(stage['name'])
                 return True
                 

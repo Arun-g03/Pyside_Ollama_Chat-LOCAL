@@ -13,7 +13,7 @@ from typing import Dict, List, Optional
 from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, 
                                QComboBox, QPushButton, QGroupBox, QCheckBox,
                                QMessageBox, QProgressBar, QTextEdit, QTabWidget, QWidget, QSpinBox, QDoubleSpinBox)
-from PySide6.QtCore import Qt, Signal, QThread
+from PySide6.QtCore import Qt, Signal, QThread, QObject, QTimer
 from PySide6.QtGui import QFont
 
 from pyside_chat.core.utils.internet_checker import test_internet_connection
@@ -348,7 +348,34 @@ class VoiceSettingsDialog(QDialog):
         self.speaker_combo.currentTextChanged.connect(self.on_coqui_speaker_changed)
         speaker_layout.addWidget(self.speaker_combo)
         
+        # Add speaker preview button
+        self.preview_speaker_button = QPushButton("🎵 Preview")
+        self.preview_speaker_button.setToolTip("Preview the selected speaker's voice")
+        self.preview_speaker_button.clicked.connect(self.preview_selected_speaker)
+        self.preview_speaker_button.setEnabled(False)
+        speaker_layout.addWidget(self.preview_speaker_button)
+        
         coqui_layout.addLayout(speaker_layout)
+        
+        # Speaker information display
+        self.speaker_info_label = QLabel("")
+        self.speaker_info_label.setWordWrap(True)
+        self.speaker_info_label.setStyleSheet("color: #ccc; font-style: italic; margin-top: 5px;")
+        coqui_layout.addWidget(self.speaker_info_label)
+        
+        # Speaker filter controls (for multi-speaker models)
+        self.speaker_filter_widget = QWidget()
+        speaker_filter_layout = QHBoxLayout(self.speaker_filter_widget)
+        speaker_filter_layout.setContentsMargins(0, 0, 0, 0)
+        
+        speaker_filter_layout.addWidget(QLabel("Filter:"))
+        self.speaker_filter_combo = QComboBox()
+        self.speaker_filter_combo.addItems(["All Speakers", "Male", "Female", "English", "American", "British"])
+        self.speaker_filter_combo.currentTextChanged.connect(self.filter_speakers)
+        speaker_filter_layout.addWidget(self.speaker_filter_combo)
+        
+        self.speaker_filter_widget.setVisible(False)
+        coqui_layout.addWidget(self.speaker_filter_widget)
         
         # Model info label
         self.model_info_label = QLabel("")
@@ -680,7 +707,7 @@ class VoiceSettingsDialog(QDialog):
     def load_coqui_models(self):
         """Load available Coqui TTS models"""
         try:
-            from pyside_chat.services.Voice_STT_TTS_SERVICES.coqui_tts_service import CoquiTTSService
+            from pyside_chat.features.voice.tts.tts_service import CoquiTTSService
             
             self.coqui_service = CoquiTTSService()
             self.available_models = self.coqui_service.get_available_models()
@@ -735,32 +762,221 @@ class VoiceSettingsDialog(QDialog):
             self.model_info_label.setText(f"Error: {str(e)}")
     
     def load_coqui_speakers(self, model_name: str):
-        """Load available speakers for the selected model"""
+        """Load available speakers for the selected model with enhanced information"""
         try:
             if self.coqui_service.load_model(model_name):
                 self.speaker_combo.clear()
+                self.all_speakers = []  # Store all speakers for filtering
+                
                 if self.coqui_service.is_multi_speaker():
                     speakers = self.coqui_service.available_voices
+                    self.all_speakers = speakers.copy()
+                    
+                    # Add speakers with metadata if available
                     for speaker in speakers:
-                        self.speaker_combo.addItem(speaker)
+                        # Try to get speaker metadata
+                        speaker_info = self.get_speaker_info(speaker, model_name)
+                        display_name = speaker_info.get('display_name', speaker)
+                        self.speaker_combo.addItem(display_name, speaker)  # Store original name as data
+                    
                     self.speaker_combo.setCurrentIndex(0)
-                    self.model_info_label.setText(f"Found {len(speakers)} speakers for model '{model_name}'")
+                    
+                    # Show speaker information
+                    speaker_count = len(speakers)
+                    self.speaker_info_label.setText(
+                        f"✅ Multi-speaker model with {speaker_count} voices available\n"
+                        f"Model: {model_name}\n"
+                        f"Use the filter to find specific voice types"
+                    )
+                    
+                    # Show filter controls for multi-speaker models
+                    self.speaker_filter_widget.setVisible(True)
+                    self.preview_speaker_button.setEnabled(True)
+                    
+                    logger.info(f"Loaded {speaker_count} speakers for multi-speaker model '{model_name}'")
                 else:
                     # Single-speaker model
-                    self.speaker_combo.addItem("default")
-                    self.model_info_label.setText(f"Model '{model_name}' has no multiple speakers (single voice)")
-                logger.info(f"Loaded {len(self.coqui_service.available_voices) if self.coqui_service.available_voices else 1} speakers for model '{model_name}'")
+                    self.speaker_combo.addItem("Default Voice", "default")
+                    self.all_speakers = ["default"]
+                    
+                    self.speaker_info_label.setText(
+                        f"ℹ️ Single-speaker model\n"
+                        f"Model: {model_name}\n"
+                        f"This model has only one voice available"
+                    )
+                    
+                    # Hide filter controls for single-speaker models
+                    self.speaker_filter_widget.setVisible(False)
+                    self.preview_speaker_button.setEnabled(False)
+                    
+                    logger.info(f"Loaded single-speaker model '{model_name}'")
             else:
                 self.speaker_combo.clear()
-                self.model_info_label.setText(f"Failed to load model '{model_name}'")
+                self.speaker_info_label.setText(f"❌ Failed to load model '{model_name}'")
+                self.speaker_filter_widget.setVisible(False)
+                self.preview_speaker_button.setEnabled(False)
         except Exception as e:
             logger.error(f"Failed to load Coqui speakers: {e}")
-            self.model_info_label.setText(f"Error loading speakers: {str(e)}")
+            self.speaker_info_label.setText(f"❌ Error loading speakers: {str(e)}")
+            self.speaker_filter_widget.setVisible(False)
+            self.preview_speaker_button.setEnabled(False)
+    
+    def get_speaker_info(self, speaker_name: str, model_name: str) -> dict:
+        """Get speaker metadata and information"""
+        try:
+            # Common speaker patterns and metadata
+            speaker_info = {
+                'display_name': speaker_name,
+                'gender': 'Unknown',
+                'accent': 'Unknown',
+                'language': 'English',
+                'description': ''
+            }
+            
+            # Extract information from speaker name
+            speaker_lower = speaker_name.lower()
+            
+            # Gender detection
+            if any(gender in speaker_lower for gender in ['male', 'm_', '_m']):
+                speaker_info['gender'] = 'Male'
+            elif any(gender in speaker_lower for gender in ['female', 'f_', '_f']):
+                speaker_info['gender'] = 'Female'
+            
+            # Accent detection
+            if 'american' in speaker_lower or 'us_' in speaker_lower:
+                speaker_info['accent'] = 'American'
+            elif 'british' in speaker_lower or 'uk_' in speaker_lower:
+                speaker_info['accent'] = 'British'
+            elif 'australian' in speaker_lower:
+                speaker_info['accent'] = 'Australian'
+            elif 'canadian' in speaker_lower:
+                speaker_info['accent'] = 'Canadian'
+            elif 'indian' in speaker_lower:
+                speaker_info['accent'] = 'Indian'
+            
+            # Create display name with metadata
+            display_parts = [speaker_name]
+            if speaker_info['gender'] != 'Unknown':
+                display_parts.append(f"({speaker_info['gender']})")
+            if speaker_info['accent'] != 'Unknown':
+                display_parts.append(f"({speaker_info['accent']})")
+            
+            speaker_info['display_name'] = ' '.join(display_parts)
+            speaker_info['description'] = f"{speaker_info['gender']} voice with {speaker_info['accent']} accent"
+            
+            return speaker_info
+            
+        except Exception as e:
+            logger.error(f"Failed to get speaker info for {speaker_name}: {e}")
+            return {'display_name': speaker_name, 'gender': 'Unknown', 'accent': 'Unknown'}
+    
+    def filter_speakers(self, filter_type: str):
+        """Filter speakers based on selected criteria"""
+        if not hasattr(self, 'all_speakers') or not self.all_speakers:
+            return
+        
+        self.speaker_combo.clear()
+        
+        if filter_type == "All Speakers":
+            # Show all speakers
+            for speaker in self.all_speakers:
+                speaker_info = self.get_speaker_info(speaker, self.selected_coqui_model)
+                display_name = speaker_info.get('display_name', speaker)
+                self.speaker_combo.addItem(display_name, speaker)
+        else:
+            # Filter speakers based on criteria
+            filtered_speakers = []
+            for speaker in self.all_speakers:
+                speaker_info = self.get_speaker_info(speaker, self.selected_coqui_model)
+                
+                if filter_type == "Male" and speaker_info['gender'] == 'Male':
+                    filtered_speakers.append(speaker)
+                elif filter_type == "Female" and speaker_info['gender'] == 'Female':
+                    filtered_speakers.append(speaker)
+                elif filter_type == "English" and speaker_info['language'] == 'English':
+                    filtered_speakers.append(speaker)
+                elif filter_type == "American" and speaker_info['accent'] == 'American':
+                    filtered_speakers.append(speaker)
+                elif filter_type == "British" and speaker_info['accent'] == 'British':
+                    filtered_speakers.append(speaker)
+            
+            # Add filtered speakers
+            for speaker in filtered_speakers:
+                speaker_info = self.get_speaker_info(speaker, self.selected_coqui_model)
+                display_name = speaker_info.get('display_name', speaker)
+                self.speaker_combo.addItem(display_name, speaker)
+            
+            # Update info label
+            if filtered_speakers:
+                self.speaker_info_label.setText(f"Found {len(filtered_speakers)} speakers matching '{filter_type}' filter")
+            else:
+                self.speaker_info_label.setText(f"No speakers found matching '{filter_type}' filter")
+        
+        # Enable/disable preview button based on available speakers
+        self.preview_speaker_button.setEnabled(self.speaker_combo.count() > 0)
     
     def on_coqui_speaker_changed(self, speaker_name: str):
         """Handle Coqui TTS speaker selection"""
-        self.selected_coqui_speaker = speaker_name
-        logger.info(f"Selected Coqui TTS speaker: {speaker_name}")
+        # Get the actual speaker name from combo box data
+        current_index = self.speaker_combo.currentIndex()
+        if current_index >= 0:
+            actual_speaker_name = self.speaker_combo.itemData(current_index)
+            if actual_speaker_name:
+                self.selected_coqui_speaker = actual_speaker_name
+            else:
+                self.selected_coqui_speaker = speaker_name
+        else:
+            self.selected_coqui_speaker = speaker_name
+        
+        logger.info(f"Selected Coqui TTS speaker: {self.selected_coqui_speaker}")
+        
+        # Enable preview button if we have a valid speaker
+        self.preview_speaker_button.setEnabled(bool(self.selected_coqui_speaker))
+        
+        # Update speaker info display
+        if hasattr(self, 'selected_coqui_model') and self.selected_coqui_speaker:
+            speaker_info = self.get_speaker_info(self.selected_coqui_speaker, self.selected_coqui_model)
+            info_text = f"Selected: {speaker_info['display_name']}\n"
+            info_text += f"Gender: {speaker_info['gender']}\n"
+            info_text += f"Accent: {speaker_info['accent']}\n"
+            info_text += f"Language: {speaker_info['language']}"
+            self.speaker_info_label.setText(info_text)
+    
+    def preview_selected_speaker(self):
+        """Preview the selected speaker's voice"""
+        if not hasattr(self, 'selected_coqui_speaker') or not self.selected_coqui_speaker:
+            QMessageBox.warning(self, "No Speaker Selected", "Please select a speaker to preview.")
+            return
+
+        try:
+            # Disable preview button while previewing
+            self.preview_speaker_button.setEnabled(False)
+            self.preview_speaker_button.setText("Previewing...")
+            
+            # Create a simple TTS service for preview
+            from pyside_chat.features.voice.tts.tts_service import TTSService
+            preview_tts = TTSService()
+            
+            # Load the model and set the speaker
+            if hasattr(self, 'selected_coqui_model') and self.selected_coqui_model:
+                preview_tts.set_coqui_model(self.selected_coqui_model)
+                preview_tts.update_voice(self.selected_coqui_speaker)
+            
+            # Generate a short preview text
+            preview_text = "Hello, this is a voice preview. How do I sound?"
+            
+            # Use non-streaming mode for preview to avoid complexity
+            preview_tts.speak_text_non_streaming(preview_text)
+            
+            # Re-enable the preview button after a short delay
+            QTimer.singleShot(3000, lambda: self.preview_speaker_button.setText("🎵 Preview"))
+            QTimer.singleShot(3000, lambda: self.preview_speaker_button.setEnabled(True))
+            
+        except Exception as e:
+            logger.error(f"Failed to start voice preview: {e}")
+            QMessageBox.critical(self, "Preview Error", f"Failed to start voice preview:\n{str(e)}")
+            self.preview_speaker_button.setEnabled(True)
+            self.preview_speaker_button.setText("🎵 Preview")
     
     def download_selected_model(self):
         """Download the selected Coqui TTS model"""
@@ -783,7 +999,7 @@ class VoiceSettingsDialog(QDialog):
     def start_coqui_download(self, model_name: str):
         """Start downloading a Coqui TTS model"""
         try:
-            from pyside_chat.ui.Widgets.coqui_model_dialog import ModelDownloadThread
+            from pyside_chat.ui.dialogs.coqui_model_dialog import ModelDownloadThread
             
             self.download_button.setEnabled(False)
             self.download_button.setText("Downloading...")
@@ -918,7 +1134,7 @@ class VoiceSettingsDialog(QDialog):
             self.coqui_service.load_model(self.selected_coqui_model)
             if self.selected_coqui_speaker:
                 self.coqui_service.set_voice(self.selected_coqui_speaker)
-        
+    
     def get_settings(self) -> dict:
         """Get current settings"""
         return self.current_settings.copy()

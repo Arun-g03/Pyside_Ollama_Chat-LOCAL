@@ -2,13 +2,13 @@ import os
 import subprocess
 import platform
 from PySide6.QtCore import QObject, Signal, QTimer, Qt
-from pyside_chat.utils.Logging.Custom_Logger import CustomLogger
+from pyside_chat.core.logging.logger import CustomLogger
 
 logger = CustomLogger.get_logger(__name__)
 
 # Import Coqui TTS service
 try:
-    from .coqui_tts_service import CoquiTTSService
+    from .coqui_tts import CoquiTTSService
     COQUI_AVAILABLE = True
 except ImportError:
     COQUI_AVAILABLE = False

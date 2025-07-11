@@ -48,21 +48,32 @@ class VoiceService(QObject):
         super().__init__()
         self.response_queue = response_queue
         
-        # Enhanced resource management
-        self._cleanup_timer = QTimer()
-        self._cleanup_timer.setSingleShot(True)
-        self._cleanup_timer.timeout.connect(self._cleanup_resources)
-        self._error_count = 0
-        self._max_errors = 3
-        self._error_reset_timer = QTimer()
-        self._error_reset_timer.setSingleShot(True)
-        self._error_reset_timer.timeout.connect(self._reset_error_count)
+        # Check if we're in a Qt application context
+        from PySide6.QtWidgets import QApplication
+        self.in_qt_context = QApplication.instance() is not None
+        
+        # Enhanced resource management (only if in Qt context)
+        if self.in_qt_context:
+            self._cleanup_timer = QTimer()
+            self._cleanup_timer.setSingleShot(True)
+            self._cleanup_timer.timeout.connect(self._cleanup_resources)
+            self._error_count = 0
+            self._max_errors = 3
+            self._error_reset_timer = QTimer()
+            self._error_reset_timer.setSingleShot(True)
+            self._error_reset_timer.timeout.connect(self._reset_error_count)
+        else:
+            self._cleanup_timer = None
+            self._error_reset_timer = None
+            self._error_count = 0
+            self._max_errors = 3
         
         # Initialize services with error handling
         self._initialize_services()
         
-        # Connect signals with QueuedConnection for thread safety
-        self._connect_signals()
+        # Connect signals with QueuedConnection for thread safety (only if in Qt context)
+        if self.in_qt_context:
+            self._connect_signals()
         
         # State tracking
         self.is_recording = False
@@ -75,15 +86,24 @@ class VoiceService(QObject):
         self.silence_threshold = 0.005  # Lowered from 0.01 for better sensitivity
         self.silence_duration = 3.0    # Reduced from 4.0 to 3.0 seconds for better responsiveness
         self.min_speech_duration = 0.5  # Minimum speech duration before considering valid
-        self.recording_timer = QTimer()
-        self.recording_timer.setSingleShot(True)
-        self.recording_timer.timeout.connect(self._on_recording_timeout)
+        
+        # Recording timer (only if in Qt context)
+        if self.in_qt_context:
+            self.recording_timer = QTimer()
+            self.recording_timer.setSingleShot(True)
+            self.recording_timer.timeout.connect(self._on_recording_timeout)
+        else:
+            self.recording_timer = None
         
         # EQ Visualizer setting
         self.eq_visualizer = "None"  # Default to no EQ visualizer
         
         # Clean up all audio files on startup (since they're only for STT processing)
-        QTimer.singleShot(1000, lambda: self.cleanup_all_audio_files())
+        if self.in_qt_context:
+            QTimer.singleShot(1000, lambda: self.cleanup_all_audio_files())
+        else:
+            # For non-Qt contexts, clean up immediately
+            self.cleanup_all_audio_files()
     
     def __del__(self):
         """Cleanup when voice service is destroyed"""
@@ -552,7 +572,8 @@ class VoiceService(QObject):
                 self.tts_service.stop_playback()
                 
             # Schedule cleanup timer
-            self._cleanup_timer.start(1000)  # 1 second timeout
+            if self.in_qt_context:
+                self._cleanup_timer.start(1000)  # 1 second timeout
             
         except Exception as e:
             logger.error(f"Error during voice service cleanup: {e}")
@@ -706,95 +727,40 @@ class VoiceService(QObject):
         except Exception as e:
             logger.error(f"Failed to initialize Recording service: {e}")
         
-        # Connect signals (only if services are available)
-        if self.stt_service:
-            try:
-                self.stt_service.text_received.connect(self._on_stt_text_received)
-                self.stt_service.error_occurred.connect(self._on_stt_error)
-            except Exception as e:
-                logger.error(f"Failed to connect STT signals: {e}")
-        
-        if self.tts_service:
-            try:
-                # Connect TTS signals with QueuedConnection for thread safety
-                self.tts_service.tts_started.connect(self.tts_started.emit, Qt.ConnectionType.QueuedConnection)
-                self.tts_service.tts_finished.connect(self._on_tts_finished, Qt.ConnectionType.QueuedConnection)
-                self.tts_service.tts_error.connect(self._on_tts_error, Qt.ConnectionType.QueuedConnection)
-                self.tts_service.audio_level_changed.connect(self.audio_level_changed.emit, Qt.ConnectionType.QueuedConnection)
-            except Exception as e:
-                logger.error(f"Failed to connect TTS signals: {e}")
-        
-        if self.recording_service:
-            try:
-                # Connect recording signals
-                self.recording_service.recording_started.connect(self.recording_started.emit)
-                self.recording_service.recording_stopped.connect(self.recording_stopped.emit)
-                self.recording_service.recording_error.connect(self.recording_error.emit)
-                self.recording_service.recording_auto_stopped.connect(self._on_recording_auto_stopped)
-                
-                # Connect recording signals to response queue forwarding
-                if self.response_queue:
-                    self.recording_service.recording_started.connect(self._forward_recording_started)
-                    self.recording_service.recording_stopped.connect(self._forward_recording_stopped)
-                    self.recording_service.recording_error.connect(self._forward_recording_error)
-            except Exception as e:
-                logger.error(f"Failed to connect recording signals: {e}")
-        
-        # State tracking
-        self.is_recording = False
-        self.is_playing_tts = False
-        self.is_processing_voice = False  # Track if voice processing is in progress
-        self.continuous_voice_mode = False  # Track if continuous voice mode is enabled
-        
-        # Recording settings
-        self.recording_timeout = 15.0  # Increased from 10.0 to 15.0 seconds (fallback)
-        self.silence_threshold = 0.005  # Lowered from 0.01 for better sensitivity
-        self.silence_duration = 3.0    # Reduced from 4.0 to 3.0 seconds for better responsiveness
-        self.min_speech_duration = 0.5  # Minimum speech duration before considering valid
-        self.recording_timer = QTimer()
-        self.recording_timer.setSingleShot(True)
-        self.recording_timer.timeout.connect(self._on_recording_timeout)
-        
-        # EQ Visualizer setting
-        self.eq_visualizer = "None"  # Default to no EQ visualizer
-        
-        # Clean up all audio files on startup (since they're only for STT processing)
-        QTimer.singleShot(1000, lambda: self.cleanup_all_audio_files())
-    
-    def _connect_signals(self):
-        """Connect signals with QueuedConnection for thread safety"""
-        if self.stt_service:
-            try:
-                self.stt_service.text_received.connect(self._on_stt_text_received)
-                self.stt_service.error_occurred.connect(self._on_stt_error)
-            except Exception as e:
-                logger.error(f"Failed to connect STT signals: {e}")
-        
-        if self.tts_service:
-            try:
-                # Connect TTS signals with QueuedConnection for thread safety
-                self.tts_service.tts_started.connect(self.tts_started.emit, Qt.ConnectionType.QueuedConnection)
-                self.tts_service.tts_finished.connect(self._on_tts_finished, Qt.ConnectionType.QueuedConnection)
-                self.tts_service.tts_error.connect(self._on_tts_error, Qt.ConnectionType.QueuedConnection)
-                self.tts_service.audio_level_changed.connect(self.audio_level_changed.emit, Qt.ConnectionType.QueuedConnection)
-            except Exception as e:
-                logger.error(f"Failed to connect TTS signals: {e}")
-        
-        if self.recording_service:
-            try:
-                # Connect recording signals
-                self.recording_service.recording_started.connect(self.recording_started.emit)
-                self.recording_service.recording_stopped.connect(self.recording_stopped.emit)
-                self.recording_service.recording_error.connect(self.recording_error.emit)
-                self.recording_service.recording_auto_stopped.connect(self._on_recording_auto_stopped)
-                
-                # Connect recording signals to response queue forwarding
-                if self.response_queue:
-                    self.recording_service.recording_started.connect(self._forward_recording_started)
-                    self.recording_service.recording_stopped.connect(self._forward_recording_stopped)
-                    self.recording_service.recording_error.connect(self._forward_recording_error)
-            except Exception as e:
-                logger.error(f"Failed to connect recording signals: {e}")
+        # Connect signals (only if services are available and in Qt context)
+        if self.in_qt_context:
+            if self.stt_service:
+                try:
+                    self.stt_service.text_received.connect(self._on_stt_text_received)
+                    self.stt_service.error_occurred.connect(self._on_stt_error)
+                except Exception as e:
+                    logger.error(f"Failed to connect STT signals: {e}")
+            
+            if self.tts_service:
+                try:
+                    # Connect TTS signals with QueuedConnection for thread safety
+                    self.tts_service.tts_started.connect(self.tts_started.emit, Qt.ConnectionType.QueuedConnection)
+                    self.tts_service.tts_finished.connect(self._on_tts_finished, Qt.ConnectionType.QueuedConnection)
+                    self.tts_service.tts_error.connect(self._on_tts_error, Qt.ConnectionType.QueuedConnection)
+                    self.tts_service.audio_level_changed.connect(self.audio_level_changed.emit, Qt.ConnectionType.QueuedConnection)
+                except Exception as e:
+                    logger.error(f"Failed to connect TTS signals: {e}")
+            
+            if self.recording_service:
+                try:
+                    # Connect recording signals
+                    self.recording_service.recording_started.connect(self.recording_started.emit)
+                    self.recording_service.recording_stopped.connect(self.recording_stopped.emit)
+                    self.recording_service.recording_error.connect(self.recording_error.emit)
+                    self.recording_service.recording_auto_stopped.connect(self._on_recording_auto_stopped)
+                    
+                    # Connect recording signals to response queue forwarding
+                    if self.response_queue:
+                        self.recording_service.recording_started.connect(self._forward_recording_started)
+                        self.recording_service.recording_stopped.connect(self._forward_recording_stopped)
+                        self.recording_service.recording_error.connect(self._forward_recording_error)
+                except Exception as e:
+                    logger.error(f"Failed to connect recording signals: {e}")
         
         # State tracking
         self.is_recording = False
@@ -807,12 +773,21 @@ class VoiceService(QObject):
         self.silence_threshold = 0.005  # Lowered from 0.01 for better sensitivity
         self.silence_duration = 3.0    # Reduced from 4.0 to 3.0 seconds for better responsiveness
         self.min_speech_duration = 0.5  # Minimum speech duration before considering valid
-        self.recording_timer = QTimer()
-        self.recording_timer.setSingleShot(True)
-        self.recording_timer.timeout.connect(self._on_recording_timeout)
+        
+        # Recording timer (only if in Qt context)
+        if self.in_qt_context:
+            self.recording_timer = QTimer()
+            self.recording_timer.setSingleShot(True)
+            self.recording_timer.timeout.connect(self._on_recording_timeout)
+        else:
+            self.recording_timer = None
         
         # EQ Visualizer setting
         self.eq_visualizer = "None"  # Default to no EQ visualizer
         
         # Clean up all audio files on startup (since they're only for STT processing)
-        QTimer.singleShot(1000, lambda: self.cleanup_all_audio_files()) 
+        if self.in_qt_context:
+            QTimer.singleShot(1000, lambda: self.cleanup_all_audio_files())
+        else:
+            # For non-Qt contexts, clean up immediately
+            self.cleanup_all_audio_files() 
