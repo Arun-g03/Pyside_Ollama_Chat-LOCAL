@@ -30,5 +30,21 @@
       "Make people laugh while still being helpful",
       "Use comedic timing and delivery in responses"
     ]
+  },
+  "config": {
+    "temperature": 0.8,
+    "max_tokens": 2048,
+    "top_p": 0.9,
+    "frequency_penalty": 0.0,
+    "presence_penalty": 0.0,
+    "use_prompt_templates": true
+  },
+  "metadata": {
+    "created_date": "2024-01-01T00:00:00",
+    "last_modified": "2024-01-01T00:00:00",
+    "version": "1.0",
+    "author": "System",
+    "category": "professions",
+    "tags": ["comedian", "humor", "entertainment", "witty", "funny"]
   }
 } 

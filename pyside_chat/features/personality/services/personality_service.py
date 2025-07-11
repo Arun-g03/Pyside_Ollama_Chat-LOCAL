@@ -438,3 +438,10 @@ class PersonalityService:
         if current_personality and "traits" in current_personality:
             return current_personality["traits"].get("name", "AI Assistant")
         return "AI Assistant" 
+
+    def get_temperature(self) -> float:
+        """Get the temperature for the current personality, or default to 0.7"""
+        current_personality = self.get_current_personality()
+        if current_personality and 'temperature' in current_personality:
+            return float(current_personality['temperature'])
+        return 0.7 

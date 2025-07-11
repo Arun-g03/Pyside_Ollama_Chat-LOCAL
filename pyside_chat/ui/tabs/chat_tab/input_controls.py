@@ -363,14 +363,15 @@ class InputControls(QObject):
         logger.debug(f"Send button enabled: {self.send_button.isEnabled()}")
     
     def update_model_list(self, models: list):
-        """Update the model combo box with available models"""
+        """Update the model combo box with available models, always including 'Auto' as the first option"""
         current_model = self.model_combo.currentText()
         self.model_combo.clear()
-        self.model_combo.addItems(models)
+        all_models = ["Auto"] + [m for m in models if m != "Auto"]
+        self.model_combo.addItems(all_models)
         # Try to restore the previously selected model
-        if current_model and current_model in models:
+        if current_model and current_model in all_models:
             self.model_combo.setCurrentText(current_model)
-        elif models:
+        elif all_models:
             self.model_combo.setCurrentIndex(0)
     
     def update_personality_list(self, personalities: list):

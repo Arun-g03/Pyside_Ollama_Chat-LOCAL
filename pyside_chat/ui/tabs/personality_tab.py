@@ -6,7 +6,8 @@ Handles personality selection and management.
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
                                QComboBox, QPushButton, QTextEdit, QLineEdit,
                                QFormLayout, QGroupBox, QCheckBox, QSpinBox,
-                               QMessageBox, QListWidget, QSplitter, QTabWidget)
+                               QMessageBox, QListWidget, QSplitter, QTabWidget,
+                               QScrollArea, QDoubleSpinBox)
 from PySide6.QtCore import Signal, Qt
 from pyside_chat.features.personality.models.personality_model import PersonalityModel
 from pyside_chat.features.personality.models.personality_types import PersonalityTraits, PersonalityPrompt, PersonalityConfig, PersonalityMetadata
@@ -233,6 +234,32 @@ class PersonalityTab(QWidget):
         """)
         layout = QVBoxLayout(creation_widget)
         
+        # Create scroll area for better organization
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setStyleSheet("""
+            QScrollArea {
+                border: none;
+                background-color: transparent;
+            }
+            QScrollBar:vertical {
+                background-color: #2d2d2d;
+                width: 12px;
+                border-radius: 6px;
+            }
+            QScrollBar::handle:vertical {
+                background-color: #555;
+                border-radius: 6px;
+                min-height: 20px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background-color: #777;
+            }
+        """)
+        
+        scroll_content = QWidget()
+        scroll_layout = QVBoxLayout(scroll_content)
+        
         # Basic information
         basic_group = QGroupBox("Basic Information")
         basic_group.setStyleSheet(basic_group.styleSheet() + """
@@ -246,112 +273,224 @@ class PersonalityTab(QWidget):
         basic_layout.setLabelAlignment(Qt.AlignRight)
         
         self.name_edit = QLineEdit()
-        self.name_edit.setStyleSheet("""
-            QLineEdit {
-                background-color: #2d2d2d;
-                color: #ffffff;
-                border: 1px solid #555;
-                border-radius: 5px;
-                padding: 8px;
-                font-family: 'Segoe UI', Arial, sans-serif;
-                font-size: 14px;
-            }
-            QLineEdit:focus {
-                border: 1px solid #0078d4;
-            }
-        """)
+        self.name_edit.setPlaceholderText("Enter personality name")
         
         self.description_edit = QTextEdit()
         self.description_edit.setMaximumHeight(60)
-        self.description_edit.setStyleSheet("""
-            QTextEdit {
-                background-color: #2d2d2d;
-                color: #ffffff;
-                border: 1px solid #555;
-                border-radius: 5px;
-                padding: 8px;
-                font-family: 'Segoe UI', Arial, sans-serif;
-                font-size: 14px;
-            }
-        """)
+        self.description_edit.setPlaceholderText("Enter personality description")
         
         self.tone_edit = QLineEdit()
-        self.tone_edit.setStyleSheet("""
-            QLineEdit {
-                background-color: #2d2d2d;
-                color: #ffffff;
-                border: 1px solid #555;
-                border-radius: 5px;
-                padding: 8px;
-                font-family: 'Segoe UI', Arial, sans-serif;
-                font-size: 14px;
-            }
-            QLineEdit:focus {
-                border: 1px solid #0078d4;
-            }
-        """)
+        self.tone_edit.setPlaceholderText("e.g., friendly, professional, humorous")
         
         self.style_edit = QLineEdit()
-        self.style_edit.setStyleSheet("""
-            QLineEdit {
-                background-color: #2d2d2d;
-                color: #ffffff;
-                border: 1px solid #555;
-                border-radius: 5px;
-                padding: 8px;
-                font-family: 'Segoe UI', Arial, sans-serif;
-                font-size: 14px;
-            }
-            QLineEdit:focus {
-                border: 1px solid #0078d4;
-            }
-        """)
+        self.style_edit.setPlaceholderText("e.g., casual, formal, creative")
         
         basic_layout.addRow("Name:", self.name_edit)
         basic_layout.addRow("Description:", self.description_edit)
         basic_layout.addRow("Tone:", self.tone_edit)
         basic_layout.addRow("Style:", self.style_edit)
         
-        layout.addWidget(basic_group)
+        scroll_layout.addWidget(basic_group)
         
-        # System prompt
-        prompt_group = QGroupBox("System Prompt")
-        prompt_group.setStyleSheet("""
-            QGroupBox {
-                font-weight: bold;
-                color: #ffffff;
-                border: 2px solid #555;
-                border-radius: 5px;
-                margin-top: 1ex;
-                padding-top: 10px;
-                background-color: #2d2d2d;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 5px 0 5px;
-                color: #ffffff;
-            }
-        """)
+        # Traits configuration
+        traits_group = QGroupBox("Traits Configuration")
+        traits_layout = QFormLayout(traits_group)
+        traits_layout.setLabelAlignment(Qt.AlignRight)
+        
+        self.expertise_edit = QTextEdit()
+        self.expertise_edit.setMaximumHeight(60)
+        self.expertise_edit.setPlaceholderText("Enter expertise areas (one per line)")
+        
+        self.conversation_style_combo = QComboBox()
+        self.conversation_style_combo.addItems(["conversational", "professional", "casual", "formal", "friendly", "mentoring", "entertaining", "inspirational", "exploratory"])
+        
+        self.response_length_combo = QComboBox()
+        self.response_length_combo.addItems(["brief", "detailed", "comprehensive"])
+        
+        self.formality_level_combo = QComboBox()
+        self.formality_level_combo.addItems(["casual", "semi-formal", "formal"])
+        
+        self.humor_level_combo = QComboBox()
+        self.humor_level_combo.addItems(["none", "subtle", "moderate", "high"])
+        
+        self.emoji_usage_check = QCheckBox("Use emojis")
+        self.emoji_usage_check.setChecked(True)
+        
+        self.code_formatting_check = QCheckBox("Enable code formatting")
+        self.code_formatting_check.setChecked(False)
+        
+        self.examples_usage_check = QCheckBox("Include examples")
+        self.examples_usage_check.setChecked(True)
+        
+        self.questions_usage_check = QCheckBox("Ask questions")
+        self.questions_usage_check.setChecked(True)
+        
+        traits_layout.addRow("Expertise:", self.expertise_edit)
+        traits_layout.addRow("Conversation Style:", self.conversation_style_combo)
+        traits_layout.addRow("Response Length:", self.response_length_combo)
+        traits_layout.addRow("Formality Level:", self.formality_level_combo)
+        traits_layout.addRow("Humor Level:", self.humor_level_combo)
+        traits_layout.addRow("", self.emoji_usage_check)
+        traits_layout.addRow("", self.code_formatting_check)
+        traits_layout.addRow("", self.examples_usage_check)
+        traits_layout.addRow("", self.questions_usage_check)
+        
+        scroll_layout.addWidget(traits_group)
+        
+        # Prompt configuration
+        prompt_group = QGroupBox("Prompt Configuration")
         prompt_layout = QVBoxLayout(prompt_group)
         
+        # System prompt
+        system_prompt_label = QLabel("System Prompt:")
         self.system_prompt_edit = QTextEdit()
         self.system_prompt_edit.setMaximumHeight(100)
         self.system_prompt_edit.setPlaceholderText("Enter the system prompt for this personality")
-        self.system_prompt_edit.setStyleSheet("""
-            QTextEdit {
-                background-color: #2d2d2d;
-                color: #ffffff;
-                border: 1px solid #555;
-                border-radius: 5px;
-                padding: 8px;
-                font-family: 'Segoe UI', Arial, sans-serif;
-                font-size: 14px;
-            }
-        """)
-        prompt_layout.addWidget(self.system_prompt_edit)
         
-        layout.addWidget(prompt_group)
+        # Conversation style template
+        conversation_style_label = QLabel("Conversation Style Template:")
+        conversation_style_layout = QHBoxLayout()
+        
+        self.conversation_style_template_combo = QComboBox()
+        self.conversation_style_template_combo.addItems([
+            "Simple: User: {user_input}\nAssistant:",
+            "Formal: {user_title} {user_name}: {user_input}\nAssistant:",
+            "Casual: Hey! {user_input}\nAssistant:",
+            "Professional: Client: {user_input}\nConsultant:",
+            "Character-based: Human: {user_input}\n{character_name}:",
+            "Custom..."
+        ])
+        self.conversation_style_template_combo.currentTextChanged.connect(self.on_conversation_style_changed)
+        
+        conversation_style_layout.addWidget(self.conversation_style_template_combo)
+        
+        # Custom conversation template
+        self.custom_conversation_edit = QLineEdit()
+        self.custom_conversation_edit.setPlaceholderText("Or enter custom template with keywords like {user_input}, {user_name}, etc.")
+        self.custom_conversation_edit.setVisible(False)
+        conversation_style_layout.addWidget(self.custom_conversation_edit)
+        
+        # Context template
+        context_template_label = QLabel("Context Template:")
+        context_template_layout = QHBoxLayout()
+        
+        self.context_template_combo = QComboBox()
+        self.context_template_combo.addItems([
+            "Simple: Previous conversation:\n{context}\n\nUser: {user_input}",
+            "Detailed: Our conversation history:\n{context}\n\nCurrent question: {user_input}",
+            "Formal: Previous consultation:\n{context}\n\nCurrent inquiry: {user_input}",
+            "Character: Our story so far:\n{context}\n\nHuman: {user_input}",
+            "Custom..."
+        ])
+        self.context_template_combo.currentTextChanged.connect(self.on_context_template_changed)
+        
+        context_template_layout.addWidget(self.context_template_combo)
+        
+        # Custom context template
+        self.custom_context_edit = QTextEdit()
+        self.custom_context_edit.setMaximumHeight(60)
+        self.custom_context_edit.setPlaceholderText("Or enter custom context template")
+        self.custom_context_edit.setVisible(False)
+        context_template_layout.addWidget(self.custom_context_edit)
+        
+        # Available keywords help
+        keywords_label = QLabel("Available Keywords:")
+        keywords_label.setStyleSheet("color: #888; font-size: 12px;")
+        keywords_text = QLabel("{user_input} - User's message\n{user_name} - User's name\n{user_title} - User's title\n{context} - Previous conversation\n{character_name} - Personality name")
+        keywords_text.setStyleSheet("color: #888; font-size: 11px; background-color: #1a1a1a; padding: 8px; border-radius: 4px;")
+        keywords_text.setWordWrap(True)
+        
+        # Examples
+        examples_label = QLabel("Example Responses:")
+        self.examples_edit = QTextEdit()
+        self.examples_edit.setMaximumHeight(80)
+        self.examples_edit.setPlaceholderText("Enter example responses (one per line)")
+        
+        # Constraints
+        constraints_label = QLabel("Constraints:")
+        self.constraints_edit = QTextEdit()
+        self.constraints_edit.setMaximumHeight(80)
+        self.constraints_edit.setPlaceholderText("Enter constraints (one per line)")
+        
+        prompt_layout.addWidget(system_prompt_label)
+        prompt_layout.addWidget(self.system_prompt_edit)
+        prompt_layout.addWidget(conversation_style_label)
+        prompt_layout.addLayout(conversation_style_layout)
+        prompt_layout.addWidget(context_template_label)
+        prompt_layout.addLayout(context_template_layout)
+        prompt_layout.addWidget(keywords_label)
+        prompt_layout.addWidget(keywords_text)
+        prompt_layout.addWidget(examples_label)
+        prompt_layout.addWidget(self.examples_edit)
+        prompt_layout.addWidget(constraints_label)
+        prompt_layout.addWidget(self.constraints_edit)
+        
+        scroll_layout.addWidget(prompt_group)
+        
+        # Configuration
+        config_group = QGroupBox("Model Configuration")
+        config_layout = QFormLayout(config_group)
+        config_layout.setLabelAlignment(Qt.AlignRight)
+        
+        self.temperature_spin = QDoubleSpinBox()
+        self.temperature_spin.setRange(0.0, 2.0)
+        self.temperature_spin.setSingleStep(0.1)
+        self.temperature_spin.setValue(0.7)
+        self.temperature_spin.setDecimals(1)
+        
+        self.max_tokens_spin = QSpinBox()
+        self.max_tokens_spin.setRange(512, 8192)
+        self.max_tokens_spin.setSingleStep(512)
+        self.max_tokens_spin.setValue(2048)
+        
+        self.top_p_spin = QDoubleSpinBox()
+        self.top_p_spin.setRange(0.0, 1.0)
+        self.top_p_spin.setSingleStep(0.1)
+        self.top_p_spin.setValue(0.9)
+        self.top_p_spin.setDecimals(1)
+        
+        self.frequency_penalty_spin = QDoubleSpinBox()
+        self.frequency_penalty_spin.setRange(-2.0, 2.0)
+        self.frequency_penalty_spin.setSingleStep(0.1)
+        self.frequency_penalty_spin.setValue(0.0)
+        self.frequency_penalty_spin.setDecimals(1)
+        
+        self.presence_penalty_spin = QDoubleSpinBox()
+        self.presence_penalty_spin.setRange(-2.0, 2.0)
+        self.presence_penalty_spin.setSingleStep(0.1)
+        self.presence_penalty_spin.setValue(0.0)
+        self.presence_penalty_spin.setDecimals(1)
+        
+        self.use_prompt_templates_check = QCheckBox("Use prompt templates")
+        self.use_prompt_templates_check.setChecked(True)
+        
+        config_layout.addRow("Temperature:", self.temperature_spin)
+        config_layout.addRow("Max Tokens:", self.max_tokens_spin)
+        config_layout.addRow("Top P:", self.top_p_spin)
+        config_layout.addRow("Frequency Penalty:", self.frequency_penalty_spin)
+        config_layout.addRow("Presence Penalty:", self.presence_penalty_spin)
+        config_layout.addRow("", self.use_prompt_templates_check)
+        
+        scroll_layout.addWidget(config_group)
+        
+        # Metadata
+        metadata_group = QGroupBox("Metadata")
+        metadata_layout = QFormLayout(metadata_group)
+        metadata_layout.setLabelAlignment(Qt.AlignRight)
+        
+        self.category_combo = QComboBox()
+        self.category_combo.addItems(["custom", "professions", "family", "historic", "specialists"])
+        
+        self.tags_edit = QLineEdit()
+        self.tags_edit.setPlaceholderText("Enter tags separated by commas")
+        
+        metadata_layout.addRow("Category:", self.category_combo)
+        metadata_layout.addRow("Tags:", self.tags_edit)
+        
+        scroll_layout.addWidget(metadata_group)
+        
+        scroll_area.setWidget(scroll_content)
+        layout.addWidget(scroll_area)
         
         # Create button
         create_button = QPushButton("Create Personality")
@@ -374,8 +513,6 @@ class PersonalityTab(QWidget):
             }
         """)
         layout.addWidget(create_button)
-        
-        layout.addStretch()
         
         self.tabs.addTab(creation_widget, "Create Personality")
         
@@ -676,12 +813,45 @@ class PersonalityTab(QWidget):
     def create_personality(self):
         """Create a new personality"""
         try:
-            # Get form data
+            # Get basic form data
             name = self.name_edit.text().strip()
             description = self.description_edit.toPlainText().strip()
             tone = self.tone_edit.text().strip()
             style = self.style_edit.text().strip()
+            
+            # Get traits data
+            expertise_text = self.expertise_edit.toPlainText().strip()
+            expertise = [line.strip() for line in expertise_text.split('\n') if line.strip()]
+            conversation_style = self.conversation_style_combo.currentText()
+            response_length = self.response_length_combo.currentText()
+            formality_level = self.formality_level_combo.currentText()
+            humor_level = self.humor_level_combo.currentText()
+            emoji_usage = self.emoji_usage_check.isChecked()
+            code_formatting = self.code_formatting_check.isChecked()
+            examples_usage = self.examples_usage_check.isChecked()
+            questions_usage = self.questions_usage_check.isChecked()
+            
+            # Get prompt data
             system_prompt = self.system_prompt_edit.toPlainText().strip()
+            user_prompt_template = self.get_user_prompt_template()
+            context_prompt = self.get_context_prompt()
+            examples_text = self.examples_edit.toPlainText().strip()
+            examples = [line.strip() for line in examples_text.split('\n') if line.strip()]
+            constraints_text = self.constraints_edit.toPlainText().strip()
+            constraints = [line.strip() for line in constraints_text.split('\n') if line.strip()]
+            
+            # Get config data
+            temperature = self.temperature_spin.value()
+            max_tokens = self.max_tokens_spin.value()
+            top_p = self.top_p_spin.value()
+            frequency_penalty = self.frequency_penalty_spin.value()
+            presence_penalty = self.presence_penalty_spin.value()
+            use_prompt_templates = self.use_prompt_templates_check.isChecked()
+            
+            # Get metadata
+            category = self.category_combo.currentText()
+            tags_text = self.tags_edit.text().strip()
+            tags = [tag.strip() for tag in tags_text.split(',') if tag.strip()]
             
             # Validate required fields
             if not name:
@@ -696,19 +866,41 @@ class PersonalityTab(QWidget):
             from pyside_chat.features.personality.models.personality_model import PersonalityTraits, PersonalityPrompt, PersonalityConfig, PersonalityMetadata
             
             traits = PersonalityTraits(
+                name=name,
                 description=description,
                 tone=tone,
-                style=style
+                style=style,
+                expertise=expertise,
+                conversation_style=conversation_style,
+                response_length=response_length,
+                formality_level=formality_level,
+                humor_level=humor_level,
+                emoji_usage=emoji_usage,
+                code_formatting=code_formatting,
+                examples_usage=examples_usage,
+                questions_usage=questions_usage
             )
             
             prompt = PersonalityPrompt(
-                system_prompt=system_prompt
+                system_prompt=system_prompt,
+                user_prompt_template=user_prompt_template,
+                context_prompt=context_prompt,
+                examples=examples,
+                constraints=constraints
             )
             
-            config = PersonalityConfig()
+            config = PersonalityConfig(
+                temperature=temperature,
+                max_tokens=max_tokens,
+                top_p=top_p,
+                frequency_penalty=frequency_penalty,
+                presence_penalty=presence_penalty,
+                use_prompt_templates=use_prompt_templates
+            )
             
             metadata = PersonalityMetadata(
-                category="custom",
+                category=category,
+                tags=tags,
                 created_date=datetime.now().isoformat(),
                 last_modified=datetime.now().isoformat()
             )
@@ -729,14 +921,50 @@ class PersonalityTab(QWidget):
                 
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to create personality: {str(e)}")
+            logger.error(f"Error creating personality: {e}")
+            logger.error(f"Traceback: {traceback.format_exc()}")
     
     def clear_creation_form(self):
         """Clear the personality creation form"""
+        # Basic information
         self.name_edit.clear()
         self.description_edit.clear()
         self.tone_edit.clear()
         self.style_edit.clear()
+        
+        # Traits configuration
+        self.expertise_edit.clear()
+        self.conversation_style_combo.setCurrentIndex(0)
+        self.response_length_combo.setCurrentIndex(0)
+        self.formality_level_combo.setCurrentIndex(0)
+        self.humor_level_combo.setCurrentIndex(0)
+        self.emoji_usage_check.setChecked(True)
+        self.code_formatting_check.setChecked(False)
+        self.examples_usage_check.setChecked(True)
+        self.questions_usage_check.setChecked(True)
+        
+        # Prompt configuration
         self.system_prompt_edit.clear()
+        self.conversation_style_template_combo.setCurrentIndex(0)
+        self.custom_conversation_edit.clear()
+        self.custom_conversation_edit.setVisible(False)
+        self.context_template_combo.setCurrentIndex(0)
+        self.custom_context_edit.clear()
+        self.custom_context_edit.setVisible(False)
+        self.examples_edit.clear()
+        self.constraints_edit.clear()
+        
+        # Configuration
+        self.temperature_spin.setValue(0.7)
+        self.max_tokens_spin.setValue(2048)
+        self.top_p_spin.setValue(0.9)
+        self.frequency_penalty_spin.setValue(0.0)
+        self.presence_penalty_spin.setValue(0.0)
+        self.use_prompt_templates_check.setChecked(True)
+        
+        # Metadata
+        self.category_combo.setCurrentIndex(0)
+        self.tags_edit.clear()
     
     def delete_custom_personality(self):
         """Delete the selected custom personality"""
@@ -823,3 +1051,41 @@ class PersonalityTab(QWidget):
         except Exception as e:
             logger.debug(f"[ID:0095] Error getting available personalities: {e}",print_to_terminal=True)
             return [] 
+
+    def on_conversation_style_changed(self, text):
+        """Handle conversation style template selection"""
+        if text == "Custom...":
+            self.custom_conversation_edit.setVisible(True)
+            self.custom_conversation_edit.setFocus()
+        else:
+            self.custom_conversation_edit.setVisible(False)
+    
+    def on_context_template_changed(self, text):
+        """Handle context template selection"""
+        if text == "Custom...":
+            self.custom_context_edit.setVisible(True)
+            self.custom_context_edit.setFocus()
+        else:
+            self.custom_context_edit.setVisible(False)
+    
+    def get_user_prompt_template(self):
+        """Get the user prompt template from the form"""
+        if self.conversation_style_template_combo.currentText() == "Custom...":
+            return self.custom_conversation_edit.text().strip()
+        else:
+            # Extract template from dropdown text
+            text = self.conversation_style_template_combo.currentText()
+            if ":" in text:
+                return text.split(":", 1)[1].strip()
+            return text
+    
+    def get_context_prompt(self):
+        """Get the context prompt from the form"""
+        if self.context_template_combo.currentText() == "Custom...":
+            return self.custom_context_edit.toPlainText().strip()
+        else:
+            # Extract template from dropdown text
+            text = self.context_template_combo.currentText()
+            if ":" in text:
+                return text.split(":", 1)[1].strip()
+            return text 

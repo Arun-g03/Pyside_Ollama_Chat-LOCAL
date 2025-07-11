@@ -220,21 +220,25 @@ class EventHandler:
                 chat_tab.append_to_chat("System", "Failed to send: Could not connect to Ollama.\n Please check the Ollama connection and try again.")
                 chat_tab.stop_streaming()
             return
-        
         # Get conversation service and messages
         conversation_service = self.service_manager.get_conversation_service()
         messages = conversation_service.get_messages()
-        
         # Use STM+LTM context if memory enabled
         memory_service = self.service_manager.get_memory_service()
         if self.chat_controller.is_memory_active() and memory_service:
             context_messages = memory_service.get_context_messages(current_query=message)
         else:
             context_messages = messages
-        
         # Build system prompt and context
+        chat_tab = self.ui_manager.get_chat_tab()
+        selected_personality = None
+        if chat_tab:
+            selected_personality = chat_tab.get_current_personality()
         personality_tab = self.ui_manager.get_personality_tab()
-        if personality_tab and personality_tab.personality_model:
+        if personality_tab and personality_tab.personality_model and selected_personality:
+            # Set the current personality in the model/service
+            if hasattr(personality_tab.personality_model, 'set_current_personality'):
+                personality_tab.personality_model.set_current_personality(selected_personality)
             system_prompt = personality_tab.personality_model.build_comprehensive_system_prompt(memory_service)
             user_context_messages = personality_tab.personality_model.get_user_context_messages(
                 memory_service, self.chat_controller.is_new_conversation
@@ -242,76 +246,55 @@ class EventHandler:
         else:
             system_prompt = ""
             user_context_messages = []
-        
         # Filter out existing system messages
         filtered_context = [msg for msg in context_messages if msg.get("role") != "system"]
-        
         # Build final context
         final_context = []
         if system_prompt:
             final_context.append({"role": "system", "content": system_prompt})
         final_context.extend(user_context_messages)
         final_context.extend(filtered_context)
-        
         # Limit the number of messages sent to Ollama to prevent timeouts
         max_messages = 8  # Limit to 8 messages to prevent overwhelming Ollama
         if len(final_context) > max_messages:
             # Keep system messages and recent messages
             system_messages = [msg for msg in final_context if msg.get("role") == "system"]
             non_system_messages = [msg for msg in final_context if msg.get("role") != "system"]
-            
             # Keep the most recent non-system messages
             recent_messages = non_system_messages[-max_messages + len(system_messages):]
-            
             final_context = system_messages + recent_messages
             logger.debug(f"[ID:0214] Limited context messages from {len(filtered_context)} to {len(final_context)} to prevent timeout")
-        
         context_messages = final_context
-        
         # Reset new conversation flag
         if self.chat_controller.is_new_conversation:
             self.chat_controller.is_new_conversation = False
-        
         # Get available models and handle auto selection
         ollama_service = self.service_manager.get_ollama_service()
         available_models = ollama_service.get_models() or []
-        chosen_model = model
-        
+        chosen_model = self.chat_controller._select_model(model, message, context_messages)
         # Update conversation metadata
         conversation_manager = self.service_manager.get_conversation_manager()
-        if model != "Auto":
+        if chosen_model != "Auto":
             conversation_manager.get_current_metadata().update_model(chosen_model)
-        
-        # Auto model selection
-        if model == "Auto":
-            from pyside_chat.features.chat.complexity_analyser.complexity_analyzer import RequestComplexityAnalyzer
-            from pyside_chat.core.utils.prompts import PromptFormatter
-            
-            analyzer = RequestComplexityAnalyzer()
-            complexity_metrics = analyzer.analyze_complexity(message, context_messages)
-            chosen_model = analyzer.get_model_recommendation(complexity_metrics, available_models)
-            
-            # Insert system message about chosen model
-            system_info = PromptFormatter.format_auto_model_selection_info(chosen_model)
-            conversation_service.add_message("system", system_info)
-            
-            chat_tab = self.ui_manager.get_chat_tab()
-            if chat_tab:
-                chat_tab.append_to_chat("System", system_info)
-            
-            context_messages = conversation_service.get_context_messages()
-        
-        # Update conversation metadata with chosen model
-        conversation_manager.get_current_metadata().update_model(chosen_model)
-        logger.info(f"[ID:0212] Updated conversation metadata with chosen model: {chosen_model}\n"
-                    f"Current metadata: {conversation_manager.get_current_metadata().to_dict()}", print_to_terminal=True)
-        
-        # Log the final context for debugging
-        logger.debug(f"[ID:0215] Final context messages count: {len(context_messages)}")
-        logger.debug(f"[ID:0216] Context message roles: {[msg.get('role', 'unknown') for msg in context_messages]}")
-        
-        # Create worker thread for async communication
-        self._create_worker_thread(context_messages, chosen_model, temperature)
+        # Get temperature: use personality default unless user has changed the slider
+        personality_temperature = None
+        if personality_tab and personality_tab.personality_model and selected_personality:
+            if hasattr(personality_tab.personality_model, 'get_temperature'):
+                personality_temperature = personality_tab.personality_model.get_temperature()
+        # If the user has not changed the slider, set it to the personality default
+        if chat_tab and personality_temperature is not None:
+            input_controls = chat_tab.input_controls
+            if abs(input_controls.get_temperature() - personality_temperature) > 0.01:
+                # If the slider is not at the personality default, assume user override
+                temperature_to_use = input_controls.get_temperature()
+            else:
+                # Set the slider to the personality default and use it
+                input_controls.temperature_slider.setValue(int(personality_temperature * 100))
+                temperature_to_use = personality_temperature
+        else:
+            temperature_to_use = temperature
+        # Pass temperature_to_use to _create_worker_thread instead of temperature
+        self._create_worker_thread(context_messages, chosen_model, temperature_to_use)
     
     def _create_worker_thread(self, context_messages, chosen_model, temperature):
         """Create and start worker thread for Ollama communication using new threading architecture"""
