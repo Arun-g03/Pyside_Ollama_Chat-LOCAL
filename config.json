@@ -24,9 +24,11 @@
     "silence_duration": 2,
     "silence_threshold": 0.005,
     "coqui_model": "tts_models/en/vctk/vits",
-    "coqui_speaker": "ED\n",
-    "eq_visualizer": "Bar EQ",
-    "tts_streaming": true
+    "coqui_speaker": "",
+    "eq_visualizer": "None",
+    "tts_streaming": true,
+    "allow_interruptions": true,
+    "interruption_threshold": 0.5
   },
   "enhancement_enabled": false,
   "history_enabled": true,

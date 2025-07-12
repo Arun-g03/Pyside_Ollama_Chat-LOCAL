@@ -42,6 +42,10 @@ class STTService(QObject):
 
     def is_available(self) -> bool:
         return self.available
+    
+    def is_initialized(self) -> bool:
+        """Check if STT service is properly initialized"""
+        return self.available and self.vosk_model is not None
 
     def convert_audio_to_text(self, audio_file: str):
         try:
@@ -86,3 +90,65 @@ class STTService(QObject):
     def update_api(self, api_name: str):
         logger.debug(f"STT API updated to: {api_name}")
         self.current_api = api_name
+
+    def process_audio_file(self, audio_file_path: str):
+        print(f"[DEBUG] STT processing audio file: {audio_file_path}")
+        logger.debug(f"STT processing audio file: {audio_file_path}", print_to_terminal=True)
+        import wave
+        try:
+            # Check if file exists
+            if not os.path.exists(audio_file_path):
+                print(f"[DEBUG] Audio file does not exist: {audio_file_path}")
+                self.error_occurred.emit(f"Audio file does not exist: {audio_file_path}")
+                return
+                
+            wf = wave.open(audio_file_path, "rb")
+            print(f"[DEBUG] Audio file opened successfully")
+            print(f"[DEBUG] Audio format: channels={wf.getnchannels()}, width={wf.getsampwidth()}, rate={wf.getframerate()}")
+            
+            if wf.getnchannels() != 1 or wf.getsampwidth() != 2 or wf.getframerate() != 16000:
+                print(f"[DEBUG] Audio format check failed: channels={wf.getnchannels()}, width={wf.getsampwidth()}, rate={wf.getframerate()}")
+                self.error_occurred.emit("Audio file must be WAV format mono PCM 16kHz")
+                return
+                
+            if not self.vosk_model:
+                print(f"[DEBUG] Vosk model is None")
+                self.error_occurred.emit("Vosk model not available")
+                return
+                
+            print(f"[DEBUG] Creating KaldiRecognizer")
+            from vosk import KaldiRecognizer
+            rec = KaldiRecognizer(self.vosk_model, wf.getframerate())
+            rec.SetWords(True)
+            
+            print(f"[DEBUG] Processing audio frames")
+            frame_count = 0
+            while True:
+                data = wf.readframes(4000)
+                if len(data) == 0:
+                    break
+                frame_count += 1
+                if rec.AcceptWaveform(data):
+                    pass
+                    
+            print(f"[DEBUG] Processed {frame_count} frames")
+            result = rec.FinalResult()
+            print(f"[DEBUG] Final result: {result}")
+            
+            import json
+            text = json.loads(result).get("text", "")
+            print(f"[DEBUG] STT final result: {text}")
+            logger.debug(f"STT final result: {text}", print_to_terminal=True)
+            
+            if text.strip():
+                self.text_received.emit(text)
+            else:
+                print(f"[DEBUG] No text recognized")
+                self.error_occurred.emit("No speech detected")
+                
+        except Exception as e:
+            print(f"[DEBUG] STT error: {e}")
+            import traceback
+            print(f"[DEBUG] STT error traceback: {traceback.format_exc()}")
+            logger.error(f"STT error: {e}", print_to_terminal=True)
+            self.error_occurred.emit(f"STT error: {e}")

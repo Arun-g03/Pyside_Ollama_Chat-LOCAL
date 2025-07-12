@@ -29,6 +29,10 @@ class VoiceControls(QObject):
     voice_processing_finished = Signal()  # Emitted when voice processing finishes
     audio_level_changed = Signal(float)  # Emitted when audio level changes
     voice_mode_changed = Signal(bool)  # Emitted when voice mode changes
+    user_interrupted = Signal()  # Emitted when user interrupts the current AI response
+    request_cancelled = Signal()  # Emitted when a request is cancelled
+    # New status signal
+    voice_status_changed = Signal(str)  # Emitted when voice service status changes
     
     def __init__(self, parent=None, config_manager=None):
         super().__init__(parent)
@@ -53,9 +57,18 @@ class VoiceControls(QObject):
         self._error_reset_timer.setSingleShot(True)
         self._error_reset_timer.timeout.connect(self._reset_error_count)
         
-        # Voice service will be lazy loaded when needed
+        # Voice service manager (singleton)
+        self.voice_service_manager = None
         self.voice_service = None
         self.voice_service_initialized = False
+        
+        # Callbacks for when service becomes ready
+        self._ready_callbacks = []
+        
+        # Add a timer to periodically check button state
+        self._ui_refresh_timer = QTimer()
+        self._ui_refresh_timer.timeout.connect(self._periodic_ui_refresh)
+        self._ui_refresh_timer.start(5000)  # Check every 5 seconds
         
         # Load voice settings from config or use defaults
         if self.config_manager:
@@ -73,13 +86,8 @@ class VoiceControls(QObject):
                 "eq_visualizer": "None"  # Default to no EQ visualizer
             }
         
-        # Update voice service with initial settings (only if service is available)
-        voice_service = self.get_voice_service()
-        if voice_service:
-            try:
-                voice_service.update_settings(self.voice_settings)
-            except Exception as e:
-                logger.error(f"Failed to update voice service settings: {e}")
+        # Initialize voice service manager
+        self._initialize_voice_service_manager()
         
         # State variables
         self.voice_mode = False
@@ -119,7 +127,15 @@ class VoiceControls(QObject):
             QPushButton:pressed {
                 background-color: #1e7e34;
             }
+            QPushButton:disabled {
+                background-color: #6c757d;
+                color: #ffffff;
+            }
         """)
+        
+        # Initially disable the button until voice service is ready
+        self.voice_button.setEnabled(False)
+        self.voice_button.setToolTip("Voice service initializing...")
         
         # Voice settings button
         self.voice_settings_button = QPushButton("⚙️")
@@ -130,19 +146,33 @@ class VoiceControls(QObject):
                 background-color: #6c757d;
                 color: #ffffff;
                 border: none;
-                border-radius: 16px;
+                border-radius: 4px;
                 font-size: 16px;
             }
             QPushButton:hover {
                 background-color: #5a6268;
             }
+            QPushButton:pressed {
+                background-color: #545b62;
+            }
         """)
         
         # Audio level widget
         self.audio_level_widget = QWidget()
-        audio_level_layout = QVBoxLayout(self.audio_level_widget)
-        audio_level_layout.setContentsMargins(0, 0, 0, 0)
+        self.audio_level_widget.setVisible(False)
+        self.audio_level_widget.setStyleSheet("""
+            QWidget {
+                background-color: #2d2d2d;
+                border: 1px solid #555;
+                border-radius: 5px;
+                padding: 5px;
+            }
+        """)
         
+        audio_layout = QVBoxLayout(self.audio_level_widget)
+        audio_layout.setContentsMargins(5, 5, 5, 5)
+        
+        # Audio level label
         self.audio_level_label = QLabel("🎤 Ready")
         self.audio_level_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.audio_level_label.setStyleSheet("""
@@ -158,6 +188,7 @@ class VoiceControls(QObject):
             }
         """)
         
+        # Audio level meter
         self.audio_level_meter = QProgressBar()
         self.audio_level_meter.setRange(0, 100)
         self.audio_level_meter.setValue(0)
@@ -169,18 +200,77 @@ class VoiceControls(QObject):
                 background-color: #1e1e1e;
             }
             QProgressBar::chunk {
-                background-color: #00ff00;
+                background-color: #28a745;
                 border-radius: 2px;
             }
         """)
         
-        audio_level_layout.addWidget(self.audio_level_label)
-        audio_level_layout.addWidget(self.audio_level_meter)
+        audio_layout.addWidget(self.audio_level_label)
+        audio_layout.addWidget(self.audio_level_meter)
         
         # Initially hide voice-related widgets
         self.voice_button.hide()
         self.voice_settings_button.hide()
         self.audio_level_widget.hide()
+        
+    def _update_voice_button_state(self, enabled: bool, status: str = ""):
+        """Update the voice button state based on voice service status"""
+        # Safety check: ensure UI components exist
+        if not hasattr(self, 'voice_button') or self.voice_button is None:
+            logger.debug("Voice button not available yet, skipping state update", print_to_terminal=True)
+            return
+            
+        logger.info(f"Updating voice button state: enabled={enabled}, status='{status}'", print_to_terminal=True)
+        
+        self.voice_button.setEnabled(enabled)
+        
+        if enabled:
+            self.voice_button.setToolTip("Click to start voice mode")
+            if not self.voice_mode:
+                self.voice_button.setText("🎤 Start Voice")
+                self.voice_button.setStyleSheet("""
+                    QPushButton {
+                        background-color: #28a745;
+                        color: #ffffff;
+                        border: none;
+                        border-radius: 5px;
+                        padding: 8px 16px;
+                        font-size: 14px;
+                        font-weight: bold;
+                        min-width: 120px;
+                    }
+                    QPushButton:hover {
+                        background-color: #218838;
+                    }
+                    QPushButton:pressed {
+                        background-color: #1e7e34;
+                    }
+                    QPushButton:disabled {
+                        background-color: #6c757d;
+                        color: #ffffff;
+                    }
+                """)
+                logger.info("Voice button enabled and styled for Start Voice", print_to_terminal=True)
+        else:
+            tooltip = f"Voice service {status.lower()}" if status else "Voice service not ready"
+            self.voice_button.setToolTip(tooltip)
+            self.voice_button.setStyleSheet("""
+                QPushButton {
+                    background-color: #6c757d;
+                    color: #ffffff;
+                    border: none;
+                    border-radius: 5px;
+                    padding: 8px 16px;
+                    font-size: 14px;
+                    font-weight: bold;
+                    min-width: 120px;
+                }
+                QPushButton:disabled {
+                    background-color: #6c757d;
+                    color: #ffffff;
+                }
+            """)
+            logger.info(f"Voice button disabled with status: {status}", print_to_terminal=True)
         
     def _update_voice_state(self, key: str, value: bool):
         """Thread-safe voice state update"""
@@ -239,10 +329,10 @@ class VoiceControls(QObject):
             logger.error(f"Error resetting voice UI: {e}")
     
     def _reinitialize_voice_service(self):
-        """Reinitialize voice service"""
+        """Reinitialize voice service (for recovery)"""
         try:
-            # This would need to be implemented based on how voice service is initialized
-            logger.info("Voice service reinitialization not implemented yet")
+            self.force_reinitialize_voice_service()
+            logger.info("Voice service reinitialization triggered for recovery")
         except Exception as e:
             logger.error(f"Error reinitializing voice service: {e}")
     
@@ -278,74 +368,449 @@ class VoiceControls(QObject):
         # Connect voice button
         self.voice_button.clicked.connect(self.toggle_voice_mode)
         
+    def _initialize_voice_service_manager(self):
+        """Initialize the voice service manager"""
+        try:
+            # Immediately emit initializing status
+            self.voice_status_changed.emit("Initializing")
+            logger.info("Starting voice service manager initialization", print_to_terminal=True)
+            
+            from pyside_chat.features.voice.voice_service_manager import get_voice_service_manager
+            self.voice_service_manager = get_voice_service_manager()
+            
+            # Connect manager signals
+            self.voice_service_manager.voice_service_ready.connect(self._on_voice_service_ready)
+            self.voice_service_manager.voice_service_error.connect(self._on_voice_service_error)
+            self.voice_service_manager.voice_service_initializing.connect(self._on_voice_service_initializing)
+            
+            # Apply initial settings to manager
+            self.voice_service_manager.update_settings(self.voice_settings)
+            
+            # Trigger voice service initialization by calling get_voice_service()
+            # This will start the initialization process if not already initialized
+            logger.info("Triggering voice service initialization", print_to_terminal=True)
+            voice_service = self.voice_service_manager.get_voice_service()
+            
+            # Emit initial status based on current state
+            if self.voice_service_manager.is_ready():
+                logger.info("Voice service is ready", print_to_terminal=True)
+                self.voice_status_changed.emit("Ready")
+                # Only update button state if UI components are ready
+                if hasattr(self, 'voice_button') and self.voice_button is not None:
+                    self._update_voice_button_state(True, "Ready")
+                    logger.info("Voice button enabled", print_to_terminal=True)
+                if voice_service:
+                    self.voice_service = voice_service
+                    self.voice_service_initialized = True
+                    self._setup_voice_connections()
+            elif self.voice_service_manager.is_initializing():
+                logger.info("Voice service is initializing", print_to_terminal=True)
+                self.voice_status_changed.emit("Initializing")
+                # Only update button state if UI components are ready
+                if hasattr(self, 'voice_button') and self.voice_button is not None:
+                    self._update_voice_button_state(False, "Initializing")
+            else:
+                logger.info("Voice service is uninitialized", print_to_terminal=True)
+                self.voice_status_changed.emit("Uninitialized")
+                # Only update button state if UI components are ready
+                if hasattr(self, 'voice_button') and self.voice_button is not None:
+                    self._update_voice_button_state(False, "Uninitialized")
+            
+            logger.info("Voice service manager initialized", print_to_terminal=True)
+            
+        except Exception as e:
+            logger.error(f"Failed to initialize voice service manager: {e}", print_to_terminal=True)
+            self.voice_service_manager = None
+            self.voice_status_changed.emit("Error: Failed to initialize manager")
+
+    def force_ui_refresh(self):
+        """Force UI refresh to update button state based on current voice service status"""
+        logger.info("Forcing UI refresh for voice controls", print_to_terminal=True)
+        
+        if hasattr(self, 'voice_button') and self.voice_button is not None:
+            if self.voice_service_manager and self.voice_service_manager.is_ready():
+                logger.info("Voice service is ready, enabling button", print_to_terminal=True)
+                self._update_voice_button_state(True, "Ready")
+                self.voice_status_changed.emit("Ready")
+            elif self.voice_service_manager and self.voice_service_manager.is_initializing():
+                logger.info("Voice service is initializing, keeping button disabled", print_to_terminal=True)
+                self._update_voice_button_state(False, "Initializing")
+                self.voice_status_changed.emit("Initializing")
+            else:
+                logger.info("Voice service not ready, keeping button disabled", print_to_terminal=True)
+                self._update_voice_button_state(False, "Uninitialized")
+                self.voice_status_changed.emit("Uninitialized")
+        else:
+            logger.debug("Voice button not available for UI refresh", print_to_terminal=True)
+
+    def _on_voice_service_ready(self):
+        """Handle voice service ready signal"""
+        logger.info("Voice service ready signal received", print_to_terminal=True)
+        self.voice_status_changed.emit("Ready")
+        
+        # Enable the voice button when service is ready
+        logger.info("Calling _update_voice_button_state(True, 'Ready')", print_to_terminal=True)
+        self._update_voice_button_state(True, "Ready")
+        
+        if self.voice_service_manager:
+            self.voice_service = self.voice_service_manager.get_voice_service()
+            if self.voice_service:
+                self.voice_service_initialized = True
+                self._setup_voice_connections()
+                logger.info("Voice service ready and connections established", print_to_terminal=True)
+            else:
+                logger.error("Voice service manager returned None service", print_to_terminal=True)
+
+    def _on_direct_voice_service_ready(self):
+        """Handle direct voice service ready signal (from VoiceService)"""
+        logger.info("Voice service ready signal received", print_to_terminal=True)
+        
+        # Enable the voice button when service is ready
+        self._update_voice_button_state(True, "Ready")
+        self.voice_status_changed.emit("Ready")
+        
+        # If we're in voice mode but button was disabled, start voice mode now
+        if self.voice_mode and not self.voice_button.isEnabled():
+            logger.debug("Voice service ready, starting voice mode")
+            self._start_continuous_voice_mode()
+
+    def _periodic_ui_refresh(self):
+        """Periodically check and update UI state"""
+        # Only refresh if voice controls are initialized and voice button exists
+        if (hasattr(self, 'voice_button') and 
+            self.voice_button is not None and
+            self.voice_service_manager):
+            
+            # Only update if status changed
+            current_status = "Ready" if self.voice_service_manager.is_ready() else "Initializing"
+            if not hasattr(self, '_last_periodic_status') or self._last_periodic_status != current_status:
+                self._last_periodic_status = current_status
+                if current_status == "Ready":
+                    self._update_voice_button_state(True, "Ready")
+                    self.voice_status_changed.emit("Ready")
+                else:
+                    self._update_voice_button_state(False, "Initializing")
+                    self.voice_status_changed.emit("Initializing")
+
+    def _on_voice_service_error(self, error: str):
+        """Handle voice service error signal"""
+        logger.error(f"Voice service error: {error}", print_to_terminal=True)
+        self.voice_input_error.emit(f"Voice service initialization failed: {error}")
+        self.voice_status_changed.emit(f"Error: {error}")
+        
+        # Keep button disabled on error
+        self._update_voice_button_state(False, "Error")
+
+    def _on_voice_service_initializing(self):
+        """Handle voice service initializing signal"""
+        logger.info("Voice service initialization started", print_to_terminal=True)
+        self.voice_status_changed.emit("Initializing")
+        
+        # Keep button disabled during initialization
+        self._update_voice_button_state(False, "Initializing")
+
+    def get_voice_service(self):
+        """Get voice service with lazy loading"""
+        if not self.voice_service_manager:
+            self._initialize_voice_service_manager()
+        
+        if self.voice_service_manager:
+            # Get service from manager (will initialize if needed)
+            voice_service = self.voice_service_manager.get_voice_service()
+            
+            # Update our local reference if it changed and service is available
+            if voice_service and voice_service != self.voice_service:
+                self.voice_service = voice_service
+                self.voice_service_initialized = True
+                self._setup_voice_connections()
+            
+            return self.voice_service
+        
+        return None
+
+    def _setup_voice_connections(self):
+        """Setup connections for voice service"""
+        if not self.voice_service:
+            logger.warning("Cannot setup voice connections: voice service is None")
+            return
+            
+        print(f"[DEBUG] Setting up voice connections for service type: {type(self.voice_service).__name__}")
+        logger.debug(f"Setting up voice connections for service type: {type(self.voice_service).__name__}", print_to_terminal=True)
+            
+        # Check if voice service is properly initialized
+        if not hasattr(self.voice_service, 'voice_input_received'):
+            print(f"[DEBUG] Voice service does not have voice_input_received signal")
+            logger.warning("Voice service not fully initialized, skipping connections", print_to_terminal=True)
+            return
+            
+        try:
+            logger.info("Setting up voice service UI connections...", print_to_terminal=True)
+            # Wait a moment for signals to be properly initialized
+            import time
+            time.sleep(0.1)
+            
+            # Disconnect any existing connections to avoid duplicates
+            # Only disconnect if the signal exists and is not None
+            signal_mappings = [
+                ('voice_input_received', getattr(self.voice_service, 'voice_input_received', None)),
+                ('voice_input_error', getattr(self.voice_service, 'voice_input_error', None)),
+                ('tts_started', getattr(self.voice_service, 'tts_started', None)),
+                ('tts_finished', getattr(self.voice_service, 'tts_finished', None)),
+                ('tts_error', getattr(self.voice_service, 'tts_error', None)),
+                ('recording_started', getattr(self.voice_service, 'recording_started', None)),
+                ('recording_stopped', getattr(self.voice_service, 'recording_stopped', None)),
+                ('recording_error', getattr(self.voice_service, 'recording_error', None)),
+                ('voice_processing_started', getattr(self.voice_service, 'voice_processing_started', None)),
+                ('voice_processing_finished', getattr(self.voice_service, 'voice_processing_finished', None)),
+                ('audio_level_changed', getattr(self.voice_service, 'audio_level_changed', None)),
+                ('user_interrupted', getattr(self.voice_service, 'user_interrupted', None)),
+                ('request_cancelled', getattr(self.voice_service, 'request_cancelled', None)),
+                ('voice_service_ready', getattr(self.voice_service, 'voice_service_ready', None))
+            ]
+            
+            for signal_name, signal in signal_mappings:
+                if signal is not None and hasattr(signal, 'disconnect'):
+                    try:
+                        signal.disconnect()
+                        logger.debug(f"Disconnected existing {signal_name} signal")
+                    except Exception as e:
+                        logger.debug(f"Could not disconnect {signal_name} signal: {e}")
+                else:
+                    logger.debug(f"Signal {signal_name} is None or has no disconnect method, skipping disconnect")
+            
+            # Connect voice service signals (only if they exist)
+            connections_made = 0
+            if hasattr(self.voice_service, 'voice_input_received') and self.voice_service.voice_input_received is not None:
+                print(f"[DEBUG] Connecting voice_input_received signal")
+                logger.debug("Connecting voice_input_received signal", print_to_terminal=True)
+                self.voice_service.voice_input_received.connect(self.on_voice_input_received)
+                connections_made += 1
+            else:
+                print(f"[DEBUG] voice_input_received signal not available")
+                logger.warning("voice_input_received signal not available", print_to_terminal=True)
+                
+            if hasattr(self.voice_service, 'voice_input_error') and self.voice_service.voice_input_error is not None:
+                self.voice_service.voice_input_error.connect(self.on_voice_input_error)
+                connections_made += 1
+            if hasattr(self.voice_service, 'tts_started') and self.voice_service.tts_started is not None:
+                self.voice_service.tts_started.connect(self.on_tts_started)
+                connections_made += 1
+            if hasattr(self.voice_service, 'tts_finished') and self.voice_service.tts_finished is not None:
+                self.voice_service.tts_finished.connect(self.on_tts_finished)
+                connections_made += 1
+            if hasattr(self.voice_service, 'tts_error') and self.voice_service.tts_error is not None:
+                self.voice_service.tts_error.connect(self.on_tts_error)
+                connections_made += 1
+            if hasattr(self.voice_service, 'recording_started') and self.voice_service.recording_started is not None:
+                self.voice_service.recording_started.connect(self.on_recording_started)
+                connections_made += 1
+            if hasattr(self.voice_service, 'recording_stopped') and self.voice_service.recording_stopped is not None:
+                self.voice_service.recording_stopped.connect(self.on_recording_stopped)
+                connections_made += 1
+            if hasattr(self.voice_service, 'recording_error') and self.voice_service.recording_error is not None:
+                self.voice_service.recording_error.connect(self.on_recording_error)
+                connections_made += 1
+            if hasattr(self.voice_service, 'voice_processing_started') and self.voice_service.voice_processing_started is not None:
+                self.voice_service.voice_processing_started.connect(self.on_voice_processing_started)
+                connections_made += 1
+            if hasattr(self.voice_service, 'voice_processing_finished') and self.voice_service.voice_processing_finished is not None:
+                self.voice_service.voice_processing_finished.connect(self.on_voice_processing_finished)
+                connections_made += 1
+            if hasattr(self.voice_service, 'audio_level_changed') and self.voice_service.audio_level_changed is not None:
+                self.voice_service.audio_level_changed.connect(self.on_audio_level_changed)
+                connections_made += 1
+            
+            # Connect new interruption signals
+            if hasattr(self.voice_service, 'user_interrupted') and self.voice_service.user_interrupted is not None:
+                self.voice_service.user_interrupted.connect(self.on_user_interrupted)
+                connections_made += 1
+            if hasattr(self.voice_service, 'request_cancelled') and self.voice_service.request_cancelled is not None:
+                self.voice_service.request_cancelled.connect(self.on_request_cancelled)
+                connections_made += 1
+            
+            # Connect voice service ready signal
+            if hasattr(self.voice_service, 'voice_service_ready') and self.voice_service.voice_service_ready is not None:
+                self.voice_service.voice_service_ready.connect(self._on_direct_voice_service_ready)
+                connections_made += 1
+            
+            print(f"[DEBUG] Voice service UI connections established: {connections_made} connections made")
+            logger.info(f"Voice service UI connections established successfully: {connections_made} connections made", print_to_terminal=True)
+            
+        except Exception as e:
+            print(f"[DEBUG] Error setting up voice connections: {e}")
+            logger.error(f"Error setting up voice connections: {e}", print_to_terminal=True)
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+
+    def _is_voice_service_ready(self) -> bool:
+        """Check if voice service is ready to use"""
+        try:
+            voice_service = self.get_voice_service()
+            if not voice_service:
+                return False
+            
+            # Check if voice service is properly initialized
+            if hasattr(voice_service, 'is_voice_available'):
+                ready = voice_service.is_voice_available()
+                logger.debug(f"Voice service ready check via is_voice_available: {ready}", print_to_terminal=True)
+                return ready
+            
+            # Fallback check for basic capabilities
+            ready = self._validate_voice_service_capabilities(voice_service)
+            logger.debug(f"Voice service ready check via capabilities validation: {ready}", print_to_terminal=True)
+            return ready
+        except Exception as e:
+            logger.error(f"Error checking voice service readiness: {e}")
+            return False
+    
+    def _validate_voice_service_capabilities(self, voice_service):
+        """Validate that the voice service has the required methods"""
+        required_methods = [
+            'start_voice_input',
+            'stop_voice_input',
+            'set_continuous_voice_mode',
+            'is_recording',
+            'is_playing_tts'
+        ]
+        
+        missing_methods = []
+        for method in required_methods:
+            if not hasattr(voice_service, method):
+                missing_methods.append(method)
+        
+        if missing_methods:
+            logger.warning(f"Voice service missing required methods: {missing_methods}")
+            return False
+        
+        return True
+
     def toggle_voice_mode(self):
         """Toggle voice mode on/off"""
-        voice_service = self.get_voice_service()
-        if not voice_service:
-            logger.error("Voice service not available")
-            return
+        logger.debug("Toggle voice mode called")
         
-        if not self.voice_mode:
-            # Start voice mode
-            self.voice_mode = True
-            self.voice_button.setText("🎤 Stop Voice")
-            self.voice_button.setStyleSheet("""
-                QPushButton {
-                    background-color: #dc3545;
-                    color: #ffffff;
-                    border: none;
-                    border-radius: 5px;
-                    padding: 8px 16px;
-                    font-size: 14px;
-                    font-weight: bold;
-                    min-width: 120px;
-                }
-                QPushButton:hover {
-                    background-color: #c82333;
-                }
-                QPushButton:pressed {
-                    background-color: #bd2130;
-                }
-            """)
-            
-            # Start continuous voice mode
-            self._start_continuous_voice_mode()
-            
-            logger.debug("Voice mode started")
-        else:
-            # Stop voice mode
+        try:
+            if not self.voice_mode:
+                # Start voice mode
+                logger.debug("Starting voice mode")
+                self.voice_mode = True
+                
+                # Check if voice service is initialized
+                voice_service = self.get_voice_service()
+                logger.debug(f"Voice service obtained: {voice_service is not None}", print_to_terminal=True)
+                
+                if not voice_service or not self._is_voice_service_ready():
+                    # Voice service not ready, disable button and show initializing
+                    logger.debug("Voice service not ready, disabling button", print_to_terminal=True)
+                    self._update_voice_button_state(False, "Initializing")
+                    self.voice_status_changed.emit("Initializing")
+                    return
+                
+                # Voice service is ready, enable button and start voice mode
+                logger.debug("Voice service is ready, starting voice mode", print_to_terminal=True)
+                self._update_voice_button_state(True, "Ready")
+                self.voice_status_changed.emit("Ready")
+                self.voice_button.setText("🎤 Stop Voice")
+                self.voice_button.setStyleSheet("""
+                    QPushButton {
+                        background-color: #dc3545;
+                        color: #ffffff;
+                        border: none;
+                        border-radius: 5px;
+                        padding: 8px 16px;
+                        font-size: 14px;
+                        font-weight: bold;
+                        min-width: 120px;
+                    }
+                    QPushButton:hover {
+                        background-color: #c82333;
+                    }
+                    QPushButton:pressed {
+                        background-color: #bd2130;
+                    }
+                """)
+                
+                # Start continuous voice mode
+                self._start_continuous_voice_mode()
+                
+                logger.debug("Voice mode started successfully")
+            else:
+                # Stop voice mode
+                logger.debug("Stopping voice mode")
+                self.voice_mode = False
+                self._reset_voice_button()
+                
+                # Stop any ongoing voice processes
+                try:
+                    voice_service = self.get_voice_service()
+                    if voice_service:
+                        # Disable continuous voice mode first
+                        if hasattr(voice_service, 'set_continuous_voice_mode'):
+                            voice_service.set_continuous_voice_mode(False)
+                        
+                        if hasattr(voice_service, 'is_recording') and voice_service.is_recording:
+                            voice_service.stop_voice_input()
+                        if hasattr(voice_service, 'is_playing_tts') and voice_service.is_playing_tts:
+                            voice_service.stop_tts()
+                except Exception as e:
+                    logger.error(f"Error stopping voice processes: {e}")
+                
+                logger.debug("Voice mode stopped successfully")
+                
+        except Exception as e:
+            logger.error(f"Error in toggle_voice_mode: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            # Reset to safe state
             self.voice_mode = False
             self._reset_voice_button()
-            
-            # Stop any ongoing voice processes
-            try:
-                voice_service = self.get_voice_service()
-                # Disable continuous voice mode first
-                voice_service.set_continuous_voice_mode(False)
-                
-                if voice_service.is_recording:
-                    voice_service.stop_voice_input()
-                if voice_service.is_playing_tts:
-                    voice_service.stop_tts()
-            except Exception as e:
-                logger.error(f"Error stopping voice processes: {e}")
-            
-            logger.debug("Voice mode stopped")
+            self.voice_status_changed.emit(f"Error: {str(e)}")
     
     def _start_continuous_voice_mode(self):
         """Start continuous voice mode cycle"""
         if not self.voice_mode:
+            logger.debug("Cannot start continuous voice mode: voice_mode is False")
             return
         
-        logger.debug("Starting continuous voice mode cycle")
+        logger.debug("Starting continuous voice mode cycle", print_to_terminal=True)
         
         # Enable continuous voice mode in the voice service
         try:
             voice_service = self.get_voice_service()
-            voice_service.set_continuous_voice_mode(True)
-            voice_service.start_voice_input()
+            if voice_service:
+                logger.debug("Voice service available for continuous mode", print_to_terminal=True)
+                
+                # Check if voice service is actually ready
+                if hasattr(voice_service, 'is_voice_available'):
+                    if not voice_service.is_voice_available():
+                        logger.error("Voice service not ready yet, cannot start voice input", print_to_terminal=True)
+                        self.voice_mode = False
+                        self._reset_voice_button()
+                        return
+                
+                # Validate capabilities
+                if not self._validate_voice_service_capabilities(voice_service):
+                    logger.error("Voice service missing required capabilities for continuous mode", print_to_terminal=True)
+                    self.voice_mode = False
+                    self._reset_voice_button()
+                    return
+                
+                # Set continuous mode
+                logger.debug("Setting continuous voice mode", print_to_terminal=True)
+                voice_service.set_continuous_voice_mode(True)
+                logger.debug("Continuous voice mode enabled")
+                
+                # Start voice input
+                logger.debug("Starting voice input...", print_to_terminal=True)
+                voice_service.start_voice_input()
+                logger.debug("Voice input started successfully", print_to_terminal=True)
+            else:
+                logger.error("Voice service not available for continuous mode", print_to_terminal=True)
+                self.voice_mode = False
+                self._reset_voice_button()
         except Exception as e:
-            logger.error(f"Failed to start voice input: {e}")
+            logger.error(f"Failed to start voice input: {e}", print_to_terminal=True)
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
             # Reset voice mode on error
             self.voice_mode = False
             self._reset_voice_button()
@@ -353,7 +818,12 @@ class VoiceControls(QObject):
     def _handle_voice_input_safe(self, text: str):
         """Handle voice input safely in the main thread"""
         try:
+            print(f"[DEBUG] Voice controls received voice input: '{text}'")
+            logger.debug(f"Voice controls received voice input: '{text}'", print_to_terminal=True)
+            
             if not self.voice_mode:
+                print(f"[DEBUG] Voice mode is False, ignoring voice input")
+                logger.debug("Voice mode is False, ignoring voice input", print_to_terminal=True)
                 return
             
             logger.debug(f"Voice input received in continuous mode: {text}")
@@ -365,17 +835,22 @@ class VoiceControls(QObject):
                 if voice_service and hasattr(voice_service, 'stop_voice_input'):
                     voice_service.stop_voice_input()
                     logger.debug("[VOICE DEBUG] Voice input stopped successfully")
+                else:
+                    logger.debug("[VOICE DEBUG] Voice service not available for stopping")
             except Exception as e:
                 logger.error(f"[VOICE ERROR] Failed to stop voice input: {e}")
             
-            # Forward to parent for processing
+            # Forward to parent for processing (only once)
+            print(f"[DEBUG] Emitting voice_input_received signal with text: '{text}'")
+            logger.debug(f"Emitting voice_input_received signal with text: '{text}'", print_to_terminal=True)
             self.voice_input_received.emit(text)
             
-            # Voice input will be restarted after TTS finishes
+            # Voice input will be restarted after TTS finishes or interruption
             # This prevents the system from picking up the TTS output
             
         except Exception as e:
-            logger.error(f"[VOICE ERROR] Error handling voice input: {e}")
+            print(f"[DEBUG] Error in _handle_voice_input_safe: {e}")
+            logger.error(f"[VOICE ERROR] Error handling voice input: {e}", print_to_terminal=True)
             logger.error(f"[VOICE ERROR] Traceback: {traceback.format_exc()}")
             # Try to emit error signal
             try:
@@ -475,11 +950,13 @@ class VoiceControls(QObject):
     def on_tts_started(self):
         """Handle TTS started"""
         logger.debug("TTS started")
+        self.voice_status_changed.emit("Speaking")
         self.tts_started.emit()
     
     def on_tts_finished(self):
         """Handle TTS finished"""
         logger.debug("TTS finished in voice controls")
+        self.voice_status_changed.emit("Idle")
         
         # In continuous voice mode, restart voice input
         if self.voice_mode:
@@ -491,6 +968,7 @@ class VoiceControls(QObject):
     def on_tts_error(self, error: str):
         """Handle TTS error"""
         logger.error(f"TTS error: {error}")
+        self.voice_status_changed.emit(f"TTS Error: {error}")
         
         # Handle service error
         self._handle_service_error(error)
@@ -505,6 +983,7 @@ class VoiceControls(QObject):
     def on_recording_started(self):
         """Handle recording started"""
         logger.debug("Voice recording started")
+        self.voice_status_changed.emit("Listening")
         
         # Use QTimer.singleShot to ensure UI updates happen in the main thread
         QTimer.singleShot(0, self._handle_recording_started_safe)
@@ -534,6 +1013,7 @@ class VoiceControls(QObject):
     def on_recording_stopped(self):
         """Handle recording stopped"""
         logger.debug("Voice recording stopped")
+        self.voice_status_changed.emit("Idle")
         
         # Use QTimer.singleShot to ensure UI updates happen in the main thread
         QTimer.singleShot(0, self._handle_recording_stopped_safe)
@@ -556,6 +1036,7 @@ class VoiceControls(QObject):
     def on_recording_error(self, error: str):
         """Handle recording error"""
         logger.error(f"Recording error: {error}")
+        self.voice_status_changed.emit(f"Recording Error: {error}")
         
         # Use QTimer.singleShot to ensure UI updates happen in the main thread
         QTimer.singleShot(0, lambda: self._handle_recording_error_safe(error))
@@ -668,24 +1149,58 @@ class VoiceControls(QObject):
             return
             
         try:
+            # Check if we can handle new TTS requests
+            if hasattr(voice_service, 'can_handle_new_request') and not voice_service.can_handle_new_request():
+                logger.warning("Cannot handle new TTS request - queue full")
+                return
+                
             voice_service.speak_text(text)
+            logger.debug(f"TTS request sent for text: {text[:50]}...")
         except Exception as e:
             logger.error(f"Failed to speak AI response: {e}")
     
     def update_voice_settings(self, settings: dict):
         """Update voice settings"""
         self.voice_settings.update(settings)
-        voice_service = self.get_voice_service()
-        if voice_service:
-            try:
-                voice_service.update_settings(settings)
-            except Exception as e:
-                logger.error(f"Failed to update voice service settings: {e}")
+        
+        if self.voice_service_manager:
+            self.voice_service_manager.update_settings(settings)
+            logger.debug(f"Updated voice service manager settings: {settings}")
+        else:
+            logger.warning("Voice service manager not available for settings update")
     
     def get_voice_settings(self) -> dict:
         """Get current voice settings"""
+        if self.voice_service_manager:
+            return self.voice_service_manager.get_settings()
         return self.voice_settings.copy()
     
+    def is_voice_service_ready(self) -> bool:
+        """Check if voice service is ready"""
+        if self.voice_service_manager:
+            return self.voice_service_manager.is_ready()
+        return False
+
+    def is_voice_service_initializing(self) -> bool:
+        """Check if voice service is initializing"""
+        if self.voice_service_manager:
+            return self.voice_service_manager.is_initializing()
+        return False
+
+    def get_voice_service_error(self) -> str:
+        """Get the last voice service error"""
+        if self.voice_service_manager:
+            return self.voice_service_manager.get_last_error() or "No error"
+        return "Voice service manager not available"
+
+    def force_reinitialize_voice_service(self):
+        """Force reinitialization of the voice service"""
+        if self.voice_service_manager:
+            self.voice_service_manager.force_reinitialize()
+            logger.info("Forced voice service reinitialization")
+        else:
+            logger.warning("Voice service manager not available for reinitialization")
+
     def is_voice_mode_active(self) -> bool:
         """Check if voice mode is active"""
         return self.voice_mode
@@ -701,76 +1216,27 @@ class VoiceControls(QObject):
             logger.error(f"Failed to check TTS playing status: {e}")
             return False
     
-    def get_voice_service(self):
-        """Get voice service with lazy loading"""
-        if not self.voice_service_initialized:
-            self._initialize_voice_service()
-        return self.voice_service
-    
-    def _initialize_voice_service(self):
-        """Initialize voice service only when needed"""
-        if self.voice_service_initialized:
-            return
-            
+    def can_handle_interruption(self) -> bool:
+        """Check if the system can handle user interruptions"""
+        voice_service = self.get_voice_service()
+        if not voice_service:
+            return False
         try:
-            logger.info("Initializing voice service (lazy loading)")
-            
-            # Try to get voice service from service manager first
-            if hasattr(self.parent, 'parent') and hasattr(self.parent.parent, 'get_service_manager'):
-                service_manager = self.parent.parent.get_service_manager()
-                if hasattr(service_manager, 'get_voice_service'):
-                    self.voice_service = service_manager.get_voice_service()
-                    self.voice_service_initialized = True
-                    logger.info("Voice service initialized via service manager")
-                    return
-            
-            # Fallback to direct initialization
-            try:
-                from pyside_chat.features.voice.voice_service_wrapper import VoiceServiceWrapper
-                self.voice_service = VoiceServiceWrapper(use_separate_process=True)
-                logger.info("Voice service wrapper initialized successfully")
-            except Exception as e:
-                logger.error(f"Failed to initialize voice service wrapper: {e}")
-                try:
-                    # Fallback to direct service
-                    from pyside_chat.features.voice.voice_service import VoiceService
-                    self.voice_service = VoiceService()
-                    logger.info("Voice service initialized with direct service (fallback)")
-                except Exception as e2:
-                    logger.error(f"Failed to initialize direct voice service: {e2}")
-                    self.voice_service = None
-                    return
-            
-            self.voice_service_initialized = True
-            
-            # Setup connections if voice service is available
-            if self.voice_service:
-                self._setup_voice_connections()
-                
+            return voice_service.voice_settings.get("allow_interruptions", True)
         except Exception as e:
-            logger.error(f"Error in voice service initialization: {e}")
-            self.voice_service = None
-            self.voice_service_initialized = False
-    
-    def _setup_voice_connections(self):
-        """Setup connections for voice service"""
+            logger.error(f"Failed to check interruption capability: {e}")
+            return False
+
+    def get_interruption_threshold(self) -> float:
+        """Get the audio level threshold for interruption detection"""
+        voice_service = self.get_voice_service()
+        if not voice_service:
+            return 0.5  # Default threshold
         try:
-            if self.voice_service:
-                # Connect voice service signals
-                self.voice_service.voice_input_received.connect(self.on_voice_input_received)
-                self.voice_service.voice_input_error.connect(self.on_voice_input_error)
-                self.voice_service.tts_started.connect(self.on_tts_started)
-                self.voice_service.tts_finished.connect(self.on_tts_finished)
-                self.voice_service.tts_error.connect(self.on_tts_error)
-                self.voice_service.recording_started.connect(self.on_recording_started)
-                self.voice_service.recording_stopped.connect(self.on_recording_stopped)
-                self.voice_service.recording_error.connect(self.on_recording_error)
-                self.voice_service.voice_processing_started.connect(self.on_voice_processing_started)
-                self.voice_service.voice_processing_finished.connect(self.on_voice_processing_finished)
-                self.voice_service.audio_level_changed.connect(self.on_audio_level_changed)
-                logger.info("Voice service connections established")
+            return voice_service.voice_settings.get("interruption_threshold", 0.5)
         except Exception as e:
-            logger.error(f"Error setting up voice connections: {e}")
+            logger.error(f"Failed to get interruption threshold: {e}")
+            return 0.5
     
     def get_ui_components(self) -> dict:
         """Get UI components for integration with parent"""
@@ -779,3 +1245,62 @@ class VoiceControls(QObject):
             'voice_settings_button': self.voice_settings_button,
             'audio_level_widget': self.audio_level_widget
         } 
+
+    def on_user_interrupted(self):
+        """Handle user interruption during AI response"""
+        logger.info("User interruption detected in voice controls")
+        
+        # Emit signal for parent to handle
+        self.user_interrupted.emit()
+        
+        # Update UI to show interruption
+        self.audio_level_label.setText("🎤 Interrupted - Listening...")
+        self.audio_level_label.setToolTip("User interrupted AI response - ready for new input")
+        
+        # In continuous mode, restart voice input after a short delay
+        if self.voice_mode:
+            from PySide6.QtCore import QTimer
+            QTimer.singleShot(500, self._restart_voice_input_after_interruption)
+
+    def on_request_cancelled(self):
+        """Handle request cancellation"""
+        logger.info("Request cancelled in voice controls")
+        
+        # Update UI to show cancellation
+        self.audio_level_label.setText("🎤 Cancelled - Ready")
+        self.audio_level_label.setToolTip("Previous request was cancelled")
+        
+        # In continuous mode, restart voice input after a short delay
+        if self.voice_mode:
+            from PySide6.QtCore import QTimer
+            QTimer.singleShot(1000, self._restart_voice_input_after_cancellation)
+
+    def _restart_voice_input_after_interruption(self):
+        """Restart voice input after user interruption"""
+        if not self.voice_mode:
+            return
+            
+        try:
+            logger.debug("Restarting voice input after user interruption")
+            voice_service = self.get_voice_service()
+            if voice_service:
+                voice_service.start_voice_input()
+                self.audio_level_label.setText("🎤 Continuous Recording...")
+                logger.debug("Voice input restarted after interruption")
+        except Exception as e:
+            logger.error(f"Failed to restart voice input after interruption: {e}")
+
+    def _restart_voice_input_after_cancellation(self):
+        """Restart voice input after request cancellation"""
+        if not self.voice_mode:
+            return
+            
+        try:
+            logger.debug("Restarting voice input after request cancellation")
+            voice_service = self.get_voice_service()
+            if voice_service:
+                voice_service.start_voice_input()
+                self.audio_level_label.setText("🎤 Continuous Recording...")
+                logger.debug("Voice input restarted after cancellation")
+        except Exception as e:
+            logger.error(f"Failed to restart voice input after cancellation: {e}") 

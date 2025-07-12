@@ -70,6 +70,10 @@ class RecordingService(QObject):
 
     def is_available(self) -> bool:
         return self.available
+    
+    def is_initialized(self) -> bool:
+        """Check if Recording service is properly initialized"""
+        return self.available and self.audio is not None
 
     def start_recording(self):
         if self.is_recording:

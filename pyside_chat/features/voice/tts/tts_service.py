@@ -55,6 +55,10 @@ class TTSService(QObject):
 
     def is_available(self) -> bool:
         return self.available
+    
+    def is_initialized(self) -> bool:
+        """Check if TTS service is properly initialized"""
+        return self.available and (self.coqui_service is not None or self.media_player is not None)
 
     def speak_text(self, text: str):
         try:
@@ -200,3 +204,17 @@ class TTSService(QObject):
                 logger.info(f"Set Coqui TTS model to: {model_name}")
             return success
         return False
+    
+    def cleanup(self):
+        """Cleanup TTS service resources"""
+        try:
+            if self.coqui_service:
+                self.coqui_service.cleanup()
+            if self.media_player:
+                self.media_player.stop()
+                self.media_player = None
+            if self.audio_output:
+                self.audio_output = None
+            logger.debug("TTS service cleanup completed")
+        except Exception as e:
+            logger.error(f"Error during TTS service cleanup: {e}")

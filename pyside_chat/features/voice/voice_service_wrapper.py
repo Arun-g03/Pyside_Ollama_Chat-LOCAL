@@ -29,6 +29,9 @@ class VoiceServiceWrapper(QObject):
     voice_processing_started = Signal()
     voice_processing_finished = Signal()
     audio_level_changed = Signal(float)  # Audio level for EQ visualization
+    user_interrupted = Signal()  # Emitted when user interrupts AI response
+    request_cancelled = Signal()  # Emitted when Ollama request is cancelled
+    voice_service_ready = Signal()  # Emitted when voice service is ready
     
     def __init__(self, use_separate_process: bool = True):
         super().__init__()
@@ -66,6 +69,12 @@ class VoiceServiceWrapper(QObject):
             self.process_manager.voice_processing_finished.connect(self.voice_processing_finished.emit, Qt.ConnectionType.QueuedConnection)
             self.process_manager.state_updated.connect(self._update_cached_state_from_signal, Qt.ConnectionType.QueuedConnection)
             
+            # Connect interruption signals if they exist
+            if hasattr(self.process_manager, 'user_interrupted'):
+                self.process_manager.user_interrupted.connect(self.user_interrupted.emit, Qt.ConnectionType.QueuedConnection)
+            if hasattr(self.process_manager, 'request_cancelled'):
+                self.process_manager.request_cancelled.connect(self.request_cancelled.emit, Qt.ConnectionType.QueuedConnection)
+            
             logger.info("[ID:0225] Voice service wrapper initialized with process manager")
             
         except Exception as e:
@@ -93,7 +102,20 @@ class VoiceServiceWrapper(QObject):
             self.direct_service.voice_processing_finished.connect(self.voice_processing_finished.emit, Qt.ConnectionType.QueuedConnection)
             self.direct_service.audio_level_changed.connect(self.audio_level_changed.emit, Qt.ConnectionType.QueuedConnection)
             
+            # Connect interruption signals
+            self.direct_service.user_interrupted.connect(self.user_interrupted.emit, Qt.ConnectionType.QueuedConnection)
+            self.direct_service.request_cancelled.connect(self.request_cancelled.emit, Qt.ConnectionType.QueuedConnection)
+            
             logger.info("[ID:0222] Voice service wrapper initialized with direct service")
+            
+            # Connect to the voice service ready signal
+            self.direct_service.voice_service_ready.connect(self._on_voice_service_ready)
+            
+            # Set up a timer to check if the service becomes ready
+            from PySide6.QtCore import QTimer
+            self._ready_check_timer = QTimer()
+            self._ready_check_timer.timeout.connect(self._check_service_readiness)
+            self._ready_check_timer.start(1000)  # Check every second
             
         except Exception as e:
             logger.error(f"[ID:0221] Failed to initialize direct voice service: {e}")
@@ -308,4 +330,28 @@ class VoiceServiceWrapper(QObject):
         """Get the recording service (only available in direct mode)"""
         if self.direct_service:
             return self.direct_service.recording_service
-        return None 
+        return None
+    
+    def _on_voice_service_ready(self):
+        """Handle voice service ready signal"""
+        logger.info("Voice service ready signal received in wrapper", print_to_terminal=True)
+        # Only emit ready signal if the direct service is actually ready
+        if self.direct_service and self.direct_service.is_voice_available():
+            logger.info("Direct voice service is ready, emitting wrapper ready signal", print_to_terminal=True)
+            self.voice_service_ready.emit()
+            # Stop the ready check timer since we're ready
+            if hasattr(self, '_ready_check_timer'):
+                self._ready_check_timer.stop()
+        else:
+            logger.warning("Direct voice service not ready yet, waiting...", print_to_terminal=True)
+    
+    def _check_service_readiness(self):
+        """Check if the voice service is ready and emit signal if it is"""
+        if self.direct_service and self.direct_service.is_voice_available():
+            logger.info("Voice service is now ready, emitting ready signal", print_to_terminal=True)
+            self.voice_service_ready.emit()
+            # Stop the timer since we're ready
+            self._ready_check_timer.stop()
+        else:
+            logger.debug("Voice service still not ready, checking again in 1 second")
+            # Continue checking every second until ready 

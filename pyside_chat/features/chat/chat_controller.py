@@ -365,14 +365,19 @@ class ChatController(QObject):
     def _trigger_tts_for_response(self, response: str) -> None:
         """Trigger TTS for AI response if voice mode is active"""
         try:
+            logger.debug(f"[ID:0148A] _trigger_tts_for_response called with response length: {len(response)}")
+            
             # Check if voice mode is active before triggering TTS
             if hasattr(self, '_chat_tab_reference') and self._chat_tab_reference:
+                logger.debug("[ID:0148B] Chat tab reference available")
                 # Check if voice mode is active in the chat tab
                 if hasattr(self._chat_tab_reference, 'voice_mode') and self._chat_tab_reference.voice_mode:
+                    logger.debug("[ID:0148C] Voice mode is active, proceeding with TTS")
                     # Remove all <think>...</think> blocks
                     spoken_text = re.sub(r'<think>.*?</think>', '', response, flags=re.DOTALL).strip()
                     # Remove emojis
                     spoken_text = remove_emojis(spoken_text)
+                    logger.debug(f"[ID:0148D] Calling speak_ai_response with text length: {len(spoken_text)}")
                     self._chat_tab_reference.speak_ai_response(spoken_text)
                     logger.debug(f"[ID:0150] TTS triggered for AI response (length: {len(spoken_text)})")
                 else:
@@ -381,6 +386,8 @@ class ChatController(QObject):
                 logger.debug("[ID:0149] No chat tab reference available for TTS")
         except Exception as e:
             logger.error(f"[ID:0148] Error triggering TTS for AI response: {e}")
+            import traceback
+            logger.error(f"[ID:0148E] TTS error traceback: {traceback.format_exc()}")
     
     def set_chat_tab_reference(self, chat_tab):
         """Set reference to chat tab for TTS functionality"""

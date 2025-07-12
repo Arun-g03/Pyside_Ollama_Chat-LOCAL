@@ -25,7 +25,7 @@ class SettingsDialog(QDialog):
     def setup_ui(self):
         """Setup the user interface"""
         self.setWindowTitle("Settings")
-        self.setGeometry(200, 200, 500, 400)
+        self.setGeometry(400, 400, 600, 600)
         
         layout = QVBoxLayout(self)
         

@@ -303,7 +303,8 @@ class ChatTab(QWidget):
         """Initialize voice controls if not already initialized"""
         if not self.voice_controls_initialized:
             try:
-                logger.info("Initializing voice controls (lazy loading)")
+                print(f"[DEBUG] Initializing voice controls (lazy loading)")
+                logger.info("Initializing voice controls (lazy loading)", print_to_terminal=True)
                 
                 # Import and initialize voice controls
                 from pyside_chat.ui.tabs.chat_tab.voice_controls import VoiceControls
@@ -327,7 +328,30 @@ class ChatTab(QWidget):
                 voice_layout.addWidget(voice_components['voice_settings_button'])
                 voice_layout.addWidget(voice_components['audio_level_widget'])
                 
-                # Connect voice control signals
+                # Connect voice control signals (only if not already connected)
+                print(f"[DEBUG] Connecting voice control signals to chat tab")
+                logger.debug("Connecting voice control signals to chat tab", print_to_terminal=True)
+                
+                # Disconnect any existing connections to prevent duplicates
+                try:
+                    self.voice_controls.voice_input_received.disconnect()
+                    self.voice_controls.voice_input_error.disconnect()
+                    self.voice_controls.tts_started.disconnect()
+                    self.voice_controls.tts_finished.disconnect()
+                    self.voice_controls.tts_error.disconnect()
+                    self.voice_controls.recording_started.disconnect()
+                    self.voice_controls.recording_stopped.disconnect()
+                    self.voice_controls.recording_error.disconnect()
+                    self.voice_controls.voice_processing_started.disconnect()
+                    self.voice_controls.voice_processing_finished.disconnect()
+                    self.voice_controls.audio_level_changed.disconnect()
+                    self.voice_controls.user_interrupted.disconnect()
+                    self.voice_controls.request_cancelled.disconnect()
+                    self.voice_controls.voice_status_changed.disconnect()
+                except Exception as e:
+                    logger.debug(f"Some signals were not connected (normal): {e}")
+                
+                # Connect signals
                 self.voice_controls.voice_input_received.connect(self.on_voice_input_received)
                 self.voice_controls.voice_input_error.connect(self.on_voice_input_error)
                 self.voice_controls.tts_started.connect(self.on_tts_started)
@@ -340,18 +364,42 @@ class ChatTab(QWidget):
                 self.voice_controls.voice_processing_finished.connect(self.on_voice_processing_finished)
                 self.voice_controls.audio_level_changed.connect(self.on_audio_level_changed)
                 
+                # Connect new interruption signals
+                self.voice_controls.user_interrupted.connect(self.on_user_interrupted)
+                self.voice_controls.request_cancelled.connect(self.on_request_cancelled)
+                
                 # Connect voice settings button
                 voice_components = self.voice_controls.get_ui_components()
                 voice_components['voice_settings_button'].clicked.connect(self.open_voice_settings)
-                
+
+                # Connect voice status signal to update status indicator
+                self.voice_controls.voice_status_changed.connect(self.on_voice_status_changed)
+
                 self.voice_controls_initialized = True
-                logger.info("Voice controls initialized successfully")
+                print(f"[DEBUG] Voice controls initialized successfully")
+                logger.info("Voice controls initialized successfully", print_to_terminal=True)
+                
+                # Force UI refresh to update button state based on current voice service status
+                if self.voice_controls:
+                    self.voice_controls.force_ui_refresh()
                 
             except Exception as e:
-                logger.error(f"Failed to initialize voice controls: {e}")
+                print(f"[DEBUG] Failed to initialize voice controls: {e}")
+                logger.error(f"Failed to initialize voice controls: {e}", print_to_terminal=True)
                 self.voice_controls = None
                 self.voice_controls_initialized = False
-    
+        else:
+            print(f"[DEBUG] Voice controls already initialized")
+            logger.debug("Voice controls already initialized", print_to_terminal=True)
+
+    def on_voice_status_changed(self, status: str):
+        """Update the audio level label or status indicator with the current voice service status"""
+        try:
+            if self.voice_controls and hasattr(self.voice_controls, 'audio_level_label'):
+                self.voice_controls.audio_level_label.setText(f"🎤 {status}")
+        except Exception as e:
+            logger.error(f"Failed to update voice status indicator: {e}")
+
     def on_input_mode_changed(self, mode: str):
         """Handle input mode change"""
         logger.debug(f"[VOICE DEBUG] on_input_mode_changed called with mode: {mode}")
@@ -381,7 +429,7 @@ class ChatTab(QWidget):
             self._ensure_voice_controls_initialized()
             
             if self.voice_controls_initialized and self.voice_controls:
-                # Show voice input widgets
+                # Show voice input widgets immediately
                 input_components = self.input_controls.get_ui_components()
                 voice_components = self.voice_controls.get_ui_components()
                 
@@ -395,6 +443,22 @@ class ChatTab(QWidget):
                 
                 self.voice_mode = True
                 
+                # Immediately show "Initializing" status
+                if hasattr(self.voice_controls, 'audio_level_label'):
+                    self.voice_controls.audio_level_label.setText("🎤 Initializing...")
+                
+                # Check if voice service is ready
+                if not self.voice_controls.is_voice_service_ready():
+                    logger.info("Voice service not ready, starting initialization")
+                    # The voice controls will handle initialization automatically
+                    # Status will be updated via the voice_status_changed signal
+                    # Show "Initializing" status immediately
+                    self.voice_controls.voice_status_changed.emit("Initializing")
+                else:
+                    logger.info("Voice service already ready")
+                    # Show "Ready" status immediately
+                    self.voice_controls.voice_status_changed.emit("Ready")
+                
                 # Switch to EQ visualizer if enabled
                 eq_mode = self.voice_controls.get_voice_settings().get("eq_visualizer", "None")
                 if eq_mode != "None":
@@ -404,6 +468,9 @@ class ChatTab(QWidget):
                     logger.debug("[VOICE DEBUG] Switched to Voice mode without EQ")
             else:
                 logger.error("Failed to initialize voice controls for voice mode")
+                # Show error status
+                if hasattr(self.voice_controls, 'audio_level_label'):
+                    self.voice_controls.audio_level_label.setText("🎤 Error: Failed to initialize")
     
     def on_temperature_changed(self, temperature: float):
         """Handle temperature change"""
@@ -429,33 +496,74 @@ class ChatTab(QWidget):
             voice_settings["eq_visualizer"] = mode
             self.voice_controls.update_voice_settings(voice_settings)
         
+    def on_user_interrupted(self):
+        """Handle user interruption during AI response"""
+        logger.info("User interruption detected in chat tab")
+        
+        # Stop current streaming if active
+        if self.is_streaming:
+            logger.debug("Stopping streaming due to user interruption")
+            self.stop_streaming()
+            
+            # Add interruption message to chat
+            self.append_to_chat("System", "User interrupted AI response")
+        
+        # Reset voice mode state if needed
+        if self.voice_mode:
+            logger.debug("Resetting voice mode state after interruption")
+            # Voice controls will handle restarting voice input
+
+    def on_request_cancelled(self):
+        """Handle request cancellation"""
+        logger.info("Request cancelled in chat tab")
+        
+        # Stop current streaming if active
+        if self.is_streaming:
+            logger.debug("Stopping streaming due to request cancellation")
+            self.stop_streaming()
+            
+            # Add cancellation message to chat
+            self.append_to_chat("System", "Request was cancelled")
+        
+        # Reset voice mode state if needed
+        if self.voice_mode:
+            logger.debug("Resetting voice mode state after cancellation")
+            # Voice controls will handle restarting voice input
+
     def on_voice_input_received(self, text: str):
-        """Handle voice input received"""
+        print(f"[DEBUG] ChatTab received voice input: {text}")
+        logger.debug(f"Voice input received in chat tab: {text}", print_to_terminal=True)
+        
+        # Stop any current streaming
+        if self.is_streaming:
+            logger.debug("Stopping current streaming to process voice input")
+            self.stop_streaming()
+        
+        # Process the voice input as a user message
+        self.process_voice_input(text)
+
+    def process_voice_input(self, text: str):
+        """Process voice input as a user message"""
         try:
-            logger.debug(f"[VOICE DEBUG] on_voice_input_received called with text: '{text}'")
+            print(f"[DEBUG] Processing voice input: '{text}'")
+            logger.debug(f"Processing voice input: '{text}'", print_to_terminal=True)
             
-            # Log chat processing
-            logger.info(f"Chat processing voice input: '{text}'", print_to_terminal=True)
+            # Add user message to chat display
+            self.append_to_chat("You", text)
             
-            # Add the voice input to the chat
-            self.append_to_chat("You", f"[Voice] {text}")
+            # Start streaming state
+            self.start_streaming()
             
-            # Send the message through the normal flow
-            logger.debug(f"[VOICE DEBUG] Emitting message_sent signal with text: '{text}'")
+            # Emit message_sent signal to go through the same event bus system as text input
+            print(f"[DEBUG] Emitting message_sent signal for voice input")
+            logger.debug("Emitting message_sent signal for voice input", print_to_terminal=True)
             self.message_sent.emit(text)
-            
-            # In voice mode, we don't need to manage UI state here
-            # The voice controls will handle the continuous cycle
-            
+                
         except Exception as e:
-            logger.error(f"[VOICE ERROR] Error in on_voice_input_received: {e}")
-            logger.error(f"[VOICE ERROR] Traceback: {traceback.format_exc()}")
-            # Try to show error to user
-            try:
-                self.append_to_chat("System", f"Voice input error: {str(e)}")
-            except:
-                pass
-    
+            print(f"[DEBUG] Error processing voice input: {e}")
+            logger.error(f"Error processing voice input: {e}", print_to_terminal=True)
+            self.append_to_chat("System", f"Error processing voice input: {str(e)}")
+
     def on_voice_input_error(self, error: str):
         """Handle voice input error"""
         logger.error(f"Voice input error: {error}")
@@ -811,11 +919,28 @@ class ChatTab(QWidget):
         self.input_controls.update_personality_list(personalities)
     
     def speak_ai_response(self, text: str):
-        """Trigger TTS for AI response"""
-        logger.debug(f"[VOICE DEBUG] speak_ai_response called with text: '{text[:50]}...', voice_mode: {self.voice_mode}")
+        """Speak AI response using TTS"""
+        logger.debug(f"[CHAT_TAB] speak_ai_response called with text length: {len(text)}")
+        logger.debug(f"[CHAT_TAB] voice_mode: {self.voice_mode}, voice_controls_initialized: {self.voice_controls_initialized}")
+        
+        # Ensure voice controls are initialized if in voice mode
+        if self.voice_mode and not self.voice_controls_initialized:
+            logger.debug("Voice mode active but voice controls not initialized, initializing now")
+            self._ensure_voice_controls_initialized()
+        
         if self.voice_controls_initialized and self.voice_controls:
-            self.voice_controls.speak_ai_response(text)
-    
+            try:
+                logger.debug(f"[CHAT_TAB] Calling voice_controls.speak_ai_response")
+                self.voice_controls.speak_ai_response(text)
+                logger.debug(f"TTS request sent for AI response: {text[:50]}...")
+            except Exception as e:
+                logger.error(f"Failed to speak AI response: {e}")
+                import traceback
+                logger.error(f"TTS error traceback: {traceback.format_exc()}")
+        else:
+            logger.warning("Voice controls not available for TTS")
+            logger.debug(f"[CHAT_TAB] voice_controls_initialized: {self.voice_controls_initialized}, voice_controls: {self.voice_controls}")
+
     def open_voice_settings(self):
         """Open voice settings dialog"""
         # Ensure voice controls are initialized

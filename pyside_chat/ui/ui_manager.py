@@ -58,6 +58,7 @@ class UIManager:
             
             # Create and add tabs with reduced coupling
             self.chat_tab = ChatTab(
+                parent=self.main_window,  # Pass main window as parent so chat tab can access chat controller
                 conversation_manager=conversation_manager,
                 summarization_service=summarization_service,
                 config_manager=self.config_manager

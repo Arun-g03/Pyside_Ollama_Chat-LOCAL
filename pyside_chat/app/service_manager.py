@@ -2,6 +2,7 @@
 Service Manager - Handles initialization and management of all application services
 """
 
+import threading
 from typing import Optional
 from pyside_chat.features.ollama.ollama_service import OllamaService
 from pyside_chat.features.chat.conversation_service import ConversationService
@@ -18,7 +19,28 @@ logger = CustomLogger.get_logger(__name__)
 class ServiceManager:
     """Manages all application services and their initialization"""
     
-    def __init__(self, config_manager: ConfigManager):
+    _instance = None
+    _lock = threading.Lock()
+    
+    def __new__(cls, *args, **kwargs):
+        """Singleton pattern implementation"""
+        if cls._instance is None:
+            with cls._lock:
+                if cls._instance is None:
+                    cls._instance = super().__new__(cls)
+        return cls._instance
+    
+    def __init__(self, config_manager: ConfigManager = None):
+        """Initialize the service manager (singleton)"""
+        if hasattr(self, '_initialized'):
+            return
+            
+        self._initialized = True
+        
+        if config_manager is None:
+            logger.warning("ServiceManager initialized without config_manager")
+            return
+            
         self.config_manager = config_manager
         self.ollama_service: Optional[OllamaService] = None
         self.conversation_service: Optional[ConversationService] = None
@@ -30,12 +52,18 @@ class ServiceManager:
         self.memory_enabled: bool = False
         self.session_variables: dict = {}
         
-        # Voice services - lazy loaded only when needed
-        self.voice_service: Optional[object] = None
-        self.voice_service_initialized: bool = False
+        # Voice service manager (singleton)
+        self.voice_service_manager = None
         
         self._initialize_services()
-    
+
+    @classmethod
+    def get_instance(cls) -> 'ServiceManager':
+        """Get the global service manager instance"""
+        if cls._instance is None:
+            raise RuntimeError("ServiceManager not initialized. Call ServiceManager(config_manager) first.")
+        return cls._instance
+
     def _initialize_services(self):
         """Initialize all application services"""
         try:
@@ -71,6 +99,15 @@ class ServiceManager:
                 self.config_manager.get_history_directory()
             )
             
+            # Initialize voice service manager (singleton)
+            try:
+                from pyside_chat.features.voice.voice_service_manager import get_voice_service_manager
+                self.voice_service_manager = get_voice_service_manager()
+                logger.info("[ID:0097] Voice service manager initialized successfully")
+            except Exception as e:
+                logger.error(f"[ID:0098] Error initializing voice service manager: {e}")
+                self.voice_service_manager = None
+            
             # Initialize session variables
             self.session_variables = {
                 'history': self.config_manager.is_history_enabled(),
@@ -85,104 +122,85 @@ class ServiceManager:
         except Exception as e:
             logger.error(f"[ID:0093] Error initializing services: {e}")
             raise
-    
+
     def reinitialize_services(self):
         """Reinitialize services (used when configuration changes)"""
         logger.info("[ID:0092] Reinitializing services...")
         self._initialize_services()
-    
+
     def get_ollama_service(self) -> OllamaService:
         """Get the Ollama service instance"""
         return self.ollama_service
-    
+
     def get_conversation_service(self) -> ConversationService:
         """Get the conversation service instance"""
         return self.conversation_service
-    
+
     def get_enhancement_service(self) -> EnhancementService:
         """Get the enhancement service instance"""
         return self.enhancement_service
-    
+
     def get_memory_service(self) -> Optional[MemoryService]:
         """Get the memory service instance (may be None if disabled)"""
         return self.memory_service
-    
+
     def get_summarization_service(self) -> SummarizationService:
         """Get the summarization service instance"""
         return self.summarization_service
-    
+
     def get_conversation_manager(self) -> ConversationManager:
         """Get the conversation manager instance"""
         return self.conversation_manager
-    
+
     def get_personality_service(self) -> PersonalityModel:
         """Get the personality service instance"""
         return self.personality_service
-    
+
     def get_voice_service(self):
-        """Get the voice service instance (lazy loaded)"""
-        if not self.voice_service_initialized:
-            self._initialize_voice_service()
-        return self.voice_service
-    
+        """Get the voice service instance from the manager"""
+        if self.voice_service_manager:
+            return self.voice_service_manager.get_voice_service()
+        return None
+
     def is_voice_service_initialized(self) -> bool:
         """Check if voice service has been initialized"""
-        return self.voice_service_initialized
-    
+        if self.voice_service_manager:
+            return self.voice_service_manager.is_ready()
+        return False
+
     def is_memory_enabled(self) -> bool:
         """Check if memory is enabled"""
         return self.memory_enabled
-    
+
     def get_session_variables(self) -> dict:
         """Get session variables"""
         return self.session_variables.copy()
-    
+
     def cleanup(self):
         """Clean up services on application shutdown"""
         try:
             if self.ollama_service:
                 # Any cleanup needed for Ollama service
                 pass
-            
+
             if self.memory_service:
                 # Any cleanup needed for memory service
                 pass
-            
-            # Clean up voice service if initialized
-            if self.voice_service_initialized and self.voice_service:
+
+            # Clean up voice service manager
+            if self.voice_service_manager:
                 try:
-                    if hasattr(self.voice_service, 'cleanup_on_exit'):
-                        self.voice_service.cleanup_on_exit()
-                    logger.info("[ID:0091A] Voice service cleaned up successfully")
+                    self.voice_service_manager.cleanup()
+                    logger.info("[ID:0091A] Voice service manager cleaned up successfully")
                 except Exception as e:
-                    logger.error(f"[ID:0091B] Error cleaning up voice service: {e}")
-            
+                    logger.error(f"[ID:0091B] Error cleaning up voice service manager: {e}")
+
             logger.info("[ID:0091] Services cleaned up successfully")
-            
+
         except Exception as e:
             logger.error(f"[ID:0090] Error during service cleanup: {e}")
-    
+
     def _initialize_voice_service(self):
-        """Initialize voice service only when needed"""
-        try:
-            logger.info("[ID:0097] Initializing voice service (lazy loading)")
-            
-            # Import and initialize voice service wrapper
-            from pyside_chat.features.voice.voice_service_wrapper import VoiceServiceWrapper
-            self.voice_service = VoiceServiceWrapper(use_separate_process=True)
-            self.voice_service_initialized = True
-            
-            logger.info("[ID:0098] Voice service initialized successfully")
-            
-        except Exception as e:
-            logger.error(f"[ID:0099] Error initializing voice service: {e}")
-            # Fallback to direct service
-            try:
-                from pyside_chat.features.voice.voice_service import VoiceService
-                self.voice_service = VoiceService()
-                self.voice_service_initialized = True
-                logger.info("[ID:0100] Voice service initialized with fallback")
-            except Exception as e2:
-                logger.error(f"[ID:0101] Failed to initialize voice service: {e2}")
-                self.voice_service = None
-                self.voice_service_initialized = False
+        """Initialize voice service only when needed (deprecated - use manager)"""
+        logger.warning("[ID:0102] _initialize_voice_service is deprecated, use voice service manager")
+        return self.get_voice_service()
