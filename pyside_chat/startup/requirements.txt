@@ -37,6 +37,9 @@ edge-tts>=6.1.9                  # Microsoft Edge TTS (fast and natural)
 pyttsx3>=2.90                    # Local TTS engine
 TTS>=0.22.0                      # Coqui TTS (advanced local TTS)
 
+# Pin dependencies for TTS compatibility
+
+
 # =============================================================================
 # INPUT HANDLING
 # =============================================================================
@@ -45,7 +48,7 @@ keyboard>=0.13.5                  # Keyboard input handling
 # =============================================================================
 # SCIENTIFIC COMPUTING AND ML
 # =============================================================================
-numpy>=1.21.0                    # Numerical computing
+numpy>=1.22                    # Numerical computing
 scipy>=1.7.0                     # Scientific computing
 scikit-learn                      # Machine learning library
 
@@ -53,10 +56,10 @@ scikit-learn                      # Machine learning library
 # MACHINE LEARNING AND AI (GPU with CUDA 12.4)
 # =============================================================================
 # PyTorch GPU version with CUDA 12.4 support
---find-links https://download.pytorch.org/whl/cu124
-torch                             # PyTorch deep learning framework (GPU)
-torchvision                       # PyTorch computer vision (GPU)
-torchaudio                        # PyTorch audio processing (GPU)
+--find-links https://download.pytorch.org/whl/cu121
+torch==2.2.2
+torchvision==0.17.2
+torchaudio==2.2.2
 
 # Hugging Face ecosystem (compatible versions)
 huggingface-hub==0.20.3          # Hugging Face Hub
@@ -113,9 +116,3 @@ thinc==8.1.10                    # Pre-built thinc wheel for Coqui TTS
 #
 # For audio processing (optional):
 # Install ffmpeg for pydub functionality 
-sentence-transformers
-pyaudio
-SpeechRecognition
-sounddevice
-soundfile
-pyvis 
