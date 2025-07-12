@@ -332,48 +332,37 @@ class ChatTab(QWidget):
                 print(f"[DEBUG] Connecting voice control signals to chat tab")
                 logger.debug("Connecting voice control signals to chat tab", print_to_terminal=True)
                 
-                # Disconnect any existing connections to prevent duplicates
-                try:
-                    self.voice_controls.voice_input_received.disconnect()
-                    self.voice_controls.voice_input_error.disconnect()
-                    self.voice_controls.tts_started.disconnect()
-                    self.voice_controls.tts_finished.disconnect()
-                    self.voice_controls.tts_error.disconnect()
-                    self.voice_controls.recording_started.disconnect()
-                    self.voice_controls.recording_stopped.disconnect()
-                    self.voice_controls.recording_error.disconnect()
-                    self.voice_controls.voice_processing_started.disconnect()
-                    self.voice_controls.voice_processing_finished.disconnect()
-                    self.voice_controls.audio_level_changed.disconnect()
-                    self.voice_controls.user_interrupted.disconnect()
-                    self.voice_controls.request_cancelled.disconnect()
-                    self.voice_controls.voice_status_changed.disconnect()
-                except Exception as e:
-                    logger.debug(f"Some signals were not connected (normal): {e}")
-                
-                # Connect signals
-                self.voice_controls.voice_input_received.connect(self.on_voice_input_received)
-                self.voice_controls.voice_input_error.connect(self.on_voice_input_error)
-                self.voice_controls.tts_started.connect(self.on_tts_started)
-                self.voice_controls.tts_finished.connect(self.on_tts_finished)
-                self.voice_controls.tts_error.connect(self.on_tts_error)
-                self.voice_controls.recording_started.connect(self.on_recording_started)
-                self.voice_controls.recording_stopped.connect(self.on_recording_stopped)
-                self.voice_controls.recording_error.connect(self.on_recording_error)
-                self.voice_controls.voice_processing_started.connect(self.on_voice_processing_started)
-                self.voice_controls.voice_processing_finished.connect(self.on_voice_processing_finished)
-                self.voice_controls.audio_level_changed.connect(self.on_audio_level_changed)
-                
-                # Connect new interruption signals
-                self.voice_controls.user_interrupted.connect(self.on_user_interrupted)
-                self.voice_controls.request_cancelled.connect(self.on_request_cancelled)
+                # List of (signal, slot) pairs to disconnect/connect
+                signal_slot_pairs = [
+                    (self.voice_controls.voice_input_received, self.on_voice_input_received),
+                    (self.voice_controls.voice_input_error, self.on_voice_input_error),
+                    (self.voice_controls.tts_started, self.on_tts_started),
+                    (self.voice_controls.tts_finished, self.on_tts_finished),
+                    (self.voice_controls.tts_error, self.on_tts_error),
+                    (self.voice_controls.recording_started, self.on_recording_started),
+                    (self.voice_controls.recording_stopped, self.on_recording_stopped),
+                    (self.voice_controls.recording_error, self.on_recording_error),
+                    (self.voice_controls.voice_processing_started, self.on_voice_processing_started),
+                    (self.voice_controls.voice_processing_finished, self.on_voice_processing_finished),
+                    (self.voice_controls.audio_level_changed, self.on_audio_level_changed),
+                    (self.voice_controls.user_interrupted, self.on_user_interrupted),
+                    (self.voice_controls.request_cancelled, self.on_request_cancelled),
+                    (self.voice_controls.voice_status_changed, self.on_voice_status_changed),
+                ]
+                for signal, slot in signal_slot_pairs:
+                    try:
+                        signal.disconnect(slot)
+                    except (TypeError, RuntimeError):
+                        pass
+                    signal.connect(slot)
                 
                 # Connect voice settings button
                 voice_components = self.voice_controls.get_ui_components()
+                try:
+                    voice_components['voice_settings_button'].clicked.disconnect(self.open_voice_settings)
+                except (TypeError, RuntimeError):
+                    pass
                 voice_components['voice_settings_button'].clicked.connect(self.open_voice_settings)
-
-                # Connect voice status signal to update status indicator
-                self.voice_controls.voice_status_changed.connect(self.on_voice_status_changed)
 
                 self.voice_controls_initialized = True
                 print(f"[DEBUG] Voice controls initialized successfully")
@@ -548,11 +537,8 @@ class ChatTab(QWidget):
             print(f"[DEBUG] Processing voice input: '{text}'")
             logger.debug(f"Processing voice input: '{text}'", print_to_terminal=True)
             
-            # Add user message to chat display
-            self.append_to_chat("You", text)
-            
-            # Start streaming state
-            self.start_streaming()
+            # Don't add user message to chat here - let on_message_sent handle it
+            # This prevents duplication since on_message_sent will be called via the message_sent signal
             
             # Emit message_sent signal to go through the same event bus system as text input
             print(f"[DEBUG] Emitting message_sent signal for voice input")

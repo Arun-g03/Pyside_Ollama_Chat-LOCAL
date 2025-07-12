@@ -4,10 +4,12 @@ Handles streaming response processing and display updates.
 """
 
 from PySide6.QtWidgets import QTextEdit, QApplication
-from PySide6.QtCore import QTimer, Signal, QObject, QThread
+from PySide6.QtCore import QTimer, Signal, QObject
 from PySide6.QtGui import QTextCursor, QTextCharFormat, QColor
 from pyside_chat.ui.themes.message_formatter import MessageFormatter
 from pyside_chat.core.logging.logger import CustomLogger
+from pyside_chat.core.threading.thread_pool_manager import ThreadPoolManager
+from pyside_chat.core.threading.qrunnable_tasks import StreamingUpdateTask
 import time
 import traceback
 
@@ -15,7 +17,7 @@ logger = CustomLogger.get_logger(__name__)
 
 
 class StreamingHandler(QObject):
-    """Handles streaming response processing and display updates"""
+    """Handles streaming response processing and display updates using proper threading architecture"""
     
     # Signal emitted when a message is edited
     message_edited = Signal(int, str)  # message_index, new_content
@@ -30,8 +32,12 @@ class StreamingHandler(QObject):
         self._stream_timer.timeout.connect(self._flush_stream_buffer)
         self.ai_name = ai_name
         self._message_counter = 0  # For generating unique message IDs
-        #global incrementor
-        #self.incrementor = 0
+        
+        # Initialize thread pool manager for streaming updates
+        self.thread_pool_manager = ThreadPoolManager()
+        
+        # Track active streaming tasks
+        self._active_streaming_tasks = set()
 
     def _get_next_message_id(self):
         """Generate a unique message ID"""
@@ -39,7 +45,7 @@ class StreamingHandler(QObject):
         return f"msg_{self._message_counter}"
 
     def _flush_stream_buffer(self):
-        """Flush the stream buffer and update the display"""
+        """Flush the stream buffer and update the display using thread pool"""
         if self._stream_buffer is None:
             return
         
@@ -54,8 +60,34 @@ class StreamingHandler(QObject):
                 msg['tag'] = tag
                 break
         
-        # Update the display
-        QTimer.singleShot(0, self._render_chat_display_safe)
+        # Use thread pool for UI update
+        self._schedule_ui_update()
+
+    def _schedule_ui_update(self):
+        """Schedule UI update using thread pool manager"""
+        try:
+            # Create streaming update task
+            task = StreamingUpdateTask(
+                target=self._render_chat_display_safe,
+                callback=self._on_ui_update_complete
+            )
+            
+            # Submit to thread pool
+            task_id = self.thread_pool_manager.start_task(task)
+            self._active_streaming_tasks.add(task_id)
+            
+            logger.debug(f"[DEBUG] Scheduled UI update task: {task_id}")
+            
+        except Exception as e:
+            logger.error(f"Error scheduling UI update: {e}")
+            # Fallback to direct update
+            QTimer.singleShot(0, self._render_chat_display_safe)
+
+    def _on_ui_update_complete(self, task_id):
+        """Callback when UI update task completes"""
+        if task_id in self._active_streaming_tasks:
+            self._active_streaming_tasks.remove(task_id)
+        logger.debug(f"[DEBUG] UI update task completed: {task_id}")
 
     def append_message(self, sender: str, content: str, is_code: bool = False, tag: str = "ai"):
         """Append a new message (user or system) and re-render chat display"""
@@ -69,9 +101,9 @@ class StreamingHandler(QObject):
             'message_id': message_id
         })
         logger.debug("[DEBUG][append_message] messages: %s", ', '.join(f"{m['sender']} streaming={m['is_streaming']} len={len(m['content'])}" for m in self.messages))
-        # Use QTimer.singleShot to ensure UI updates happen in the main thread
-        QTimer.singleShot(0, self._render_chat_display_safe)
-        QTimer.singleShot(0, lambda: self.chat_display.update())
+        
+        # Use thread pool for UI update
+        self._schedule_ui_update()
 
     def start_streaming_message(self, sender: str, tag: str = "ai"):
         """Append a streaming placeholder message and re-render chat display"""
@@ -84,8 +116,9 @@ class StreamingHandler(QObject):
             'tag': tag,
             'message_id': message_id
         })
-        # Use QTimer.singleShot to ensure UI updates happen in the main thread
-        QTimer.singleShot(0, self._render_chat_display_safe)
+        
+        # Use thread pool for UI update
+        self._schedule_ui_update()
 
     def edit_message(self, message_index: int, new_content: str):
         """Edit a specific message by index"""
@@ -93,8 +126,10 @@ class StreamingHandler(QObject):
             old_content = self.messages[message_index]['content']
             self.messages[message_index]['content'] = new_content
             logger.debug(f"[DEBUG][edit_message] Edited message {message_index}: '{old_content}' -> '{new_content}'")
-            # Use QTimer.singleShot to ensure UI updates happen in the main thread
-            QTimer.singleShot(0, self._render_chat_display_safe)
+            
+            # Use thread pool for UI update
+            self._schedule_ui_update()
+            
             # Emit signal for external handling (e.g., conversation saving)
             self.message_edited.emit(message_index, new_content)
             return True
@@ -127,14 +162,14 @@ class StreamingHandler(QObject):
     def _render_chat_display(self):
         """Re-render the entire chat display from the message list using tables for alignment and content-width bubbles"""
         
-        # Use QTimer.singleShot to ensure UI updates happen in the main thread
-        QTimer.singleShot(0, self._render_chat_display_safe)
+        # Use thread pool for UI update
+        self._schedule_ui_update()
     
     def _render_chat_display_safe(self):
         """Re-render the chat display safely in the main thread"""
         try:
             # Ensure we're in the main thread
-            current_thread = QThread.currentThread()
+            current_thread = QApplication.instance().thread()
             main_thread = self.chat_display.thread()
             
             logger.debug(f"[ID:0600] Render display safe - Current thread: {current_thread.objectName() or 'unnamed'}")
@@ -250,167 +285,157 @@ class StreamingHandler(QObject):
                       </td>
                     </tr></table>
                     """
-                elif tag == 'ai':
+                else:  # AI or system message
                     html = f"""
                     <table width='100%' cellspacing='0' cellpadding='0'><tr>
                       <td align='left'>
-                        <div style='background-color: #23272e; color: #fff; border-radius: 8px; padding: 10px 16px; {extra_top_margin} margin: 8px 0; {bubble_style}'>
+                        <div style='background-color: #2d3748; color: #e2e8f0; border-radius: 8px; padding: 10px 16px; margin: 8px 0; {bubble_style} {extra_top_margin}'>
+                          <span style='display:none' data-msg-idx='{self.messages.index(msg)}'></span>
                           <b>{sender}:</b> {formatted_content}
                         </div>
                       </td>
                       <td></td>
                     </tr></table>
                     """
-                else:
-                    html = f"""
-                    <div style='background-color: #1e1e1e; color: #fff; border-radius: 5px; padding: 10px 16px; margin: 8px 0;'><b>{sender}:</b> {formatted_content}</div>
-                    """
+                
                 self.chat_display.insertHtml(html)
                 self.chat_display.insertHtml("<br>")
                 prev_was_thinking = False
-            self.chat_display.ensureCursorVisible()
-            logger.debug(f"[ID:0604] Chat display render completed - Messages: {len(self.messages)}")
+            
+            # Scroll to bottom
+            cursor = self.chat_display.textCursor()
+            cursor.movePosition(QTextCursor.End)
+            self.chat_display.setTextCursor(cursor)
             
         except Exception as e:
-            logger.error(f"[ID:0605] Error in _render_chat_display_safe: {e}")
-            logger.error(f"[ID:0606] Render error traceback: {traceback.format_exc()}")
-            logger.error(f"[ID:0607] Render error thread context: {QThread.currentThread().objectName() or 'unnamed'}")
-    
+            logger.error(f"Error in _render_chat_display_safe: {e}")
+            logger.error(traceback.format_exc())
+
     def _safe_ui_update(self, update_func):
-        """Safely update UI in the main thread"""
+        """Safely execute UI updates using thread pool"""
         try:
-            current_thread = QThread.currentThread()
-            main_thread = self.chat_display.thread()
+            # Create UI update task
+            task = StreamingUpdateTask(
+                target=update_func,
+                callback=self._on_ui_update_complete
+            )
             
-            logger.debug(f"[ID:0608] Safe UI update - Current thread: {current_thread.objectName() or 'unnamed'}")
+            # Submit to thread pool
+            task_id = self.thread_pool_manager.start_task(task)
+            self._active_streaming_tasks.add(task_id)
             
-            if current_thread != main_thread:
-                logger.debug("[ID:0609] Scheduling UI update for main thread")
-                QTimer.singleShot(0, update_func)
-            else:
-                logger.debug("[ID:0610] Executing UI update in main thread")
-                update_func()
-                
+            logger.debug(f"[DEBUG] Scheduled safe UI update task: {task_id}")
+            
         except Exception as e:
-            logger.error(f"[ID:0611] Error in safe UI update: {e}")
-            logger.error(f"[ID:0612] Safe UI update error traceback: {traceback.format_exc()}")
-    
+            logger.error(f"Error scheduling safe UI update: {e}")
+            # Fallback to direct update
+            QTimer.singleShot(0, update_func)
+
     def update_streaming_message(self, content: str, sender: str, message_id: str = None, is_code: bool = False, tag: str = "ai"):
-        """Update the last streaming message safely"""
+        """Update the content of the last streaming message"""
         try:
-            logger.debug(f"[ID:0613] Updating streaming message - Sender: {sender}, Length: {len(content)}")
-            
             # Find the last streaming message
             for msg in reversed(self.messages):
                 if msg['is_streaming']:
                     msg['content'] = content
                     msg['is_code'] = is_code
                     msg['tag'] = tag
-                    if message_id:
-                        msg['message_id'] = message_id
                     break
             
-            # Use safe UI update
-            self._safe_ui_update(self._render_chat_display_safe)
+            # Use thread pool for UI update
+            self._schedule_ui_update()
             
         except Exception as e:
-            logger.error(f"[ID:0614] Error updating streaming message: {e}")
-            logger.error(f"[ID:0615] Streaming update error traceback: {traceback.format_exc()}")
-    
+            logger.error(f"Error updating streaming message: {e}")
+            logger.error(traceback.format_exc())
+
     def finalize_streaming_message(self):
-        """Finalize the last streaming message safely"""
+        """Mark the last streaming message as finalized"""
         try:
-            logger.debug("[ID:0616] Finalizing streaming message")
-            
-            found_streaming = False
-            for i in range(len(self.messages) - 1, -1, -1):
-                msg = self.messages[i]
+            # Find the last streaming message and mark it as not streaming
+            for msg in reversed(self.messages):
                 if msg['is_streaming']:
                     msg['is_streaming'] = False
-                    found_streaming = True
-                    logger.debug(f"[ID:0617] Final AI response content: {msg['content']}")
-                    # Remove the message if its content is empty or only whitespace
-                    if not msg['content'] or msg['content'].strip() == '':
-                        del self.messages[i]
+                    logger.debug(f"[DEBUG] Finalized streaming message: {msg.get('message_id', 'unknown')}")
                     break
             
-            if found_streaming:
-                logger.debug(f"[ID:0618] Finalized streaming message - Messages: {len(self.messages)}")
-            else:
-                logger.debug("[ID:0619] No streaming message found to finalize")
-            
-            # Use safe UI update
-            self._safe_ui_update(self._render_chat_display_safe)
+            # Use thread pool for UI update
+            self._schedule_ui_update()
             
         except Exception as e:
-            logger.error(f"[ID:0620] Error finalizing streaming message: {e}")
-            logger.error(f"[ID:0621] Finalize error traceback: {traceback.format_exc()}")
-    
+            logger.error(f"Error finalizing streaming message: {e}")
+            logger.error(traceback.format_exc())
+
     def update_last_system_switch(self, message: str):
-        """Update the last system switch message safely"""
+        """Update the last system message with new content"""
         try:
-            logger.debug(f"[ID:0622] Updating last system switch: {message}")
-            
+            # Find the last system message
             for msg in reversed(self.messages):
-                if msg['sender'] == 'System' and msg['content'].startswith('Switched to '):
+                if msg['sender'] == 'System':
                     msg['content'] = message
                     break
             
-            # Use safe UI update
-            self._safe_ui_update(self._render_chat_display_safe)
+            # Use thread pool for UI update
+            self._schedule_ui_update()
             
         except Exception as e:
-            logger.error(f"[ID:0623] Error updating system switch: {e}")
-            logger.error(f"[ID:0624] System switch error traceback: {traceback.format_exc()}")
-    
+            logger.error(f"Error updating last system message: {e}")
+            logger.error(traceback.format_exc())
+
     def remove_streaming_placeholder(self):
-        """Remove the last streaming message safely"""
+        """Remove the last streaming placeholder message"""
         try:
-            logger.debug("[ID:0625] Removing streaming placeholder")
-            
+            # Find and remove the last streaming message
             for i in range(len(self.messages) - 1, -1, -1):
                 if self.messages[i]['is_streaming']:
-                    del self.messages[i]
-                    logger.debug(f"[ID:0626] Removed streaming placeholder - Messages: {len(self.messages)}")
+                    removed_msg = self.messages.pop(i)
+                    logger.debug(f"[DEBUG] Removed streaming placeholder: {removed_msg.get('message_id', 'unknown')}")
                     break
             
-            # Use safe UI update
-            self._safe_ui_update(self._render_chat_display_safe)
+            # Use thread pool for UI update
+            self._schedule_ui_update()
             
         except Exception as e:
-            logger.error(f"[ID:0627] Error removing streaming placeholder: {e}")
-            logger.error(f"[ID:0628] Remove placeholder error traceback: {traceback.format_exc()}")
-    
+            logger.error(f"Error removing streaming placeholder: {e}")
+            logger.error(traceback.format_exc())
+
     def cleanup(self):
-        """Clean up safely"""
+        """Clean up resources and stop all active tasks"""
         try:
-            logger.debug("[ID:0629] Cleaning up streaming handler")
-            self.messages.clear()
-            # Use safe UI update
-            self._safe_ui_update(self._render_chat_display_safe)
+            # Stop stream timer
+            if self._stream_timer.isActive():
+                self._stream_timer.stop()
+            
+            # Wait for active streaming tasks to complete
+            if self._active_streaming_tasks:
+                logger.debug(f"[DEBUG] Waiting for {len(self._active_streaming_tasks)} active streaming tasks to complete")
+                self.thread_pool_manager.wait_for_all_tasks(timeout=5.0)
+            
+            # Clean up thread pool manager
+            if self.thread_pool_manager:
+                self.thread_pool_manager.shutdown()
+            
+            logger.debug("[DEBUG] Streaming handler cleanup completed")
             
         except Exception as e:
-            logger.error(f"[ID:0630] Error in streaming handler cleanup: {e}")
-            logger.error(f"[ID:0631] Cleanup error traceback: {traceback.format_exc()}")
-    
+            logger.error(f"Error during streaming handler cleanup: {e}")
+            logger.error(traceback.format_exc())
+
     def clear_chat(self):
-        """Clear all messages safely"""
+        """Clear all messages and reset the chat display"""
         try:
-            logger.debug("[ID:0632] Clearing chat")
             self.messages.clear()
-            # Use safe UI update
-            self._safe_ui_update(self._render_chat_display_safe)
+            self._stream_buffer = None
+            if self._stream_timer.isActive():
+                self._stream_timer.stop()
+            
+            # Use thread pool for UI update
+            self._schedule_ui_update()
             
         except Exception as e:
-            logger.error(f"[ID:0633] Error clearing chat: {e}")
-            logger.error(f"[ID:0634] Clear chat error traceback: {traceback.format_exc()}")
-    
+            logger.error(f"Error clearing chat: {e}")
+            logger.error(traceback.format_exc())
+
     def update_ai_name(self, ai_name: str):
-        """Update the AI name used for thoughts display"""
-        try:
-            logger.debug(f"[ID:0635] Updating AI name: {ai_name}")
-            self.ai_name = ai_name
-            
-        except Exception as e:
-            logger.error(f"[ID:0636] Error updating AI name: {e}")
-            logger.error(f"[ID:0637] AI name update error traceback: {traceback.format_exc()}") 
+        """Update the AI name used in message formatting"""
+        self.ai_name = ai_name 

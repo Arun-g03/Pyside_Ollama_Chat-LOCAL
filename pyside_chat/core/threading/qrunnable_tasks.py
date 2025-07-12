@@ -7,9 +7,11 @@ These tasks are designed for:
 - CPU-intensive calculations
 - File operations
 - Resource cleanup
+- UI updates for streaming content
 """
 
-from PySide6.QtCore import QRunnable, QObject, Signal
+from PySide6.QtCore import QRunnable, QObject, Signal, QMetaObject, Q_ARG, Qt, QThread
+from PySide6.QtWidgets import QApplication
 import time
 import traceback
 import json
@@ -18,6 +20,81 @@ from typing import Dict, List, Any, Optional, Callable
 from pyside_chat.core.logging.logger import CustomLogger
 
 logger = CustomLogger.get_logger(__name__)
+
+
+class StreamingUpdateTask(QRunnable, QObject):
+    """
+    Task for handling streaming UI updates.
+    
+    This task:
+    - Executes UI update functions in the main thread
+    - Uses invokeMethod for thread-safe UI updates
+    - Provides callback mechanism for completion tracking
+    """
+    
+    update_complete = Signal(str)  # task_id
+    update_error = Signal(str, str)  # task_id, error_message
+    
+    def __init__(self, target: Callable, callback: Optional[Callable] = None, task_id: Optional[str] = None):
+        QRunnable.__init__(self)
+        QObject.__init__(self)
+        self.target = target
+        self.callback = callback
+        self.task_id = task_id or f"streaming_update_{int(time.time() * 1000)}"
+        self.setAutoDelete(True)
+        
+        logger.debug(f"[DEBUG] StreamingUpdateTask created - ID: {self.task_id}")
+    
+    def run(self):
+        """Execute the streaming update task in the main thread."""
+        try:
+            logger.debug(f"[DEBUG] StreamingUpdateTask started - ID: {self.task_id}")
+            
+            # Get the main application instance
+            app = QApplication.instance()
+            if not app:
+                raise RuntimeError("No QApplication instance found")
+            
+            # Use invokeMethod to execute the target function in the main thread
+            success = QMetaObject.invokeMethod(
+                app,
+                lambda: self._execute_target(),
+                Qt.QueuedConnection
+            )
+            
+            if not success:
+                # Fallback: try direct execution if we're already in the main thread
+                if QApplication.instance().thread() == QThread.currentThread():
+                    self._execute_target()
+                else:
+                    raise RuntimeError("Failed to schedule UI update in main thread")
+            
+            logger.debug(f"[DEBUG] StreamingUpdateTask completed - ID: {self.task_id}")
+            
+        except Exception as e:
+            error_msg = f"Streaming update error: {str(e)}"
+            logger.error(f"[DEBUG] {error_msg}")
+            logger.error(f"[DEBUG] StreamingUpdateTask traceback: {traceback.format_exc()}")
+            self.update_error.emit(self.task_id, error_msg)
+    
+    def _execute_target(self):
+        """Execute the target function and handle completion."""
+        try:
+            # Execute the target function
+            result = self.target()
+            
+            # Emit completion signal
+            self.update_complete.emit(self.task_id)
+            
+            # Call callback if provided
+            if self.callback:
+                self.callback(self.task_id)
+                
+        except Exception as e:
+            error_msg = f"Target execution error: {str(e)}"
+            logger.error(f"[DEBUG] {error_msg}")
+            logger.error(f"[DEBUG] Target execution traceback: {traceback.format_exc()}")
+            self.update_error.emit(self.task_id, error_msg)
 
 
 class MessageProcessingTask(QRunnable, QObject):
@@ -303,6 +380,8 @@ class DataProcessingTask(QRunnable, QObject):
                 result = self._transform_data()
             elif self.operation == "analyze":
                 result = self._analyze_data()
+            elif self.operation.startswith("model_"):
+                result = self._handle_model_operation()
             else:
                 result = {"error": f"Unknown data operation: {self.operation}"}
             
@@ -315,6 +394,102 @@ class DataProcessingTask(QRunnable, QObject):
             logger.error(f"[ID:TR012] {error_msg}")
             logger.error(f"[ID:TR013] DataProcessingTask traceback: {traceback.format_exc()}")
             self.error_occurred.emit(self.operation, error_msg)
+    
+    def _handle_model_operation(self) -> Dict[str, Any]:
+        """Handle model operations for Ollama service."""
+        try:
+            import subprocess
+            import ollama
+            
+            model_data = self.data
+            model_name = model_data.get("model_name")
+            operation = model_data.get("operation")
+            base_url = self.kwargs.get("base_url", "http://localhost:11434")
+            cancellation_requested = self.kwargs.get("cancellation_requested", False)
+            progress_callback = self.kwargs.get("progress_callback")
+            error_callback = self.kwargs.get("error_callback")
+            success_callback = self.kwargs.get("success_callback")
+            
+            logger.debug(f"[DEBUG] Handling model operation: {operation} for model: {model_name}")
+            
+            # Try with official library first
+            try:
+                if operation == "pull":
+                    logger.info(f"[DEBUG] Using official library to pull model: {model_name}")
+                    ollama.pull(model_name)
+                    if success_callback:
+                        success_callback(f"Successfully pulled model: {model_name}")
+                    return {"success": True, "operation": operation, "model": model_name}
+                    
+                elif operation == "remove":
+                    logger.info(f"[DEBUG] Using official library to remove model: {model_name}")
+                    ollama.delete(model_name)
+                    if success_callback:
+                        success_callback(f"Successfully removed model: {model_name}")
+                    return {"success": True, "operation": operation, "model": model_name}
+                    
+                elif operation == "update":
+                    logger.info(f"[DEBUG] Using official library to update model: {model_name}")
+                    ollama.pull(model_name)  # Update is same as pull
+                    if success_callback:
+                        success_callback(f"Successfully updated model: {model_name}")
+                    return {"success": True, "operation": operation, "model": model_name}
+                    
+            except Exception as e:
+                logger.debug(f"[DEBUG] Library operation failed, falling back to subprocess: {e}")
+            
+            # Fall back to subprocess method
+            if operation == "pull":
+                command = ["ollama", "pull", model_name]
+            elif operation == "remove":
+                command = ["ollama", "rm", model_name]
+            elif operation == "update":
+                command = ["ollama", "pull", model_name]  # Update is same as pull
+            else:
+                raise ValueError(f"Unknown model operation: {operation}")
+            
+            process = subprocess.Popen(
+                command, 
+                stdout=subprocess.PIPE, 
+                stderr=subprocess.STDOUT, 
+                text=True, 
+                universal_newlines=True, 
+                encoding='utf-8', 
+                errors='replace', 
+                bufsize=1
+            )
+
+            for line in iter(process.stdout.readline, ''):
+                if cancellation_requested:
+                    process.terminate()
+                    logger.debug("[DEBUG] Model operation cancelled by user")
+                    break
+                if progress_callback:
+                    progress_callback(line.strip())
+            
+            process.stdout.close()
+            return_code = process.wait()
+            
+            if return_code:
+                error_msg = f"Error in {operation} operation (exit code: {return_code})."
+                if error_callback:
+                    error_callback(error_msg)
+                return {"error": error_msg, "operation": operation, "model": model_name}
+            else:
+                if success_callback:
+                    success_callback(f"Successfully {operation}d model: {model_name}")
+                return {"success": True, "operation": operation, "model": model_name}
+
+        except FileNotFoundError as e:
+            error_msg = "Ollama command not found. Is it installed and in your PATH?"
+            if error_callback:
+                error_callback(error_msg)
+            return {"error": error_msg, "operation": operation, "model": model_name}
+        except Exception as e:
+            error_msg = f"An error occurred during {operation}: {str(e)}"
+            if error_callback:
+                error_callback(error_msg)
+            return {"error": error_msg, "operation": operation, "model": model_name}
     
     def _calculate_data(self) -> Dict[str, Any]:
         """Perform calculations on the data."""

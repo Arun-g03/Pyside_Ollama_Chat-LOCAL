@@ -8,18 +8,32 @@ logger = CustomLogger.get_logger(__name__)
 
 # Import Coqui TTS service
 try:
-    from .coqui_tts import CoquiTTSService
+    from .coqui_tts_service import CoquiTTSService
     COQUI_AVAILABLE = True
 except ImportError:
     COQUI_AVAILABLE = False
 
 class TTSService(QObject):
-    """Text-to-Speech service for converting text to speech"""
+    """Text-to-Speech service for converting text to speech
+    
+    Always use TTSService.get_instance() to access the singleton instance.
+    Do NOT instantiate directly.
+    """
     # Signals
     tts_started = Signal()
     tts_finished = Signal()
     tts_error = Signal(str)
     audio_level_changed = Signal(float)  # Audio level for EQ visualization
+
+    # Singleton instance
+    _instance = None
+    
+    @staticmethod
+    def get_instance():
+        """Get the singleton instance of TTSService"""
+        if TTSService._instance is None:
+            TTSService._instance = TTSService()
+        return TTSService._instance
 
     def __init__(self):
         super().__init__()
@@ -35,7 +49,8 @@ class TTSService(QObject):
         self.coqui_service = None
         if COQUI_AVAILABLE:
             try:
-                self.coqui_service = CoquiTTSService()
+                # Always use the singleton accessor
+                self.coqui_service = CoquiTTSService.get_instance()
                 # Connect Coqui TTS signals with QueuedConnection for thread safety
                 self.coqui_service.tts_started.connect(self.tts_started.emit, Qt.ConnectionType.QueuedConnection)
                 self.coqui_service.tts_finished.connect(self.tts_finished.emit, Qt.ConnectionType.QueuedConnection)

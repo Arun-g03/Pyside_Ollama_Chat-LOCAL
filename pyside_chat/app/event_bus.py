@@ -48,6 +48,7 @@ class EventBus:
             self.chat_controller.error_occurred.connect(self._on_error_occurred)
             self.chat_controller.conversation_updated.connect(self._on_conversation_updated)
             self.chat_controller.name_generation_requested.connect(self._on_name_generation_requested)
+            self.chat_controller.message_received.connect(self._on_message_received)
             
             # Connect Ollama service signals
             ollama_service = self.service_manager.get_ollama_service()
@@ -543,6 +544,13 @@ class EventBus:
         except Exception as e:
             logger.error(f"[ID:0165] Error handling worker error: {e}")
             logger.error(f"[ID:0164] Worker error handler traceback: {traceback.format_exc()}")
+    
+    def _on_message_received(self, response: str):
+        """Handle message received signal from chat controller"""
+        logger.debug(f"[ID:0163] Message received signal received from chat controller with response length: {len(response)}")
+        # The chat controller has already handled TTS triggering in _trigger_tts_for_response
+        # This signal is just for notification that the AI response is complete
+        logger.debug("[ID:0163A] AI response processing completed")
     
     def _on_message_finished(self):
         """Handle message finished"""

@@ -366,24 +366,30 @@ class ChatController(QObject):
         """Trigger TTS for AI response if voice mode is active"""
         try:
             logger.debug(f"[ID:0148A] _trigger_tts_for_response called with response length: {len(response)}")
+            logger.debug(f"[ID:0148B] Response preview: {response[:100]}...")
             
             # Check if voice mode is active before triggering TTS
             if hasattr(self, '_chat_tab_reference') and self._chat_tab_reference:
-                logger.debug("[ID:0148B] Chat tab reference available")
+                logger.debug("[ID:0148C] Chat tab reference available")
                 # Check if voice mode is active in the chat tab
                 if hasattr(self._chat_tab_reference, 'voice_mode') and self._chat_tab_reference.voice_mode:
-                    logger.debug("[ID:0148C] Voice mode is active, proceeding with TTS")
+                    logger.debug("[ID:0148D] Voice mode is active, proceeding with TTS")
                     # Remove all <think>...</think> blocks
                     spoken_text = re.sub(r'<think>.*?</think>', '', response, flags=re.DOTALL).strip()
                     # Remove emojis
                     spoken_text = remove_emojis(spoken_text)
-                    logger.debug(f"[ID:0148D] Calling speak_ai_response with text length: {len(spoken_text)}")
+                    logger.debug(f"[ID:0148E] Calling speak_ai_response with text length: {len(spoken_text)}")
+                    logger.debug(f"[ID:0148F] Spoken text preview: {spoken_text[:100]}...")
                     self._chat_tab_reference.speak_ai_response(spoken_text)
                     logger.debug(f"[ID:0150] TTS triggered for AI response (length: {len(spoken_text)})")
                 else:
                     logger.debug("[ID:0149A] Voice mode not active, skipping TTS")
+                    logger.debug(f"[ID:0149B] Voice mode value: {getattr(self._chat_tab_reference, 'voice_mode', 'Not set')}")
             else:
                 logger.debug("[ID:0149] No chat tab reference available for TTS")
+                logger.debug(f"[ID:0149C] Has _chat_tab_reference: {hasattr(self, '_chat_tab_reference')}")
+                if hasattr(self, '_chat_tab_reference'):
+                    logger.debug(f"[ID:0149D] _chat_tab_reference value: {self._chat_tab_reference}")
         except Exception as e:
             logger.error(f"[ID:0148] Error triggering TTS for AI response: {e}")
             import traceback

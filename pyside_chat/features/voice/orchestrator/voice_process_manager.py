@@ -358,7 +358,7 @@ def _voice_process_worker(command_queue: mp.Queue, response_queue: mp.Queue):
             app = QApplication([])
         
         # Initialize voice service with response queue
-        voice_service = VoiceService(response_queue)
+        voice_service = VoiceService.get_instance(response_queue)
         
         # Send ready signal
         response_queue.put({

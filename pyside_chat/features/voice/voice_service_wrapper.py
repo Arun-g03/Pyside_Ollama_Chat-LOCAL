@@ -86,7 +86,7 @@ class VoiceServiceWrapper(QObject):
         """Initialize direct voice service (fallback)"""
         try:
             from .voice_service import VoiceService
-            self.direct_service = VoiceService()
+            self.direct_service = VoiceService.get_instance()
             
             # Connect signals from direct service with QueuedConnection for thread safety
             from PySide6.QtCore import Qt

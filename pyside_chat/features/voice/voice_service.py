@@ -9,7 +9,6 @@ Handles voice input/output functionality including:
 
 import os
 import tempfile
-import threading
 import time
 import wave
 import pyaudio
@@ -21,18 +20,21 @@ from PySide6.QtCore import QUrl
 import subprocess
 import platform
 import json
+import traceback
 
 from pyside_chat.core.logging.logger import CustomLogger
 from pyside_chat.core.logging.helpers import LoggingHelpers
+from pyside_chat.features.voice.tts.tts_service import TTSService
+from pyside_chat.core.threading.thread_pool_manager import ThreadPoolManager
+from pyside_chat.core.threading.qrunnable_tasks import DataProcessingTask
 
 logger = CustomLogger.get_logger(__name__)
 
 
 class VoiceService(QObject):
-    """Main voice service that orchestrates STT and TTS functionality"""
-    
+    """Voice service for handling voice input/output functionality using proper threading architecture"""
     # Signals
-    voice_input_received = Signal(str)  # Emitted when voice is converted to text
+    voice_input_received = Signal(str)  # Emitted when voice input is received
     voice_input_error = Signal(str)     # Emitted when voice input fails
     tts_started = Signal()              # Emitted when TTS starts
     tts_finished = Signal()             # Emitted when TTS finishes
@@ -42,13 +44,28 @@ class VoiceService(QObject):
     recording_error = Signal(str)       # Emitted when recording fails
     voice_processing_started = Signal() # Emitted when voice processing starts
     voice_processing_finished = Signal() # Emitted when voice processing finishes
-    audio_level_changed = Signal(float)
+    audio_level_changed = Signal(float) # Emitted when audio level changes
     user_interrupted = Signal()         # Emitted when user interrupts AI response
     request_cancelled = Signal()        # Emitted when Ollama request is cancelled
+    voice_status_changed = Signal(str)  # Emitted when voice status changes
     voice_service_ready = Signal()      # Emitted when voice service is ready
     
-    def __init__(self, recording_service=None, stt_service=None, tts_service=None, response_queue=None):
+    _instance = None
+
+    @staticmethod
+    def get_instance(*args, **kwargs):
+        if VoiceService._instance is None:
+            VoiceService._instance = VoiceService(*args, **kwargs)
+        return VoiceService._instance
+    
+    def __init__(self):
         super().__init__()
+        
+        # Initialize thread pool manager for voice operations
+        self.thread_pool_manager = ThreadPoolManager()
+        
+        # Track active voice operations
+        self._active_voice_operations = set()
         
         # Check if we're in a Qt context
         try:
@@ -59,16 +76,15 @@ class VoiceService(QObject):
             self.in_qt_context = False
 
         # Services
-        self.recording_service = recording_service
-        self.stt_service = stt_service
-        self.tts_service = tts_service
-        self.response_queue = response_queue
+        self.recording_service = None
+        self.stt_service = None
+        self.tts_service = None
+        self.response_queue = None
         
-        # Initialize services if not provided
-        if not all([recording_service, stt_service, tts_service]):
-            logger.info("Initializing voice services...", print_to_terminal=True)
-            self._initialize_services()
-
+        # Initialize services
+        logger.info("Initializing voice services...", print_to_terminal=True)
+        self._initialize_services()
+        
         # State tracking
         self.is_recording = False
         self.is_processing_voice = False
@@ -79,7 +95,7 @@ class VoiceService(QObject):
         self._interruption_detected = False
         self._current_request_id = None
         self._request_queue = []
-        self._max_concurrent_requests = 1  # Prevent overload
+        self._max_concurrent_requests = 2  # Allow both voice input and TTS simultaneously
         self._active_requests = 0
         self._interruption_cooldown = 1.0  # Seconds to wait after interruption
         self._last_interruption_time = 0
@@ -186,6 +202,24 @@ class VoiceService(QObject):
         
         logger.info("Voice service connections setup completed", print_to_terminal=True)
 
+    def _on_recording_started(self):
+        """Handle recording started signal"""
+        logger.debug("Recording started")
+        self.is_recording = True
+        self.recording_started.emit()
+
+    def _on_recording_stopped(self):
+        """Handle recording stopped signal"""
+        logger.debug("Recording stopped")
+        self.is_recording = False
+        self.recording_stopped.emit()
+
+    def _on_recording_error(self, error: str):
+        """Handle recording error signal"""
+        logger.error(f"Recording error: {error}")
+        self.is_recording = False
+        self.recording_error.emit(error)
+
     def _on_recording_auto_stopped(self):
         """Handle automatic recording stop"""
         logger.debug("Recording auto-stopped")
@@ -239,11 +273,29 @@ class VoiceService(QObject):
                           hasattr(self.recording_service, 'is_initialized') and 
                           self.recording_service.is_initialized())
         
+        # Debug logging to see which service is failing
+        logger.debug(f"Voice availability check - STT: {stt_ready}, TTS: {tts_ready}, Recording: {recording_ready}")
+        if not stt_ready:
+            logger.debug(f"STT service not ready - exists: {self.stt_service is not None}, has method: {hasattr(self.stt_service, 'is_initialized') if self.stt_service else False}")
+            if self.stt_service:
+                logger.debug(f"STT is_initialized result: {self.stt_service.is_initialized()}")
+        if not tts_ready:
+            logger.debug(f"TTS service not ready - exists: {self.tts_service is not None}, has method: {hasattr(self.tts_service, 'is_initialized') if self.tts_service else False}")
+            if self.tts_service:
+                logger.debug(f"TTS is_initialized result: {self.tts_service.is_initialized()}")
+        if not recording_ready:
+            logger.debug(f"Recording service not ready - exists: {self.recording_service is not None}, has method: {hasattr(self.recording_service, 'is_initialized') if self.recording_service else False}")
+            if self.recording_service:
+                logger.debug(f"Recording is_initialized result: {self.recording_service.is_initialized()}")
+        
         return stt_ready and tts_ready and recording_ready
 
     def can_handle_new_request(self) -> bool:
         """Check if we can handle a new request without overload"""
-        return self._active_requests < self._max_concurrent_requests
+        can_handle = self._active_requests < self._max_concurrent_requests
+        if not can_handle:
+            logger.debug(f"Cannot handle new request - active: {self._active_requests}, max: {self._max_concurrent_requests}")
+        return can_handle
 
     def queue_request(self, request_type: str, data: dict) -> str:
         """Queue a new request and return request ID"""
@@ -323,9 +375,30 @@ class VoiceService(QObject):
         """Handle TTS request"""
         try:
             text = data.get("text", "")
-            if text:
-                self.speak_text(text)
+            if text and self.tts_service:
+                logger.debug(f"Processing TTS request for text: {text[:50]}...")
+                
+                # Directly call TTS service instead of going through speak_text()
+                # This avoids double-queueing issues
+                try:
+                    # Set playing flag
+                    self.is_playing_tts = True
+                    
+                    # Call TTS service directly
+                    self.tts_service.speak_text(text)
+                    
+                    # Emit TTS started signal
+                    self.tts_started.emit()
+                    
+                    logger.debug("TTS request processed successfully")
+                    
+                except Exception as e:
+                    logger.error(f"Error in TTS service call: {e}")
+                    self.is_playing_tts = False
+                    self.tts_error.emit(f"TTS service error: {str(e)}")
+                    self._complete_request()
             else:
+                logger.warning("TTS request with empty text or no TTS service")
                 self._complete_request()
                 
         except Exception as e:
@@ -341,6 +414,34 @@ class VoiceService(QObject):
         if self._request_queue:
             self._process_request_queue()
 
+    def clear_request_queue(self):
+        """Clear all requests and reset voice service state"""
+        logger.info("Clearing request queue and resetting voice service state")
+        
+        try:
+            # Stop all current operations
+            if self.is_playing_tts:
+                self.stop_tts()
+            if self.is_recording:
+                self.stop_voice_input()
+            if self.is_processing_voice:
+                self.is_processing_voice = False
+                self.voice_processing_finished.emit()
+            
+            # Clear all request state
+            self._current_request_id = None
+            self._request_queue.clear()
+            self._active_requests = 0
+            self._interruption_detected = False
+            
+            # Disable continuous voice mode
+            self.continuous_voice_mode = False
+            
+            logger.debug("Request queue cleared and voice service state reset")
+            
+        except Exception as e:
+            logger.error(f"Error clearing request queue: {e}")
+    
     def cancel_current_request(self):
         """Cancel the current request"""
         if self._current_request_id:
@@ -499,10 +600,40 @@ class VoiceService(QObject):
         # Complete the request
         self._complete_request()
         
-        # If continuous voice mode is enabled, restart recording automatically
+        # In continuous mode, don't restart voice input immediately
+        # Wait for TTS to start, then restart voice input during TTS playback
+        # This creates the non-interruptive flow: user speaks → stop mic → process → enable mic during TTS
         if self.continuous_voice_mode:
-            logger.debug("Continuous voice mode enabled, restarting recording")
-            QTimer.singleShot(100, self.start_voice_input)  # Small delay to ensure processing is complete
+            logger.debug("Continuous voice mode: voice input stopped during processing, will restart during TTS")
+            # Voice input will be restarted in _on_tts_started for non-interruptive flow
+    
+    def _restart_voice_input_safely(self):
+        """Safely restart voice input after ensuring queue is processed"""
+        try:
+            # Prevent multiple simultaneous restarts
+            if hasattr(self, '_restarting_voice_input') and self._restarting_voice_input:
+                logger.debug("Voice input restart already in progress, skipping")
+                return
+            
+            self._restarting_voice_input = True
+            
+            # Check if we can handle new requests before starting
+            if self.can_handle_new_request():
+                logger.debug("Safely restarting voice input after queue processing")
+                self.start_voice_input()
+            else:
+                logger.debug("Cannot restart voice input - queue still full, will retry later")
+                # Retry after another delay
+                QTimer.singleShot(200, self._restart_voice_input_safely)
+            
+            # Reset the flag after a short delay
+            QTimer.singleShot(100, lambda: setattr(self, '_restarting_voice_input', False))
+            
+        except Exception as e:
+            logger.error(f"Error in _restart_voice_input_safely: {e}")
+            # Reset the flag on error
+            if hasattr(self, '_restarting_voice_input'):
+                self._restarting_voice_input = False
     
     def _on_stt_error(self, error: str):
         """Handle STT error"""
@@ -524,10 +655,28 @@ class VoiceService(QObject):
         # Complete the request
         self._complete_request()
         
-        # If continuous voice mode is enabled, restart recording even after error
+        # In continuous mode, restart voice input after error (but with delay)
         if self.continuous_voice_mode:
-            logger.debug("Continuous voice mode enabled, restarting recording after error")
-            QTimer.singleShot(100, self.start_voice_input)  # Small delay to ensure processing is complete
+            logger.debug("Continuous voice mode: restarting voice input after STT error")
+            QTimer.singleShot(1000, self._restart_voice_input_safely)  # Longer delay after error
+    
+    def _on_tts_started(self):
+        """Handle TTS started"""
+        self.is_playing_tts = True
+        logger.debug("TTS started, setting playing flag")
+        self.tts_started.emit()
+        
+        # Forward to response queue if in separate process
+        if self.response_queue:
+            self.response_queue.put({
+                "type": "tts_started",
+                "data": None
+            })
+        
+        # In continuous mode, restart voice input during TTS for non-interruptive flow
+        if self.continuous_voice_mode:
+            logger.debug("Continuous voice mode: restarting voice input during TTS for non-interruptive flow")
+            QTimer.singleShot(1000, self._restart_voice_input_safely)  # 1 second delay to let TTS start
     
     def _on_tts_finished(self):
         """Handle TTS finished"""
@@ -545,24 +694,11 @@ class VoiceService(QObject):
         # Complete the request
         self._complete_request()
         
-        # If continuous voice mode is enabled, restart voice input after TTS
+        # In continuous mode, restart voice input after TTS finishes
         if self.continuous_voice_mode:
-            logger.debug("Continuous voice mode enabled, restarting voice input after TTS")
-            QTimer.singleShot(500, self.start_voice_input)  # Longer delay to ensure TTS is completely finished
+            logger.debug("Continuous voice mode: restarting voice input after TTS completion")
+            QTimer.singleShot(500, self._restart_voice_input_safely)
     
-    def _on_tts_started(self):
-        """Handle TTS started"""
-        self.is_playing_tts = True
-        logger.debug("TTS started, setting playing flag")
-        self.tts_started.emit()
-        
-        # Forward to response queue if in separate process
-        if self.response_queue:
-            self.response_queue.put({
-                "type": "tts_started",
-                "data": None
-            })
-
     def _on_tts_error(self, error: str):
         """Handle TTS error"""
         self.is_playing_tts = False
@@ -591,12 +727,23 @@ class VoiceService(QObject):
             self.stop_tts()
         
         try:
-            # Queue the TTS request
-            request_id = self.queue_request("tts", {"text": text})
-            logger.debug(f"Queued TTS request: {request_id}")
+            # Directly call TTS service (for UI calls)
+            logger.debug(f"Direct TTS call for text: {text[:50]}...")
+            
+            # Set playing flag
+            self.is_playing_tts = True
+            
+            # Call TTS service directly
+            self.tts_service.speak_text(text)
+            
+            # Emit TTS started signal
+            self.tts_started.emit()
+            
+            logger.debug("Direct TTS call completed successfully")
                 
         except Exception as e:
-            logger.error(f"Failed to queue TTS request: {e}")
+            logger.error(f"Failed to start TTS: {e}")
+            self.is_playing_tts = False
             self.tts_error.emit(f"Failed to start TTS: {str(e)}")
     
     def stop_tts(self):
@@ -624,15 +771,39 @@ class VoiceService(QObject):
         return self.voice_settings.get("silence_duration", 2.0)
     
     def cleanup_on_exit(self):
-        """Cleanup resources on exit"""
+        """Clean up resources when the application exits"""
         try:
+            logger.info("Cleaning up voice service resources...", print_to_terminal=True)
+            
+            # Stop any ongoing operations
+            self.stop_voice_input()
+            self.stop_tts()
+            
+            # Wait for active voice operations to complete
+            if self._active_voice_operations:
+                logger.debug(f"[DEBUG] Waiting for {len(self._active_voice_operations)} active voice operations to complete")
+                self.thread_pool_manager.wait_for_all_tasks(timeout=5.0)
+            
+            # Clean up thread pool manager
+            if self.thread_pool_manager:
+                self.thread_pool_manager.shutdown()
+            
+            # Clean up services
             if self.recording_service:
                 self.recording_service.cleanup()
+            if self.stt_service:
+                self.stt_service.cleanup()
             if self.tts_service:
                 self.tts_service.cleanup()
-            logger.debug("Voice service cleanup completed")
+            
+            # Clean up audio files
+            self.cleanup_old_audio_files()
+            
+            logger.info("Voice service cleanup completed", print_to_terminal=True)
+            
         except Exception as e:
             logger.error(f"Error during voice service cleanup: {e}")
+            logger.error(traceback.format_exc())
             
     def get_audio_folder_path(self) -> str:
         """Get the path to the audio folder"""
@@ -781,8 +952,7 @@ class VoiceService(QObject):
         
         try:
             logger.info("Initializing TTS service...", print_to_terminal=True)
-            from pyside_chat.features.voice.tts.tts_service import TTSService
-            self.tts_service = TTSService()
+            self.tts_service = TTSService.get_instance()
             logger.info("TTS service initialized successfully", print_to_terminal=True)
         except Exception as e:
             logger.error(f"Failed to initialize TTS service: {e}", print_to_terminal=True)
@@ -842,10 +1012,19 @@ class VoiceService(QObject):
     
     def _check_and_emit_ready(self):
         """Check if all services are ready and emit signal if they are"""
+        # Add a timeout counter to prevent infinite loops
+        if not hasattr(self, '_ready_check_count'):
+            self._ready_check_count = 0
+        
+        self._ready_check_count += 1
+        
         if self.is_voice_available():
             logger.info("All voice services are now ready, emitting ready signal", print_to_terminal=True)
             self.voice_service_ready.emit()
+        elif self._ready_check_count >= 30:  # 30 second timeout
+            logger.warning("Voice services not ready after 30 seconds, forcing ready state", print_to_terminal=True)
+            self.voice_service_ready.emit()
         else:
-            logger.debug("Voice services still not ready, checking again in 1 second")
+            logger.debug(f"Voice services still not ready, checking again in 1 second (attempt {self._ready_check_count}/30)")
             if self.in_qt_context:
                 QTimer.singleShot(1000, self._check_and_emit_ready) 

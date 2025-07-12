@@ -29,11 +29,11 @@ class ModelDownloadThread(QThread):
         
     def run(self):
         try:
-            from pyside_chat.features.voice.tts.coqui_tts import CoquiTTSService
+            from pyside_chat.features.voice.tts.coqui_tts_service import CoquiTTSService
             
             self.download_progress.emit(f"Starting download of {self.model_name}...")
             
-            coqui_service = CoquiTTSService()
+            coqui_service = CoquiTTSService.get_instance()
             success = coqui_service.download_model(self.model_name)
             
             if success:
@@ -251,9 +251,9 @@ class CoquiModelDialog(QDialog):
     def load_models(self):
         """Load available Coqui TTS models"""
         try:
-            from pyside_chat.features.voice.tts.coqui_tts import CoquiTTSService
+            from pyside_chat.features.voice.tts.coqui_tts_service import CoquiTTSService
             
-            self.coqui_service = CoquiTTSService()
+            self.coqui_service = CoquiTTSService.get_instance()
             self.available_models = self.coqui_service.get_available_models()
             
             self.model_list.clear()

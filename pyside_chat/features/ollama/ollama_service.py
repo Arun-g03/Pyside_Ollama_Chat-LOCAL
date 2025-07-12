@@ -7,7 +7,6 @@ import json
 import requests
 import subprocess
 import time
-from threading import Thread
 from typing import List, Dict, Optional, Generator
 from PySide6.QtCore import QObject, Signal
 
@@ -21,6 +20,8 @@ except ImportError:
 
 from pyside_chat.core.logging.logger import CustomLogger
 from pyside_chat.core.logging.helpers import LoggingHelpers
+from pyside_chat.core.threading.thread_pool_manager import ThreadPoolManager
+from pyside_chat.core.threading.qrunnable_tasks import DataProcessingTask
 
 logger = CustomLogger.get_logger(__name__)
 logger.info("[ID:0014] OllamaService logger initialized")
@@ -32,7 +33,7 @@ else:
 
 
 class OllamaService(QObject):
-    """Enhanced service for handling all Ollama API communication with official library support"""
+    """Enhanced service for handling all Ollama API communication with official library support using proper threading"""
     
     # Signals for async operations
     model_list_updated = Signal(list)  # Emits list of model names
@@ -47,6 +48,12 @@ class OllamaService(QObject):
             self.base_url = base_url.rstrip('/')
             self.request_in_progress = False
             self.cancellation_requested = False
+            
+            # Initialize thread pool manager for async operations
+            self.thread_pool_manager = ThreadPoolManager()
+            
+            # Track active operations
+            self._active_operations = set()
             
             # Initialize official Ollama client if available
             if OLLAMA_LIBRARY_AVAILABLE:
@@ -419,10 +426,23 @@ class OllamaService(QObject):
         
         self.model_operation_started.emit(f"Pulling model: {model_name}")
         
-        # Run in background thread
-        thread = Thread(target=self._pull_model_thread, args=(model_name,), daemon=True)
-        thread.start()
-    
+        # Create data processing task for model pull operation
+        task = DataProcessingTask(
+            data={"model_name": model_name, "operation": "pull"},
+            operation="model_pull",
+            base_url=self.base_url,
+            cancellation_requested=self.cancellation_requested,
+            progress_callback=self.model_operation_progress.emit,
+            error_callback=self.model_operation_error.emit,
+            success_callback=self.model_operation_finished.emit
+        )
+        
+        # Submit to thread pool
+        task_id = self.thread_pool_manager.start_task(task)
+        self._active_operations.add(task_id)
+        
+        logger.debug(f"[DEBUG] Scheduled model pull task: {task_id}")
+
     def _pull_model_thread(self, model_name: str) -> None:
         """Background thread for pulling models"""
         try:
@@ -480,10 +500,23 @@ class OllamaService(QObject):
         
         self.model_operation_started.emit(f"Removing model: {model_name}")
         
-        # Run in background thread
-        thread = Thread(target=self._remove_model_thread, args=(model_name,), daemon=True)
-        thread.start()
-    
+        # Create data processing task for model remove operation
+        task = DataProcessingTask(
+            data={"model_name": model_name, "operation": "remove"},
+            operation="model_remove",
+            base_url=self.base_url,
+            cancellation_requested=self.cancellation_requested,
+            progress_callback=self.model_operation_progress.emit,
+            error_callback=self.model_operation_error.emit,
+            success_callback=self.model_operation_finished.emit
+        )
+        
+        # Submit to thread pool
+        task_id = self.thread_pool_manager.start_task(task)
+        self._active_operations.add(task_id)
+        
+        logger.debug(f"[DEBUG] Scheduled model remove task: {task_id}")
+
     def _remove_model_thread(self, model_name: str) -> None:
         """Background thread for removing models"""
         try:
@@ -541,10 +574,23 @@ class OllamaService(QObject):
         
         self.model_operation_started.emit(f"Updating model: {model_name}")
         
-        # Run in background thread
-        thread = Thread(target=self._update_model_thread, args=(model_name,), daemon=True)
-        thread.start()
-    
+        # Create data processing task for model update operation
+        task = DataProcessingTask(
+            data={"model_name": model_name, "operation": "update"},
+            operation="model_update",
+            base_url=self.base_url,
+            cancellation_requested=self.cancellation_requested,
+            progress_callback=self.model_operation_progress.emit,
+            error_callback=self.model_operation_error.emit,
+            success_callback=self.model_operation_finished.emit
+        )
+        
+        # Submit to thread pool
+        task_id = self.thread_pool_manager.start_task(task)
+        self._active_operations.add(task_id)
+        
+        logger.debug(f"[DEBUG] Scheduled model update task: {task_id}")
+
     def _update_model_thread(self, model_name: str) -> None:
         """Background thread for updating models"""
         try:
@@ -620,25 +666,39 @@ class OllamaService(QObject):
             return []
     
     def cancel_request(self) -> None:
-        """Cancel the current request"""
-        try:
-            self.cancellation_requested = True
-            LoggingHelpers.log_debug("Request cancellation requested")
-        except Exception as e:
-            LoggingHelpers.log_exception_with_context("cancel_request", e, {})
+        """Cancel any ongoing request"""
+        self.cancellation_requested = True
+        self.request_in_progress = False
+        logger.debug("[DEBUG] Request cancellation requested")
     
     def reset_cancellation(self) -> None:
-        """Reset the cancellation flag"""
-        try:
-            self.cancellation_requested = False
-            LoggingHelpers.log_debug("Request cancellation reset")
-        except Exception as e:
-            LoggingHelpers.log_exception_with_context("reset_cancellation", e, {})
+        """Reset cancellation flag"""
+        self.cancellation_requested = False
+        logger.debug("[DEBUG] Cancellation flag reset")
     
     def is_connected(self) -> bool:
-        """Check if Ollama is connected"""
+        """Check if Ollama is running and accessible"""
+        return self.test_connection()
+    
+    def cleanup(self):
+        """Clean up resources and stop all active operations"""
         try:
-            return self.test_connection()
+            logger.debug("[DEBUG] Cleaning up Ollama service")
+            
+            # Cancel any ongoing operations
+            self.cancellation_requested = True
+            
+            # Wait for active operations to complete
+            if self._active_operations:
+                logger.debug(f"[DEBUG] Waiting for {len(self._active_operations)} active operations to complete")
+                self.thread_pool_manager.wait_for_all_tasks(timeout=10.0)
+            
+            # Clean up thread pool manager
+            if self.thread_pool_manager:
+                self.thread_pool_manager.shutdown()
+            
+            logger.debug("[DEBUG] Ollama service cleanup completed")
+            
         except Exception as e:
-            LoggingHelpers.log_exception_with_context("is_connected", e, {})
-            return False 
+            logger.error(f"Error during Ollama service cleanup: {e}")
+            logger.error(traceback.format_exc()) 

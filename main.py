@@ -5,11 +5,13 @@ from PySide6.QtCore import QTimer
 from pyside_chat.features.ollama.ollama_chat import OllamaChat
 from pyside_chat.core.logging.logger import CustomLogger
 from pyside_chat.startup.dependency_checker import check_and_install_dependencies
+from pyside_chat.core.threading.threading_service import ThreadingService
 import traceback
 import time
 
 print("\n\n\nCurrent goal:")
-print("1. Get the ollama chat working so we can use text chat\n\n")
+print("1. Get the ollama chat working so we can use text chat")
+print("2. Using proper threading architecture for better performance\n\n")
 
 time.sleep(5)
 logger = CustomLogger.get_logger(__name__)
@@ -49,7 +51,35 @@ def check_dependencies(auto_install=True):
         logger.info(f"[ID:0278] ❌ Error checking dependencies: {str(e)}")
         return False
 
+def initialize_threading_system():
+    """Initialize the threading system for the application."""
+    try:
+        logger.info("[DEBUG] Initializing threading system...", print_to_terminal=True)
+        
+        # Initialize the threading service
+        threading_service = ThreadingService()
+        
+        logger.info("[DEBUG] Threading system initialized successfully", print_to_terminal=True)
+        return threading_service
+        
+    except Exception as e:
+        logger.error(f"[DEBUG] Error initializing threading system: {e}")
+        logger.error(traceback.format_exc())
+        return None
+
+def cleanup_threading_system(threading_service):
+    """Clean up the threading system."""
+    try:
+        if threading_service:
+            logger.info("[DEBUG] Cleaning up threading system...", print_to_terminal=True)
+            threading_service.cleanup()
+            logger.info("[DEBUG] Threading system cleanup completed", print_to_terminal=True)
+    except Exception as e:
+        logger.error(f"[DEBUG] Error cleaning up threading system: {e}")
+        logger.error(traceback.format_exc())
+
 def main():
+    threading_service = None
     try:
         # Parse command line arguments
         args = parse_arguments()
@@ -66,6 +96,10 @@ def main():
         logger.info("[ID:0274] 🚀 Starting QApplication...",print_to_terminal=True)
         app = QApplication(sys.argv)
         logger.info("[ID:0273] Application started",print_to_terminal=True)
+        
+        # Initialize threading system
+        threading_service = initialize_threading_system()
+        
         # Set application properties
         app.setApplicationName("Ollama Chat - Local LLM Chat Application")
         app.setApplicationVersion("0.4.0")
@@ -77,7 +111,24 @@ def main():
         window.show()
         
         # Connect the application's aboutToQuit signal to ensure cleanup
-        app.aboutToQuit.connect(window.close)
+        def cleanup_on_exit():
+            try:
+                logger.info("[DEBUG] Application about to quit, cleaning up...", print_to_terminal=True)
+                
+                # Clean up the main window
+                if window:
+                    window.close()
+                
+                # Clean up threading system
+                cleanup_threading_system(threading_service)
+                
+                logger.info("[DEBUG] Application cleanup completed", print_to_terminal=True)
+                
+            except Exception as e:
+                logger.error(f"[DEBUG] Error during application cleanup: {e}")
+                logger.error(traceback.format_exc())
+        
+        app.aboutToQuit.connect(cleanup_on_exit)
         
         logger.info("[ID:0270] 🔄 Starting application event loop...",print_to_terminal=True)
         # Start the application event loop
@@ -88,6 +139,9 @@ def main():
     except Exception as e:
         logger.error(f"[ID:0268] Error in main: {str(e)}",print_to_terminal=True)
         logger.error(traceback.format_exc())
+        
+        # Ensure cleanup even on error
+        cleanup_threading_system(threading_service)
         raise
 
 if __name__ == "__main__":

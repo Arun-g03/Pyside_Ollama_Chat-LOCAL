@@ -10,6 +10,7 @@ from typing import Optional, Dict, Any
 from PySide6.QtCore import QObject, Signal
 
 from pyside_chat.core.logging.logger import CustomLogger
+from pyside_chat.features.voice.voice_service import VoiceService
 
 logger = CustomLogger.get_logger(__name__)
 
@@ -86,13 +87,9 @@ class VoiceServiceManager(QObject):
         logger.info("Starting voice service initialization", print_to_terminal=True)
         
         try:
-            # Try to get voice service from service manager first
-            voice_service = self._try_get_from_service_manager()
-            
-            if not voice_service:
-                # Fallback to direct initialization
-                logger.info("Trying direct voice service initialization", print_to_terminal=True)
-                voice_service = self._try_direct_initialization()
+            # Always use direct initialization to avoid wrapper signal duplication issues
+            logger.info("Using direct voice service initialization to avoid signal duplication", print_to_terminal=True)
+            voice_service = VoiceService.get_instance()
             
             if voice_service:
                 self._voice_service = voice_service
@@ -169,7 +166,7 @@ class VoiceServiceManager(QObject):
             # Always use direct voice service for now
             logger.info("Trying direct VoiceService initialization (skipping wrapper)", print_to_terminal=True)
             from pyside_chat.features.voice.voice_service import VoiceService
-            voice_service = VoiceService()
+            voice_service = VoiceService.get_instance()
             logger.info("Direct voice service initialized successfully", print_to_terminal=True)
             return voice_service
         except Exception as e2:
