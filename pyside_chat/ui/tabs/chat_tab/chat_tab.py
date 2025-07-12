@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (
     QDialog, QPushButton, QLabel
 )
 
-from pyside_chat.ui.widgets.chat_navigation import ChatNavigationWidget
+from pyside_chat.ui.Widgets.chat_navigation import ChatNavigationWidget
 from pyside_chat.ui.dialogs.voice_settings_dialog import VoiceSettingsDialog
 from pyside_chat.core.models.conversation_metadata import ConversationManager
 from pyside_chat.features.ollama.ollama_service import OllamaService

@@ -79,24 +79,48 @@ class OllamaService(QObject):
             logger.debug(f"[ID:0019] Using official library to get models from: {self.base_url}")
             
             models = ollama.list()
-            # The official library returns a ListResponse object, not a dict
-            # We need to access the models attribute directly
-            # Handle different possible attribute names for model names
             model_names = []
-            for model in models.models:
-                # Try different possible attribute names for the model name
-                if hasattr(model, 'name'):
-                    model_names.append(model.name)
-                elif hasattr(model, 'model'):
-                    model_names.append(model.model)
-                elif hasattr(model, 'id'):
-                    model_names.append(model.id)
-                else:
-                    # Fallback: try to get the name from the model object's dict representation
-                    model_dict = model.dict() if hasattr(model, 'dict') else model.__dict__
-                    model_name = model_dict.get('name') or model_dict.get('model') or model_dict.get('id')
-                    if model_name:
-                        model_names.append(model_name)
+            
+            # Handle different response formats from the official library
+            # Some versions return an object with .models attribute, others return a dict
+            if hasattr(models, 'models'):
+                # Object format with .models attribute
+                for model in models.models:
+                    # Try different possible attribute names for the model name
+                    if hasattr(model, 'name'):
+                        model_names.append(model.name)
+                    elif hasattr(model, 'model'):
+                        model_names.append(model.model)
+                    elif hasattr(model, 'id'):
+                        model_names.append(model.id)
+                    else:
+                        # Fallback: try to get the name from the model object's dict representation
+                        model_dict = model.dict() if hasattr(model, 'dict') else model.__dict__
+                        model_name = model_dict.get('name') or model_dict.get('model') or model_dict.get('id')
+                        if model_name:
+                            model_names.append(model_name)
+            elif isinstance(models, dict) and 'models' in models:
+                # Dict format with 'models' key
+                for model in models['models']:
+                    if isinstance(model, dict):
+                        model_name = model.get('name') or model.get('model') or model.get('id')
+                        if model_name:
+                            model_names.append(model_name)
+                    else:
+                        # Handle case where model might be a string
+                        model_names.append(str(model))
+            else:
+                # Unknown format, try to extract models from the response
+                logger.warning(f"[ID:0020A] Unknown models response format: {type(models)}")
+                if isinstance(models, dict):
+                    # Try to find models in the dict
+                    for key, value in models.items():
+                        if isinstance(value, list):
+                            for item in value:
+                                if isinstance(item, dict) and ('name' in item or 'model' in item):
+                                    model_name = item.get('name') or item.get('model')
+                                    if model_name:
+                                        model_names.append(model_name)
             
             self.model_list_updated.emit(model_names)
             LoggingHelpers.log_info_with_context("Successfully retrieved models using official library", {"count": len(model_names)})
@@ -163,9 +187,15 @@ class OllamaService(QObject):
             try:
                 # Try with official library first
                 models = ollama.list()
-                # Just check if we can get the models list, don't process it
-                # Use a safer way to check if models exist
-                return hasattr(models, 'models') and len(models.models) >= 0
+                # Handle different response formats from the official library
+                # Some versions return an object with .models attribute, others return a dict
+                if hasattr(models, 'models'):
+                    return len(models.models) >= 0
+                elif isinstance(models, dict) and 'models' in models:
+                    return len(models['models']) >= 0
+                else:
+                    # If we can't determine the format, assume it's working if we got a response
+                    return True
             except Exception:
                 # Fall back to requests
                 pass
