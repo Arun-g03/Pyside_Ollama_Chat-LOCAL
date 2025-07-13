@@ -124,57 +124,87 @@ class VoiceServiceWrapper(QObject):
     
     def start_voice_input(self):
         """Start voice recording and convert to text"""
-        if self.use_separate_process and self.process_manager:
-            self.process_manager.send_command("start_voice_input")
-        elif self.direct_service:
-            self.direct_service.start_voice_input()
-        else:
-            logger.error("[ID:0220] No voice service available")
+        try:
+            if self.use_separate_process and self.process_manager:
+                self.process_manager.send_command("start_voice_input")
+            elif self.direct_service:
+                self.direct_service.start_voice_input()
+            else:
+                logger.error("[ID:0220] No voice service available")
+        except Exception as e:
+            logger.error(f"[ID:0220] Error in start_voice_input: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
     
     def stop_voice_input(self):
         """Stop voice recording and process the audio"""
-        if self.use_separate_process and self.process_manager:
-            self.process_manager.send_command("stop_voice_input")
-        elif self.direct_service:
-            self.direct_service.stop_voice_input()
-        else:
-            logger.error("[ID:0219] No voice service available")
+        try:
+            if self.use_separate_process and self.process_manager:
+                self.process_manager.send_command("stop_voice_input")
+            elif self.direct_service:
+                self.direct_service.stop_voice_input()
+            else:
+                logger.error("[ID:0219] No voice service available")
+        except Exception as e:
+            logger.error(f"[ID:0219] Error in stop_voice_input: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
     
     def speak_text(self, text: str):
         """Convert text to speech and play it"""
-        if self.use_separate_process and self.process_manager:
-            self.process_manager.send_command("speak_text", text)
-        elif self.direct_service:
-            self.direct_service.speak_text(text)
-        else:
-            logger.error("[ID:0218] No voice service available")
+        try:
+            if self.use_separate_process and self.process_manager:
+                self.process_manager.send_command("speak_text", text)
+            elif self.direct_service:
+                self.direct_service.speak_text(text)
+            else:
+                logger.error("[ID:0218] No voice service available")
+        except Exception as e:
+            logger.error(f"[ID:0218] Error in speak_text: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
     
     def speak_text_streaming(self, text: str):
         """Convert text to speech using streaming synthesis"""
-        if self.use_separate_process and self.process_manager:
-            self.process_manager.send_command("speak_text_streaming", text)
-        elif self.direct_service:
-            self.direct_service.speak_text_streaming(text)
-        else:
-            logger.error("[ID:0217] No voice service available")
+        try:
+            if self.use_separate_process and self.process_manager:
+                self.process_manager.send_command("speak_text_streaming", text)
+            elif self.direct_service:
+                self.direct_service.speak_text_streaming(text)
+            else:
+                logger.error("[ID:0217] No voice service available")
+        except Exception as e:
+            logger.error(f"[ID:0217] Error in speak_text_streaming: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
     
     def speak_text_non_streaming(self, text: str):
         """Convert text to speech using non-streaming synthesis"""
-        if self.use_separate_process and self.process_manager:
-            self.process_manager.send_command("speak_text_non_streaming", text)
-        elif self.direct_service:
-            self.direct_service.speak_text_non_streaming(text)
-        else:
-            logger.error("[ID:0216] No voice service available")
+        try:
+            if self.use_separate_process and self.process_manager:
+                self.process_manager.send_command("speak_text_non_streaming", text)
+            elif self.direct_service:
+                self.direct_service.speak_text_non_streaming(text)
+            else:
+                logger.error("[ID:0216] No voice service available")
+        except Exception as e:
+            logger.error(f"[ID:0216] Error in speak_text_non_streaming: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
     
     def stop_tts(self):
         """Stop current TTS playback"""
-        if self.use_separate_process and self.process_manager:
-            self.process_manager.send_command("stop_tts")
-        elif self.direct_service:
-            self.direct_service.stop_tts()
-        else:
-            logger.error("[ID:0215] No voice service available")
+        try:
+            if self.use_separate_process and self.process_manager:
+                self.process_manager.send_command("stop_tts")
+            elif self.direct_service:
+                self.direct_service.stop_tts()
+            else:
+                logger.error("[ID:0215] No voice service available")
+        except Exception as e:
+            logger.error(f"[ID:0215] Error in stop_tts: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
     
     def is_voice_available(self) -> bool:
         """Check if voice functionality is available"""

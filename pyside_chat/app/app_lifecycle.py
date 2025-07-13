@@ -337,7 +337,9 @@ class AppLifecycleManager:
             
             # Run the wait function in a separate thread
             wait_thread = threading.Thread(target=wait_for_ollama, daemon=True)
-            wait_thread.start()
+            # Check if thread is already running (shouldn't be, but safety check)
+            if not wait_thread.is_alive():
+                wait_thread.start()
             
             # Wait for the thread to complete
             wait_thread.join(timeout=35)  # Slightly longer than max_wait_time

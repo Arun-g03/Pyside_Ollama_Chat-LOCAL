@@ -403,6 +403,95 @@ class ThreadMonitor(QObject):
         except Exception as e:
             logger.error(f"[ID:TM024] Error during ThreadMonitor shutdown: {e}")
 
+    def check_thread_safety(self, thread_name: str) -> bool:
+        """
+        Check if a thread is safe to destroy (not running).
+        
+        Args:
+            thread_name: Name of the thread to check
+            
+        Returns:
+            bool: True if thread is safe to destroy, False otherwise
+        """
+        try:
+            if thread_name in self.active_threads:
+                thread_info = self.active_threads[thread_name]
+                is_running = thread_info.get('is_running', False)
+                status = thread_info.get('status', 'unknown')
+                
+                logger.debug(f"[ID:TM027] Thread safety check for {thread_name}: running={is_running}, status={status}")
+                
+                # Thread is safe to destroy if not running and status is finished/stopped
+                safe_to_destroy = not is_running and status in ['finished', 'stopped', 'unregistered']
+                
+                if not safe_to_destroy:
+                    logger.warning(f"[ID:TM028] Thread {thread_name} not safe to destroy: running={is_running}, status={status}")
+                
+                return safe_to_destroy
+            
+            # Thread not found in active threads, assume safe
+            logger.debug(f"[ID:TM029] Thread {thread_name} not found in active threads, assuming safe to destroy")
+            return True
+            
+        except Exception as e:
+            logger.error(f"[ID:TM030] Error checking thread safety for {thread_name}: {e}")
+            return False
+    
+    def force_thread_cleanup(self, thread_name: str, timeout_seconds: float = 5.0):
+        """
+        Force cleanup of a thread with timeout.
+        
+        Args:
+            thread_name: Name of the thread to cleanup
+            timeout_seconds: Timeout in seconds for cleanup
+        """
+        try:
+            if thread_name in self.active_threads:
+                thread_info = self.active_threads[thread_name]
+                logger.debug(f"[ID:TM031] Force cleaning up thread {thread_name}")
+                
+                # Mark thread as being cleaned up
+                thread_info['status'] = 'cleaning_up'
+                thread_info['cleanup_start_time'] = time.time()
+                
+                # Wait for thread to finish with timeout
+                start_time = time.time()
+                while thread_info.get('is_running', False) and (time.time() - start_time) < timeout_seconds:
+                    time.sleep(0.1)
+                
+                if thread_info.get('is_running', False):
+                    logger.warning(f"[ID:TM032] Thread {thread_name} did not finish within {timeout_seconds}s timeout")
+                    thread_info['status'] = 'force_terminated'
+                else:
+                    logger.debug(f"[ID:TM033] Thread {thread_name} cleaned up successfully")
+                    thread_info['status'] = 'cleaned_up'
+                
+                # Move to history
+                self.thread_history.append(thread_info)
+                del self.active_threads[thread_name]
+                
+        except Exception as e:
+            logger.error(f"[ID:TM034] Error force cleaning up thread {thread_name}: {e}")
+    
+    def get_running_threads(self) -> List[str]:
+        """
+        Get list of currently running threads.
+        
+        Returns:
+            List[str]: List of running thread names
+        """
+        try:
+            running_threads = []
+            for thread_name, thread_info in self.active_threads.items():
+                if thread_info.get('is_running', False):
+                    running_threads.append(thread_name)
+            
+            return running_threads
+            
+        except Exception as e:
+            logger.error(f"[ID:TM035] Error getting running threads: {e}")
+            return []
+
 
 # Global thread monitor instance
 _global_thread_monitor: Optional[ThreadMonitor] = None

@@ -25,6 +25,7 @@ import pyaudio
 import threading
 
 from pyside_chat.core.logging.logger import CustomLogger
+from pyside_chat.core.utils.threading_utils import log_thread_info, safe_signal_connect, safe_signal_disconnect, safe_thread_cleanup
 from .streaming_audio_player import StreamingAudioPlayer
 from .streaming_audio_worker import StreamingAudioWorker
 
@@ -164,10 +165,14 @@ class CoquiTTSService(QObject):
             
             logger.error("No Coqui TTS models could be loaded")
             self.available = False
+            # Emit error signal to notify other components
+            self.tts_error.emit("No TTS models available. Voice features will be disabled.")
             
         except Exception as e:
             logger.error(f"Failed to load default model: {e}")
             self.available = False
+            # Emit error signal to notify other components
+            self.tts_error.emit(f"TTS initialization failed: {str(e)}")
     
     def _load_available_voices(self):
         """Load available voices for the current model"""
@@ -330,8 +335,15 @@ class CoquiTTSService(QObject):
     
     def speak_text(self, text: str, use_streaming: bool = True):
         """Convert text to speech and play it"""
+        log_thread_info("TTS speak_text called", logger)
         if not text.strip():
             logger.warning("Empty text provided to speak_text")
+            return
+        
+        # Check if TTS is available
+        if not self.is_available():
+            logger.warning("TTS not available, skipping speech synthesis")
+            self.tts_error.emit("TTS not available - voice features disabled")
             return
         
         # Prevent multiple simultaneous TTS operations
@@ -402,6 +414,7 @@ class CoquiTTSService(QObject):
     
     def _speak_text_streaming(self, text: str):
         """Convert text to speech using streaming synthesis"""
+        log_thread_info("TTS streaming started", logger)
         try:
             self._ensure_cleanup_before_start()
             
@@ -457,8 +470,10 @@ class CoquiTTSService(QObject):
             self.streaming_thread.started.connect(self.streaming_worker.run)
             
             # Start the threads
-            self.streaming_thread.start()
-            self.streaming_player.start()
+            if not self.streaming_thread.isRunning():
+                self.streaming_thread.start()
+            if not self.streaming_player.isRunning():
+                self.streaming_player.start()
             self.is_streaming = True
             
             logger.debug("Started streaming TTS synthesis")
@@ -488,6 +503,11 @@ class CoquiTTSService(QObject):
         """Handle streaming playback finished"""
         try:
             logger.debug("[VOICE] Streaming TTS playback finished - starting cleanup")
+            # Defensive: Only clean up if not already cleaned
+            if getattr(self, '_cleaned_up', False):
+                logger.debug("[VOICE] Already cleaned up, skipping.")
+                return
+            self._cleaned_up = True
             # Ensure proper cleanup of streaming player
             if hasattr(self, 'streaming_player') and self.streaming_player:
                 try:
@@ -551,9 +571,8 @@ class CoquiTTSService(QObject):
             self.tts_finished.emit()
         except Exception as e:
             logger.error(f"[VOICE] Error in streaming finished callback: {e}")
-            # Ensure flag is reset even on error
-            if hasattr(self, '_tts_in_progress'):
-                self._tts_in_progress = False
+        finally:
+            self._tts_in_progress = False
             self.tts_finished.emit()
     
     def _on_streaming_error(self, error: str):

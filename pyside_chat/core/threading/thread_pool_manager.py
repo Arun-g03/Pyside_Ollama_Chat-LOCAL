@@ -35,37 +35,40 @@ class ThreadPoolManager(QObject):
     pool_status_updated = Signal(dict)  # pool statistics
     
     def __init__(self, max_threads: int = 4, parent=None):
-        super().__init__(parent)
-        self.max_threads = max_threads
-        self.thread_pool = QThreadPool()
-        self.thread_pool.setMaxThreadCount(max_threads)
-        
-        # Task tracking
-        self.active_tasks: Dict[str, Dict] = {}
-        self.completed_tasks: List[Dict] = []
-        self.failed_tasks: List[Dict] = []
-        
-        # Queue management
-        self.max_queue_size = 50  # Maximum number of tasks in queue
-        self.task_queue: List[Dict] = []
-        
-        # Statistics
-        self.stats = {
-            'total_tasks': 0,
-            'active_tasks': 0,
-            'completed_tasks': 0,
-            'failed_tasks': 0,
-            'queued_tasks': 0,
-            'pool_utilization': 0.0
-        }
-        
-        # Setup monitoring timer
-        self.monitor_timer = QTimer()
-        self.monitor_timer.timeout.connect(self._update_pool_status)
-        self.monitor_timer.start(1000)  # Update every second
-        
-        logger.debug(f"[ID:TP001] ThreadPoolManager created - Max threads: {max_threads}")
-    
+        try:
+            super().__init__(parent)
+            self.max_threads = max_threads
+            self.thread_pool = QThreadPool()
+            self.thread_pool.setMaxThreadCount(max_threads)
+            
+            # Task tracking
+            self.active_tasks: Dict[str, Dict] = {}
+            self.completed_tasks: List[Dict] = []
+            self.failed_tasks: List[Dict] = []
+            
+            # Queue management
+            self.max_queue_size = 50  # Maximum number of tasks in queue
+            self.task_queue: List[Dict] = []
+            
+            # Statistics
+            self.stats = {
+                'total_tasks': 0,
+                'active_tasks': 0,
+                'completed_tasks': 0,
+                'failed_tasks': 0,
+                'queued_tasks': 0,
+                'pool_utilization': 0.0
+            }
+            
+            # Setup monitoring timer
+            self.monitor_timer = QTimer()
+            self.monitor_timer.timeout.connect(self._update_pool_status)
+            self.monitor_timer.start(1000)  # Update every second
+            
+            logger.debug(f"[ID:TP001] ThreadPoolManager created - Max threads: {max_threads}")
+        except Exception as e:
+            logger.error(f"[ID:TP001A] Exception in __init__: {e}\n{traceback.format_exc()}")
+
     def start_task(self, task, task_id: Optional[str] = None) -> str:
         """
         Start a QRunnable task.
@@ -111,8 +114,7 @@ class ThreadPoolManager(QObject):
             
         except Exception as e:
             error_msg = f"Error starting task: {str(e)}"
-            logger.error(f"[ID:TP003] {error_msg}")
-            logger.error(f"[ID:TP004] Task start traceback: {traceback.format_exc()}")
+            logger.error(f"[ID:TP003] {error_msg}\n{traceback.format_exc()}")
             
             # Update statistics
             self.stats['failed_tasks'] += 1
@@ -156,7 +158,7 @@ class ThreadPoolManager(QObject):
             return True
             
         except Exception as e:
-            logger.error(f"[ID:TP007] Error waiting for task {task_id}: {e}")
+            logger.error(f"[ID:TP007] Error waiting for task {task_id}: {e}\n{traceback.format_exc()}")
             return False
     
     def wait_for_all_tasks(self, timeout: float = 60.0) -> bool:
@@ -183,7 +185,7 @@ class ThreadPoolManager(QObject):
             return True
             
         except Exception as e:
-            logger.error(f"[ID:TP010] Error waiting for all tasks: {e}")
+            logger.error(f"[ID:TP010] Error waiting for all tasks: {e}\n{traceback.format_exc()}")
             return False
     
     def cancel_task(self, task_id: str) -> bool:
@@ -219,7 +221,7 @@ class ThreadPoolManager(QObject):
                 return False
                 
         except Exception as e:
-            logger.error(f"[ID:TP013] Error cancelling task {task_id}: {e}")
+            logger.error(f"[ID:TP013] Error cancelling task {task_id}: {e}\n{traceback.format_exc()}")
             return False
     
     def cancel_all_tasks(self) -> int:
@@ -240,7 +242,7 @@ class ThreadPoolManager(QObject):
             return cancelled_count
             
         except Exception as e:
-            logger.error(f"[ID:TP015] Error cancelling all tasks: {e}")
+            logger.error(f"[ID:TP015] Error cancelling all tasks: {e}\n{traceback.format_exc()}")
             return 0
     
     def get_pool_status(self) -> Dict[str, Any]:
@@ -265,7 +267,7 @@ class ThreadPoolManager(QObject):
             }
             
         except Exception as e:
-            logger.error(f"[ID:TP016] Error getting pool status: {e}")
+            logger.error(f"[ID:TP016] Error getting pool status: {e}\n{traceback.format_exc()}")
             return {}
     
     def get_task_info(self, task_id: str) -> Optional[Dict[str, Any]]:
@@ -299,7 +301,7 @@ class ThreadPoolManager(QObject):
             return None
             
         except Exception as e:
-            logger.error(f"[ID:TP017] Error getting task info for {task_id}: {e}")
+            logger.error(f"[ID:TP017] Error getting task info for {task_id}: {e}\n{traceback.format_exc()}")
             return None
     
     def cleanup_old_tasks(self, max_age_hours: float = 24.0):
@@ -328,7 +330,7 @@ class ThreadPoolManager(QObject):
             logger.debug(f"[ID:TP018] Cleaned up old tasks (max age: {max_age_hours}h)")
             
         except Exception as e:
-            logger.error(f"[ID:TP019] Error cleaning up old tasks: {e}")
+            logger.error(f"[ID:TP019] Error cleaning up old tasks: {e}\n{traceback.format_exc()}")
     
     def _update_pool_status(self):
         """Update pool status and emit signals."""
@@ -348,7 +350,7 @@ class ThreadPoolManager(QObject):
             self.pool_status_updated.emit(self.get_pool_status())
             
         except Exception as e:
-            logger.error(f"[ID:TP020] Error updating pool status: {e}")
+            logger.error(f"[ID:TP020] Error updating pool status: {e}\n{traceback.format_exc()}")
     
     def on_task_completed(self, task_id: str):
         """
@@ -376,7 +378,7 @@ class ThreadPoolManager(QObject):
                 self.task_completed.emit(task_id)
             
         except Exception as e:
-            logger.error(f"[ID:TP022] Error handling task completion for {task_id}: {e}")
+            logger.error(f"[ID:TP022] Error handling task completion for {task_id}: {e}\n{traceback.format_exc()}")
     
     def on_task_failed(self, task_id: str, error_message: str):
         """
@@ -406,7 +408,7 @@ class ThreadPoolManager(QObject):
                 self.task_failed.emit(task_id, error_message)
             
         except Exception as e:
-            logger.error(f"[ID:TP024] Error handling task failure for {task_id}: {e}")
+            logger.error(f"[ID:TP024] Error handling task failure for {task_id}: {e}\n{traceback.format_exc()}")
     
     def shutdown(self):
         """Shutdown the thread pool manager."""
@@ -429,7 +431,7 @@ class ThreadPoolManager(QObject):
             logger.debug("[ID:TP026] ThreadPoolManager shutdown complete")
             
         except Exception as e:
-            logger.error(f"[ID:TP027] Error during ThreadPoolManager shutdown: {e}")
+            logger.error(f"[ID:TP027] Error during ThreadPoolManager shutdown: {e}\n{traceback.format_exc()}")
 
 
 # Global thread pool manager instance
@@ -444,19 +446,23 @@ def get_global_thread_pool_manager() -> ThreadPoolManager:
         ThreadPoolManager: Global thread pool manager
     """
     global _global_thread_pool_manager
-    
-    if _global_thread_pool_manager is None:
-        _global_thread_pool_manager = ThreadPoolManager(max_threads=4)
-        logger.debug("[ID:TP028] Created global ThreadPoolManager")
-    
-    return _global_thread_pool_manager
+    try:
+        if _global_thread_pool_manager is None:
+            _global_thread_pool_manager = ThreadPoolManager(max_threads=4)
+            logger.debug("[ID:TP028] Created global ThreadPoolManager")
+        return _global_thread_pool_manager
+    except Exception as e:
+        logger.error(f"[ID:TP028A] Error getting global ThreadPoolManager: {e}\n{traceback.format_exc()}")
+        raise
 
 
 def shutdown_global_thread_pool_manager():
     """Shutdown the global thread pool manager."""
     global _global_thread_pool_manager
-    
-    if _global_thread_pool_manager:
-        _global_thread_pool_manager.shutdown()
-        _global_thread_pool_manager = None
-        logger.debug("[ID:TP029] Shutdown global ThreadPoolManager") 
+    try:
+        if _global_thread_pool_manager:
+            _global_thread_pool_manager.shutdown()
+            _global_thread_pool_manager = None
+            logger.debug("[ID:TP029] Shutdown global ThreadPoolManager")
+    except Exception as e:
+        logger.error(f"[ID:TP029A] Error shutting down global ThreadPoolManager: {e}\n{traceback.format_exc()}")

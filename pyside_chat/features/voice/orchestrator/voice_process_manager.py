@@ -71,7 +71,9 @@ class VoiceProcessManager(QObject):
             )
             
             logger.debug(f"[ID:0522] Creating voice process - PID: {self.voice_process.pid if self.voice_process.is_alive() else 'not started'}")
-            self.voice_process.start()
+            # Check if process is already running (safety check)
+            if not self.voice_process.is_alive():
+                self.voice_process.start()
             
             # Wait a moment for the process to start
             time.sleep(0.5)
@@ -88,7 +90,9 @@ class VoiceProcessManager(QObject):
             self.monitor_thread.monitor_error.connect(self._handle_monitor_error)
             
             logger.debug("[ID:0525] Starting voice process monitor thread")
-            self.monitor_thread.start()
+            # Check if thread is already running (safety check)
+            if not self.monitor_thread.isRunning():
+                self.monitor_thread.start()
             
             # Test the connection
             self.send_command("test_connection")
@@ -419,8 +423,12 @@ def _voice_process_worker(command_queue: mp.Queue, response_queue: mp.Queue):
                     # No command received, continue loop
                     pass
                 
-                # Process Qt events
-                app.processEvents()
+                # Process Qt events safely using thread-safe alternative
+                try:
+                    from pyside_chat.core.utils.threading_utils import safe_process_events_alternative
+                    safe_process_events_alternative()
+                except Exception as e:
+                    logger.debug(f"Error processing events in voice worker: {e}")
                 
             except Exception as e:
                 logger.error(f"Error in voice process worker: {e}")

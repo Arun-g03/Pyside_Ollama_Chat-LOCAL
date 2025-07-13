@@ -313,8 +313,8 @@ class InputControls(QObject):
                 logger.warning("Send button was not disabled, forcing disable")
                 self.send_button.setEnabled(False)
                 self.send_button.update()
-                from PySide6.QtWidgets import QApplication
-                QApplication.processEvents()
+                from pyside_chat.core.utils.threading_utils import safe_process_events_alternative
+                safe_process_events_alternative()
     
     def stop_streaming(self):
         """Stop streaming state"""
@@ -332,15 +332,15 @@ class InputControls(QObject):
         
         self.send_button.update()
         self.cancel_button.update()
-        from PySide6.QtWidgets import QApplication
-        QApplication.processEvents()
+        from pyside_chat.core.utils.threading_utils import safe_process_events_alternative
+        safe_process_events_alternative()
         
         # Double-check that the button is actually enabled (only in chat mode)
         if self.mode_combo.currentText() == "Chat" and not self.send_button.isEnabled():
             logger.warning("Send button was not enabled, forcing enable")
             self.send_button.setEnabled(True)
             self.send_button.update()
-            QApplication.processEvents()
+            safe_process_events_alternative()
     
     def force_enable_send_button(self):
         """Force enable the send button and ensure UI is updated"""
@@ -358,8 +358,8 @@ class InputControls(QObject):
         
         self.send_button.update()
         self.cancel_button.update()
-        from PySide6.QtWidgets import QApplication
-        QApplication.processEvents()
+        from pyside_chat.core.utils.threading_utils import safe_process_events_alternative
+        safe_process_events_alternative()
         logger.debug(f"Send button enabled: {self.send_button.isEnabled()}")
     
     def update_model_list(self, models: list):

@@ -1,7 +1,11 @@
 import logging
+import sys
 import os
 import re
 import json
+from datetime import datetime
+import threading
+from PySide6.QtCore import QThread
 
 LOG_FORMAT = "%(asctime)s [%(levelname)s] [%(name)s]: %(message)s"
 LOG_LEVEL = logging.DEBUG
@@ -60,6 +64,31 @@ class PrintOnLogMixin:
         super().critical(clean_msg, **kwargs)
         if print_to_terminal:
             self._print(clean_msg)
+
+class ThreadInfoFormatter(logging.Formatter):
+    """Custom formatter that includes thread information in log messages"""
+    
+    def format(self, record):
+        # Get thread information
+        current_thread = threading.current_thread()
+        thread_name = current_thread.name
+        thread_id = current_thread.ident
+        
+        # Check if we're in a QThread
+        qt_thread = QThread.currentThread()
+        qt_thread_name = qt_thread.objectName() if qt_thread else "MainThread"
+        
+        # Add thread info to the record
+        record.thread_name = thread_name
+        record.thread_id = thread_id
+        record.qt_thread_name = qt_thread_name
+        
+        # Format the message with thread info
+        formatted = super().format(record)
+        
+        # Add thread info to the beginning of the message
+        thread_info = f"[{thread_name}({thread_id})/{qt_thread_name}]"
+        return f"{thread_info} {formatted}"
 
 class CustomLogger(logging.Logger):
     """
@@ -131,7 +160,7 @@ class CustomLogger(logging.Logger):
             return cls._loggers[name]
         logger = logging.getLogger(name)
         if not logger.handlers:
-            formatter = logging.Formatter(LOG_FORMAT)
+            formatter = ThreadInfoFormatter(LOG_FORMAT)
             # No StreamHandler by default
             # If using the default name, log to pychat.log; otherwise, log to module-specific file only
             if name == "PyChat":

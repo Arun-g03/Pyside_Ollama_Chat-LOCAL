@@ -1,39 +1,34 @@
 """
-Ollama Service - Enhanced with official Python library support
-Handles all communication with the Ollama API using both requests and official library.
+Ollama Service Module
+
+Handles all communication with the Ollama API using both the official library
+and requests as fallback, with proper threading support.
 """
 
-import json
 import requests
-import subprocess
+import json
 import time
+import traceback
 from typing import List, Dict, Optional, Generator
-from PySide6.QtCore import QObject, Signal
+from PySide6.QtCore import QObject, Signal, QThread, QTimer
+from pyside_chat.core.logging.logger import CustomLogger
+from pyside_chat.core.logging.helpers import LoggingHelpers
+from pyside_chat.core.threading import get_global_threading_service, get_global_persistent_thread_pool
 
-# Try to import the official Ollama library
+logger = CustomLogger.get_logger(__name__)
+
+# Check if official Ollama library is available
 try:
     import ollama
     OLLAMA_LIBRARY_AVAILABLE = True
+    logger.debug("[ID:0016] Official Ollama library is available")
 except ImportError:
     OLLAMA_LIBRARY_AVAILABLE = False
-    ollama = None
-
-from pyside_chat.core.logging.logger import CustomLogger
-from pyside_chat.core.logging.helpers import LoggingHelpers
-from pyside_chat.core.threading.thread_pool_manager import ThreadPoolManager
-from pyside_chat.core.threading.qrunnable_tasks import DataProcessingTask
-
-logger = CustomLogger.get_logger(__name__)
-logger.info("[ID:0014] OllamaService logger initialized")
-
-if OLLAMA_LIBRARY_AVAILABLE:
-    logger.info("[ID:0015] Official Ollama Python library is available")
-else:
-    logger.warning("[ID:0016] Official Ollama Python library not available, using requests fallback")
+    logger.debug("[ID:0016] Official Ollama library not available, using requests")
 
 
 class OllamaService(QObject):
-    """Enhanced service for handling all Ollama API communication with official library support using proper threading"""
+    """Enhanced service for handling all Ollama API communication with official library support using persistent threading"""
     
     # Signals for async operations
     model_list_updated = Signal(list)  # Emits list of model names
@@ -49,8 +44,9 @@ class OllamaService(QObject):
             self.request_in_progress = False
             self.cancellation_requested = False
             
-            # Initialize thread pool manager for async operations
-            self.thread_pool_manager = ThreadPoolManager()
+            # Initialize persistent threading system for async operations
+            self.threading_service = get_global_threading_service()
+            self.persistent_thread_pool = get_global_persistent_thread_pool()
             
             # Track active operations
             self._active_operations = set()
@@ -437,8 +433,11 @@ class OllamaService(QObject):
             success_callback=self.model_operation_finished.emit
         )
         
-        # Submit to thread pool
-        task_id = self.thread_pool_manager.start_task(task)
+        # Submit to persistent thread pool using threading service
+        task_id = self.threading_service.process_data(
+            data={"model_name": model_name, "operation": "pull"},
+            operation="model_pull"
+        )
         self._active_operations.add(task_id)
         
         logger.debug(f"[DEBUG] Scheduled model pull task: {task_id}")
@@ -511,8 +510,11 @@ class OllamaService(QObject):
             success_callback=self.model_operation_finished.emit
         )
         
-        # Submit to thread pool
-        task_id = self.thread_pool_manager.start_task(task)
+        # Submit to persistent thread pool using threading service
+        task_id = self.threading_service.process_data(
+            data={"model_name": model_name, "operation": "remove"},
+            operation="model_remove"
+        )
         self._active_operations.add(task_id)
         
         logger.debug(f"[DEBUG] Scheduled model remove task: {task_id}")
@@ -585,8 +587,11 @@ class OllamaService(QObject):
             success_callback=self.model_operation_finished.emit
         )
         
-        # Submit to thread pool
-        task_id = self.thread_pool_manager.start_task(task)
+        # Submit to persistent thread pool using threading service
+        task_id = self.threading_service.process_data(
+            data={"model_name": model_name, "operation": "update"},
+            operation="model_update"
+        )
         self._active_operations.add(task_id)
         
         logger.debug(f"[DEBUG] Scheduled model update task: {task_id}")
@@ -691,11 +696,15 @@ class OllamaService(QObject):
             # Wait for active operations to complete
             if self._active_operations:
                 logger.debug(f"[DEBUG] Waiting for {len(self._active_operations)} active operations to complete")
-                self.thread_pool_manager.wait_for_all_tasks(timeout=10.0)
+                # Use threading service to wait for tasks
+                if hasattr(self, 'threading_service') and self.threading_service:
+                    # The threading service handles its own cleanup
+                    pass
             
-            # Clean up thread pool manager
-            if self.thread_pool_manager:
-                self.thread_pool_manager.shutdown()
+            # Clean up persistent thread pool (handled by global shutdown)
+            if hasattr(self, 'persistent_thread_pool') and self.persistent_thread_pool:
+                # The persistent thread pool is managed globally
+                pass
             
             logger.debug("[DEBUG] Ollama service cleanup completed")
             

@@ -2,11 +2,13 @@
 Event Bus - Manages signal connections and event handling
 """
 
-from PySide6.QtCore import QTimer, QThread
+from PySide6.QtCore import QTimer, QThread, Qt
 from typing import Optional, Callable, Dict, Any, List
 from pyside_chat.core.logging.logger import CustomLogger
 from pyside_chat.core.threading.threading_service import get_global_threading_service
 import traceback
+import time
+from PySide6.QtWidgets import QWidget, QMessageBox
 
 logger = CustomLogger.get_logger(__name__)
 logger.info("Starting Event Bus", print_to_terminal=True)
@@ -24,10 +26,10 @@ class EventBus:
         self.threading_service = get_global_threading_service()
         
         # Connect threading service signals to event bus handlers
-        self.threading_service.worker_chunk_received.connect(self._on_worker_chunk)
-        self.threading_service.worker_progress_updated.connect(self._on_worker_progress)
-        self.threading_service.worker_finished.connect(self._on_worker_finished)
-        self.threading_service.worker_error.connect(self._on_worker_error)
+        self.threading_service.chunk_received.connect(self._on_worker_chunk)
+        self.threading_service.progress_updated.connect(self._on_worker_progress)
+        self.threading_service.finished.connect(self._on_worker_finished)
+        self.threading_service.error.connect(self._on_worker_error)
         
         self._current_response_model = None
         self._tts_finished = False  # Track TTS completion
@@ -39,6 +41,13 @@ class EventBus:
         # State tracking
         self.model_change_in_progress = False
         self.ollama_error_shown = False
+        
+        # Chat tab retry mechanism
+        self._chat_tab_retry_count = 0
+        self._max_chat_tab_retries = 5
+        self._chat_tab_retry_timer = QTimer()
+        self._chat_tab_retry_timer.setSingleShot(True)
+        self._chat_tab_retry_timer.timeout.connect(self._retry_chat_tab_connection)
         
         # Setup connections
         self.setup_connections()
@@ -75,6 +84,8 @@ class EventBus:
                 logger.debug("[EVENT DEBUG] All chat tab signals connected successfully")
             else:
                 logger.error("[EVENT ERROR] Chat tab not available for signal connection")
+                # Set up a retry mechanism to connect when chat tab becomes available
+                self._setup_chat_tab_retry()
             
             # Connect model tab signals
             model_tab = self.ui_manager.get_model_tab()
@@ -103,6 +114,39 @@ class EventBus:
         except Exception as e:
             logger.error(f"[ID:0222] Error setting up connections: {e}")
             raise
+    
+    def _setup_chat_tab_retry(self):
+        """Set up chat tab signal connections with a retry mechanism."""
+        if self._chat_tab_retry_count >= self._max_chat_tab_retries:
+            logger.error(f"[EVENT ERROR] Maximum chat tab retry attempts ({self._max_chat_tab_retries}) reached. Giving up.")
+            return
+            
+        self._chat_tab_retry_count += 1
+        logger.debug(f"[EVENT DEBUG] Retrying chat tab signal connection (attempt {self._chat_tab_retry_count}/{self._max_chat_tab_retries})...")
+        
+        # Schedule retry after a delay
+        self._chat_tab_retry_timer.start(1000)  # 1 second delay
+    
+    def _retry_chat_tab_connection(self):
+        """Attempt to connect to chat tab after delay."""
+        try:
+            chat_tab = self.ui_manager.get_chat_tab()
+            if chat_tab:
+                logger.debug("[EVENT DEBUG] Chat tab is now available, connecting signals.")
+                chat_tab.message_sent.connect(self._on_message_sent)
+                chat_tab.message_cancelled.connect(self._on_message_cancelled)
+                chat_tab.conversation_selected.connect(self._on_conversation_selected)
+                chat_tab.conversation_deleted.connect(self._on_conversation_deleted)
+                chat_tab.conversation_renamed.connect(self._on_conversation_renamed)
+                chat_tab.new_conversation_requested.connect(self._on_new_conversation_requested)
+                logger.debug("[EVENT DEBUG] All chat tab signals connected successfully after retry.")
+            else:
+                logger.debug(f"[EVENT DEBUG] Chat tab still not available (attempt {self._chat_tab_retry_count}/{self._max_chat_tab_retries}), will retry again.")
+                # Schedule another retry
+                self._setup_chat_tab_retry()
+        except Exception as e:
+            logger.error(f"[EVENT ERROR] Error in _retry_chat_tab_connection: {e}")
+            # Don't retry on error, just log it
     
     def _connect_menu_actions(self):
         """Connect menu actions to their handlers"""
@@ -236,15 +280,12 @@ class EventBus:
     def _send_to_ollama(self, message, model, temperature):
         """Send message to Ollama and handle response asynchronously"""
         chat_tab = self.ui_manager.get_chat_tab()
-        if chat_tab:
-            chat_tab.stop_streaming()  # Finalize any previous streaming message
-            chat_tab.start_streaming() # Prepare for new streaming message
+        
         # Check Ollama connection
         if not self._check_ollama_connection():
             self._show_ollama_connection_error("message", force_show=True)
             if chat_tab:
                 chat_tab.append_to_chat("System", "Failed to send: Could not connect to Ollama.\n Please check the Ollama connection and try again.")
-                chat_tab.stop_streaming()
             return
         # Get conversation service and messages
         conversation_service = self.service_manager.get_conversation_service()
@@ -361,43 +402,119 @@ class EventBus:
         return cleaned_messages
     
     def _create_worker_thread(self, context_messages, chosen_model, temperature):
-        """Create and start worker thread for Ollama communication using new threading architecture"""
+        """Create and start worker thread for Ollama communication using persistent thread pool"""
         try:
             logger.debug(f"[ID:0213] Creating worker thread for model: {chosen_model}")
             
-            # Get configuration from service manager
-            config_manager = self.service_manager.config_manager
-            
-            # Use new threading architecture
-            success = self.threading_service.start_chat_streaming(
-                messages=context_messages,
-                model=chosen_model,
-                temperature=temperature,
-                ollama_url=config_manager.get_ollama_url(),
-                max_tokens=config_manager.get_max_tokens(),
-                top_p=config_manager.get_top_p(),
-                frequency_penalty=config_manager.get_frequency_penalty(),
-                presence_penalty=config_manager.get_presence_penalty()
-            )
-            
-            if success:
-                logger.debug("[ID:0207] Worker thread started successfully with new architecture")
+            # Get threading service with persistent thread pool
+            if hasattr(self, 'threading_service') and self.threading_service:
+                # Start chat streaming using persistent thread pool
+                success = self.threading_service.start_chat_streaming(
+                    context_messages=context_messages,
+                    model=chosen_model,
+                    temperature=temperature,
+                    config_manager=self.service_manager.config_manager
+                )
+                
+                if success:
+                    logger.debug(f"[ID:0214] Chat streaming started successfully with persistent thread")
+                    
+                    # Connect signals from threading service
+                    self.threading_service.chunk_received.connect(
+                        self._handle_chat_chunk, Qt.ConnectionType.QueuedConnection
+                    )
+                    self.threading_service.progress_updated.connect(
+                        self._handle_chat_progress, Qt.ConnectionType.QueuedConnection
+                    )
+                    self.threading_service.finished.connect(
+                        self._handle_chat_finished, Qt.ConnectionType.QueuedConnection
+                    )
+                    self.threading_service.error.connect(
+                        self._handle_chat_error, Qt.ConnectionType.QueuedConnection
+                    )
+                    
+                    return True
+                else:
+                    logger.error("[ID:0215] Failed to start chat streaming with persistent thread")
+                    return False
             else:
-                logger.error("[ID:0206] Failed to start worker thread with new architecture")
-                # Optionally, show error to user
-                chat_tab = self.ui_manager.get_chat_tab()
-                if chat_tab:
-                    chat_tab.append_to_chat("System", "Error: Could not start chat streaming thread.")
-                    chat_tab.force_enable_send_button()
+                logger.error("[ID:0216] Threading service not available")
+                return False
+                
+        except Exception as e:
+            logger.error(f"[ID:0217] Error creating worker thread: {e}")
+            logger.error(traceback.format_exc())
+            return False
+    
+    def _handle_chat_chunk(self, chunk: str):
+        """Handle chat chunk from persistent thread."""
+        try:
+            logger.debug(f"[ID:0218] Received chat chunk: {chunk[:50]}...")
+            
+            # Update UI with chunk
+            if hasattr(self, 'main_window') and self.main_window:
+                # Find the chat tab and update it
+                chat_tab = self.main_window.findChild(QWidget, "chat_tab")
+                if chat_tab and hasattr(chat_tab, 'update_chat_display'):
+                    chat_tab.update_chat_display(chunk, is_streaming=True)
             
         except Exception as e:
-            logger.error(f"[ID:0206] Error creating worker thread: {e}")
-            logger.error(f"[ID:0205] Worker thread creation traceback: {traceback.format_exc()}")
+            logger.error(f"[ID:0219] Error handling chat chunk: {e}")
+    
+    def _handle_chat_progress(self, progress: str):
+        """Handle chat progress from persistent thread."""
+        try:
+            logger.debug(f"[ID:0220] Chat progress: {progress}")
+            
+            # Update UI with progress
+            if hasattr(self, 'main_window') and self.main_window:
+                # Update status bar or progress indicator
+                pass
+            
+        except Exception as e:
+            logger.error(f"[ID:0221] Error handling chat progress: {e}")
+    
+    def _handle_chat_finished(self):
+        """Handle chat streaming finished from persistent thread."""
+        try:
+            logger.debug("[ID:0222] Chat streaming finished")
+            
+            # Update UI to indicate completion
+            if hasattr(self, 'main_window') and self.main_window:
+                chat_tab = self.main_window.findChild(QWidget, "chat_tab")
+                if chat_tab and hasattr(chat_tab, 'update_chat_display'):
+                    chat_tab.update_chat_display("", is_streaming=False)
+            
+        except Exception as e:
+            logger.error(f"[ID:0223] Error handling chat finished: {e}")
+    
+    def _handle_chat_error(self, error_message: str):
+        """Handle chat streaming error from persistent thread."""
+        try:
+            logger.error(f"[ID:0224] Chat streaming error: {error_message}")
+            
             # Show error to user
-            chat_tab = self.ui_manager.get_chat_tab()
-            if chat_tab:
-                chat_tab.append_to_chat("System", f"Error creating worker thread: {str(e)}")
-                chat_tab.force_enable_send_button()
+            if hasattr(self, 'main_window') and self.main_window:
+                QMessageBox.critical(
+                    self.main_window,
+                    "Chat Error",
+                    f"An error occurred during chat: {error_message}"
+                )
+            
+        except Exception as e:
+            logger.error(f"[ID:0225] Error handling chat error: {e}")
+    
+    def stop_chat_streaming(self):
+        """Stop chat streaming using persistent thread pool."""
+        try:
+            if hasattr(self, 'threading_service') and self.threading_service:
+                logger.debug("[ID:0226] Stopping chat streaming")
+                self.threading_service.stop_chat_streaming()
+            else:
+                logger.warning("[ID:0227] Threading service not available for stopping chat")
+                
+        except Exception as e:
+            logger.error(f"[ID:0228] Error stopping chat streaming: {e}")
     
     def _on_worker_progress(self, progress_message):
         """Handle worker progress updates"""
@@ -407,7 +524,8 @@ class EventBus:
         try:
             main_window = self.ui_manager.get_main_window()
             if main_window and hasattr(main_window, 'statusBar'):
-                main_window.statusBar().showMessage(progress_message, 3000)  # Show for 3 seconds
+                from pyside_chat.core.utils.threading_utils import safe_ui_update
+                safe_ui_update(main_window.statusBar(), 'showMessage', progress_message, 3000)  # Show for 3 seconds
         except Exception as e:
             logger.debug(f"[ID:0199] Could not update status bar: {e}")
     
@@ -419,8 +537,9 @@ class EventBus:
         # Show error to user
         chat_tab = self.ui_manager.get_chat_tab()
         if chat_tab:
-            chat_tab.append_to_chat("System", f"Worker Error: {error_message}")
-            chat_tab.force_enable_send_button()
+            from pyside_chat.core.utils.threading_utils import safe_ui_update
+            safe_ui_update(chat_tab, 'append_to_chat', "System", f"Worker Error: {error_message}")
+            safe_ui_update(chat_tab, 'force_enable_send_button')
         
         # Trigger cleanup
         self._on_worker_finished()
@@ -440,15 +559,59 @@ class EventBus:
             
             chat_tab = self.ui_manager.get_chat_tab()
             if chat_tab:
-                # Call the method directly instead of using signal
-                chat_tab.append_response_chunk(chunk, self._current_response_model)
-                logger.debug(f"[ID:0196C] Called append_response_chunk on chat tab")
+                # Ensure UI streaming state is started for first chunk
+                if not chat_tab.is_streaming:
+                    logger.debug("[ID:0196E] Starting UI streaming state for first chunk")
+                    chat_tab.start_streaming()
+                
+                # Use a more robust thread-safe update mechanism
+                try:
+                    # Use QTimer.singleShot to ensure this runs in the main thread
+                    from PySide6.QtCore import QTimer
+                    QTimer.singleShot(0, lambda: self._safe_append_chunk(chat_tab, chunk))
+                    logger.debug(f"[ID:0196C] Scheduled append_response_chunk on chat tab")
+                except Exception as e:
+                    logger.error(f"[ID:0196F] Error scheduling chunk update: {e}")
+                    # Fallback to direct call if scheduling fails
+                    try:
+                        chat_tab.append_response_chunk(chunk, self._current_response_model)
+                        logger.debug(f"[ID:0196G] Direct append_response_chunk called")
+                    except Exception as e2:
+                        logger.error(f"[ID:0196H] Direct chunk update also failed: {e2}")
+                        # Final fallback - try to update the streaming handler directly
+                        try:
+                            streaming_handler = chat_tab.get_streaming_handler()
+                            if streaming_handler:
+                                streaming_handler.update_streaming_message(
+                                    chunk, "Assistant", None, False, tag="ai"
+                                )
+                                logger.debug(f"[ID:0196I] Direct streaming handler update successful")
+                        except Exception as e3:
+                            logger.error(f"[ID:0196J] All chunk update methods failed: {e3}")
             else:
                 logger.warning("[ID:0196D] No chat tab found")
                 
         except Exception as e:
             logger.error(f"[ID:0195] Error handling worker chunk: {e}")
             logger.error(f"[ID:0194] Worker chunk error traceback: {traceback.format_exc()}")
+    
+    def _safe_append_chunk(self, chat_tab, chunk):
+        """Safely append chunk to chat tab in main thread"""
+        try:
+            if hasattr(chat_tab, 'append_response_chunk'):
+                chat_tab.append_response_chunk(chunk, self._current_response_model)
+                logger.debug(f"[ID:0196K] Successfully appended chunk in main thread")
+            else:
+                logger.error("[ID:0196L] Chat tab has no append_response_chunk method")
+        except Exception as e:
+            logger.error(f"[ID:0196M] Error in _safe_append_chunk: {e}")
+            logger.error(f"[ID:0196N] _safe_append_chunk traceback: {traceback.format_exc()}")
+            # Try to recover by forcing a UI update
+            try:
+                if hasattr(chat_tab, 'chat_display') and chat_tab.chat_display:
+                    chat_tab.chat_display.update()
+            except Exception as e2:
+                logger.error(f"[ID:0196O] Recovery attempt failed: {e2}")
     
     def _on_worker_finished(self):
         """Handle worker completion"""
@@ -461,6 +624,12 @@ class EventBus:
             # Handle AI response completion
             self.chat_controller.handle_ai_response()
             logger.debug("[ID:0193A] Called chat_controller.handle_ai_response")
+            
+            # Update UI streaming state
+            chat_tab = self.ui_manager.get_chat_tab()
+            if chat_tab and chat_tab.is_streaming:
+                logger.debug("[ID:0193B] Stopping UI streaming state")
+                chat_tab.stop_streaming()
             
             # Only clean up if TTS is also finished
             if self._tts_finished:
@@ -490,7 +659,6 @@ class EventBus:
         try:
             logger.debug("[ID:0186] Handling TTS finished delayed")
             
-            # Check if worker thread is still running (legacy check - now handled by new threading system)
             # Cleanup is handled by the new threading system
             self._cleanup_worker_thread()
                 
@@ -521,8 +689,6 @@ class EventBus:
             if hasattr(self, 'threading_service'):
                 logger.debug("[ID:0179] Cleaning up new threading architecture")
                 self.threading_service.stop_chat_streaming()
-            
-            # No legacy worker cleanup needed
                         
         except Exception as e:
             logger.error(f"[ID:0166] Error cleaning up worker thread: {e}")
@@ -536,9 +702,9 @@ class EventBus:
                 chat_tab.stop_streaming()
     
     def _final_worker_cleanup(self):
-        """Final cleanup to ensure worker thread is properly destroyed (legacy method - kept for compatibility)"""
+        """Final cleanup to ensure worker thread is properly destroyed"""
         try:
-                logger.debug("[ID:0161] Final worker cleanup completed")
+            logger.debug("[ID:0161] Final worker cleanup completed")
             # No cleanup needed - handled by new threading system
         except Exception as e:
             logger.error(f"[ID:0160] Error in final worker cleanup: {e}")
@@ -551,8 +717,14 @@ class EventBus:
         try:
             chat_tab = self.ui_manager.get_chat_tab()
             if chat_tab:
-                chat_tab.append_to_chat("System", f"Error: {error_message}")
-                chat_tab.force_enable_send_button()
+                # Stop UI streaming state
+                if chat_tab.is_streaming:
+                    logger.debug("[ID:0166A] Stopping UI streaming state due to error")
+                    chat_tab.stop_streaming()
+                
+                from pyside_chat.core.utils.threading_utils import safe_ui_update
+                safe_ui_update(chat_tab, 'append_to_chat', "System", f"Error: {error_message}")
+                safe_ui_update(chat_tab, 'force_enable_send_button')
             
             self._on_worker_finished()
             
@@ -586,7 +758,6 @@ class EventBus:
             ollama_service.cancel_request()
             
             # Stop the worker thread if it's running using safe cleanup
-            # (Legacy worker cleanup - now handled by new threading system)
             if hasattr(self, 'threading_service'):
                 self.threading_service.stop_chat_streaming()
             
@@ -900,8 +1071,30 @@ class EventBus:
             
             # Clean up new threading architecture
             if hasattr(self, 'threading_service'):
-                logger.debug("[ID:0150] Cleaning up threading bridge on exit")
+                logger.debug("[ID:0150] Cleaning up threading service on exit")
+                
+                # Stop chat streaming and wait for completion
+                if self.threading_service.chat_streaming_thread and self.threading_service.chat_streaming_thread.isRunning():
+                    logger.debug("[ID:0149] Stopping chat streaming thread on exit")
+                    self.threading_service.stop_chat_streaming()
+                    
+                    # Wait for thread to finish with timeout
+                    if self.threading_service.chat_streaming_thread:
+                        if not self.threading_service.chat_streaming_thread.wait(5000):  # 5 second timeout
+                            logger.warning("[ID:0148] Chat streaming thread did not finish within timeout, terminating")
+                            self.threading_service.chat_streaming_thread.terminate()
+                            self.threading_service.chat_streaming_thread.wait(2000)
+                
+                # Clean up threading service with additional wait
+                logger.debug("[ID:0147] Cleaning up threading service")
                 self.threading_service.cleanup()
+                
+                # Call finalize for robust cleanup
+                logger.debug("[ID:0146] Finalizing threading service")
+                self.threading_service.finalize()
+                
+                # Additional wait to ensure all threads are properly cleaned up
+                time.sleep(0.5)  # Small delay to allow cleanup to complete
             
             # Clean up any running worker threads (legacy cleanup removed)
             # All cleanup is now handled by the new threading system

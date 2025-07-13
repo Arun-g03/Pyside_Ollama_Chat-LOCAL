@@ -1,0 +1,464 @@
+================================================================================
+THREAD SAFETY ANALYSIS REPORT
+================================================================================
+
+SUMMARY:
+----------------------------------------
+Files analyzed: 110
+Potential issues found: 4
+Safe patterns found: 309
+Unsafe patterns found: 10
+UI method calls found: 870
+Threading usage found: 152
+QThread misuse found: 13
+
+POTENTIAL THREAD SAFETY ISSUES:
+----------------------------------------
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\core\utils\threading_audit.py:174
+Issue: processEvents call detected
+Severity: high
+Code: "Avoid processEvents() calls in background threads",
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\core\utils\threading_utils.py:147
+Issue: processEvents call detected
+Severity: high
+Code: Alternative to processEvents() that's safer for background threads.
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\core\utils\threading_utils.py:163
+Issue: processEvents call detected
+Severity: high
+Code: Safely force a widget update without using processEvents.
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\ui\dialogs\voice_settings_dialog.py:31
+Issue: processEvents call detected
+Severity: high
+Code: # Thread-safe alternative to QApplication.processEvents()
+
+SAFE THREADING PATTERNS FOUND:
+----------------------------------------
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\app\event_bus.py:452
+Pattern: safe_ui_update
+Code: from pyside_chat.core.utils.threading_utils import safe_ui_update
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\app\event_bus.py:453
+Pattern: safe_ui_update
+Code: safe_ui_update(main_window.statusBar(), 'showMessage', progress_message, 3000)  # Show for 3 seconds
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\app\event_bus.py:465
+Pattern: safe_ui_update
+Code: from pyside_chat.core.utils.threading_utils import safe_ui_update
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\app\event_bus.py:466
+Pattern: safe_ui_update
+Code: safe_ui_update(chat_tab, 'append_to_chat', "System", f"Worker Error: {error_message}")
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\app\event_bus.py:467
+Pattern: safe_ui_update
+Code: safe_ui_update(chat_tab, 'force_enable_send_button')
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\app\event_bus.py:488
+Pattern: safe_ui_update
+Code: from pyside_chat.core.utils.threading_utils import safe_ui_update
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\app\event_bus.py:489
+Pattern: safe_ui_update
+Code: safe_ui_update(chat_tab, 'append_response_chunk', chunk, self._current_response_model)
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\app\event_bus.py:529
+Pattern: QTimer.singleShot
+Code: # Use QTimer.singleShot to ensure this runs in the main thread
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\app\event_bus.py:531
+Pattern: QTimer.singleShot
+Code: QTimer.singleShot(100, self._handle_tts_finished_delayed)
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\app\event_bus.py:554
+Pattern: QTimer.singleShot
+Code: QTimer.singleShot(500, self._cleanup_worker_thread_once)
+
+UNSAFE THREADING PATTERNS FOUND:
+----------------------------------------
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\app\app_lifecycle.py:339
+Pattern: threading.Thread
+Code: wait_thread = threading.Thread(target=wait_for_ollama, daemon=True)
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\core\utils\threading_audit.py:174
+Pattern: processEvents
+Code: "Avoid processEvents() calls in background threads",
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\core\utils\threading_utils.py:147
+Pattern: processEvents
+Code: Alternative to processEvents() that's safer for background threads.
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\core\utils\threading_utils.py:163
+Pattern: processEvents
+Code: Safely force a widget update without using processEvents.
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\features\voice\audio\recording_service.py:90
+Pattern: threading.Thread
+Code: self.recording_thread = threading.Thread(target=self._record_audio, name="RecordingThread")
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\features\voice\tts\coqui_tts_service.py:445
+Pattern: threading.Thread
+Code: # Start streaming in a separate QThread instead of threading.Thread
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\features\voice\tts\streaming_audio_player.py:361
+Pattern: threading.Thread
+Code: term_thread = threading.Thread(target=terminate_pyaudio, name="terminate_pyaudio")
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\ui\dialogs\voice_settings_dialog.py:31
+Pattern: QApplication.processEvents
+Code: # Thread-safe alternative to QApplication.processEvents()
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\ui\dialogs\voice_settings_dialog.py:31
+Pattern: processEvents
+Code: # Thread-safe alternative to QApplication.processEvents()
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\ui\visualizers\eq_orchestrator.py:404
+Pattern: threading.Thread
+Code: self.play_thread = threading.Thread(target=self._play_audio_thread, daemon=True)
+
+UI METHOD CALLS FOUND:
+----------------------------------------
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\app\app_lifecycle.py:190
+Method: setWindowTitle
+Code: msg_box.setWindowTitle(title)
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\app\app_lifecycle.py:191
+Method: setIcon
+Code: msg_box.setIcon(QMessageBox.Warning)
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\app\app_lifecycle.py:194
+Method: setText
+Code: msg_box.setText(message)
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\app\app_lifecycle.py:290
+Method: setWindowTitle
+Code: progress.setWindowTitle("Starting Ollama")
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\app\app_lifecycle.py:293
+Method: setValue
+Code: progress.setValue(0)
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\app\app_lifecycle.py:294
+Method: show
+Code: progress.show()
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\app\app_lifecycle.py:322
+Method: setValue
+Code: progress.setValue(progress_value)
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\app\app_lifecycle.py:326
+Method: setValue
+Code: progress.setValue(100)
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\app\app_lifecycle.py:351
+Method: close
+Code: progress.close()
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\app\app_lifecycle.py:354
+Method: close
+Code: progress.close()
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\app\event_bus.py:322
+Method: append
+Code: final_context.append({"role": "system", "content": system_prompt})
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\app\event_bus.py:364
+Method: setValue
+Code: input_controls.temperature_slider.setValue(int(personality_temperature * 100))
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\app\event_bus.py:400
+Method: append
+Code: cleaned_messages.append(msg)
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\app\event_bus.py:700
+Method: setCurrentText
+Code: chat_tab.personality_combo.setCurrentText(personality_name)
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\app\event_bus.py:920
+Method: setWindowTitle
+Code: msg_box.setWindowTitle(title)
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\app\event_bus.py:921
+Method: setIcon
+Code: msg_box.setIcon(QMessageBox.Warning)
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\app\event_bus.py:924
+Method: setText
+Code: msg_box.setText(message)
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\core\logging\helpers.py:360
+Method: clear
+Code: self.active_threads.clear()
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\core\logging\helpers.py:361
+Method: clear
+Code: self.thread_history.clear()
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\core\models\conversation_metadata.py:415
+Method: append
+Code: conversations.append((filepath, metadata))
+
+THREADING USAGE FOUND:
+----------------------------------------
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\app\app_lifecycle.py:339
+Keyword: threading.Thread
+Code: wait_thread = threading.Thread(target=wait_for_ollama, daemon=True)
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\app\event_bus.py:5
+Keyword: QThread
+Code: from PySide6.QtCore import QTimer, QThread
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\app\event_bus.py:460
+Keyword: QThread
+Code: logger.error(f"[ID:0198] Worker error occurred in thread: {QThread.currentThread().objectName()}")
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\app\threading_integration.py:2
+Keyword: QThread
+Code: Threading Integration - Bridges new QThread/QRunnable architecture with existing event system.
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\app\threading_integration.py:2
+Keyword: QRunnable
+Code: Threading Integration - Bridges new QThread/QRunnable architecture with existing event system.
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\app\threading_integration.py:6
+Keyword: QThread
+Code: - Modern QThread/QRunnable architecture
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\app\threading_integration.py:6
+Keyword: QRunnable
+Code: - Modern QThread/QRunnable architecture
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\app\threading_integration.py:25
+Keyword: QThread
+Code: - Modern QThread/QRunnable architecture
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\app\threading_integration.py:25
+Keyword: QRunnable
+Code: - Modern QThread/QRunnable architecture
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\app\threading_integration.py:49
+Keyword: QThread
+Code: Start chat streaming using the new QThread architecture.
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\app\threading_integration.py:79
+Keyword: QRunnable
+Code: Process message spell check using QRunnable.
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\app\threading_integration.py:98
+Keyword: QRunnable
+Code: Process message formatting using QRunnable.
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\app\threading_integration.py:117
+Keyword: QRunnable
+Code: Process file operation using QRunnable.
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\app\threading_integration.py:152
+Keyword: QThread
+Code: - Modern QThread/QRunnable architecture
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\app\threading_integration.py:152
+Keyword: QRunnable
+Code: - Modern QThread/QRunnable architecture
+
+QTHREAD/QRUNNABLE MISUSE PATTERNS:
+----------------------------------------
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\core\threading\threading_service.py:82
+Issue: QThread/QRunnable/worker instantiated without .moveToThread()
+Code:             self.chat_streaming_thread = QThread()
+Context:
+            self.chat_streaming_thread.setObjectName(f"ChatStreamingThread_{id(self.chat_streaming_thread)}")
+            
+            # Register thread for monitoring
+            self.thread_monitor.register_thread(
+                self.chat_streaming_thread, 
+                thread_type="chat_streaming",
+                metadata={'model': model, 'temperature': temperature}
+            )
+            
+            # Move worker to thread
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\core\threading\threading_service.py:111
+Issue: QThread/QRunnable/worker instantiated without .moveToThread()
+Code:                 lambda: self._start_chat_streaming_worker(context_messages, model, temperature, config_manager)
+Context:
+            )
+            self.chat_streaming_thread.finished.connect(self._on_chat_streaming_thread_finished)
+            
+            # Start the thread
+            if not self.chat_streaming_thread.isRunning():
+                self.chat_streaming_thread.start()
+            
+            logger.debug(f"[ID:TS003] Chat streaming thread started: {self.chat_streaming_thread.objectName()}")
+            return True
+            
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\core\threading\threading_service.py:127
+Issue: QThread/QRunnable/worker instantiated without .moveToThread()
+Code:     def _start_chat_streaming_worker(self, context_messages: List[Dict], model: str, temperature: float, config_manager):
+Context:
+        """Start the chat streaming worker."""
+        try:
+            logger.debug(f"[ID:TS006] Starting chat streaming worker")
+            
+            if self.chat_streaming_worker:
+                self.chat_streaming_worker.start_streaming(
+                    messages=context_messages,
+                    model=model,
+                    temperature=temperature,
+                    ollama_url=config_manager.get_ollama_url(),
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\core\threading\threading_service.py:117
+Issue: QThread .start() without .quit()/.wait() after
+Code:                 self.chat_streaming_thread.start()
+Context:
+            
+            logger.debug(f"[ID:TS003] Chat streaming thread started: {self.chat_streaming_thread.objectName()}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"[ID:TS004] Error starting chat streaming: {e}")
+            logger.error(f"[ID:TS005] Chat streaming error traceback: {traceback.format_exc()}")
+            return False
+    
+    def _start_chat_streaming_worker(self, context_messages: List[Dict], model: str, temperature: float, config_manager):
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\core\threading\usage_examples.py:68
+Issue: QThread/QRunnable/worker instantiated without .moveToThread()
+Code:             self.chat_streaming_thread = QThread()
+Context:
+            self.chat_streaming_thread.setObjectName(f"ChatStreamingThread_{id(self.chat_streaming_thread)}")
+            
+            # Register thread for monitoring
+            self.thread_monitor.register_thread(
+                self.chat_streaming_thread, 
+                thread_type="chat_streaming",
+                metadata={'model': model, 'temperature': temperature}
+            )
+            
+            # Move worker to thread
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\core\threading\usage_examples.py:113
+Issue: QThread .start() without .quit()/.wait() after
+Code:                 self.chat_streaming_thread.start()
+Context:
+            
+            logger.debug(f"[ID:EX003] Chat streaming thread started: {self.chat_streaming_thread.objectName()}")
+            
+        except Exception as e:
+            logger.error(f"[ID:EX004] Error starting chat streaming: {e}")
+            logger.error(f"[ID:EX005] Chat streaming error traceback: {traceback.format_exc()}")
+    
+    def _on_chat_streaming_thread_finished(self):
+        """Handle chat streaming thread finished."""
+        try:
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\features\voice\orchestrator\voice_process_manager.py:354
+Issue: QThread/QRunnable/worker instantiated without .moveToThread()
+Code: def _voice_process_worker(command_queue: mp.Queue, response_queue: mp.Queue):
+Context:
+    """Worker function that runs in the separate voice process"""
+    try:
+        # Import voice services in the worker process
+        from pyside_chat.features.voice.voice_service import VoiceService
+        
+        # Create QApplication for the voice process
+        app = QApplication.instance()
+        if not app:
+            app = QApplication([])
+        
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\features\voice\orchestrator\voice_process_manager.py:95
+Issue: QThread .start() without .quit()/.wait() after
+Code:                 self.monitor_thread.start()
+Context:
+            
+            # Test the connection
+            self.send_command("test_connection")
+            
+            self.is_running = True
+            logger.debug("[ID:0526] Voice process and monitor started successfully")
+            return True
+            
+        except Exception as e:
+            logger.error(f"[ID:0527] Error starting voice process: {e}")
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\features\voice\tts\coqui_tts_service.py:474
+Issue: QThread .start() without .quit()/.wait() after
+Code:                 self.streaming_thread.start()
+Context:
+            if not self.streaming_player.isRunning():
+                self.streaming_player.start()
+            self.is_streaming = True
+            
+            logger.debug("Started streaming TTS synthesis")
+            
+        except Exception as e:
+            logger.error(f"Failed to start streaming TTS: {e}")
+            import traceback
+            logger.error(f"Streaming TTS error traceback: {traceback.format_exc()}")
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\ui\dialogs\coqui_model_dialog.py:366
+Issue: QThread .start() without .isRunning() guard
+Code:         self.download_thread.start()
+Context:
+        self.refresh_button.setEnabled(False)
+        
+        self.download_thread = ModelDownloadThread(model_name)
+        self.download_thread.download_progress.connect(self.log_status)
+        self.download_thread.download_completed.connect(self.on_download_completed)
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\ui\dialogs\coqui_model_dialog.py:366
+Issue: QThread .start() without .quit()/.wait() after
+Code:         self.download_thread.start()
+Context:
+    
+    def on_download_completed(self, success: bool, message: str):
+        """Handle download completion"""
+        self.progress_bar.setVisible(False)
+        self.download_button.setEnabled(True)
+        self.refresh_button.setEnabled(True)
+        
+        self.log_status(message)
+        
+        if success:
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\ui\dialogs\voice_settings_dialog.py:668
+Issue: QThread .start() without .isRunning() guard
+Code:         self.internet_thread.start()
+Context:
+        self.internet_status_label.setStyleSheet("color: #ffa500;")
+
+        self.internet_thread = InternetCheckThread()
+        self.internet_thread.check_completed.connect(
+            self.on_internet_check_completed)
+
+File: D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL\pyside_chat\ui\dialogs\voice_settings_dialog.py:668
+Issue: QThread .start() without .quit()/.wait() after
+Code:         self.internet_thread.start()
+Context:
+
+    def on_internet_check_completed(self, is_connected: bool, status: str):
+        """Handle internet check completion"""
+        self.internet_available = is_connected
+
+        if is_connected:
+            self.internet_status_label.setText(
+                "✅ Internet connection available")
+            self.internet_status_label.setStyleSheet("color: #4caf50;")
+        else:
+
+RECOMMENDATIONS:
+----------------------------------------
+1. Use QTimer.singleShot(0, callback) for UI updates from background threads
+2. Use QMetaObject.invokeMethod with QueuedConnection for thread-safe calls
+3. Avoid processEvents() calls in background threads
+4. Use the existing safe_ui_update utility function
+5. Ensure all UI updates go through the main thread
+6. Use the existing StreamingUpdateTask for streaming UI updates
+7. Follow the QThread vs QRunnable patterns established in the codebase
+
+================================================================================
+Report generated by Thread Safety Analyzer
+================================================================================

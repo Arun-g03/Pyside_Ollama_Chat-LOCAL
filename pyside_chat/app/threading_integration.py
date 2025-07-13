@@ -3,8 +3,7 @@ Threading Integration - Bridges new QThread/QRunnable architecture with existing
 
 This module provides:
 - Integration with existing EventBus
-- Backward compatibility with current Worker usage
-- Migration path from old to new threading architecture
+- Modern QThread/QRunnable architecture
 - Unified interface for all threading operations
 """
 
@@ -21,10 +20,9 @@ class ThreadingIntegration(QObject):
     Integration layer that bridges the new threading architecture with existing event system.
     
     This class provides:
-    - Backward compatibility with existing EventBus
     - Integration with new ThreadingService
-    - Migration path from old Worker to new architecture
     - Unified interface for all threading operations
+    - Modern QThread/QRunnable architecture
     """
     
     # Signals for integration with existing system
@@ -39,13 +37,14 @@ class ThreadingIntegration(QObject):
         self.threading_service = get_global_threading_service()
         
         # Connect threading service signals to integration signals
-        self.threading_service.worker_chunk_received.connect(self.chunk_received)
-        self.threading_service.worker_progress_updated.connect(self.progress_updated)
-        self.threading_service.worker_finished.connect(self.finished)
-        self.threading_service.worker_error.connect(self.error)
+        self.threading_service.chunk_received.connect(self.chunk_received)
+        self.threading_service.progress_updated.connect(self.progress_updated)
+        self.threading_service.finished.connect(self.finished)
+        self.threading_service.error.connect(self.error)
         
         logger.debug("[ID:TI001] ThreadingIntegration initialized")
-    def start_chat_streaming(self, context_messages: List[Dict], chosen_model: str, temperature: float) -> bool:
+    
+    def start_chat_streaming(self, context_messages: List[Dict], chosen_model: str, temperature: float, config_manager) -> bool:
         """
         Start chat streaming using the new QThread architecture.
         
@@ -53,80 +52,64 @@ class ThreadingIntegration(QObject):
             context_messages: List of conversation messages
             chosen_model: Model name to use
             temperature: Temperature setting
+            config_manager: Configuration manager
             
         Returns:
             bool: True if streaming started successfully
         """
         try:
-            logger.debug(f"[ID:TI002] Starting chat streaming with new architecture - Model: {chosen_model}")
-            
-            # Get configuration from service manager
-            config_manager = self.event_handler.service_manager.config_manager
-            
-            # Start streaming using threading service
-            success = self.threading_service.start_chat_streaming(
-                messages=context_messages,
-                model=chosen_model,
-                temperature=temperature,
-                ollama_url=config_manager.get_ollama_url(),
-                max_tokens=config_manager.get_max_tokens(),
-                top_p=config_manager.get_top_p(),
-                frequency_penalty=config_manager.get_frequency_penalty(),
-                presence_penalty=config_manager.get_presence_penalty()
-            )
-            
-            logger.debug("[ID:TI003] Chat streaming started successfully")
-            return success
+            logger.debug(f"[ID:TI002] Starting chat streaming for model: {chosen_model}")
+            return self.threading_service.start_chat_streaming(context_messages, chosen_model, temperature, config_manager)
             
         except Exception as e:
-            logger.error(f"[ID:TI005] Error starting chat streaming: {e}")
+            logger.error(f"[ID:TI003] Error starting chat streaming: {e}")
             return False
     
     def stop_chat_streaming(self):
         """Stop chat streaming safely."""
         try:
-            logger.debug("[ID:TI006] Stopping chat streaming")
+            logger.debug("[ID:TI004] Stopping chat streaming")
             self.threading_service.stop_chat_streaming()
             
         except Exception as e:
-            logger.error(f"[ID:TI007] Error stopping chat streaming: {e}")
+            logger.error(f"[ID:TI005] Error stopping chat streaming: {e}")
     
-    def process_message_spell_check(self, message: str) -> str:
+    def process_message_spell_check(self, message: str, callback) -> str:
         """
         Process message spell check using QRunnable.
         
         Args:
             message: Message to spell check
+            callback: Callback function for results
             
         Returns:
             str: Task ID for tracking
         """
         try:
-            logger.debug(f"[ID:TI008] Processing message spell check: {message[:50]}...")
-            task_id = self.threading_service.process_message_spell_check(message)
-            return task_id
+            logger.debug(f"[ID:TI006] Processing message spell check: {message[:50]}...")
+            return self.threading_service.process_message(message, "spell_check", callback)
             
         except Exception as e:
-            logger.error(f"[ID:TI009] Error processing message spell check: {e}")
+            logger.error(f"[ID:TI007] Error processing message spell check: {e}")
             return ""
     
-    def process_message_formatting(self, message: str) -> str:
+    def process_message_formatting(self, message: str, callback) -> str:
         """
         Process message formatting using QRunnable.
         
         Args:
             message: Message to format
+            callback: Callback function for results
             
         Returns:
             str: Task ID for tracking
         """
         try:
-            logger.debug(f"[ID:TI010] Processing message formatting: {message[:50]}...")
-            task_id = self.threading_service.process_message_formatting(message)
-            return task_id
+            logger.debug(f"[ID:TI008] Processing message formatting: {message[:50]}...")
+            return self.threading_service.process_message(message, "formatting", callback)
             
         except Exception as e:
-            logger.error(f"[ID:TI011] Error processing message formatting: {e}")
+            logger.error(f"[ID:TI009] Error processing message formatting: {e}")
             return ""
     
     def process_file_operation(self, file_path: str, operation: str, **kwargs) -> str:
@@ -142,36 +125,12 @@ class ThreadingIntegration(QObject):
             str: Task ID for tracking
         """
         try:
-            logger.debug(f"[ID:TI012] Processing file operation: {operation} on {file_path}")
-            task_id = self.threading_service.process_file_operation(file_path, operation, **kwargs)
-            return task_id
+            logger.debug(f"[ID:TI010] Processing file operation: {operation} on {file_path}")
+            return self.threading_service.process_file_operation(file_path, operation, **kwargs)
             
         except Exception as e:
-            logger.error(f"[ID:TI013] Error processing file operation: {e}")
+            logger.error(f"[ID:TI011] Error processing file operation: {e}")
             return ""
-    
-    def create_legacy_worker(self, context_messages: List[Dict], chosen_model: str, temperature: float):
-        """
-        Create legacy worker for backward compatibility.
-        
-        This method provides the same interface as the old Worker class
-        but uses the new QThread architecture internally.
-        """
-        try:
-            logger.debug(f"[ID:TI014] Creating legacy worker for model: {chosen_model}")
-            self.threading_service.create_legacy_worker(context_messages, chosen_model, temperature)
-            
-        except Exception as e:
-            logger.error(f"[ID:TI015] Error creating legacy worker: {e}")
-    
-    def cleanup_legacy_worker(self):
-        """Clean up legacy worker safely."""
-        try:
-            logger.debug("[ID:TI016] Cleaning up legacy worker")
-            self.threading_service.cleanup_legacy_worker()
-            
-        except Exception as e:
-            logger.error(f"[ID:TI017] Error cleaning up legacy worker: {e}")
     
     def get_threading_status(self) -> Dict[str, Any]:
         """Get current threading status and statistics."""
@@ -179,17 +138,8 @@ class ThreadingIntegration(QObject):
             return self.threading_service.get_threading_status()
             
         except Exception as e:
-            logger.error(f"[ID:TI018] Error getting threading status: {e}")
+            logger.error(f"[ID:TI012] Error getting threading status: {e}")
             return {}
-    
-    def cleanup(self):
-        """Clean up all threading resources."""
-        try:
-            logger.debug("[ID:TI019] Cleaning up ThreadingIntegration")
-            self.threading_service.cleanup()
-            
-        except Exception as e:
-            logger.error(f"[ID:TI020] Error during ThreadingIntegration cleanup: {e}")
 
 
 class EventBusThreadingBridge:
@@ -198,8 +148,8 @@ class EventBusThreadingBridge:
     
     This class provides:
     - Drop-in replacement for existing Worker usage
-    - Backward compatibility with current EventBus methods
-    - Migration path from old to new threading architecture
+    - Integration with current EventBus methods
+    - Modern QThread/QRunnable architecture
     """
     
     def __init__(self, event_handler):
@@ -250,33 +200,34 @@ class EventBusThreadingBridge:
         except Exception as e:
             logger.error(f"[ID:TB007] Error handling finished: {e}")
     
-    def _on_error(self, error: str):
+    def _on_error(self, error_message: str):
         """Handle streaming error."""
         try:
-            logger.error(f"[ID:TB008] Streaming error: {error}")
+            logger.error(f"[ID:TB008] Streaming error: {error_message}")
             
             # Call existing Event Bus method
-            if hasattr(self.event_handler, '_on_worker_detailed_error'):
-                self.event_handler._on_worker_detailed_error(error)
+            if hasattr(self.event_handler, '_on_worker_error'):
+                self.event_handler._on_worker_error(error_message)
             
         except Exception as e:
             logger.error(f"[ID:TB009] Error handling error: {e}")
     
-    def start_chat_streaming(self, context_messages: List[Dict], chosen_model: str, temperature: float) -> bool:
+    def start_chat_streaming(self, context_messages: List[Dict], chosen_model: str, temperature: float, config_manager) -> bool:
         """
-        Start chat streaming using new architecture.
+        Start chat streaming via bridge.
         
         Args:
             context_messages: List of conversation messages
             chosen_model: Model name to use
             temperature: Temperature setting
+            config_manager: Configuration manager
             
         Returns:
             bool: True if streaming started successfully
         """
         try:
             logger.debug(f"[ID:TB010] Starting chat streaming via bridge - Model: {chosen_model}")
-            return self.threading_integration.start_chat_streaming(context_messages, chosen_model, temperature)
+            return self.threading_integration.start_chat_streaming(context_messages, chosen_model, temperature, config_manager)
             
         except Exception as e:
             logger.error(f"[ID:TB011] Error starting chat streaming via bridge: {e}")
@@ -291,73 +242,11 @@ class EventBusThreadingBridge:
         except Exception as e:
             logger.error(f"[ID:TB013] Error stopping chat streaming via bridge: {e}")
     
-    def create_legacy_worker(self, context_messages: List[Dict], chosen_model: str, temperature: float):
-        """
-        Create legacy worker for backward compatibility.
-        """
-        try:
-            logger.debug(f"[ID:TB014] Creating legacy worker via bridge - Model: {chosen_model}")
-            self.threading_integration.create_legacy_worker(context_messages, chosen_model, temperature)
-            
-        except Exception as e:
-            logger.error(f"[ID:TB015] Error creating legacy worker via bridge: {e}")
-    
-    def cleanup_legacy_worker(self):
-        """Clean up legacy worker safely."""
-        try:
-            logger.debug("[ID:TB016] Cleaning up legacy worker via bridge")
-            self.threading_integration.cleanup_legacy_worker()
-            
-        except Exception as e:
-            logger.error(f"[ID:TB017] Error cleaning up legacy worker via bridge: {e}")
-    
     def get_threading_status(self) -> Dict[str, Any]:
         """Get current threading status and statistics."""
         try:
             return self.threading_integration.get_threading_status()
             
         except Exception as e:
-            logger.error(f"[ID:TB018] Error getting threading status via bridge: {e}")
-            return {}
-    
-    def cleanup(self):
-        """Clean up all threading resources."""
-        try:
-            logger.debug("[ID:TB019] Cleaning up EventBusThreadingBridge")
-            self.threading_integration.cleanup()
-            
-        except Exception as e:
-            logger.error(f"[ID:TB020] Error during EventBusThreadingBridge cleanup: {e}")
-
-
-# Global integration instance
-_global_threading_integration: Optional[ThreadingIntegration] = None
-
-
-def get_global_threading_integration(event_handler=None) -> ThreadingIntegration:
-    """
-    Get the global threading integration instance.
-    
-    Args:
-        event_handler: EventBus instance (required for first call)
-        
-    Returns:
-        ThreadingIntegration: Global threading integration
-    """
-    global _global_threading_integration
-    
-    if _global_threading_integration is None and event_handler is not None:
-        _global_threading_integration = ThreadingIntegration(event_handler)
-        logger.debug("[ID:TI021] Created global ThreadingIntegration")
-    
-    return _global_threading_integration
-
-
-def shutdown_global_threading_integration():
-    """Shutdown the global threading integration."""
-    global _global_threading_integration
-    
-    if _global_threading_integration:
-        _global_threading_integration.cleanup()
-        _global_threading_integration = None
-        logger.debug("[ID:TI022] Shutdown global ThreadingIntegration") 
+            logger.error(f"[ID:TB014] Error getting threading status via bridge: {e}")
+            return {} 

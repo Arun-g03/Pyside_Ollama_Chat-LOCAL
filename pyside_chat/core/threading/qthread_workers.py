@@ -6,6 +6,7 @@ These workers are designed for tasks that need:
 - Signal/slot communication
 - Persistent thread lifecycle
 - Complex state management
+- Reusable configuration for persistent thread pools
 """
 
 from PySide6.QtCore import QObject, Signal, QThread, Qt
@@ -27,6 +28,7 @@ class StreamingWorker(QObject):
     - Real-time data streaming
     - Continuous monitoring
     - Persistent background tasks
+    - Reusable workers for thread pools
     """
     
     # Signals for communication with main thread
@@ -43,6 +45,7 @@ class StreamingWorker(QObject):
         self._start_time = None
         self._request_count = 0
         self._thread_id = None
+        self._configuration = {}
         
         logger.debug(f"[ID:TH001] StreamingWorker created - ID: {id(self)}")
     
@@ -53,76 +56,69 @@ class StreamingWorker(QObject):
         thread_id = id(current_thread)
         logger.debug(f"[ID:TH002] StreamingWorker {action} - Thread: {thread_name} (ID: {thread_id})")
     
-    def start_streaming(self, **kwargs):
+    def configure_streaming(self, **kwargs):
         """
-        Start the streaming operation.
+        Configure the worker for streaming operations.
         
-        Override this method in subclasses to implement specific streaming logic.
+        Args:
+            **kwargs: Configuration parameters for streaming
         """
         try:
-            self._log_thread_info("start_streaming")
+            self._configuration.update(kwargs)
+            logger.debug(f"[ID:TH003] StreamingWorker configured with: {list(kwargs.keys())}")
+        except Exception as e:
+            logger.error(f"[ID:TH004] Error configuring streaming worker: {e}")
+    
+    def reset_state(self):
+        """Reset worker state for reuse in persistent thread pool."""
+        try:
+            self._running = False
+            self._should_stop = False
+            self._start_time = None
+            self._request_count = 0
+            self._configuration = {}
+            
+            logger.debug("[ID:TH005] StreamingWorker state reset")
+        except Exception as e:
+            logger.error(f"[ID:TH006] Error resetting streaming worker state: {e}")
+    
+    def is_running(self) -> bool:
+        """Check if the worker is currently running."""
+        return self._running
+    
+    def start_streaming(self):
+        """Start the streaming operation."""
+        try:
+            self._log_thread_info("starting streaming")
             self._running = True
             self._should_stop = False
             self._start_time = time.time()
-            self._request_count += 1
+            self._request_count = 0
             
-            self.status_changed.emit("Starting streaming operation...")
-            logger.debug(f"[ID:TH003] Streaming started with kwargs: {kwargs}")
-            
-            # Subclasses should override this method
-            self._stream_operation(**kwargs)
+            # Start the actual streaming operation
+            self._stream_operation()
             
         except Exception as e:
-            error_msg = f"Streaming error: {str(e)}"
-            logger.error(f"[ID:TH004] {error_msg}")
-            logger.error(f"[ID:TH005] Streaming error traceback: {traceback.format_exc()}")
-            self.error.emit(error_msg)
-        finally:
-            self._running = False
-            self._start_time = None
-            self._log_thread_info("start_streaming finished")
-            self.finished.emit()
-    
-    def _stream_operation(self, **kwargs):
-        """
-        Override this method in subclasses to implement specific streaming logic.
-        """
-        raise NotImplementedError("Subclasses must implement _stream_operation")
+            logger.error(f"[ID:TH007] Error starting streaming: {e}")
+            self.error.emit(f"Failed to start streaming: {str(e)}")
     
     def stop(self):
-        """Stop the streaming operation safely."""
+        """Stop the streaming operation."""
         try:
-            self._log_thread_info("stop requested")
-            logger.debug(f"[ID:TH006] Streaming stop requested - Running: {self._running}")
-            
-            self._running = False
+            self._log_thread_info("stopping streaming")
             self._should_stop = True
-            self.status_changed.emit("Stopping streaming operation...")
-            
-            # Give the worker a moment to finish naturally
-            if self._running:
-                logger.debug("[ID:TH007] Waiting for streaming to finish naturally...")
-                time.sleep(0.1)
-            
-            logger.debug("[ID:TH008] Streaming stop completed")
+            self._running = False
             
         except Exception as e:
-            logger.error(f"[ID:TH009] Error stopping streaming: {e}")
-            logger.error(f"[ID:TH010] Streaming stop traceback: {traceback.format_exc()}")
+            logger.error(f"[ID:TH008] Error stopping streaming: {e}")
     
-    def is_running(self):
-        """Check if the streaming operation is currently running."""
-        return self._running
-    
-    def get_stats(self) -> Dict[str, Any]:
-        """Get statistics about the streaming operation."""
-        duration = time.time() - self._start_time if self._start_time else 0
-        return {
-            'running': self._running,
-            'request_count': self._request_count,
-            'duration': duration,
-            'thread_id': self._thread_id
-        }
+    def _stream_operation(self):
+        """
+        Implement the actual streaming operation.
+        
+        This method should be overridden by subclasses.
+        """
+        raise NotImplementedError("Subclasses must implement _stream_operation")
 
 
 class ChatStreamingWorker(StreamingWorker):
@@ -130,184 +126,142 @@ class ChatStreamingWorker(StreamingWorker):
     Worker for streaming chat responses from Ollama.
     
     This is a long-running operation that needs:
-    - Continuous streaming of response chunks
-    - Signal/slot communication for UI updates
+    - Continuous streaming of chat responses
+    - Signal/slot communication for chunks
     - Persistent thread lifecycle
+    - Reusable configuration for thread pools
     """
     
-    def _stream_operation(self, messages: List[Dict], model: str, temperature: float,
-                         ollama_url: str, max_tokens: int, top_p: float,
-                         frequency_penalty: float, presence_penalty: float):
+    def configure_streaming(self, context_messages: List[Dict], model: str, temperature: float, config_manager):
         """
-        Stream chat response from Ollama.
+        Configure the worker for chat streaming.
+        
+        Args:
+            context_messages: List of conversation messages
+            model: Model name to use
+            temperature: Temperature setting
+            config_manager: Configuration manager
         """
         try:
-            logger.debug(f"[ID:TH011] Chat streaming started - Model: {model}")
-            logger.debug(f"[ID:TH011A] Messages count: {len(messages)}")
-            logger.debug(f"[ID:TH011B] First message: {messages[0] if messages else 'No messages'}")
-            self.progress_updated.emit("Connecting to Ollama...")
+            super().configure_streaming(
+                context_messages=context_messages,
+                model=model,
+                temperature=temperature,
+                config_manager=config_manager
+            )
+            
+            # Store configuration for streaming
+            self._configuration.update({
+                'context_messages': context_messages,
+                'model': model,
+                'temperature': temperature,
+                'config_manager': config_manager
+            })
+            
+            logger.debug(f"[ID:TH009] ChatStreamingWorker configured for model: {model}")
+            
+        except Exception as e:
+            logger.error(f"[ID:TH010] Error configuring chat streaming worker: {e}")
+    
+    def _stream_operation(self):
+        """Stream chat responses from Ollama."""
+        try:
+            self._log_thread_info("starting chat streaming")
+            
+            # Get configuration
+            context_messages = self._configuration.get('context_messages', [])
+            model = self._configuration.get('model', 'llama2')
+            temperature = self._configuration.get('temperature', 0.7)
+            config_manager = self._configuration.get('config_manager')
+            
+            if not config_manager:
+                raise ValueError("Configuration manager is required for chat streaming")
             
             # Prepare request data
-            base_url = ollama_url.replace('/api', '') if ollama_url.endswith('/api') else ollama_url
-            url = f"{base_url}/api/chat"
-            data = {
+            request_data = {
                 "model": model,
-                "messages": messages,
-                "temperature": temperature,
-                "max_tokens": max_tokens,
-                "top_p": top_p,
-                "frequency_penalty": frequency_penalty,
-                "presence_penalty": presence_penalty,
-                "stream": True
+                "messages": context_messages,
+                "stream": True,
+                "options": {
+                    "temperature": temperature,
+                    "num_predict": config_manager.get_max_tokens(),
+                    "top_p": config_manager.get_top_p(),
+                    "frequency_penalty": config_manager.get_frequency_penalty(),
+                    "presence_penalty": config_manager.get_presence_penalty()
+                }
             }
             
-            logger.debug(f"[ID:TH012] Making streaming request to: {url}")
-            logger.debug(f"[ID:TH012A] Request data: {data}")
+            # Get Ollama URL
+            ollama_url = config_manager.get_ollama_url()
+            stream_url = f"{ollama_url}/api/chat"
             
-            # Test connection first with more detailed error handling
-            try:
-                logger.debug(f"[ID:TH012B] Testing Ollama connection to: {base_url}/api/tags")
-                test_response = requests.get(f"{base_url}/api/tags", timeout=15)
-                logger.debug(f"[ID:TH012C] Test response status: {test_response.status_code}")
-                if test_response.status_code != 200:
-                    raise requests.exceptions.RequestException(
-                        f"Ollama not responding properly: {test_response.status_code}")
-                
-                # Check if models are available
-                try:
-                    models_data = test_response.json()
-                    models = models_data.get('models', [])
-                    if not models:
-                        logger.warning("[ID:TH013A] No models found in Ollama response")
-                        self.progress_updated.emit("Warning: No models found in Ollama")
-                    else:
-                        logger.debug(f"[ID:TH013B] Found {len(models)} models in Ollama")
-                        
-                except json.JSONDecodeError as e:
-                    logger.warning(f"[ID:TH013C] Could not parse models response: {e}")
-                
-                logger.debug(f"[ID:TH013] Ollama connection test successful")
-                self.progress_updated.emit("Connection successful, sending request...")
-                
-            except requests.exceptions.ConnectionError as e:
-                error_msg = "Cannot connect to Ollama. Please make sure Ollama is running on localhost:11434"
-                logger.error(f"[ID:TH014] Ollama connection test failed: {e}")
-                self.error.emit(error_msg)
-                return
-            except requests.exceptions.Timeout as e:
-                error_msg = "Ollama connection timed out. The service might be busy or overloaded."
-                logger.error(f"[ID:TH014A] Ollama connection timeout: {e}")
-                self.error.emit(error_msg)
-                return
-            except Exception as e:
-                error_msg = f"Ollama connection failed: {str(e)}"
-                logger.error(f"[ID:TH015] Ollama connection error: {e}")
-                self.error.emit(error_msg)
-                return
+            logger.debug(f"[ID:TH011] Starting chat streaming to: {stream_url}")
+            self.progress_updated.emit("Starting chat streaming...")
             
             # Make streaming request
-            logger.debug(f"[ID:TH015A] Starting streaming POST request to: {url}")
-            logger.debug(f"[ID:TH015B] Request data size: {len(str(data))} characters")
-            logger.debug(f"[ID:TH015C] Request timeout: 30 seconds")
-            self.progress_updated.emit("Sending request to Ollama...")
+            response = requests.post(
+                stream_url,
+                json=request_data,
+                stream=True,
+                timeout=30
+            )
             
-            try:
-                logger.debug(f"[ID:TH015D] Attempting POST request...")
-                with requests.post(url, json=data, stream=True, timeout=30) as response:
-                    logger.debug(f"[ID:TH016] Stream response received - Status: {response.status_code}")
-                    logger.debug(f"[ID:TH016A] Response headers: {dict(response.headers)}")
-                    
-                    if response.status_code != 200:
-                        error_msg = f"Ollama returned error status: {response.status_code}"
-                        logger.error(f"[ID:TH016C] {error_msg}")
-                        self.error.emit(error_msg)
-                        return
-                    
-                    self.progress_updated.emit("Receiving response from Ollama...")
-                    
-                    chunk_count = 0
-                    start_time = time.time()
-                    timeout_seconds = 15  # Reduced from 60 to 15 seconds for local connections
-                    
-                    # Send initial progress message for model loading
-                    self.progress_updated.emit(f"Model '{model}' is loading, please wait...")
-                    
-                    logger.debug(f"[ID:TH016B] Starting to iterate through response lines")
-                    for line in response.iter_lines(decode_unicode=True):
-                        if self._should_stop:
-                            logger.debug("[ID:TH017] Chat streaming stop requested")
-                            break
-                        
-                        # Check for timeout - only for first chunk to allow for model loading
-                        if chunk_count == 0 and (time.time() - start_time) > timeout_seconds:
-                            error_msg = f"Timeout waiting for first response from Ollama after {timeout_seconds} seconds. The model '{model}' might be loading or Ollama might be busy. Try again in a moment."
-                            logger.error(f"[ID:TH018] {error_msg}")
-                            self.error.emit(error_msg)
-                            return
-                        
-                        if line:
-                            logger.debug(f"[ID:TH018A] Processing line: {line[:100]}...")
-                            try:
-                                chunk = json.loads(line)
-                                logger.debug(f"[ID:TH018B] Parsed chunk: {chunk}")
-                                content = chunk.get("message", {}).get("content", "")
-                                logger.debug(f"[ID:TH018C] Extracted content: {content[:50]}...")
-                                
-                                if content:
-                                    chunk_count += 1
-                                    logger.debug(f"[ID:TH019] Emitting chunk {chunk_count}: {content[:50]}...")
-                                    self.chunk_received.emit(content)
-                                    
-                                    # Update progress on first chunk
-                                    if chunk_count == 1:
-                                        self.progress_updated.emit("Model loaded, receiving response...")
-                                    
-                                    # Update progress every 10 chunks
-                                    if chunk_count % 10 == 0:
-                                        self.progress_updated.emit(f"Received {chunk_count} chunks...")
-                                else:
-                                    logger.debug(f"[ID:TH019A] Empty content in chunk: {chunk}")
-                                        
-                            except json.JSONDecodeError as e:
-                                logger.warning(f"[ID:TH020] JSON decode error: {e}")
-                                logger.warning(f"[ID:TH020A] Problematic line: {line}")
-                                continue
-                            except Exception as e:
-                                logger.error(f"[ID:TH021] Error processing chunk: {e}")
-                                logger.error(f"[ID:TH021A] Problematic line: {line}")
-                                continue
-                        else:
-                            logger.debug(f"[ID:TH021B] Empty line received")
-                    
-                    logger.debug(f"[ID:TH022] Chat streaming completed - Total chunks: {chunk_count}")
-                    self.progress_updated.emit(f"Completed - {chunk_count} chunks received")
-                    
-            except requests.exceptions.Timeout as e:
-                error_msg = f"Request timed out after 30 seconds. Ollama may be overloaded or the model '{model}' may be taking too long to load."
-                logger.error(f"[ID:TH023] Chat streaming timeout: {e}")
-                logger.error(f"[ID:TH023A] Timeout details - URL: {url}, Model: {model}")
+            if response.status_code != 200:
+                error_msg = f"Ollama API error: {response.status_code} - {response.text}"
+                logger.error(f"[ID:TH012] {error_msg}")
                 self.error.emit(error_msg)
-            except requests.exceptions.ConnectionError as e:
-                error_msg = f"Connection error: {str(e)}. Ollama may have crashed or stopped responding."
-                logger.error(f"[ID:TH024A] Chat streaming connection error: {e}")
-                logger.error(f"[ID:TH024B] Connection error details - URL: {url}")
-                self.error.emit(error_msg)
-            except requests.exceptions.RequestException as e:
-                error_msg = f"Request failed: {str(e)}"
-                logger.error(f"[ID:TH024] Chat streaming request error: {e}")
-                logger.error(f"[ID:TH024C] Request error details - URL: {url}, Model: {model}")
-                self.error.emit(error_msg)
-            except Exception as e:
-                error_msg = f"Unexpected error: {str(e)}"
-                logger.error(f"[ID:TH025] Chat streaming unexpected error: {e}")
-                logger.error(f"[ID:TH026] Chat streaming traceback: {traceback.format_exc()}")
-                self.error.emit(error_msg)
+                return
+            
+            # Process streaming response
+            chunk_count = 0
+            for line in response.iter_lines():
+                if self._should_stop:
+                    logger.debug("[ID:TH013] Chat streaming stopped by user")
+                    break
                 
-        except Exception as e:
-            error_msg = f"Chat streaming failed: {str(e)}"
-            logger.error(f"[ID:TH027] Chat streaming outer exception: {e}")
-            logger.error(f"[ID:TH028] Chat streaming outer traceback: {traceback.format_exc()}")
+                if line:
+                    try:
+                        # Parse JSON response
+                        data = json.loads(line.decode('utf-8'))
+                        
+                        if 'message' in data:
+                            content = data['message'].get('content', '')
+                            if content:
+                                chunk_count += 1
+                                self.chunk_received.emit(content)
+                                
+                                # Update progress periodically
+                                if chunk_count % 10 == 0:
+                                    self.progress_updated.emit(f"Received {chunk_count} chunks...")
+                        
+                        # Check for done signal
+                        if data.get('done', False):
+                            logger.debug(f"[ID:TH014] Chat streaming completed - Total chunks: {chunk_count}")
+                            break
+                            
+                    except json.JSONDecodeError as e:
+                        logger.warning(f"[ID:TH015] JSON decode error: {e}")
+                        continue
+                    except Exception as e:
+                        logger.error(f"[ID:TH016] Error processing streaming chunk: {e}")
+                        self.error.emit(f"Error processing chunk: {str(e)}")
+                        break
+            
+            self.progress_updated.emit(f"Chat streaming completed - {chunk_count} chunks")
+            logger.debug(f"[ID:TH017] Chat streaming finished - Total chunks: {chunk_count}")
+            
+        except requests.exceptions.RequestException as e:
+            error_msg = f"Network error during chat streaming: {str(e)}"
+            logger.error(f"[ID:TH018] {error_msg}")
             self.error.emit(error_msg)
+        except Exception as e:
+            error_msg = f"Unexpected error during chat streaming: {str(e)}"
+            logger.error(f"[ID:TH019] {error_msg}")
+            logger.error(f"[ID:TH020] Chat streaming error traceback: {traceback.format_exc()}")
+            self.error.emit(error_msg)
+        finally:
+            self._running = False
+            self.finished.emit()
 
 
 class AudioStreamingWorker(StreamingWorker):
@@ -315,52 +269,112 @@ class AudioStreamingWorker(StreamingWorker):
     Worker for streaming audio processing.
     
     This is a long-running operation that needs:
-    - Continuous audio stream processing
-    - Real-time audio chunk handling
-    - Signal/slot communication for audio updates
+    - Continuous audio processing
+    - Signal/slot communication for audio chunks
+    - Persistent thread lifecycle
+    - Reusable configuration for thread pools
     """
     
-    audio_chunk_received = Signal(bytes)  # Emitted when audio chunk is processed
-    audio_level_updated = Signal(float)  # Emitted for audio level updates
+    def configure_audio_streaming(self, audio_source: str, sample_rate: int = 16000, chunk_size: int = 1024):
+        """
+        Configure the worker for audio streaming.
+        
+        Args:
+            audio_source: Source of audio data
+            sample_rate: Audio sample rate
+            chunk_size: Size of audio chunks
+        """
+        try:
+            super().configure_streaming(
+                audio_source=audio_source,
+                sample_rate=sample_rate,
+                chunk_size=chunk_size
+            )
+            
+            # Store configuration for audio streaming
+            self._configuration.update({
+                'audio_source': audio_source,
+                'sample_rate': sample_rate,
+                'chunk_size': chunk_size
+            })
+            
+            logger.debug(f"[ID:TH021] AudioStreamingWorker configured for source: {audio_source}")
+            
+        except Exception as e:
+            logger.error(f"[ID:TH022] Error configuring audio streaming worker: {e}")
+    
+    def start_audio_streaming(self):
+        """Start audio streaming operation."""
+        try:
+            self._log_thread_info("starting audio streaming")
+            self._running = True
+            self._should_stop = False
+            self._start_time = time.time()
+            
+            # Start the actual audio streaming operation
+            self._stream_operation()
+            
+        except Exception as e:
+            logger.error(f"[ID:TH023] Error starting audio streaming: {e}")
+            self.error.emit(f"Failed to start audio streaming: {str(e)}")
     
     def _stream_operation(self, audio_source: str, sample_rate: int = 16000, 
                          chunk_size: int = 1024):
         """
         Stream audio processing.
+        
+        Args:
+            audio_source: Source of audio data
+            sample_rate: Audio sample rate
+            chunk_size: Size of audio chunks
         """
         try:
-            logger.debug(f"[ID:TH027] Audio streaming started - Source: {audio_source}")
-            self.progress_updated.emit("Starting audio processing...")
+            self._log_thread_info("starting audio streaming operation")
             
-            # Audio processing logic would go here
-            # This is a placeholder for actual audio streaming implementation
+            # Get configuration
+            audio_source = self._configuration.get('audio_source', audio_source)
+            sample_rate = self._configuration.get('sample_rate', sample_rate)
+            chunk_size = self._configuration.get('chunk_size', chunk_size)
             
-            # Simulate audio processing
-            import time
-            for i in range(100):  # Simulate 100 audio chunks
-                if self._should_stop:
+            logger.debug(f"[ID:TH024] Audio streaming from: {audio_source}")
+            self.progress_updated.emit("Starting audio streaming...")
+            
+            # Simulate audio processing (replace with actual implementation)
+            chunk_count = 0
+            while self._running and not self._should_stop:
+                try:
+                    # Simulate audio chunk processing
+                    time.sleep(0.1)  # Simulate processing time
+                    chunk_count += 1
+                    
+                    # Emit simulated audio chunk
+                    simulated_chunk = f"audio_chunk_{chunk_count}"
+                    self.chunk_received.emit(simulated_chunk)
+                    
+                    # Update progress periodically
+                    if chunk_count % 10 == 0:
+                        self.progress_updated.emit(f"Processed {chunk_count} audio chunks...")
+                    
+                    # Simulate completion after some chunks
+                    if chunk_count >= 100:
+                        break
+                        
+                except Exception as e:
+                    logger.error(f"[ID:TH025] Error processing audio chunk: {e}")
+                    self.error.emit(f"Error processing audio chunk: {str(e)}")
                     break
-                
-                # Simulate audio chunk processing
-                time.sleep(0.1)  # Simulate processing time
-                
-                # Emit audio level (simulated)
-                import random
-                audio_level = random.uniform(0.0, 1.0)
-                self.audio_level_updated.emit(audio_level)
-                
-                # Emit progress every 10 chunks
-                if i % 10 == 0:
-                    self.progress_updated.emit(f"Processed {i} audio chunks...")
             
-            logger.debug("[ID:TH028] Audio streaming completed")
-            self.progress_updated.emit("Audio processing completed")
+            self.progress_updated.emit(f"Audio streaming completed - {chunk_count} chunks")
+            logger.debug(f"[ID:TH026] Audio streaming finished - Total chunks: {chunk_count}")
             
         except Exception as e:
-            error_msg = f"Audio streaming error: {str(e)}"
-            logger.error(f"[ID:TH029] {error_msg}")
-            logger.error(f"[ID:TH030] Audio streaming traceback: {traceback.format_exc()}")
+            error_msg = f"Unexpected error during audio streaming: {str(e)}"
+            logger.error(f"[ID:TH027] {error_msg}")
+            logger.error(f"[ID:TH028] Audio streaming error traceback: {traceback.format_exc()}")
             self.error.emit(error_msg)
+        finally:
+            self._running = False
+            self.finished.emit()
 
 
 class MonitoringWorker(StreamingWorker):
@@ -371,19 +385,68 @@ class MonitoringWorker(StreamingWorker):
     - Continuous monitoring of system resources
     - Periodic status updates
     - Signal/slot communication for monitoring updates
+    - Reusable configuration for thread pools
     """
     
     resource_updated = Signal(dict)  # Emitted when resource usage changes
     alert_triggered = Signal(str)  # Emitted when alert condition is met
     
+    def configure_monitoring(self, monitor_interval: float = 1.0, alert_threshold: float = 0.8):
+        """
+        Configure the worker for monitoring.
+        
+        Args:
+            monitor_interval: Interval between monitoring checks
+            alert_threshold: Threshold for triggering alerts
+        """
+        try:
+            super().configure_streaming(
+                monitor_interval=monitor_interval,
+                alert_threshold=alert_threshold
+            )
+            
+            # Store configuration for monitoring
+            self._configuration.update({
+                'monitor_interval': monitor_interval,
+                'alert_threshold': alert_threshold
+            })
+            
+            logger.debug(f"[ID:TH029] MonitoringWorker configured - interval: {monitor_interval}s")
+            
+        except Exception as e:
+            logger.error(f"[ID:TH030] Error configuring monitoring worker: {e}")
+    
+    def start_monitoring(self):
+        """Start monitoring operation."""
+        try:
+            self._log_thread_info("starting monitoring")
+            self._running = True
+            self._should_stop = False
+            self._start_time = time.time()
+            
+            # Start the actual monitoring operation
+            self._stream_operation()
+            
+        except Exception as e:
+            logger.error(f"[ID:TH031] Error starting monitoring: {e}")
+            self.error.emit(f"Failed to start monitoring: {str(e)}")
+    
     def _stream_operation(self, monitor_interval: float = 1.0, 
                          alert_threshold: float = 0.8):
         """
         Monitor system resources continuously.
+        
+        Args:
+            monitor_interval: Interval between monitoring checks
+            alert_threshold: Threshold for triggering alerts
         """
         try:
-            logger.debug(f"[ID:TH031] Monitoring started - Interval: {monitor_interval}s")
+            logger.debug(f"[ID:TH032] Monitoring started - Interval: {monitor_interval}s")
             self.progress_updated.emit("Starting system monitoring...")
+            
+            # Get configuration
+            monitor_interval = self._configuration.get('monitor_interval', monitor_interval)
+            alert_threshold = self._configuration.get('alert_threshold', alert_threshold)
             
             import psutil
             import time
@@ -422,15 +485,18 @@ class MonitoringWorker(StreamingWorker):
                     time.sleep(monitor_interval)
                     
                 except Exception as e:
-                    logger.error(f"[ID:TH032] Monitoring iteration error: {e}")
+                    logger.error(f"[ID:TH033] Monitoring iteration error: {e}")
                     time.sleep(monitor_interval)
                     continue
             
-            logger.debug("[ID:TH033] Monitoring completed")
+            logger.debug("[ID:TH034] Monitoring completed")
             self.progress_updated.emit("System monitoring stopped")
             
         except Exception as e:
-            error_msg = f"Monitoring error: {str(e)}"
-            logger.error(f"[ID:TH034] {error_msg}")
-            logger.error(f"[ID:TH035] Monitoring traceback: {traceback.format_exc()}")
-            self.error.emit(error_msg) 
+            error_msg = f"Unexpected error during monitoring: {str(e)}"
+            logger.error(f"[ID:TH035] {error_msg}")
+            logger.error(f"[ID:TH036] Monitoring error traceback: {traceback.format_exc()}")
+            self.error.emit(error_msg)
+        finally:
+            self._running = False
+            self.finished.emit() 

@@ -41,7 +41,7 @@ class StreamingHandler(QObject):
         
         # Throttling mechanism to prevent excessive UI updates
         self._ui_update_timer = QTimer()
-        self._ui_update_timer.setInterval(100)  # 100ms throttle
+        self._ui_update_timer.setInterval(50)  # 50ms throttle (reduced from 100ms)
         self._ui_update_timer.setSingleShot(True)
         self._ui_update_timer.timeout.connect(self._perform_ui_update)
         self._pending_ui_update = False
@@ -53,62 +53,79 @@ class StreamingHandler(QObject):
 
     def _flush_stream_buffer(self):
         """Flush the stream buffer and update the display using thread pool"""
-        if self._stream_buffer is None:
-            return
-        
-        content, is_code, tag = self._stream_buffer
-        self._stream_buffer = None
-        
-        # Find the last streaming message
-        for msg in reversed(self.messages):
-            if msg['is_streaming']:
-                msg['content'] = content
-                msg['is_code'] = is_code
-                msg['tag'] = tag
-                break
-        
-        # Use thread pool for UI update
-        self._schedule_ui_update()
+        try:
+            if self._stream_buffer is None:
+                return
+            
+            content, is_code, tag = self._stream_buffer
+            self._stream_buffer = None
+            
+            # Find the last streaming message
+            for msg in reversed(self.messages):
+                if msg['is_streaming']:
+                    msg['content'] = content
+                    msg['is_code'] = is_code
+                    msg['tag'] = tag
+                    break
+            
+            # Use thread pool for UI update
+            self._schedule_ui_update()
+        except Exception as e:
+            logger.error(f"Error in _flush_stream_buffer: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
 
     def _schedule_ui_update(self):
         """Schedule UI update using thread pool manager with throttling"""
-        # If we already have a pending update, just mark it as pending
-        if self._pending_ui_update:
-            return
-        
-        # Check if thread pool is overwhelmed
-        if hasattr(self, 'thread_pool_manager') and self.thread_pool_manager:
-            pool_status = self.thread_pool_manager.get_pool_status()
-            if pool_status.get('queued_tasks', 0) > 10:  # Reduced from 20 to 10
-                logger.warning("Thread pool queue is full, skipping UI update")
+        try:
+            # If we already have a pending update, just mark it as pending
+            if self._pending_ui_update:
                 return
-        
-        # Mark that we have a pending update
-        self._pending_ui_update = True
-        
-        # Start the throttle timer
-        if not self._ui_update_timer.isActive():
-            self._ui_update_timer.start()
+            
+            # Check if thread pool is overwhelmed (less aggressive check)
+            if hasattr(self, 'thread_pool_manager') and self.thread_pool_manager:
+                pool_status = self.thread_pool_manager.get_pool_status()
+                if pool_status.get('queued_tasks', 0) > 20:  # Increased from 10 to 20
+                    logger.warning("Thread pool queue is full, skipping UI update")
+                    return
+            
+            # Mark that we have a pending update
+            self._pending_ui_update = True
+            
+            # Start the throttle timer
+            if not self._ui_update_timer.isActive():
+                self._ui_update_timer.start()
+        except Exception as e:
+            logger.error(f"Error in _schedule_ui_update: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
     
     def _perform_ui_update(self):
         """Perform the actual UI update after throttling"""
-        self._pending_ui_update = False
-        
         try:
-            # Create streaming update task
-            task = StreamingUpdateTask(
-                target=self._render_chat_display_safe,
-                callback=self._on_ui_update_complete
-            )
+            self._pending_ui_update = False
             
-            # Submit to thread pool
-            task_id = self.thread_pool_manager.start_task(task)
-            self._active_streaming_tasks.add(task_id)
-            
-            logger.debug(f"[DEBUG] Scheduled UI update task: {task_id}")
-            
+            try:
+                # Create streaming update task
+                task = StreamingUpdateTask(
+                    target=self._render_chat_display_safe,
+                    callback=self._on_ui_update_complete
+                )
+                
+                # Submit to thread pool
+                task_id = self.thread_pool_manager.start_task(task)
+                self._active_streaming_tasks.add(task_id)
+                
+                logger.debug(f"[DEBUG] Scheduled UI update task: {task_id}")
+                
+            except Exception as e:
+                logger.error(f"Error scheduling UI update: {e}")
+                # Fallback to direct update
+                QTimer.singleShot(0, self._render_chat_display_safe)
         except Exception as e:
-            logger.error(f"Error scheduling UI update: {e}")
+            logger.error(f"Error in _perform_ui_update: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
             # Fallback to direct update
             QTimer.singleShot(0, self._render_chat_display_safe)
 
@@ -134,7 +151,9 @@ class StreamingHandler(QObject):
             
             # Use throttled updates for new messages to prevent overwhelming the UI
             logger.debug(f"[DEBUG] Adding new message from {sender}: '{content[:50]}...'")
-            self._render_chat_display_safe()
+            self._schedule_ui_update()
+            # Also ensure immediate update for new messages
+            QTimer.singleShot(0, self._render_chat_display_safe)
         except Exception as e:
             logger.error(f"Error in append_message: {e}")
             raise
@@ -147,13 +166,48 @@ class StreamingHandler(QObject):
                 self._ui_update_timer.stop()
             self._pending_ui_update = False
             
-            # Force immediate render without processEvents
+            # Force immediate render using thread-safe alternative
             QTimer.singleShot(0, self._render_chat_display_safe)
                 
         except Exception as e:
             logger.error(f"Error in _force_immediate_render: {e}")
             # Fallback to normal render
             QTimer.singleShot(0, self._render_chat_display_safe)
+    
+    def force_ui_update(self):
+        """Force an immediate UI update without throttling"""
+        try:
+            # Ensure we're in the main thread
+            current_thread = QApplication.instance().thread()
+            main_thread = self.chat_display.thread()
+            
+            if current_thread != main_thread:
+                # If we're not in the main thread, schedule this for the main thread
+                QTimer.singleShot(0, self.force_ui_update)
+                return
+            
+            # Cancel any pending throttled updates
+            if self._ui_update_timer.isActive():
+                self._ui_update_timer.stop()
+            self._pending_ui_update = False
+            
+            # Force immediate render
+            self._render_chat_display_safe()
+            
+            # Force process events to ensure UI updates
+            try:
+                QApplication.processEvents()
+            except Exception as e:
+                logger.debug(f"processEvents failed (non-critical): {e}")
+                
+        except Exception as e:
+            logger.error(f"Error in force_ui_update: {e}")
+            logger.error(traceback.format_exc())
+            # Fallback to normal render
+            try:
+                QTimer.singleShot(0, self._render_chat_display_safe)
+            except Exception as e2:
+                logger.error(f"Fallback render also failed: {e2}")
 
     def start_streaming_message(self, sender: str, tag: str = "ai"):
         """Append a streaming placeholder message and re-render chat display"""
@@ -169,6 +223,7 @@ class StreamingHandler(QObject):
         
         # Use throttled updates for streaming start to prevent overwhelming the UI
         self._schedule_ui_update()
+        # Also ensure immediate update for streaming start
         QTimer.singleShot(0, self._render_chat_display_safe)
 
     def edit_message(self, message_index: int, new_content: str):
@@ -286,6 +341,7 @@ class StreamingHandler(QObject):
                                 """
                                 self.chat_display.insertHtml(thoughts_html)
                                 self.chat_display.insertHtml("<br>")
+                                # Now render the main answer as the AI bubble
                                 content = main_answer
                         formatted_content = MessageFormatter.detect_and_format_code(content)
                         formatted_content = MessageFormatter.format_markdown(formatted_content)
@@ -394,9 +450,14 @@ class StreamingHandler(QObject):
                     msg['tag'] = tag
                     break
             
-            # Use throttled updates for streaming messages to prevent excessive UI updates
-            self._schedule_ui_update()
-            QTimer.singleShot(0, self._render_chat_display_safe)
+            # Force immediate update for streaming messages to prevent empty thought bubbles
+            self._force_immediate_render()
+            
+            # Also force process events to ensure UI updates immediately
+            try:
+                QApplication.processEvents()
+            except Exception as e:
+                logger.debug(f"processEvents failed (non-critical): {e}")
             
         except Exception as e:
             logger.error(f"Error updating streaming message: {e}")
@@ -414,6 +475,7 @@ class StreamingHandler(QObject):
             
             # Use throttled updates for finalization to prevent overwhelming the UI
             self._schedule_ui_update()
+            # Also ensure immediate update for finalization
             QTimer.singleShot(0, self._render_chat_display_safe)
             
         except Exception as e:

@@ -2,10 +2,10 @@
 Threading Service - Integrates QThread/QRunnable architecture with existing chat system.
 
 This service provides:
-- Backward compatibility with existing Worker class
 - Integration of new QThread and QRunnable components
 - Unified interface for all threading operations
-- Migration path from old to new architecture
+- Modern threading architecture without legacy patterns
+- Persistent thread pool integration for better resource management
 """
 
 from PySide6.QtCore import QObject, Signal, QThread, Qt
@@ -19,6 +19,7 @@ from .qthread_workers import ChatStreamingWorker, AudioStreamingWorker, Monitori
 from .qrunnable_tasks import MessageProcessingTask, FileProcessingTask, DataProcessingTask
 from .thread_pool_manager import get_global_thread_pool_manager
 from .thread_monitor import get_global_thread_monitor
+from .persistent_thread_pool import get_global_persistent_thread_pool
 
 logger = CustomLogger.get_logger(__name__)
 
@@ -29,510 +30,489 @@ class ThreadingService(QObject):
     
     This service provides:
     - Unified interface for QThread and QRunnable operations
-    - Backward compatibility with existing Worker class
     - Integration with existing event system
     - Monitoring and debugging capabilities
+    - Persistent thread pool integration
     """
     
-    # Signals for backward compatibility
-    worker_chunk_received = Signal(str)  # For streaming chunks
-    worker_progress_updated = Signal(str)  # For progress updates
-    worker_finished = Signal()  # For completion
-    worker_error = Signal(str)  # For errors
+    # Signals for streaming operations
+    chunk_received = Signal(str)  # For streaming chunks
+    progress_updated = Signal(str)  # For progress updates
+    finished = Signal()  # For completion
+    error = Signal(str)  # For errors
     
     def __init__(self, parent=None):
-        super().__init__(parent)
-        
-        # Initialize threading managers
-        self.thread_pool_manager = get_global_thread_pool_manager()
-        self.thread_monitor = get_global_thread_monitor()
-        
-        # QThread workers for long-running tasks
-        self.chat_streaming_worker = None
-        self.chat_streaming_thread = None
-        self.audio_streaming_worker = None
-        self.audio_streaming_thread = None
-        self.monitoring_worker = None
-        self.monitoring_thread = None
-        
-        # QRunnable tasks tracking
-        self.active_tasks = {}
-        
-        # Backward compatibility
-        self.legacy_worker = None
-        self.legacy_thread = None
-        
-        logger.debug("[ID:TS001] ThreadingService initialized")
-    
-    def start_chat_streaming(self, messages: List[Dict], model: str, temperature: float,
-                            ollama_url: str, max_tokens: int, top_p: float,
-                            frequency_penalty: float, presence_penalty: float) -> bool:
-        """
-        Start chat streaming using QThread (long-running, persistent task).
-        
-        Args:
-            messages: List of conversation messages
-            model: Model name to use
-            temperature: Temperature setting
-            ollama_url: Ollama server URL
-            max_tokens: Maximum tokens to generate
-            top_p: Top-p sampling parameter
-            frequency_penalty: Frequency penalty parameter
-            presence_penalty: Presence penalty parameter
+        try:
+            super().__init__(parent)
             
-        Returns:
-            bool: True if streaming started successfully
+            # Initialize threading managers
+            self.thread_pool_manager = get_global_thread_pool_manager()
+            self.thread_monitor = get_global_thread_monitor()
+            self.persistent_thread_pool = get_global_persistent_thread_pool()
+            
+            # Initialize persistent thread pools
+            self._initialize_persistent_pools()
+            
+            # Current active threads from persistent pool
+            self.current_chat_thread = None
+            self.current_audio_thread = None
+            self.current_monitoring_thread = None
+            self.current_voice_thread = None
+            
+            # QRunnable tasks tracking
+            self.active_tasks = {}
+            
+            logger.debug("[ID:TS001] ThreadingService initialized with persistent thread pools")
+        except Exception as e:
+            logger.error(f"[ID:TS001E] Exception in __init__: {e}")
+            logger.error(traceback.format_exc())
+    
+    def _initialize_persistent_pools(self):
+        """Initialize persistent thread pools for different operations."""
+        try:
+            logger.debug("[ID:TS002] Initializing persistent thread pools")
+            
+            # Initialize chat streaming pool
+            self.persistent_thread_pool.initialize_pool(
+                'chat_streaming',
+                ChatStreamingWorker,
+                size=2,
+                max_wait_time=30.0,
+                idle_timeout=300.0
+            )
+            
+            # Initialize audio streaming pool
+            self.persistent_thread_pool.initialize_pool(
+                'audio_streaming',
+                AudioStreamingWorker,
+                size=1,
+                max_wait_time=10.0,
+                idle_timeout=180.0
+            )
+            
+            # Initialize monitoring pool
+            self.persistent_thread_pool.initialize_pool(
+                'monitoring',
+                MonitoringWorker,
+                size=1,
+                max_wait_time=5.0,
+                idle_timeout=600.0
+            )
+            
+            # Initialize voice processing pool for voice service operations
+            self.persistent_thread_pool.initialize_pool(
+                'voice_processing',
+                AudioStreamingWorker,  # Reuse audio streaming worker for voice processing
+                size=1,
+                max_wait_time=15.0,
+                idle_timeout=240.0
+            )
+            
+            logger.debug("[ID:TS003] Persistent thread pools initialized successfully")
+            
+        except Exception as e:
+            logger.error(f"[ID:TS004] Error initializing persistent pools: {e}")
+            logger.error(traceback.format_exc())
+    
+    def start_chat_streaming(self, context_messages: List[Dict], model: str, temperature: float, config_manager) -> bool:
+        """
+        Start chat streaming using persistent thread pool.
+        
+        This method:
+        - Gets a thread from the persistent pool
+        - Configures the worker for streaming
+        - Starts the streaming operation
+        - Returns the thread to pool when done
         """
         try:
-            logger.debug(f"[ID:TS002] Starting chat streaming for model: {model}")
+            logger.debug(f"[ID:TS005] Starting chat streaming for model: {model}")
             
-            # Clean up any existing streaming
+            # Stop any existing chat streaming
             self.stop_chat_streaming()
             
-            # Create QThread worker for streaming
-            self.chat_streaming_worker = ChatStreamingWorker()
-            self.chat_streaming_thread = QThread()
-            self.chat_streaming_thread.setObjectName(f"ChatStreamingThread_{id(self.chat_streaming_thread)}")
+            # Get thread from persistent pool
+            thread = self.persistent_thread_pool.get_thread('chat_streaming', timeout=30.0)
+            if not thread:
+                logger.error("[ID:TS006] Failed to get chat streaming thread from pool")
+                return False
             
-            # Register thread for monitoring
-            self.thread_monitor.register_thread(
-                self.chat_streaming_thread, 
-                thread_type="chat_streaming",
-                metadata={'model': model, 'temperature': temperature}
+            self.current_chat_thread = thread
+            worker = thread.worker
+            
+            # Configure worker for streaming
+            worker.configure_streaming(
+                context_messages=context_messages,
+                model=model,
+                temperature=temperature,
+                config_manager=config_manager
             )
-            
-            # Move worker to thread
-            self.chat_streaming_worker.moveToThread(self.chat_streaming_thread)
             
             # Connect signals with QueuedConnection for thread safety
-            self.chat_streaming_worker.chunk_received.connect(
+            worker.chunk_received.connect(
                 self._on_chat_chunk_received, Qt.ConnectionType.QueuedConnection
             )
-            self.chat_streaming_worker.progress_updated.connect(
+            worker.progress_updated.connect(
                 self._on_chat_progress_updated, Qt.ConnectionType.QueuedConnection
             )
-            self.chat_streaming_worker.finished.connect(
+            worker.finished.connect(
                 self._on_chat_streaming_finished, Qt.ConnectionType.QueuedConnection
             )
-            self.chat_streaming_worker.error.connect(
+            worker.error.connect(
                 self._on_chat_streaming_error, Qt.ConnectionType.QueuedConnection
             )
             
-            # Connect thread signals
-            self.chat_streaming_thread.started.connect(
-                lambda: self.chat_streaming_worker.start_streaming(
-                    messages=messages,
-                    model=model,
-                    temperature=temperature,
-                    ollama_url=ollama_url,
-                    max_tokens=max_tokens,
-                    top_p=top_p,
-                    frequency_penalty=frequency_penalty,
-                    presence_penalty=presence_penalty
-                )
-            )
+            # Start streaming
+            worker.start_streaming()
             
-            self.chat_streaming_thread.finished.connect(
-                lambda: self.thread_monitor.unregister_thread(self.chat_streaming_thread.objectName())
-            )
-            
-            # Start the thread
-            self.chat_streaming_thread.start()
-            
-            logger.debug(f"[ID:TS003] Chat streaming thread started: {self.chat_streaming_thread.objectName()}")
+            logger.debug(f"[ID:TS007] Chat streaming started with thread: {thread.objectName()}")
             return True
             
         except Exception as e:
-            logger.error(f"[ID:TS004] Error starting chat streaming: {e}")
-            logger.error(f"[ID:TS005] Chat streaming error traceback: {traceback.format_exc()}")
+            logger.error(f"[ID:TS008] Error starting chat streaming: {e}")
+            logger.error(traceback.format_exc())
             return False
     
     def stop_chat_streaming(self):
-        """Stop chat streaming safely."""
+        """Stop chat streaming and return thread to pool."""
         try:
-            if self.chat_streaming_worker and self.chat_streaming_worker.is_running():
-                logger.debug("[ID:TS006] Stopping chat streaming")
-                self.chat_streaming_worker.stop()
-            
-            if self.chat_streaming_thread and self.chat_streaming_thread.isRunning():
-                self.chat_streaming_thread.quit()
-                if not self.chat_streaming_thread.wait(5000):  # 5 second timeout
-                    logger.warning("[ID:TS007] Chat streaming thread did not quit within timeout")
-                    self.chat_streaming_thread.terminate()
-                    self.chat_streaming_thread.wait(2000)
+            if self.current_chat_thread and self.current_chat_thread.worker:
+                logger.debug("[ID:TS009] Stopping chat streaming")
                 
-                self.chat_streaming_thread.deleteLater()
-                self.chat_streaming_thread = None
-                self.chat_streaming_worker = None
+                # Stop the worker
+                self.current_chat_thread.worker.stop()
                 
-                logger.debug("[ID:TS008] Chat streaming stopped")
-            
-        except Exception as e:
-            logger.error(f"[ID:TS009] Error stopping chat streaming: {e}")
-    
-    def process_message_spell_check(self, message: str) -> str:
-        """
-        Process message spell check using QRunnable (short-lived, fire-and-forget task).
-        
-        Args:
-            message: Message to spell check
-            
-        Returns:
-            str: Task ID for tracking
-        """
-        try:
-            logger.debug(f"[ID:TS010] Processing message spell check: {message[:50]}...")
-            
-            # Create QRunnable task for spell checking
-            spell_check_task = MessageProcessingTask(
-                message=message,
-                task_type="spell_check"
-            )
-            spell_check_task.result_ready.connect(self.on_message_processed)
-            spell_check_task.error_occurred.connect(self.on_message_processing_error)
-            
-            # Start task using thread pool manager
-            task_id = self.thread_pool_manager.start_task(spell_check_task)
-            self.active_tasks[task_id] = {
-                'type': 'spell_check',
-                'message': message,
-                'start_time': time.time()
-            }
-            
-            logger.debug(f"[ID:TS011] Spell check task started: {task_id}")
-            return task_id
-            
-        except Exception as e:
-            logger.error(f"[ID:TS012] Error starting spell check task: {e}")
-            return ""
-    
-    def process_message_formatting(self, message: str) -> str:
-        """
-        Process message formatting using QRunnable.
-        
-        Args:
-            message: Message to format
-            
-        Returns:
-            str: Task ID for tracking
-        """
-        try:
-            logger.debug(f"[ID:TS013] Processing message formatting: {message[:50]}...")
-            
-            # Create QRunnable task for formatting
-            formatting_task = MessageProcessingTask(
-                message=message,
-                task_type="formatting"
-            )
-            formatting_task.result_ready.connect(self.on_message_processed)
-            formatting_task.error_occurred.connect(self.on_message_processing_error)
-            
-            # Start task using thread pool manager
-            task_id = self.thread_pool_manager.start_task(formatting_task)
-            self.active_tasks[task_id] = {
-                'type': 'formatting',
-                'message': message,
-                'start_time': time.time()
-            }
-            
-            logger.debug(f"[ID:TS014] Formatting task started: {task_id}")
-            return task_id
-            
-        except Exception as e:
-            logger.error(f"[ID:TS015] Error starting formatting task: {e}")
-            return ""
-    
-    def process_file_operation(self, file_path: str, operation: str, **kwargs) -> str:
-        """
-        Process file operation using QRunnable.
-        
-        Args:
-            file_path: Path to the file
-            operation: Operation to perform (read, write, process)
-            **kwargs: Additional arguments for the operation
-            
-        Returns:
-            str: Task ID for tracking
-        """
-        try:
-            logger.debug(f"[ID:TS016] Processing file operation: {operation} on {file_path}")
-            
-            # Create QRunnable task for file operation
-            file_task = FileProcessingTask(
-                file_path=file_path,
-                operation=operation,
-                **kwargs
-            )
-            file_task.result_ready.connect(self.on_file_processed)
-            file_task.error_occurred.connect(self.on_file_processing_error)
-            
-            # Start task using thread pool manager
-            task_id = self.thread_pool_manager.start_task(file_task)
-            self.active_tasks[task_id] = {
-                'type': 'file_operation',
-                'file_path': file_path,
-                'operation': operation,
-                'start_time': time.time()
-            }
-            
-            logger.debug(f"[ID:TS017] File operation task started: {task_id}")
-            return task_id
-            
-        except Exception as e:
-            logger.error(f"[ID:TS018] Error starting file operation task: {e}")
-            return ""
-    
-    # Backward compatibility methods
-    
-    def create_legacy_worker(self, context_messages, chosen_model, temperature):
-        """
-        Create legacy worker for backward compatibility.
-        
-        This method provides the same interface as the old Worker class
-        but uses the new QThread architecture internally.
-        """
-        try:
-            logger.debug(f"[ID:TS019] Creating legacy worker for model: {chosen_model}")
-            
-            # Clean up any existing legacy worker
-            self.cleanup_legacy_worker()
-            
-            # Create QThread worker for streaming
-            self.legacy_worker = ChatStreamingWorker()
-            self.legacy_thread = QThread()
-            self.legacy_thread.setObjectName(f"LegacyWorkerThread_{id(self.legacy_thread)}")
-            
-            # Register thread for monitoring
-            self.thread_monitor.register_thread(
-                self.legacy_thread, 
-                thread_type="legacy_worker",
-                metadata={'model': chosen_model, 'temperature': temperature}
-            )
-            
-            # Move worker to thread
-            self.legacy_worker.moveToThread(self.legacy_thread)
-            
-            # Connect signals for backward compatibility
-            self.legacy_worker.chunk_received.connect(
-                self.worker_chunk_received, Qt.ConnectionType.QueuedConnection
-            )
-            self.legacy_worker.progress_updated.connect(
-                self.worker_progress_updated, Qt.ConnectionType.QueuedConnection
-            )
-            self.legacy_worker.finished.connect(
-                self.worker_finished, Qt.ConnectionType.QueuedConnection
-            )
-            self.legacy_worker.error.connect(
-                self.worker_error, Qt.ConnectionType.QueuedConnection
-            )
-            
-            # Connect thread signals
-            config_manager = self.service_manager.config_manager if hasattr(self, 'service_manager') else None
-            if config_manager:
-                self.legacy_thread.started.connect(
-                    lambda: self._start_legacy_worker_stream(context_messages, chosen_model, temperature, config_manager)
-                )
-            
-            self.legacy_thread.finished.connect(self._on_legacy_worker_thread_finished)
-            
-            # Start the thread
-            self.legacy_thread.start()
-            
-            logger.debug(f"[ID:TS020] Legacy worker thread started: {self.legacy_thread.objectName()}")
-            
-        except Exception as e:
-            logger.error(f"[ID:TS021] Error creating legacy worker: {e}")
-            logger.error(f"[ID:TS022] Legacy worker creation traceback: {traceback.format_exc()}")
-    
-    def _start_legacy_worker_stream(self, context_messages, chosen_model, temperature, config_manager):
-        """Start the legacy worker stream."""
-        try:
-            logger.debug(f"[ID:TS023] Starting legacy worker stream")
-            
-            if self.legacy_worker:
-                self.legacy_worker.start_streaming(
-                    messages=context_messages,
-                    model=chosen_model,
-                    temperature=temperature,
-                    ollama_url=config_manager.get_ollama_url(),
-                    max_tokens=config_manager.get_max_tokens(),
-                    top_p=config_manager.get_top_p(),
-                    frequency_penalty=config_manager.get_frequency_penalty(),
-                    presence_penalty=config_manager.get_presence_penalty()
-                )
-            
-        except Exception as e:
-            logger.error(f"[ID:TS024] Error starting legacy worker stream: {e}")
-    
-    def cleanup_legacy_worker(self):
-        """Clean up legacy worker safely."""
-        try:
-            if self.legacy_worker and self.legacy_worker.is_running():
-                logger.debug("[ID:TS025] Stopping legacy worker")
-                self.legacy_worker.stop()
-            
-            if self.legacy_thread and self.legacy_thread.isRunning():
-                self.legacy_thread.quit()
-                if not self.legacy_thread.wait(5000):  # 5 second timeout
-                    logger.warning("[ID:TS026] Legacy worker thread did not quit within timeout")
-                    self.legacy_thread.terminate()
-                    self.legacy_thread.wait(2000)
+                # Wait for completion with timeout
+                timeout = 5.0
+                start_time = time.time()
+                while self.current_chat_thread.worker.is_running() and (time.time() - start_time) < timeout:
+                    time.sleep(0.1)
                 
-                self.legacy_thread.deleteLater()
-                self.legacy_thread = None
-                self.legacy_worker = None
+                # Return thread to pool
+                self.persistent_thread_pool.return_thread(self.current_chat_thread)
+                self.current_chat_thread = None
                 
-                logger.debug("[ID:TS027] Legacy worker stopped")
-            
-        except Exception as e:
-            logger.error(f"[ID:TS028] Error cleaning up legacy worker: {e}")
-    
-    def _on_legacy_worker_thread_finished(self):
-        """Handle legacy worker thread finished."""
-        try:
-            logger.debug("[ID:TS029] Legacy worker thread finished")
-            
-            # Clean up thread reference
-            if self.legacy_thread:
-                try:
-                    self.thread_monitor.unregister_thread(self.legacy_thread.objectName())
-                    self.legacy_thread.deleteLater()
-                    logger.debug("[ID:TS030] Legacy worker thread marked for deletion")
-                except Exception as e:
-                    logger.error(f"[ID:TS031] Error deleting legacy worker thread: {e}")
-                finally:
-                    self.legacy_thread = None
-                    self.legacy_worker = None
-            else:
-                logger.debug("[ID:TS032] No legacy worker thread to clean up")
+                logger.debug("[ID:TS010] Chat streaming stopped and thread returned to pool")
                 
         except Exception as e:
-            logger.error(f"[ID:TS033] Error handling legacy worker thread finished: {e}")
+            logger.error(f"[ID:TS011] Error stopping chat streaming: {e}")
+            logger.error(traceback.format_exc())
     
-    # Signal handlers for QThread workers
+    def start_audio_streaming(self, audio_source: str, sample_rate: int = 16000, 
+                            chunk_size: int = 1024) -> bool:
+        """Start audio streaming using persistent thread pool."""
+        try:
+            logger.debug(f"[ID:TS012] Starting audio streaming from: {audio_source}")
+            
+            # Stop any existing audio streaming
+            self.stop_audio_streaming()
+            
+            # Get thread from persistent pool
+            thread = self.persistent_thread_pool.get_thread('audio_streaming', timeout=10.0)
+            if not thread:
+                logger.error("[ID:TS013] Failed to get audio streaming thread from pool")
+                return False
+            
+            self.current_audio_thread = thread
+            worker = thread.worker
+            
+            # Configure worker for audio streaming
+            worker.configure_audio_streaming(
+                audio_source=audio_source,
+                sample_rate=sample_rate,
+                chunk_size=chunk_size
+            )
+            
+            # Connect signals
+            worker.chunk_received.connect(
+                self._on_audio_chunk_received, Qt.ConnectionType.QueuedConnection
+            )
+            worker.finished.connect(
+                self._on_audio_streaming_finished, Qt.ConnectionType.QueuedConnection
+            )
+            worker.error.connect(
+                self._on_audio_streaming_error, Qt.ConnectionType.QueuedConnection
+            )
+            
+            # Start streaming
+            worker.start_audio_streaming()
+            
+            logger.debug(f"[ID:TS014] Audio streaming started with thread: {thread.objectName()}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"[ID:TS015] Error starting audio streaming: {e}")
+            logger.error(traceback.format_exc())
+            return False
     
+    def stop_audio_streaming(self):
+        """Stop audio streaming and return thread to pool."""
+        try:
+            if self.current_audio_thread and self.current_audio_thread.worker:
+                logger.debug("[ID:TS016] Stopping audio streaming")
+                
+                # Stop the worker
+                self.current_audio_thread.worker.stop()
+                
+                # Return thread to pool
+                self.persistent_thread_pool.return_thread(self.current_audio_thread)
+                self.current_audio_thread = None
+                
+                logger.debug("[ID:TS017] Audio streaming stopped and thread returned to pool")
+                
+        except Exception as e:
+            logger.error(f"[ID:TS018] Error stopping audio streaming: {e}")
+            logger.error(traceback.format_exc())
+    
+    def start_monitoring(self, monitor_interval: float = 1.0, alert_threshold: float = 0.8) -> bool:
+        """Start system monitoring using persistent thread pool."""
+        try:
+            logger.debug(f"[ID:TS019] Starting system monitoring (interval: {monitor_interval}s)")
+            
+            # Stop any existing monitoring
+            self.stop_monitoring()
+            
+            # Get thread from persistent pool
+            thread = self.persistent_thread_pool.get_thread('monitoring', timeout=5.0)
+            if not thread:
+                logger.error("[ID:TS020] Failed to get monitoring thread from pool")
+                return False
+            
+            self.current_monitoring_thread = thread
+            worker = thread.worker
+            
+            # Configure worker for monitoring
+            worker.configure_monitoring(
+                monitor_interval=monitor_interval,
+                alert_threshold=alert_threshold
+            )
+            
+            # Connect signals
+            worker.resource_updated.connect(
+                self._on_resource_updated, Qt.ConnectionType.QueuedConnection
+            )
+            worker.alert_triggered.connect(
+                self._on_alert_triggered, Qt.ConnectionType.QueuedConnection
+            )
+            worker.finished.connect(
+                self._on_monitoring_finished, Qt.ConnectionType.QueuedConnection
+            )
+            worker.error.connect(
+                self._on_monitoring_error, Qt.ConnectionType.QueuedConnection
+            )
+            
+            # Start monitoring
+            worker.start_monitoring()
+            
+            logger.debug(f"[ID:TS021] Monitoring started with thread: {thread.objectName()}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"[ID:TS022] Error starting monitoring: {e}")
+            logger.error(traceback.format_exc())
+            return False
+    
+    def stop_monitoring(self):
+        """Stop monitoring and return thread to pool."""
+        try:
+            if self.current_monitoring_thread and self.current_monitoring_thread.worker:
+                logger.debug("[ID:TS023] Stopping monitoring")
+                
+                # Stop the worker
+                self.current_monitoring_thread.worker.stop()
+                
+                # Return thread to pool
+                self.persistent_thread_pool.return_thread(self.current_monitoring_thread)
+                self.current_monitoring_thread = None
+                
+                logger.debug("[ID:TS024] Monitoring stopped and thread returned to pool")
+                
+        except Exception as e:
+            logger.error(f"[ID:TS025] Error stopping monitoring: {e}")
+            logger.error(traceback.format_exc())
+    
+    # Signal handlers for persistent threads
     def _on_chat_chunk_received(self, chunk: str):
-        """Handle chat chunk received from streaming worker."""
+        """Handle chat chunk received from persistent thread."""
         try:
-            logger.debug(f"[ID:TS034] Received chat chunk: {chunk[:50]}...")
-            logger.debug(f"[ID:TS034A] Chunk length: {len(chunk)}")
-            # Emit signal for backward compatibility
-            self.worker_chunk_received.emit(chunk)
-            logger.debug(f"[ID:TS034B] Emitted worker_chunk_received signal")
-            
+            self.chunk_received.emit(chunk)
         except Exception as e:
-            logger.error(f"[ID:TS035] Error handling chat chunk: {e}")
+            logger.error(f"[ID:TS026] Error handling chat chunk: {e}")
     
     def _on_chat_progress_updated(self, progress: str):
-        """Handle chat progress update from streaming worker."""
+        """Handle chat progress update from persistent thread."""
         try:
-            logger.debug(f"[ID:TS036] Chat progress: {progress}")
-            # Emit signal for backward compatibility
-            self.worker_progress_updated.emit(progress)
-            logger.debug(f"[ID:TS036A] Emitted worker_progress_updated signal")
-            
+            self.progress_updated.emit(progress)
         except Exception as e:
-            logger.error(f"[ID:TS037] Error handling chat progress: {e}")
+            logger.error(f"[ID:TS027] Error handling chat progress: {e}")
     
     def _on_chat_streaming_finished(self):
-        """Handle chat streaming finished."""
+        """Handle chat streaming finished from persistent thread."""
         try:
-            logger.debug("[ID:TS038] Chat streaming finished")
-            # Emit signal for backward compatibility
-            self.worker_finished.emit()
-            logger.debug(f"[ID:TS038A] Emitted worker_finished signal")
+            logger.debug("[ID:TS028] Chat streaming finished")
+            self.finished.emit()
+            
+            # Return thread to pool
+            if self.current_chat_thread:
+                self.persistent_thread_pool.return_thread(self.current_chat_thread)
+                self.current_chat_thread = None
             
         except Exception as e:
-            logger.error(f"[ID:TS039] Error handling chat streaming finished: {e}")
+            logger.error(f"[ID:TS029] Error handling chat streaming finished: {e}")
     
-    def _on_chat_streaming_error(self, error: str):
-        """Handle chat streaming error."""
+    def _on_chat_streaming_error(self, error_message: str):
+        """Handle chat streaming error from persistent thread."""
         try:
-            logger.error(f"[ID:TS040] Chat streaming error: {error}")
-            # Emit signal for backward compatibility
-            self.worker_error.emit(error)
-            logger.debug(f"[ID:TS040A] Emitted worker_error signal")
+            logger.error(f"[ID:TS030] Chat streaming error: {error_message}")
+            self.error.emit(error_message)
+            
+            # Return thread to pool even on error
+            if self.current_chat_thread:
+                self.persistent_thread_pool.return_thread(self.current_chat_thread)
+                self.current_chat_thread = None
             
         except Exception as e:
-            logger.error(f"[ID:TS041] Error handling chat streaming error: {e}")
+            logger.error(f"[ID:TS031] Error handling chat streaming error: {e}")
     
-    # Callback methods for QRunnable tasks (invoked via QMetaObject.invokeMethod)
-    
-    def on_message_processed(self, task_type: str, result: Dict[str, Any]):
-        """Handle message processing completion."""
+    def _on_audio_chunk_received(self, chunk: str):
+        """Handle audio chunk received from persistent thread."""
         try:
-            logger.debug(f"[ID:TS042] Message processing completed: {task_type}")
+            # Handle audio chunk (could emit different signal)
+            pass
+        except Exception as e:
+            logger.error(f"[ID:TS032] Error handling audio chunk: {e}")
+    
+    def _on_audio_streaming_finished(self):
+        """Handle audio streaming finished from persistent thread."""
+        try:
+            logger.debug("[ID:TS033] Audio streaming finished")
             
-            if task_type == "spell_check":
-                if result.get('has_corrections', False):
-                    logger.info(f"[ID:TS043] Spell check found corrections: {result['corrections']}")
-                else:
-                    logger.debug("[ID:TS044] Spell check completed - no corrections needed")
-                    
-            elif task_type == "formatting":
-                if result.get('changes_made', False):
-                    logger.info(f"[ID:TS045] Formatting applied: {result['formatted']}")
-                else:
-                    logger.debug("[ID:TS046] Formatting completed - no changes needed")
-            
-            # Handle the result (e.g., update UI, apply corrections)
-            # This can be overridden by subclasses or connected to signals
+            # Return thread to pool
+            if self.current_audio_thread:
+                self.persistent_thread_pool.return_thread(self.current_audio_thread)
+                self.current_audio_thread = None
             
         except Exception as e:
-            logger.error(f"[ID:TS047] Error handling message processing result: {e}")
+            logger.error(f"[ID:TS034] Error handling audio streaming finished: {e}")
     
-    def on_message_processing_error(self, task_type: str, error_message: str):
-        """Handle message processing error."""
+    def _on_audio_streaming_error(self, error_message: str):
+        """Handle audio streaming error from persistent thread."""
         try:
-            logger.error(f"[ID:TS048] Message processing error ({task_type}): {error_message}")
-            # Handle the error (e.g., show error message to user)
-            # This can be overridden by subclasses or connected to signals
+            logger.error(f"[ID:TS035] Audio streaming error: {error_message}")
+            
+            # Return thread to pool even on error
+            if self.current_audio_thread:
+                self.persistent_thread_pool.return_thread(self.current_audio_thread)
+                self.current_audio_thread = None
             
         except Exception as e:
-            logger.error(f"[ID:TS049] Error handling message processing error: {e}")
+            logger.error(f"[ID:TS036] Error handling audio streaming error: {e}")
     
-    def on_file_processed(self, operation: str, file_path: str, result: Dict[str, Any]):
-        """Handle file processing completion."""
+    def _on_resource_updated(self, resource_data: Dict[str, Any]):
+        """Handle resource update from monitoring thread."""
         try:
-            logger.debug(f"[ID:TS050] File processing completed: {operation} on {file_path}")
+            # Handle resource update
+            pass
+        except Exception as e:
+            logger.error(f"[ID:TS037] Error handling resource update: {e}")
+    
+    def _on_alert_triggered(self, alert_message: str):
+        """Handle alert from monitoring thread."""
+        try:
+            logger.warning(f"[ID:TS038] System alert: {alert_message}")
+        except Exception as e:
+            logger.error(f"[ID:TS039] Error handling alert: {e}")
+    
+    def _on_monitoring_finished(self):
+        """Handle monitoring finished from persistent thread."""
+        try:
+            logger.debug("[ID:TS040] Monitoring finished")
             
-            if 'error' in result:
-                logger.error(f"[ID:TS051] File processing error: {result['error']}")
-            else:
-                logger.info(f"[ID:TS052] File processing successful: {result}")
-            
-            # Handle the result (e.g., update UI, load file content)
-            # This can be overridden by subclasses or connected to signals
+            # Return thread to pool
+            if self.current_monitoring_thread:
+                self.persistent_thread_pool.return_thread(self.current_monitoring_thread)
+                self.current_monitoring_thread = None
             
         except Exception as e:
-            logger.error(f"[ID:TS053] Error handling file processing result: {e}")
+            logger.error(f"[ID:TS041] Error handling monitoring finished: {e}")
     
-    def on_file_processing_error(self, operation: str, file_path: str, error_message: str):
-        """Handle file processing error."""
+    def _on_monitoring_error(self, error_message: str):
+        """Handle monitoring error from persistent thread."""
         try:
-            logger.error(f"[ID:TS054] File processing error ({operation} on {file_path}): {error_message}")
-            # Handle the error (e.g., show error message to user)
-            # This can be overridden by subclasses or connected to signals
+            logger.error(f"[ID:TS042] Monitoring error: {error_message}")
+            
+            # Return thread to pool even on error
+            if self.current_monitoring_thread:
+                self.persistent_thread_pool.return_thread(self.current_monitoring_thread)
+                self.current_monitoring_thread = None
             
         except Exception as e:
-            logger.error(f"[ID:TS055] Error handling file processing error: {e}")
+            logger.error(f"[ID:TS043] Error handling monitoring error: {e}")
+    
+    # QRunnable task methods (unchanged)
+    def process_message(self, message: str, operation: str = "spell_check", 
+                      callback: Optional[Callable] = None) -> str:
+        """Process message using QRunnable."""
+        try:
+            logger.debug(f"[ID:TS044] Processing message with operation: {operation}")
+            task = MessageProcessingTask(message, operation, callback)
+            task_id = self.thread_pool_manager.start_task(task)
+            self.active_tasks[task_id] = task
+            return task_id
+            
+        except Exception as e:
+            logger.error(f"[ID:TS045] Error processing message: {e}")
+            logger.error(traceback.format_exc())
+            return ""
+    
+    def process_file(self, file_path: str, operation: str = "read", 
+                    callback: Optional[Callable] = None) -> str:
+        """Process file operation using QRunnable."""
+        try:
+            logger.debug(f"[ID:TS046] Processing file with operation: {operation}")
+            task = FileProcessingTask(file_path, operation, callback)
+            task_id = self.thread_pool_manager.start_task(task)
+            self.active_tasks[task_id] = task
+            return task_id
+            
+        except Exception as e:
+            logger.error(f"[ID:TS047] Error processing file: {e}")
+            logger.error(traceback.format_exc())
+            return ""
+    
+    def process_data(self, data: Any, operation: str = "calculate", 
+                    callback: Optional[Callable] = None) -> str:
+        """Process data using QRunnable."""
+        try:
+            logger.debug(f"[ID:TS048] Processing data with operation: {operation}")
+            task = DataProcessingTask(data, operation, callback)
+            task_id = self.thread_pool_manager.start_task(task)
+            self.active_tasks[task_id] = task
+            return task_id
+            
+        except Exception as e:
+            logger.error(f"[ID:TS049] Error processing data: {e}")
+            logger.error(traceback.format_exc())
+            return ""
     
     def get_threading_status(self) -> Dict[str, Any]:
         """Get current threading status and statistics."""
         try:
             return {
-                'qthread_workers': {
+                'persistent_threads': {
                     'chat_streaming': {
-                        'active': self.chat_streaming_worker is not None,
-                        'running': self.chat_streaming_worker.is_running() if self.chat_streaming_worker else False,
-                        'thread_name': self.chat_streaming_thread.objectName() if self.chat_streaming_thread else None
+                        'active': self.current_chat_thread is not None,
+                        'thread_name': self.current_chat_thread.objectName() if self.current_chat_thread else None
                     },
-                    'legacy_worker': {
-                        'active': self.legacy_worker is not None,
-                        'running': self.legacy_worker.is_running() if self.legacy_worker else False,
-                        'thread_name': self.legacy_thread.objectName() if self.legacy_thread else None
+                    'audio_streaming': {
+                        'active': self.current_audio_thread is not None,
+                        'thread_name': self.current_audio_thread.objectName() if self.current_audio_thread else None
+                    },
+                    'monitoring': {
+                        'active': self.current_monitoring_thread is not None,
+                        'thread_name': self.current_monitoring_thread.objectName() if self.current_monitoring_thread else None
                     }
                 },
+                'persistent_pool_status': self.persistent_thread_pool.get_pool_status(),
                 'qrunnable_tasks': {
                     'active_tasks': len(self.active_tasks),
                     'pool_status': self.thread_pool_manager.get_pool_status()
@@ -544,28 +524,36 @@ class ThreadingService(QObject):
             }
             
         except Exception as e:
-            logger.error(f"[ID:TS056] Error getting threading status: {e}")
+            logger.error(f"[ID:TS050] Error getting threading status: {e}")
+            logger.error(traceback.format_exc())
             return {}
     
     def cleanup(self):
         """Clean up all threading resources."""
         try:
-            logger.debug("[ID:TS057] Cleaning up ThreadingService")
+            logger.debug("[ID:TS051] Cleaning up ThreadingService")
             
-            # Stop QThread workers
+            # Stop all persistent threads
             self.stop_chat_streaming()
-            self.cleanup_legacy_worker()
+            self.stop_audio_streaming()
+            self.stop_monitoring()
             
             # Wait for QRunnable tasks to complete
-            self.thread_pool_manager.wait_for_all_tasks(timeout=10.0)
+            if self.active_tasks:
+                logger.debug("[ID:TS052] Waiting for QRunnable tasks to complete")
+                timeout = 10.0
+                start_time = time.time()
+                while self.active_tasks and (time.time() - start_time) < timeout:
+                    time.sleep(0.1)
+                
+                if self.active_tasks:
+                    logger.warning("[ID:TS053] Some QRunnable tasks did not complete within timeout")
             
-            # Clean up active tasks
-            self.active_tasks.clear()
-            
-            logger.debug("[ID:TS058] ThreadingService cleanup complete")
+            logger.debug("[ID:TS054] ThreadingService cleanup complete")
             
         except Exception as e:
-            logger.error(f"[ID:TS059] Error during ThreadingService cleanup: {e}")
+            logger.error(f"[ID:TS055] Error during ThreadingService cleanup: {e}")
+            logger.error(traceback.format_exc())
 
 
 # Global threading service instance
@@ -573,17 +561,12 @@ _global_threading_service: Optional[ThreadingService] = None
 
 
 def get_global_threading_service() -> ThreadingService:
-    """
-    Get the global threading service instance.
-    
-    Returns:
-        ThreadingService: Global threading service
-    """
+    """Get the global threading service instance."""
     global _global_threading_service
     
     if _global_threading_service is None:
         _global_threading_service = ThreadingService()
-        logger.debug("[ID:TS060] Created global ThreadingService")
+        logger.debug("[ID:TS056] Created global ThreadingService")
     
     return _global_threading_service
 
@@ -595,4 +578,4 @@ def shutdown_global_threading_service():
     if _global_threading_service:
         _global_threading_service.cleanup()
         _global_threading_service = None
-        logger.debug("[ID:TS061] Shutdown global ThreadingService") 
+        logger.debug("[ID:TS057] Shutdown global ThreadingService")

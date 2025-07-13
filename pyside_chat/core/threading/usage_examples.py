@@ -52,10 +52,10 @@ class ChatApplicationExample:
         Start chat streaming using QThread (long-running, persistent task).
         
         This is a QThread use case because:
-        - It's a long-running operation (streaming responses)
-        - It needs continuous signal/slot communication
-        - It has complex state management
-        - It needs to be cancellable
+        - It's a long-running operation
+        - It needs continuous communication (chunks)
+        - It has complex signal/slot communication
+        - It needs to stay alive for the duration of streaming
         """
         try:
             logger.debug(f"[ID:EX002] Starting chat streaming for model: {model}")
@@ -106,12 +106,11 @@ class ChatApplicationExample:
                 )
             )
             
-            self.chat_streaming_thread.finished.connect(
-                lambda: self.thread_monitor.unregister_thread(self.chat_streaming_thread.objectName())
-            )
+            self.chat_streaming_thread.finished.connect(self._on_chat_streaming_thread_finished)
             
             # Start the thread
-            self.chat_streaming_thread.start()
+            if not self.chat_streaming_thread.isRunning():
+                self.chat_streaming_thread.start()
             
             logger.debug(f"[ID:EX003] Chat streaming thread started: {self.chat_streaming_thread.objectName()}")
             
@@ -119,17 +118,39 @@ class ChatApplicationExample:
             logger.error(f"[ID:EX004] Error starting chat streaming: {e}")
             logger.error(f"[ID:EX005] Chat streaming error traceback: {traceback.format_exc()}")
     
+    def _on_chat_streaming_thread_finished(self):
+        """Handle chat streaming thread finished."""
+        try:
+            logger.debug("[ID:EX006] Chat streaming thread finished")
+            
+            # Clean up thread reference
+            if self.chat_streaming_thread:
+                try:
+                    self.thread_monitor.unregister_thread(self.chat_streaming_thread.objectName())
+                    self.chat_streaming_thread.deleteLater()
+                    logger.debug("[ID:EX007] Chat streaming thread marked for deletion")
+                except Exception as e:
+                    logger.error(f"[ID:EX008] Error deleting chat streaming thread: {e}")
+                finally:
+                    self.chat_streaming_thread = None
+                    self.chat_streaming_worker = None
+            else:
+                logger.debug("[ID:EX009] No chat streaming thread to clean up")
+                
+        except Exception as e:
+            logger.error(f"[ID:EX010] Error handling chat streaming thread finished: {e}")
+    
     def stop_chat_streaming(self):
         """Stop chat streaming safely."""
         try:
             if self.chat_streaming_worker and self.chat_streaming_worker.is_running():
-                logger.debug("[ID:EX006] Stopping chat streaming")
+                logger.debug("[ID:EX011] Stopping chat streaming")
                 self.chat_streaming_worker.stop()
             
             if self.chat_streaming_thread and self.chat_streaming_thread.isRunning():
                 self.chat_streaming_thread.quit()
                 if not self.chat_streaming_thread.wait(5000):  # 5 second timeout
-                    logger.warning("[ID:EX007] Chat streaming thread did not quit within timeout")
+                    logger.warning("[ID:EX012] Chat streaming thread did not quit within timeout")
                     self.chat_streaming_thread.terminate()
                     self.chat_streaming_thread.wait(2000)
                 
@@ -137,10 +158,10 @@ class ChatApplicationExample:
                 self.chat_streaming_thread = None
                 self.chat_streaming_worker = None
                 
-                logger.debug("[ID:EX008] Chat streaming stopped")
+                logger.debug("[ID:EX013] Chat streaming stopped")
             
         except Exception as e:
-            logger.error(f"[ID:EX009] Error stopping chat streaming: {e}")
+            logger.error(f"[ID:EX014] Error stopping chat streaming: {e}")
     
     def process_message_spell_check(self, message: str):
         """
@@ -153,7 +174,7 @@ class ChatApplicationExample:
         - It can be queued and executed by thread pool
         """
         try:
-            logger.debug(f"[ID:EX010] Processing message spell check: {message[:50]}...")
+            logger.debug(f"[ID:EX015] Processing message spell check: {message[:50]}...")
             
             # Create QRunnable task for spell checking
             spell_check_task = MessageProcessingTask(
@@ -170,17 +191,17 @@ class ChatApplicationExample:
                 'start_time': time.time()
             }
             
-            logger.debug(f"[ID:EX011] Spell check task started: {task_id}")
+            logger.debug(f"[ID:EX016] Spell check task started: {task_id}")
             
         except Exception as e:
-            logger.error(f"[ID:EX012] Error starting spell check task: {e}")
+            logger.error(f"[ID:EX017] Error starting spell check task: {e}")
     
     def process_message_formatting(self, message: str):
         """
         Process message formatting using QRunnable.
         """
         try:
-            logger.debug(f"[ID:EX013] Processing message formatting: {message[:50]}...")
+            logger.debug(f"[ID:EX018] Processing message formatting: {message[:50]}...")
             
             # Create QRunnable task for formatting
             formatting_task = MessageProcessingTask(
@@ -197,17 +218,17 @@ class ChatApplicationExample:
                 'start_time': time.time()
             }
             
-            logger.debug(f"[ID:EX014] Formatting task started: {task_id}")
+            logger.debug(f"[ID:EX019] Formatting task started: {task_id}")
             
         except Exception as e:
-            logger.error(f"[ID:EX015] Error starting formatting task: {e}")
+            logger.error(f"[ID:EX020] Error starting formatting task: {e}")
     
     def process_file_operation(self, file_path: str, operation: str, **kwargs):
         """
         Process file operation using QRunnable.
         """
         try:
-            logger.debug(f"[ID:EX016] Processing file operation: {operation} on {file_path}")
+            logger.debug(f"[ID:EX021] Processing file operation: {operation} on {file_path}")
             
             # Create QRunnable task for file operation
             file_task = FileProcessingTask(
@@ -226,105 +247,105 @@ class ChatApplicationExample:
                 'start_time': time.time()
             }
             
-            logger.debug(f"[ID:EX017] File operation task started: {task_id}")
+            logger.debug(f"[ID:EX022] File operation task started: {task_id}")
             
         except Exception as e:
-            logger.error(f"[ID:EX018] Error starting file operation task: {e}")
+            logger.error(f"[ID:EX023] Error starting file operation task: {e}")
     
     # Signal handlers for QThread workers
     
     def _on_chat_chunk_received(self, chunk: str):
         """Handle chat chunk received from streaming worker."""
         try:
-            logger.debug(f"[ID:EX019] Received chat chunk: {chunk[:50]}...")
+            logger.debug(f"[ID:EX024] Received chat chunk: {chunk[:50]}...")
             # Handle the chunk (e.g., update UI, accumulate response)
             
         except Exception as e:
-            logger.error(f"[ID:EX020] Error handling chat chunk: {e}")
+            logger.error(f"[ID:EX025] Error handling chat chunk: {e}")
     
     def _on_chat_progress_updated(self, progress: str):
         """Handle chat progress update from streaming worker."""
         try:
-            logger.debug(f"[ID:EX021] Chat progress: {progress}")
+            logger.debug(f"[ID:EX026] Chat progress: {progress}")
             # Update progress in UI
             
         except Exception as e:
-            logger.error(f"[ID:EX022] Error handling chat progress: {e}")
+            logger.error(f"[ID:EX027] Error handling chat progress: {e}")
     
     def _on_chat_streaming_finished(self):
         """Handle chat streaming finished."""
         try:
-            logger.debug("[ID:EX023] Chat streaming finished")
+            logger.debug("[ID:EX028] Chat streaming finished")
             # Handle streaming completion
             
         except Exception as e:
-            logger.error(f"[ID:EX024] Error handling chat streaming finished: {e}")
+            logger.error(f"[ID:EX029] Error handling chat streaming finished: {e}")
     
     def _on_chat_streaming_error(self, error: str):
         """Handle chat streaming error."""
         try:
-            logger.error(f"[ID:EX025] Chat streaming error: {error}")
+            logger.error(f"[ID:EX030] Chat streaming error: {error}")
             # Handle streaming error
             
         except Exception as e:
-            logger.error(f"[ID:EX026] Error handling chat streaming error: {e}")
+            logger.error(f"[ID:EX031] Error handling chat streaming error: {e}")
     
     # Callback methods for QRunnable tasks (invoked via QMetaObject.invokeMethod)
     
     def on_message_processed(self, task_type: str, result: Dict[str, Any]):
         """Handle message processing completion."""
         try:
-            logger.debug(f"[ID:EX027] Message processing completed: {task_type}")
+            logger.debug(f"[ID:EX032] Message processing completed: {task_type}")
             
             if task_type == "spell_check":
                 if result.get('has_corrections', False):
-                    logger.info(f"[ID:EX028] Spell check found corrections: {result['corrections']}")
+                    logger.info(f"[ID:EX033] Spell check found corrections: {result['corrections']}")
                 else:
-                    logger.debug("[ID:EX029] Spell check completed - no corrections needed")
+                    logger.debug("[ID:EX034] Spell check completed - no corrections needed")
                     
             elif task_type == "formatting":
                 if result.get('changes_made', False):
-                    logger.info(f"[ID:EX030] Formatting applied: {result['formatted']}")
+                    logger.info(f"[ID:EX035] Formatting applied: {result['formatted']}")
                 else:
-                    logger.debug("[ID:EX031] Formatting completed - no changes needed")
+                    logger.debug("[ID:EX036] Formatting completed - no changes needed")
             
             # Handle the result (e.g., update UI, apply corrections)
             
         except Exception as e:
-            logger.error(f"[ID:EX032] Error handling message processing result: {e}")
+            logger.error(f"[ID:EX037] Error handling message processing result: {e}")
     
     def on_message_processing_error(self, task_type: str, error_message: str):
         """Handle message processing error."""
         try:
-            logger.error(f"[ID:EX033] Message processing error ({task_type}): {error_message}")
+            logger.error(f"[ID:EX038] Message processing error ({task_type}): {error_message}")
             # Handle the error (e.g., show error message to user)
             
         except Exception as e:
-            logger.error(f"[ID:EX034] Error handling message processing error: {e}")
+            logger.error(f"[ID:EX039] Error handling message processing error: {e}")
     
     def on_file_processed(self, operation: str, file_path: str, result: Dict[str, Any]):
         """Handle file processing completion."""
         try:
-            logger.debug(f"[ID:EX035] File processing completed: {operation} on {file_path}")
+            logger.debug(f"[ID:EX040] File processing completed: {operation} on {file_path}")
             
             if 'error' in result:
-                logger.error(f"[ID:EX036] File processing error: {result['error']}")
+                logger.error(f"[ID:EX041] File processing error: {result['error']}")
             else:
-                logger.info(f"[ID:EX037] File processing successful: {result}")
+                logger.info(f"[ID:EX042] File processing successful: {result}")
             
             # Handle the result (e.g., update UI, load file content)
             
         except Exception as e:
-            logger.error(f"[ID:EX038] Error handling file processing result: {e}")
+            logger.error(f"[ID:EX043] Error handling file processing result: {e}")
     
     def on_file_processing_error(self, operation: str, file_path: str, error_message: str):
         """Handle file processing error."""
         try:
-            logger.error(f"[ID:EX039] File processing error ({operation} on {file_path}): {error_message}")
+            logger.error(f"[ID:EX044] File processing error ({operation} on {file_path}): {error_message}")
             # Handle the error (e.g., show error message to user)
             
         except Exception as e:
-            logger.error(f"[ID:EX040] Error handling file processing error: {e}")
+            logger.error(f"[ID:EX045] Error handling file processing error: {e}")
     
     def get_threading_status(self) -> Dict[str, Any]:
         """Get current threading status and statistics."""
@@ -348,13 +369,13 @@ class ChatApplicationExample:
             }
             
         except Exception as e:
-            logger.error(f"[ID:EX041] Error getting threading status: {e}")
+            logger.error(f"[ID:EX046] Error getting threading status: {e}")
             return {}
     
     def cleanup(self):
         """Clean up all threading resources."""
         try:
-            logger.debug("[ID:EX042] Cleaning up ChatApplicationExample")
+            logger.debug("[ID:EX047] Cleaning up ChatApplicationExample")
             
             # Stop QThread workers
             self.stop_chat_streaming()
@@ -365,10 +386,10 @@ class ChatApplicationExample:
             # Clean up active tasks
             self.active_tasks.clear()
             
-            logger.debug("[ID:EX043] ChatApplicationExample cleanup complete")
+            logger.debug("[ID:EX048] ChatApplicationExample cleanup complete")
             
         except Exception as e:
-            logger.error(f"[ID:EX044] Error during cleanup: {e}")
+            logger.error(f"[ID:EX049] Error during ChatApplicationExample cleanup: {e}")
 
 
 # Example usage demonstration

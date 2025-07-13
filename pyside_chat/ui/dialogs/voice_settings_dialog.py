@@ -28,8 +28,8 @@ from PySide6.QtWidgets import (
     QDoubleSpinBox)
 from PySide6.QtCore import Qt, Signal, QThread, QObject, QTimer
 from PySide6.QtGui import QFont
-# Added for QApplication.processEvents()
-from PySide6.QtWidgets import QApplication
+# Thread-safe alternative to QApplication.processEvents()
+from pyside_chat.core.utils.threading_utils import safe_process_events_alternative
 
 from pyside_chat.core.utils.internet_checker import test_internet_connection
 from pyside_chat.core.logging.logger import CustomLogger
@@ -58,12 +58,19 @@ class VoiceSettingsDialog(QDialog):
     eq_visualizer_changed = Signal(str)  # Emitted when EQ visualizer setting changes
 
     def __init__(self, parent=None, config_manager=None):
-        super().__init__(parent)
-        self.setWindowTitle("Voice Settings")
-        self.setModal(True)
-        self.setMinimumWidth(500)
-        self.setMinimumHeight(400)
-        self.config_manager = config_manager
+        try:
+            super().__init__(parent)
+            self.setWindowTitle("Voice Settings")
+            self.setModal(True)
+            self.setMinimumWidth(500)
+            self.setMinimumHeight(400)
+            self.config_manager = config_manager
+            logger.debug("VoiceSettingsDialog initialized successfully")
+        except Exception as e:
+            logger.error(f"Error initializing VoiceSettingsDialog: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            raise
 
         # Voice API configurations
         self.stt_apis = {
@@ -760,8 +767,6 @@ class VoiceSettingsDialog(QDialog):
     def _on_voices_loaded(self, speakers):
         """Slot to update speaker list when voices_loaded fires."""
         self.speaker_combo.clear()
-        self.speaker_combo.setEnabled(False)
-        self.speaker_info_label.setText("Loading speakers...")
         if speakers:
             for speaker in speakers:
                 clean_speaker = speaker.strip()
@@ -780,11 +785,12 @@ class VoiceSettingsDialog(QDialog):
                         self.speaker_combo.setCurrentIndex(i)
                         break
         else:
-            self.speaker_combo.addItem("No speakers available")
-            self.speaker_combo.setEnabled(False)
-            self.speaker_info_label.setText("No speakers found for this model.")
+            # Fallback: add a default speaker if TTS works
+            self.speaker_combo.addItem("Default")
+            self.speaker_combo.setEnabled(True)
+            self.speaker_info_label.setText("No named speakers found, using default voice.")
             self.speaker_filter_widget.setVisible(False)
-            self.preview_speaker_button.setEnabled(False)
+            self.preview_speaker_button.setEnabled(True)
 
     def on_tts_api_changed(self, api_name: str):
         """Handle TTS API selection change"""
@@ -1083,7 +1089,8 @@ class VoiceSettingsDialog(QDialog):
             if hasattr(self.coqui_service, 'download_model'):
                 self.model_info_label.setText(
                     f"Downloading model '{model_name}'...")
-                QApplication.processEvents()
+                from pyside_chat.core.utils.threading_utils import safe_process_events_alternative
+                safe_process_events_alternative()
                 success = self.coqui_service.download_model(model_name)
                 if success:
                     self.model_info_label.setText(
@@ -1411,7 +1418,9 @@ class CalibrateSilenceThresholdDialog(QDialog):
         self.instructions = QLabel("Step 1: Please stay silent. Measuring background noise...")
         self.layout.addWidget(self.instructions)
         self.progress = QProgressBar()
-        self.progress.setRange(0, 100)
+        # Thread-safe UI update
+        from pyside_chat.core.utils.threading_utils import safe_ui_update
+        safe_ui_update(self.progress, 'setRange', 0, 100)
         self.layout.addWidget(self.progress)
         self.cancel_button = QPushButton("Cancel")
         self.cancel_button.clicked.connect(self.reject)
@@ -1428,11 +1437,13 @@ class CalibrateSilenceThresholdDialog(QDialog):
     def _start_step(self, step):
         self.step = step
         self.samples = []
-        self.progress.setValue(0)
+        # Thread-safe UI updates
+        from pyside_chat.core.utils.threading_utils import safe_ui_update
+        safe_ui_update(self.progress, 'setValue', 0)
         if step == 0:
-            self.instructions.setText("Step 1: Please stay silent. Measuring background noise...")
+            safe_ui_update(self.instructions, 'setText', "Step 1: Please stay silent. Measuring background noise...")
         else:
-            self.instructions.setText("Step 2: Please speak at a normal volume. Measuring speech level...")
+            safe_ui_update(self.instructions, 'setText', "Step 2: Please speak at a normal volume. Measuring speech level...")
         self._start_recording()
         self.timer.start(50)
         self.start_time = None
@@ -1449,7 +1460,9 @@ class CalibrateSilenceThresholdDialog(QDialog):
         if self.start_time is None:
             self.start_time = time.time()
         elapsed = (time.time() - self.start_time) * 1000
-        self.progress.setValue(int(min(100, 100 * elapsed / self.duration_ms)))
+        # Thread-safe UI update
+        from pyside_chat.core.utils.threading_utils import safe_ui_update
+        safe_ui_update(self.progress, 'setValue', int(min(100, 100 * elapsed / self.duration_ms)))
         data = self.stream.read(1024, exception_on_overflow=False)
         samples = struct.unpack(f'{len(data)//2}h', data)
         if samples:
@@ -1474,18 +1487,30 @@ class CalibrateSilenceThresholdDialog(QDialog):
             margin = (self.speech_level - self.silence_level) * 0.3
             threshold = self.silence_level + margin
             self.result = max(0.001, min(0.1, threshold))
-            self.instructions.setText(f"Calibration complete!\nSilence: {self.silence_level:.4f}, Speech: {self.speech_level:.4f}\nNew threshold: {self.result:.4f}\n(Setting automatically...)")
-            self.progress.setValue(100)
-            self.cancel_button.setVisible(False)
+            # Thread-safe UI updates
+            from pyside_chat.core.utils.threading_utils import safe_ui_update
+            safe_ui_update(self.instructions, 'setText', f"Calibration complete!\nSilence: {self.silence_level:.4f}, Speech: {self.speech_level:.4f}\nNew threshold: {self.result:.4f}\n(Setting automatically...)")
+            safe_ui_update(self.progress, 'setValue', 100)
+            safe_ui_update(self.cancel_button, 'setVisible', False)
             # Auto-close after 1 second
             QTimer.singleShot(1000, self.accept)
         else:
-            self.instructions.setText("Calibration failed. Please try again.")
-            self.progress.setValue(0)
-            self.cancel_button.setText("Close")
-            self.cancel_button.setVisible(True)
+            safe_ui_update(self.instructions, 'setText', "Calibration failed. Please try again.")
+            safe_ui_update(self.progress, 'setValue', 0)
+            safe_ui_update(self.cancel_button, 'setText', "Close")
+            safe_ui_update(self.cancel_button, 'setVisible', True)
             safe_disconnect(self.cancel_button.clicked)
             self.cancel_button.clicked.connect(self.reject)
 
     def get_result(self):
         return self.result
+
+
+def safe_disconnect(signal, slot=None):
+    try:
+        if slot:
+            signal.disconnect(slot)
+        else:
+            signal.disconnect()
+    except Exception:
+        pass

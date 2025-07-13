@@ -304,7 +304,7 @@ def main():
     )
     parser.add_argument(
         "--output", 
-        default="PROJECT_STRUCTURE.md", 
+        default="Development_Tools\Reports\PROJECT_STRUCTURE.md", 
         help="Output markdown file name (default: PROJECT_STRUCTURE.md)"
     )
     

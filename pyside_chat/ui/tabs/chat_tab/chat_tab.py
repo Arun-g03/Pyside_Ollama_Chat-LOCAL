@@ -392,12 +392,9 @@ class ChatTab(QWidget):
                     from PySide6.QtCore import Qt
                     for signal, slot, signal_name in signal_slot_pairs:
                         try:
-                            # Only connect if not already connected
-                            if not signal.receivers(slot):
-                                signal.connect(slot, Qt.ConnectionType.QueuedConnection)
-                                logger.debug(f"Connected signal {signal_name} to {slot.__name__}")
-                            else:
-                                logger.debug(f"Signal {signal_name} already connected to {slot.__name__}")
+                            # Connect signal directly (PySide6 handles duplicates gracefully)
+                            signal.connect(slot, Qt.ConnectionType.QueuedConnection)
+                            logger.debug(f"Connected signal {signal_name} to {slot.__name__}")
                         except Exception as e:
                             logger.error(f"Failed to connect signal {signal_name} to {slot.__name__}: {e}")
                     
@@ -405,12 +402,9 @@ class ChatTab(QWidget):
                 
                 # Connect voice settings button
                 try:
-                    # Only connect if not already connected
-                    if not voice_components['voice_settings_button'].clicked.receivers(self.open_voice_settings):
-                        voice_components['voice_settings_button'].clicked.connect(self.open_voice_settings)
-                        logger.debug("Connected voice settings button")
-                    else:
-                        logger.debug("Voice settings button already connected")
+                    # Connect signal directly (PySide6 handles duplicates gracefully)
+                    voice_components['voice_settings_button'].clicked.connect(self.open_voice_settings)
+                    logger.debug("Connected voice settings button")
                 except Exception as e:
                     logger.error(f"Failed to connect voice settings button: {e}")
 
@@ -570,29 +564,49 @@ class ChatTab(QWidget):
             # Voice controls will handle restarting voice input
 
     def on_voice_input_received(self, text: str):
-        print(f"[DEBUG] ChatTab received voice input: {text}")
-        logger.debug(f"Voice input received in chat tab: {text}", print_to_terminal=True)
-        
-        # Stop any current streaming
-        if self.is_streaming:
-            logger.debug("Stopping current streaming to process voice input")
-            self.stop_streaming()
-        
-        # Process the voice input as a user message
-        self.process_voice_input(text)
+        try:
+            print(f"[DEBUG] ChatTab received voice input: {text}")
+            logger.debug(f"Voice input received in chat tab: {text}", print_to_terminal=True)
+            
+            # Stop any current streaming
+            if self.is_streaming:
+                logger.debug("Stopping current streaming to process voice input")
+                self.stop_streaming()
+            
+            # Process the voice input as a user message
+            self.process_voice_input(text)
+        except Exception as e:
+            logger.error(f"Error in on_voice_input_received: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            # Try to add error message to chat
+            try:
+                self.append_to_chat("System", f"Error processing voice input: {str(e)}")
+            except:
+                pass
         
     def on_voice_input_received_direct(self, text: str):
         """Handle voice input received directly from voice service (fallback)"""
-        print(f"[DEBUG] ChatTab received direct voice input: {text}")
-        logger.debug(f"Direct voice input received in chat tab: {text}", print_to_terminal=True)
-        
-        # Stop any current streaming
-        if self.is_streaming:
-            logger.debug("Stopping current streaming to process direct voice input")
-            self.stop_streaming()
-        
-        # Process the voice input as a user message
-        self.process_voice_input(text)
+        try:
+            print(f"[DEBUG] ChatTab received direct voice input: {text}")
+            logger.debug(f"Direct voice input received in chat tab: {text}", print_to_terminal=True)
+            
+            # Stop any current streaming
+            if self.is_streaming:
+                logger.debug("Stopping current streaming to process direct voice input")
+                self.stop_streaming()
+            
+            # Process the voice input as a user message
+            self.process_voice_input(text)
+        except Exception as e:
+            logger.error(f"Error in on_voice_input_received_direct: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            # Try to add error message to chat
+            try:
+                self.append_to_chat("System", f"Error processing direct voice input: {str(e)}")
+            except:
+                pass
 
     def process_voice_input(self, text: str):
         """Process voice input as a user message"""
@@ -614,24 +628,41 @@ class ChatTab(QWidget):
             print(f"[DEBUG] Emitting message_sent signal for voice input")
             logger.debug("Emitting message_sent signal for voice input", print_to_terminal=True)
             self.message_sent.emit(text)
+            
+            # Add additional debug info
+            print(f"[DEBUG] Voice mode: {self.voice_mode}")
+            print(f"[DEBUG] Is streaming: {self.is_streaming}")
+            logger.debug(f"Voice mode: {self.voice_mode}, Is streaming: {self.is_streaming}", print_to_terminal=True)
                 
         except Exception as e:
             print(f"[DEBUG] Error processing voice input: {e}")
             logger.error(f"Error processing voice input: {e}", print_to_terminal=True)
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
             self.append_to_chat("System", f"Error processing voice input: {str(e)}")
 
     def on_voice_input_error(self, error: str):
         """Handle voice input error"""
-        logger.error(f"Voice input error: {error}")
-        self.append_to_chat("System", f"Voice input error: {error}")
+        try:
+            logger.error(f"Voice input error: {error}")
+            self.append_to_chat("System", f"Voice input error: {error}")
+        except Exception as e:
+            logger.error(f"Error in on_voice_input_error: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
         
     def on_tts_started(self):
         """Handle TTS started"""
-        # Show EQ visualizer if in voice mode and EQ is enabled
-        if self.voice_mode and self.eq_visualizer.get_eq_mode() != "None":
-            self.eq_visualizer.switch_to_eq_visualizer(self.chat_display.chat_display, self.voice_mode)
-        # Don't hide chat display - let messages continue to appear
-        # The EQ visualizer will overlay on top of the chat display
+        try:
+            # Show EQ visualizer if in voice mode and EQ is enabled
+            if self.voice_mode and self.eq_visualizer.get_eq_mode() != "None":
+                self.eq_visualizer.switch_to_eq_visualizer(self.chat_display.chat_display, self.voice_mode)
+            # Don't hide chat display - let messages continue to appear
+            # The EQ visualizer will overlay on top of the chat display
+        except Exception as e:
+            logger.error(f"Error in on_tts_started: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
     
     def on_tts_finished(self):
         """Handle TTS finished"""
@@ -676,31 +707,64 @@ class ChatTab(QWidget):
     
     def on_tts_error(self, error: str):
         """Handle TTS error"""
-        logger.error(f"TTS error: {error}")
+        try:
+            logger.error(f"TTS error: {error}")
+            self.append_to_chat("System", f"TTS error: {error}")
+        except Exception as e:
+            logger.error(f"Error in on_tts_error: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
         
     def on_recording_started(self):
         """Handle recording started"""
-        logger.debug("Voice recording started")
+        try:
+            logger.debug("Voice recording started")
+        except Exception as e:
+            logger.error(f"Error in on_recording_started: {e}")
         
     def on_recording_stopped(self):
         """Handle recording stopped"""
-        logger.debug("Voice recording stopped")
+        try:
+            logger.debug("Voice recording stopped")
+        except Exception as e:
+            logger.error(f"Error in on_recording_stopped: {e}")
         
     def on_recording_error(self, error: str):
         """Handle recording error"""
-        logger.error(f"Recording error: {error}")
+        try:
+            logger.error(f"Recording error: {error}")
+            self.append_to_chat("System", f"Recording error: {error}")
+        except Exception as e:
+            logger.error(f"Error in on_recording_error: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
         
     def on_voice_processing_started(self):
         """Handle voice processing started"""
-        logger.debug("Voice processing started")
+        try:
+            logger.debug("Voice processing started")
+        except Exception as e:
+            logger.error(f"Error in on_voice_processing_started: {e}")
         
     def on_voice_processing_finished(self):
         """Handle voice processing finished"""
-        logger.debug("Voice processing finished")
+        try:
+            logger.debug("Voice processing finished")
+        except Exception as e:
+            logger.error(f"Error in on_voice_processing_finished: {e}")
         
     def on_audio_level_changed(self, audio_level: float):
-        """Handle audio level changes"""
+        """Handle audio level changes with throttling to prevent excessive processing"""
         try:
+            # Throttle audio level processing to prevent excessive updates
+            current_time = time.time()
+            if hasattr(self, '_last_audio_level_time'):
+                time_diff = current_time - self._last_audio_level_time
+                if time_diff < 0.05:  # Only process every 50ms to prevent excessive updates
+                    return
+            
+            self._last_audio_level_time = current_time
+            
             logger.debug(f"[EQ DEBUG] on_audio_level_changed called - audio_level: {audio_level:.4f}")
             
             # Update EQ visualizer if in voice mode with EQ enabled
@@ -718,6 +782,11 @@ class ChatTab(QWidget):
                         tts_playing = True
                         logger.debug(f"[EQ DEBUG] Inferred TTS playing from audio level: {audio_level:.4f}")
                     
+                    # Ensure EQ visualizer is properly initialized for voice mode
+                    if not self.eq_visualizer.current_eq_widget:
+                        logger.debug(f"[EQ DEBUG] EQ widget not initialized, switching to EQ visualizer")
+                        self.eq_visualizer.switch_to_eq_visualizer(self.chat_display.chat_display, self.voice_mode)
+                    
                     logger.debug(f"[EQ DEBUG] TTS playing: {tts_playing}, audio_level: {audio_level:.4f}")
                     self.eq_visualizer.update_eq_visualizer(audio_level, tts_playing)
             else:
@@ -728,8 +797,18 @@ class ChatTab(QWidget):
         
     def on_eq_bars_changed(self, bar_values):
         """Handle EQ bar array changes and update the EQ visualizer directly"""
-        if self.voice_mode and self.eq_visualizer.get_eq_mode() != "None":
-            self.eq_visualizer.current_eq_widget.set_eq_bars(bar_values)
+        try:
+            if (self.voice_mode and 
+                self.eq_visualizer.get_eq_mode() != "None" and
+                self.eq_visualizer.current_eq_widget):
+                # Use the EQ visualizer's safe update method
+                self.eq_visualizer._update_eq_widget_safe(bar_values)
+            else:
+                logger.debug("[EQ DEBUG] EQ visualizer not available or not in voice mode")
+        except Exception as e:
+            logger.error(f"[EQ DEBUG] Error in on_eq_bars_changed: {e}")
+            import traceback
+            logger.error(f"[EQ DEBUG] Traceback: {traceback.format_exc()}")
 
     def on_message_edited(self, message_index: int, new_content: str):
         """Handle message edit"""
@@ -806,6 +885,11 @@ class ChatTab(QWidget):
         print(f"[DEBUG] chat_display.append_to_chat completed")
         logger.debug("chat_display.append_to_chat completed", print_to_terminal=True)
         
+        # Force immediate UI update for new messages
+        streaming_handler = self.chat_display.get_streaming_handler()
+        if streaming_handler and hasattr(streaming_handler, 'force_ui_update'):
+            streaming_handler.force_ui_update()
+        
     def _force_chat_display_update(self):
         """Force immediate update of the chat display"""
         try:
@@ -867,16 +951,39 @@ class ChatTab(QWidget):
             label = f"{ai_name} ({model_name})" if model_name else ai_name
             streaming_handler = self.chat_display.get_streaming_handler()
             if streaming_handler:
-                streaming_handler.update_streaming_message(
-                    self.current_response, label, None, False, tag="ai"
-                )
-                logger.debug(f"[ID:CT003] Updated streaming message with label: {label}")
+                try:
+                    streaming_handler.update_streaming_message(
+                        self.current_response, label, None, False, tag="ai"
+                    )
+                    logger.debug(f"[ID:CT003] Updated streaming message with label: {label}")
+                    
+                    # Force immediate UI update for streaming responses
+                    if hasattr(streaming_handler, 'force_ui_update'):
+                        streaming_handler.force_ui_update()
+                except Exception as e:
+                    logger.error(f"[ID:CT007] Error updating streaming message: {e}")
+                    logger.error(f"[ID:CT008] Streaming update traceback: {traceback.format_exc()}")
+                    # Try to recover by forcing a UI update
+                    try:
+                        self.chat_display.update()
+                        from pyside_chat.core.utils.threading_utils import safe_process_events_alternative
+                        safe_process_events_alternative()
+                    except Exception as e2:
+                        logger.error(f"[ID:CT010] Recovery attempt failed: {e2}")
             else:
                 logger.warning("[ID:CT004] No streaming handler found")
                 
         except Exception as e:
             logger.error(f"[ID:CT005] Error in _append_response_chunk_safe: {e}")
             logger.error(f"[ID:CT006] _append_response_chunk_safe traceback: {traceback.format_exc()}")
+            # Try to recover by forcing a UI update
+            try:
+                if hasattr(self, 'chat_display') and self.chat_display:
+                    self.chat_display.update()
+                    from pyside_chat.core.utils.threading_utils import safe_process_events_alternative
+                    safe_process_events_alternative()
+            except Exception as e2:
+                logger.error(f"[ID:CT009] Recovery attempt failed: {e2}")
     
     def _ensure_chat_display_visible(self):
         """Ensure the chat display is visible for message display"""
@@ -900,8 +1007,8 @@ class ChatTab(QWidget):
                     # Force layout update
                     self.chat_display.chat_display.updateGeometry()
                     self.chat_display.chat_display.update()
-                    from PySide6.QtWidgets import QApplication
-                    QApplication.processEvents()
+                    from pyside_chat.core.utils.threading_utils import safe_process_events_alternative
+                    safe_process_events_alternative()
                     logger.debug("Successfully made chat display visible")
         except Exception as e:
             logger.error(f"Error ensuring chat display visibility: {e}")
@@ -939,8 +1046,8 @@ class ChatTab(QWidget):
                 logger.warning("Send button was not disabled in text mode, forcing disable")
                 input_components['send_button'].setEnabled(False)
                 input_components['send_button'].update()
-                from PySide6.QtWidgets import QApplication
-                QApplication.processEvents()
+                from pyside_chat.core.utils.threading_utils import safe_process_events_alternative
+                safe_process_events_alternative()
         
     def stop_streaming(self):
         """Stop streaming state"""
@@ -975,15 +1082,15 @@ class ChatTab(QWidget):
             streaming_handler.finalize_streaming_message()
         input_components['send_button'].update()
         input_components['cancel_button'].update()
-        from PySide6.QtWidgets import QApplication
-        QApplication.processEvents()
+        from pyside_chat.core.utils.threading_utils import safe_process_events_alternative
+        safe_process_events_alternative()
         
         # Double-check that the button is actually enabled (only in text mode)
         if not self.voice_mode and not input_components['send_button'].isEnabled():
             logger.warning("Send button was not enabled in text mode, forcing enable")
             input_components['send_button'].setEnabled(True)
             input_components['send_button'].update()
-            QApplication.processEvents()
+            safe_process_events_alternative()
     
     def force_enable_send_button(self):
         """Force enable the send button and ensure UI is updated"""
@@ -1009,8 +1116,8 @@ class ChatTab(QWidget):
         
         input_components['send_button'].update()
         input_components['cancel_button'].update()
-        from PySide6.QtWidgets import QApplication
-        QApplication.processEvents()
+        from pyside_chat.core.utils.threading_utils import safe_process_events_alternative
+        safe_process_events_alternative()
         logger.debug(f"Send button enabled: {input_components['send_button'].isEnabled()}, visible: {input_components['send_button'].isVisible()}")
     
     def clear_chat(self):
@@ -1050,30 +1157,52 @@ class ChatTab(QWidget):
 
     def open_voice_settings(self):
         """Open voice settings dialog"""
-        # Ensure voice controls are initialized
-        self._ensure_voice_controls_initialized()
-        
-        if not self.voice_controls_initialized or not self.voice_controls:
-            QMessageBox.warning(self, "Voice Settings", "Voice controls are not available.")
-            return
-        
-        dialog = VoiceSettingsDialog(self, self.config_manager)
-        dialog.set_settings(self.voice_controls.get_voice_settings())
-        
-        # Connect the settings changed signal
-        dialog.settings_changed.connect(self.on_voice_settings_changed)
-        # Connect the EQ visualizer changed signal for immediate UI updates
-        dialog.eq_visualizer_changed.connect(self.on_eq_visualizer_changed_immediate)
-        
-        result = dialog.exec()
-        if result == QDialog.DialogCode.Accepted:
-            # Settings were saved
-            self.voice_controls.update_voice_settings(dialog.get_settings())
+        try:
+            logger.debug("Opening voice settings dialog")
+            print("[DEBUG] Opening voice settings dialog")
             
-            # Update EQ visualizer mode if changed
-            new_eq_mode = dialog.get_settings().get("eq_visualizer", "None")
-            if new_eq_mode != self.eq_visualizer.get_eq_mode():
-                self.eq_visualizer.update_eq_visualizer_mode(new_eq_mode)
+            # Ensure voice controls are initialized
+            self._ensure_voice_controls_initialized()
+            
+            if not self.voice_controls_initialized or not self.voice_controls:
+                logger.warning("Voice controls not available for settings dialog")
+                QMessageBox.warning(self, "Voice Settings", "Voice controls are not available.")
+                return
+            
+            logger.debug("Creating VoiceSettingsDialog")
+            dialog = VoiceSettingsDialog(self, self.config_manager)
+            logger.debug("VoiceSettingsDialog created successfully")
+            
+            # Get current voice settings
+            current_settings = self.voice_controls.get_voice_settings()
+            logger.debug(f"Current voice settings: {current_settings}")
+            dialog.set_settings(current_settings)
+            
+            # Connect the settings changed signal
+            dialog.settings_changed.connect(self.on_voice_settings_changed)
+            # Connect the EQ visualizer changed signal for immediate UI updates
+            dialog.eq_visualizer_changed.connect(self.on_eq_visualizer_changed_immediate)
+            
+            logger.debug("Showing voice settings dialog")
+            result = dialog.exec()
+            logger.debug(f"Voice settings dialog result: {result}")
+            
+            if result == QDialog.DialogCode.Accepted:
+                # Settings were saved
+                new_settings = dialog.get_settings()
+                logger.debug(f"New voice settings: {new_settings}")
+                self.voice_controls.update_voice_settings(new_settings)
+                
+                # Update EQ visualizer mode if changed
+                new_eq_mode = new_settings.get("eq_visualizer", "None")
+                if new_eq_mode != self.eq_visualizer.get_eq_mode():
+                    self.eq_visualizer.update_eq_visualizer_mode(new_eq_mode)
+                    
+        except Exception as e:
+            logger.error(f"Error opening voice settings dialog: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            QMessageBox.critical(self, "Error", f"Failed to open voice settings: {str(e)}")
     
     def on_eq_visualizer_changed_immediate(self, eq_mode: str):
         """Handle immediate EQ visualizer changes from the settings dialog"""

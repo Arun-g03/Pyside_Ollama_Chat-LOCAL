@@ -290,7 +290,7 @@ class ChatDisplay(QObject):
             # Ensure we're in the main thread
             from PySide6.QtCore import QTimer
             
-            # Force immediate update without calling processEvents
+            # Force immediate update using thread-safe alternative
             QTimer.singleShot(0, self._force_render_display)
                 
         except Exception as e:
@@ -309,7 +309,7 @@ class ChatDisplay(QObject):
                     cursor.movePosition(cursor.End)
                     self.chat_display.setTextCursor(cursor)
                     
-                    # Force update without processEvents
+                    # Force update using thread-safe alternative
                     self.chat_display.update()
                     
         except Exception as e:

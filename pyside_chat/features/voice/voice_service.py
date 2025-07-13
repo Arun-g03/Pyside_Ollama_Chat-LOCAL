@@ -24,15 +24,16 @@ import traceback
 
 from pyside_chat.core.logging.logger import CustomLogger
 from pyside_chat.core.logging.helpers import LoggingHelpers
+from pyside_chat.core.utils.threading_utils import log_thread_info
 from pyside_chat.features.voice.tts.tts_service import TTSService
-from pyside_chat.core.threading.thread_pool_manager import ThreadPoolManager
+from pyside_chat.core.threading import get_global_threading_service, get_global_persistent_thread_pool
 from pyside_chat.core.threading.qrunnable_tasks import DataProcessingTask
 
 logger = CustomLogger.get_logger(__name__)
 
 
 class VoiceService(QObject):
-    """Voice service for handling voice input/output functionality using proper threading architecture"""
+    """Voice service for handling voice input/output functionality using persistent threading architecture"""
     # Signals
     voice_input_received = Signal(str)  # Emitted when voice input is received
     voice_input_error = Signal(str)     # Emitted when voice input fails
@@ -62,8 +63,9 @@ class VoiceService(QObject):
     def __init__(self):
         super().__init__()
         
-        # Initialize thread pool manager for voice operations
-        self.thread_pool_manager = ThreadPoolManager()
+        # Initialize persistent threading system for voice operations
+        self.threading_service = get_global_threading_service()
+        self.persistent_thread_pool = get_global_persistent_thread_pool()
         
         # Track active voice operations
         self._active_voice_operations = set()
@@ -122,7 +124,7 @@ class VoiceService(QObject):
         # Setup connections
         self._setup_connections()
 
-        logger.info("VoiceService initialized successfully", print_to_terminal=True)
+        logger.info("VoiceService initialized successfully with persistent threading", print_to_terminal=True)
         
     def _setup_connections(self):
         """Setup signal connections"""
@@ -468,6 +470,7 @@ class VoiceService(QObject):
             self._active_requests = max(0, self._active_requests - 1)
             
             # Emit cancellation signal
+            log_thread_info("Emitting request_cancelled signal", logger)
             self.request_cancelled.emit()
             
             # Process next request
@@ -495,6 +498,7 @@ class VoiceService(QObject):
         self.cancel_current_request()
         
         # Emit interruption signal
+        log_thread_info("Emitting user_interrupted signal", logger)
         self.user_interrupted.emit()
         
         # Forward to response queue if in separate process
@@ -515,6 +519,7 @@ class VoiceService(QObject):
             self.handle_user_interruption()
         
         # Emit audio level for visualization
+        log_thread_info(f"Emitting audio_level_changed signal: {audio_level:.3f}", logger)
         self.audio_level_changed.emit(audio_level)
         
         # Forward to response queue if in separate process
@@ -578,62 +583,72 @@ class VoiceService(QObject):
             logger.error(f"[VOICE ERROR] Error stopping voice input: {e}")
     
     def _on_stt_text_received(self, text: str):
-        print(f"[DEBUG] STT result: {text}")
-        self.is_processing_voice = False
-        self.voice_processing_finished.emit()
-        
-        # Forward to response queue if in separate process
-        if self.response_queue:
-            self.response_queue.put({
-                "type": "voice_processing_finished",
-                "data": None
-            })
-        
-        # Clean and validate the text
-        cleaned_text = text.strip()
-        
-        # Only emit if text is not empty and meets minimum length requirements
-        if cleaned_text and len(cleaned_text) >= 2:  # Minimum 2 characters
-            # Check for common noise patterns and filter them out
-            noise_patterns = [
-                "um", "uh", "ah", "er", "hmm", "huh", "what", "yeah", "okay", "right",
-                "so", "well", "like", "you know", "i mean", "basically", "actually"
-            ]
+        try:
+            print(f"[DEBUG] STT result: {text}")
+            self.is_processing_voice = False
+            self.voice_processing_finished.emit()
             
-            # Convert to lowercase for comparison
-            text_lower = cleaned_text.lower()
-            
-            # Skip if it's just noise
-            if any(pattern in text_lower for pattern in noise_patterns) and len(cleaned_text) < 10:
-                logger.info(f"Filtered out noise: '{cleaned_text}'", print_to_terminal=True)
-                return
-            
-            # Log voice input received
-            logger.info(f"Voice input received: '{cleaned_text}'", print_to_terminal=True)
-            
-            logger.debug(f"[EMIT] voice_service.py: voice_input_received.emit({cleaned_text!r}) from id={id(self)}")
-            self.voice_input_received.emit(cleaned_text)
             # Forward to response queue if in separate process
             if self.response_queue:
                 self.response_queue.put({
-                    "type": "voice_input_received",
-                    "data": cleaned_text
+                    "type": "voice_processing_finished",
+                    "data": None
                 })
-        else:
-            if cleaned_text:
-                logger.info(f"Voice input too short ({len(cleaned_text)} chars): '{cleaned_text}'", print_to_terminal=True)
+            
+            # Clean and validate the text
+            cleaned_text = text.strip()
+            
+            # Only emit if text is not empty and meets minimum length requirements
+            if cleaned_text and len(cleaned_text) >= 2:  # Minimum 2 characters
+                # Check for common noise patterns and filter them out
+                noise_patterns = [
+                    "um", "uh", "ah", "er", "hmm", "huh", "what", "yeah", "okay", "right",
+                    "so", "well", "like", "you know", "i mean", "basically", "actually"
+                ]
+                
+                # Convert to lowercase for comparison
+                text_lower = cleaned_text.lower()
+                
+                # Skip if it's just noise
+                if any(pattern in text_lower for pattern in noise_patterns) and len(cleaned_text) < 10:
+                    logger.info(f"Filtered out noise: '{cleaned_text}'", print_to_terminal=True)
+                    return
+                
+                # Log voice input received
+                logger.info(f"Voice input received: '{cleaned_text}'", print_to_terminal=True)
+                
+                log_thread_info(f"Emitting voice_input_received signal: '{cleaned_text}'", logger)
+                self.voice_input_received.emit(cleaned_text)
+                # Forward to response queue if in separate process
+                if self.response_queue:
+                    self.response_queue.put({
+                        "type": "voice_input_received",
+                        "data": cleaned_text
+                    })
             else:
-                logger.info("STT result was empty, skipping message emission.", print_to_terminal=True)
-        
-        # Complete the request
-        self._complete_request()
-        
-        # In continuous mode, don't restart voice input immediately
-        # Wait for TTS to start, then restart voice input during TTS playback
-        # This creates the non-interruptive flow: user speaks → stop mic → process → enable mic during TTS
-        if self.continuous_voice_mode:
-            logger.debug("Continuous voice mode: voice input stopped during processing, will restart during TTS")
-            # Voice input will be restarted in _on_tts_started for non-interruptive flow
+                if cleaned_text:
+                    logger.info(f"Voice input too short ({len(cleaned_text)} chars): '{cleaned_text}'", print_to_terminal=True)
+                else:
+                    logger.info("STT result was empty, skipping message emission.", print_to_terminal=True)
+            
+            # Complete the request
+            self._complete_request()
+            
+            # In continuous mode, don't restart voice input immediately
+            # Wait for TTS to start, then restart voice input during TTS playback
+            # This creates the non-interruptive flow: user speaks → stop mic → process → enable mic during TTS
+            if self.continuous_voice_mode:
+                logger.debug("Continuous voice mode: voice input stopped during processing, will restart during TTS")
+                # Voice input will be restarted in _on_tts_started for non-interruptive flow
+        except Exception as e:
+            logger.error(f"Error in _on_stt_text_received: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            # Try to complete request even on error
+            try:
+                self._complete_request()
+            except:
+                pass
     
     def _restart_voice_input_safely(self):
         """Safely restart voice input after ensuring queue is processed"""
@@ -665,121 +680,227 @@ class VoiceService(QObject):
     
     def _on_stt_error(self, error: str):
         """Handle STT error"""
-        self.is_processing_voice = False
-        self.voice_processing_finished.emit()
-        self.voice_input_error.emit(error)
-        
-        # Forward to response queue if in separate process
-        if self.response_queue:
-            self.response_queue.put({
-                "type": "voice_processing_finished",
-                "data": None
-            })
-            self.response_queue.put({
-                "type": "voice_input_error",
-                "data": error
-            })
-        
-        # Complete the request
-        self._complete_request()
-        
-        # In continuous mode, restart voice input after error (but with delay)
-        if self.continuous_voice_mode:
-            logger.debug("Continuous voice mode: restarting voice input after STT error")
-            QTimer.singleShot(1000, self._restart_voice_input_safely)  # Longer delay after error
+        try:
+            self.is_processing_voice = False
+            self.voice_processing_finished.emit()
+            self.voice_input_error.emit(error)
+            
+            # Forward to response queue if in separate process
+            if self.response_queue:
+                self.response_queue.put({
+                    "type": "voice_processing_finished",
+                    "data": None
+                })
+                self.response_queue.put({
+                    "type": "voice_input_error",
+                    "data": error
+                })
+            
+            # Complete the request
+            self._complete_request()
+            
+            # In continuous mode, restart voice input after error (but with delay)
+            if self.continuous_voice_mode:
+                logger.debug("Continuous voice mode: restarting voice input after STT error")
+                QTimer.singleShot(1000, self._restart_voice_input_safely)  # Longer delay after error
+        except Exception as e:
+            logger.error(f"Error in _on_stt_error: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            # Try to complete request even on error
+            try:
+                self._complete_request()
+            except:
+                pass
     
     def _on_tts_started(self):
         """Handle TTS started"""
-        self.is_playing_tts = True
-        logger.debug("TTS started, setting playing flag")
-        self.tts_started.emit()
-        
-        # Forward to response queue if in separate process
-        if self.response_queue:
-            self.response_queue.put({
-                "type": "tts_started",
-                "data": None
-            })
-        
-        # In continuous mode, restart voice input during TTS for non-interruptive flow
-        if self.continuous_voice_mode:
-            logger.debug("Continuous voice mode: restarting voice input during TTS for non-interruptive flow")
-            QTimer.singleShot(1000, self._restart_voice_input_safely)  # 1 second delay to let TTS start
+        try:
+            self.is_playing_tts = True
+            logger.debug("TTS started, setting playing flag")
+            self.tts_started.emit()
+            
+            # Forward to response queue if in separate process
+            if self.response_queue:
+                self.response_queue.put({
+                    "type": "tts_started",
+                    "data": None
+                })
+            
+            # In continuous mode, restart voice input during TTS for non-interruptive flow
+            if self.continuous_voice_mode:
+                logger.debug("Continuous voice mode: restarting voice input during TTS for non-interruptive flow")
+                QTimer.singleShot(1000, self._restart_voice_input_safely)  # 1 second delay to let TTS start
+        except Exception as e:
+            logger.error(f"Error in _on_tts_started: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            # Don't re-raise to prevent crashes
     
     def _on_tts_finished(self):
-        """Handle TTS finished"""
-        self.is_playing_tts = False
-        logger.debug("TTS finished, resetting playing flag")
-        self.tts_finished.emit()
-        
-        # Forward to response queue if in separate process
-        if self.response_queue:
-            self.response_queue.put({
-                "type": "tts_finished",
-                "data": None
-            })
-        
-        # Complete the request
-        self._complete_request()
-        
-        # In continuous mode, restart voice input after TTS finishes
-        if self.continuous_voice_mode:
-            logger.debug("Continuous voice mode: restarting voice input after TTS completion")
-            QTimer.singleShot(500, self._restart_voice_input_safely)
-    
-    def _on_tts_error(self, error: str):
-        """Handle TTS error"""
-        self.is_playing_tts = False
-        logger.error(f"TTS error: {error}")
-        self.tts_error.emit(error)
-        
-        # Forward to response queue if in separate process
-        if self.response_queue:
-            self.response_queue.put({
-                "type": "tts_error",
-                "data": error
-            })
-        
-        # Complete the request
-        self._complete_request()
-    
-    def speak_text(self, text: str):
-        """Convert text to speech and play it"""
-        if not self.tts_service:
-            logger.error("TTS service not available")
-            self.tts_error.emit("TTS service not available")
-            return
-            
-        if self.is_playing_tts:
-            logger.warning("TTS already in progress, stopping current playback")
-            self.stop_tts()
-        
+        """Handle TTS finished event with comprehensive error handling"""
         try:
-            # Directly call TTS service (for UI calls)
-            logger.debug(f"Direct TTS call for text: {text[:50]}...")
+            log_thread_info("TTS finished signal received")
+            
+            # Reset playing flag with thread safety
+            if hasattr(self, 'is_playing_tts'):
+                self.is_playing_tts = False
+                logger.debug("TTS finished, resetting playing flag")
+            
+            # Safely restart voice input for continuous mode
+            if self.continuous_voice_mode:
+                try:
+                    logger.debug("Continuous voice mode: restarting voice input after TTS completion")
+                    # Use a timer to ensure TTS cleanup is complete before restarting
+                    QTimer.singleShot(100, self._restart_voice_input_safely)
+                except Exception as e:
+                    logger.error(f"Error restarting voice input after TTS: {e}")
+            
+            # Emit finished signal with thread safety
+            try:
+                self.tts_finished.emit()
+            except Exception as e:
+                logger.error(f"Error emitting TTS finished signal: {e}")
+                
+        except Exception as e:
+            logger.error(f"Error in _on_tts_finished: {e}")
+            import traceback
+            logger.error(f"TTS finished error traceback: {traceback.format_exc()}")
+        finally:
+            # Always ensure playing flag is reset
+            try:
+                self.is_playing_tts = False
+            except Exception as e:
+                logger.error(f"Error resetting playing flag: {e}")
+
+    def _on_tts_error(self, error: str):
+        """Handle TTS error with comprehensive error handling"""
+        try:
+            log_thread_info(f"TTS error received: {error}")
+            
+            # Reset playing flag
+            self.is_playing_tts = False
+            
+            # Log the error
+            logger.error(f"TTS error: {error}")
+            
+            # Emit error signal with thread safety
+            try:
+                self.tts_error.emit(error)
+            except Exception as e:
+                logger.error(f"Error emitting TTS error signal: {e}")
+                
+            # Restart voice input for continuous mode even on error
+            if self.continuous_voice_mode:
+                try:
+                    logger.debug("Continuous voice mode: restarting voice input after TTS error")
+                    QTimer.singleShot(200, self._restart_voice_input_safely)
+                except Exception as e:
+                    logger.error(f"Error restarting voice input after TTS error: {e}")
+                    
+        except Exception as e:
+            logger.error(f"Error in _on_tts_error: {e}")
+            import traceback
+            logger.error(f"TTS error handler traceback: {traceback.format_exc()}")
+
+    def speak_text(self, text: str):
+        """Speak text with comprehensive error handling and thread safety"""
+        try:
+            log_thread_info(f"Speak text called: {text[:50]}...")
+            
+            if not text or not text.strip():
+                logger.warning("Empty text provided to speak_text")
+                return
+            
+            # Check if TTS is already in progress
+            if self.is_playing_tts:
+                logger.warning("TTS already in progress, stopping current playback")
+                try:
+                    self.stop_tts()
+                    # Wait a bit for cleanup
+                    QTimer.singleShot(100, lambda: self._speak_text_impl(text))
+                except Exception as e:
+                    logger.error(f"Error stopping current TTS: {e}")
+                    # Try to speak anyway
+                    self._speak_text_impl(text)
+            else:
+                self._speak_text_impl(text)
+                
+        except Exception as e:
+            logger.error(f"Error in speak_text: {e}")
+            import traceback
+            logger.error(f"Speak text error traceback: {traceback.format_exc()}")
+            try:
+                self.tts_error.emit(f"TTS failed: {str(e)}")
+            except Exception as emit_error:
+                logger.error(f"Error emitting TTS error signal: {emit_error}")
+
+    def _speak_text_impl(self, text: str):
+        """Implementation of speak_text with thread safety"""
+        try:
+            log_thread_info(f"Direct TTS call for text: {text[:50]}...")
             
             # Set playing flag
             self.is_playing_tts = True
+            logger.debug("TTS started, setting playing flag")
             
-            # Call TTS service directly
-            self.tts_service.speak_text(text)
-            
-            # Emit TTS started signal
-            self.tts_started.emit()
-            
-            logger.debug("Direct TTS call completed successfully")
+            # Use TTS service with error handling
+            if self.tts_service and self.tts_service.is_available():
+                try:
+                    # Check if continuous voice mode is enabled
+                    if self.continuous_voice_mode:
+                        logger.debug("Continuous voice mode: restarting voice input during TTS for non-interruptive flow")
+                        # Restart voice input during TTS for continuous mode
+                        QTimer.singleShot(50, self._restart_voice_input_safely)
+                    
+                    # Use streaming TTS if available
+                    if hasattr(self.tts_service, 'speak_text_streaming'):
+                        self.tts_service.speak_text_streaming(text)
+                    else:
+                        self.tts_service.speak_text(text)
+                        
+                    logger.debug("Direct TTS call completed successfully")
+                    
+                except Exception as e:
+                    logger.error(f"Error calling TTS service: {e}")
+                    self.is_playing_tts = False
+                    self.tts_error.emit(f"TTS service error: {str(e)}")
+            else:
+                logger.error("TTS service not available")
+                self.is_playing_tts = False
+                self.tts_error.emit("TTS service not available")
                 
         except Exception as e:
-            logger.error(f"Failed to start TTS: {e}")
+            logger.error(f"Error in _speak_text_impl: {e}")
             self.is_playing_tts = False
-            self.tts_error.emit(f"Failed to start TTS: {str(e)}")
-    
+            try:
+                self.tts_error.emit(f"TTS implementation error: {str(e)}")
+            except Exception as emit_error:
+                logger.error(f"Error emitting TTS error signal: {emit_error}")
+
     def stop_tts(self):
-        """Stop current TTS playback"""
-        if self.tts_service:
-            self.tts_service.stop_playback()
-        self.is_playing_tts = False
-    
+        """Stop TTS with comprehensive error handling"""
+        try:
+            log_thread_info("Stop TTS called")
+            
+            # Reset playing flag first
+            self.is_playing_tts = False
+            
+            # Stop TTS service with error handling
+            if self.tts_service:
+                try:
+                    self.tts_service.stop_playback()
+                    logger.debug("TTS playback stopped successfully")
+                except Exception as e:
+                    logger.error(f"Error stopping TTS service: {e}")
+            else:
+                logger.warning("TTS service not available for stopping")
+                
+        except Exception as e:
+            logger.error(f"Error in stop_tts: {e}")
+            import traceback
+            logger.error(f"Stop TTS error traceback: {traceback.format_exc()}")
+
     def set_continuous_voice_mode(self, enabled: bool):
         """Set continuous voice mode"""
         self.continuous_voice_mode = enabled
@@ -831,39 +952,67 @@ class VoiceService(QObject):
             self.recording_service.set_audio_gate_enabled(enabled)
     
     def cleanup_on_exit(self):
-        """Clean up resources when the application exits"""
+        """Comprehensive cleanup with error handling"""
         try:
-            logger.info("Cleaning up voice service resources...", print_to_terminal=True)
+            log_thread_info("Starting comprehensive cleanup")
             
-            # Stop any ongoing operations
-            self.stop_voice_input()
-            self.stop_tts()
+            # Stop all active operations
+            try:
+                self.stop_voice_input()
+            except Exception as e:
+                logger.error(f"Error stopping voice input during cleanup: {e}")
             
-            # Wait for active voice operations to complete
-            if self._active_voice_operations:
-                logger.debug(f"[DEBUG] Waiting for {len(self._active_voice_operations)} active voice operations to complete")
-                self.thread_pool_manager.wait_for_all_tasks(timeout=5.0)
+            try:
+                self.stop_tts()
+            except Exception as e:
+                logger.error(f"Error stopping TTS during cleanup: {e}")
             
-            # Clean up thread pool manager
-            if self.thread_pool_manager:
-                self.thread_pool_manager.shutdown()
+            # Clear request queue
+            try:
+                self.clear_request_queue()
+            except Exception as e:
+                logger.error(f"Error clearing request queue during cleanup: {e}")
             
-            # Clean up services
-            if self.recording_service:
-                self.recording_service.cleanup()
-            if self.stt_service:
-                self.stt_service.cleanup()
-            if self.tts_service:
-                self.tts_service.cleanup()
+            # Clean up services with error handling
+            try:
+                if self.recording_service:
+                    self.recording_service.cleanup()
+            except Exception as e:
+                logger.error(f"Error cleaning up recording service: {e}")
+            
+            try:
+                if self.tts_service:
+                    self.tts_service.cleanup()
+            except Exception as e:
+                logger.error(f"Error cleaning up TTS service: {e}")
+            
+            try:
+                if self.stt_service:
+                    self.stt_service.cleanup()
+            except Exception as e:
+                logger.error(f"Error cleaning up STT service: {e}")
+            
+            # Clean up thread pool
+            try:
+                if hasattr(self, 'threading_service') and hasattr(self.threading_service, 'cleanup'):
+                    self.threading_service.cleanup()
+                if hasattr(self, 'persistent_thread_pool') and hasattr(self.persistent_thread_pool, 'cleanup'):
+                    self.persistent_thread_pool.cleanup()
+            except Exception as e:
+                logger.error(f"Error cleaning up threading/persistent thread pool: {e}")
             
             # Clean up audio files
-            self.cleanup_old_audio_files()
+            try:
+                self.cleanup_old_audio_files()
+            except Exception as e:
+                logger.error(f"Error cleaning up audio files: {e}")
             
-            logger.info("Voice service cleanup completed", print_to_terminal=True)
+            logger.info("Comprehensive cleanup completed")
             
         except Exception as e:
-            logger.error(f"Error during voice service cleanup: {e}")
-            logger.error(traceback.format_exc())
+            logger.error(f"Error in cleanup_on_exit: {e}")
+            import traceback
+            logger.error(f"Cleanup error traceback: {traceback.format_exc()}")
             
     def get_audio_folder_path(self) -> str:
         """Get the path to the audio folder"""
@@ -977,13 +1126,38 @@ class VoiceService(QObject):
             })
     
     def _cleanup_resources(self):
-        """Clean up resources when the cleanup timer fires"""
-        logger.info("Cleaning up resources")
-        self.cleanup_all_audio_files()
-        
-        # Clean up recording service
-        if hasattr(self, 'recording_service'):
-            self.recording_service.cleanup()
+        """Clean up resources with error handling"""
+        try:
+            log_thread_info("Cleaning up voice service resources")
+            
+            # Reset state flags
+            try:
+                self.is_recording = False
+                self.is_processing_voice = False
+                self.is_playing_tts = False
+                self._interruption_detected = False
+            except Exception as e:
+                logger.error(f"Error resetting state flags: {e}")
+            
+            # Clear active operations
+            try:
+                self._active_voice_operations.clear()
+            except Exception as e:
+                logger.error(f"Error clearing active operations: {e}")
+            
+            # Reset request tracking
+            try:
+                self._current_request_id = None
+                self._active_requests = 0
+            except Exception as e:
+                logger.error(f"Error resetting request tracking: {e}")
+            
+            logger.debug("Voice service resources cleaned up")
+            
+        except Exception as e:
+            logger.error(f"Error in _cleanup_resources: {e}")
+            import traceback
+            logger.error(f"Resource cleanup error traceback: {traceback.format_exc()}")
     
     def _reset_error_count(self):
         """Reset error count after a delay"""

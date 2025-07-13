@@ -46,7 +46,7 @@ class StreamingUpdateTask(QRunnable, QObject):
         logger.debug(f"[DEBUG] StreamingUpdateTask created - ID: {self.task_id}")
     
     def run(self):
-        """Execute the streaming update task in the main thread."""
+        """Execute the streaming update task."""
         try:
             logger.debug(f"[DEBUG] StreamingUpdateTask started - ID: {self.task_id}")
             
@@ -55,19 +55,9 @@ class StreamingUpdateTask(QRunnable, QObject):
             if not app:
                 raise RuntimeError("No QApplication instance found")
             
-            # Use invokeMethod to execute the target function in the main thread
-            success = QMetaObject.invokeMethod(
-                app,
-                lambda: self._execute_target(),
-                Qt.QueuedConnection
-            )
-            
-            if not success:
-                # Fallback: try direct execution if we're already in the main thread
-                if QApplication.instance().thread() == QThread.currentThread():
-                    self._execute_target()
-                else:
-                    raise RuntimeError("Failed to schedule UI update in main thread")
+            # Use QTimer.singleShot for safer main thread execution
+            from PySide6.QtCore import QTimer
+            QTimer.singleShot(0, self._execute_target)
             
             logger.debug(f"[DEBUG] StreamingUpdateTask completed - ID: {self.task_id}")
             

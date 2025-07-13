@@ -10,6 +10,7 @@ from PySide6.QtCore import QObject, Signal, Qt, QTimer, QMutex, QMutexLocker
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QProgressBar, QMessageBox
 
 from pyside_chat.core.logging.logger import CustomLogger
+from pyside_chat.core.utils.threading_utils import log_thread_info, safe_signal_connect, safe_signal_disconnect
 
 logger = CustomLogger.get_logger(__name__)
 
@@ -367,6 +368,8 @@ class VoiceControls(QObject):
     def _reinitialize_voice_service(self):
         """Reinitialize voice service (for recovery)"""
         try:
+            # Reset signal connection flag to allow reconnection after reinit
+            self.reset_voice_signal_connections()
             self.force_reinitialize_voice_service()
             logger.info(
                 "Voice service reinitialization triggered for recovery")
@@ -532,6 +535,8 @@ class VoiceControls(QObject):
         if self.voice_service_manager:
             self.voice_service = self.voice_service_manager.get_voice_service()
             if self.voice_service:
+                # Reset signal connection flag for new voice service
+                self.reset_voice_signal_connections()
                 self.voice_service_initialized = True
                 self._setup_voice_connections()
                 logger.info(
@@ -612,6 +617,8 @@ class VoiceControls(QObject):
                 print(f"[DEBUG] Voice service type: {type(voice_service).__name__}")
                 logger.debug(f"Voice service type: {type(voice_service).__name__}", print_to_terminal=True)
                 
+                # Reset signal connection flag for new voice service
+                self.reset_voice_signal_connections()
                 self.voice_service = voice_service
                 self.voice_service_initialized = True
                 self._setup_voice_connections()
@@ -621,104 +628,152 @@ class VoiceControls(QObject):
         return None
 
     def _setup_voice_connections(self):
-        """Setup connections for voice service with proper cleanup and thread safety"""
-        if not self.voice_service:
-            logger.warning("Cannot setup voice connections: voice service is None")
-            return
-
-        logger.debug(f"Setting up voice connections for service type: {type(self.voice_service).__name__}")
-
-        # Check if voice service is properly initialized
-        if not hasattr(self.voice_service, 'voice_input_received'):
-            logger.warning("Voice service not fully initialized, skipping connections")
-            return
-
-        # Check if this is a voice service wrapper - if so, don't connect directly
-        service_type = type(self.voice_service).__name__
-        if 'Wrapper' in service_type or 'ProcessManager' in service_type:
-            logger.info(f"Voice service is a wrapper ({service_type}), skipping direct connections to avoid signal duplication")
-            return
-
-        # Guard: only connect once per instance
-        if self._voice_signals_connected:
-            logger.debug("Voice service signals already connected (internal guard), skipping re-connection.")
-            return
-
+        """Setup voice service signal connections with comprehensive error handling"""
         try:
-            logger.info("Setting up voice service UI connections...")
+            log_thread_info("Setting up voice connections")
             
-            # Define signal-slot mappings with QueuedConnection for thread safety
-            from PySide6.QtCore import Qt
-            signal_slot_mappings = [
-                (getattr(self.voice_service, 'voice_input_received', None), self.on_voice_input_received),
-                (getattr(self.voice_service, 'voice_input_error', None), self.on_voice_input_error),
-                (getattr(self.voice_service, 'tts_started', None), self.on_tts_started),
-                (getattr(self.voice_service, 'tts_finished', None), self.on_tts_finished),
-                (getattr(self.voice_service, 'tts_error', None), self.on_tts_error),
-                (getattr(self.voice_service, 'recording_started', None), self.on_recording_started),
-                (getattr(self.voice_service, 'recording_stopped', None), self.on_recording_stopped),
-                (getattr(self.voice_service, 'recording_error', None), self.on_recording_error),
-                (getattr(self.voice_service, 'voice_processing_started', None), self.on_voice_processing_started),
-                (getattr(self.voice_service, 'voice_processing_finished', None), self.on_voice_processing_finished),
-                (getattr(self.voice_service, 'audio_level_changed', None), self.on_audio_level_changed),
-                (getattr(self.voice_service, 'eq_bars_changed', None), self.on_eq_bars_changed),
-                (getattr(self.voice_service, 'user_interrupted', None), self.on_user_interrupted),
-                (getattr(self.voice_service, 'request_cancelled', None), self.on_request_cancelled),
-                (getattr(self.voice_service, 'voice_service_ready', None), self._on_voice_service_ready)
-            ]
+            if self._voice_signals_connected:
+                logger.debug("Voice signals already connected, skipping")
+                return
             
-            # Connect signals with QueuedConnection for thread safety
-            connections_made = 0
-            for signal, slot in signal_slot_mappings:
-                if signal and slot:
-                    try:
-                        # Only connect if not already connected
-                        if not signal.receivers(slot):
-                            signal.connect(slot, Qt.ConnectionType.QueuedConnection)
-                            connections_made += 1
-                            logger.debug(f"Connected signal {signal.__name__} to {slot.__name__}")
-                        else:
-                            logger.debug(f"Signal {signal.__name__} already connected to {slot.__name__}")
-                    except Exception as e:
-                        logger.error(f"Failed to connect signal {signal.__name__}: {e}")
+            if not self.voice_service:
+                logger.warning("Voice service not available for signal connections")
+                return
             
-            logger.info(f"Voice service UI connections established successfully: {connections_made} connections made")
-            self._voice_signals_connected = True
-            
+            # Connect voice service signals with error handling
+            try:
+                # Use safe signal connection utility
+                from PySide6.QtCore import Qt
+                from pyside_chat.core.utils.threading_utils import safe_signal_connect
+                
+                # Connect voice input signals
+                safe_signal_connect(
+                    self.voice_service.voice_input_received,
+                    self._on_voice_input_received,
+                    Qt.ConnectionType.QueuedConnection
+                )
+                
+                safe_signal_connect(
+                    self.voice_service.voice_input_error,
+                    self._on_voice_input_error,
+                    Qt.ConnectionType.QueuedConnection
+                )
+                
+                # Connect TTS signals
+                safe_signal_connect(
+                    self.voice_service.tts_started,
+                    self._on_tts_started,
+                    Qt.ConnectionType.QueuedConnection
+                )
+                
+                safe_signal_connect(
+                    self.voice_service.tts_finished,
+                    self._on_tts_finished,
+                    Qt.ConnectionType.QueuedConnection
+                )
+                
+                safe_signal_connect(
+                    self.voice_service.tts_error,
+                    self._on_tts_error,
+                    Qt.ConnectionType.QueuedConnection
+                )
+                
+                # Connect recording signals
+                safe_signal_connect(
+                    self.voice_service.recording_started,
+                    self._on_recording_started,
+                    Qt.ConnectionType.QueuedConnection
+                )
+                
+                safe_signal_connect(
+                    self.voice_service.recording_stopped,
+                    self._on_recording_stopped,
+                    Qt.ConnectionType.QueuedConnection
+                )
+                
+                safe_signal_connect(
+                    self.voice_service.recording_error,
+                    self._on_recording_error,
+                    Qt.ConnectionType.QueuedConnection
+                )
+                
+                # Connect audio level signals
+                safe_signal_connect(
+                    self.voice_service.audio_level_changed,
+                    self._on_audio_level_changed,
+                    Qt.ConnectionType.QueuedConnection
+                )
+                
+                # Connect EQ bars signals
+                safe_signal_connect(
+                    self.voice_service.eq_bars_changed,
+                    self._on_eq_bars_changed,
+                    Qt.ConnectionType.QueuedConnection
+                )
+                
+                # Connect voice status signals
+                safe_signal_connect(
+                    self.voice_service.voice_status_changed,
+                    self._on_voice_status_changed,
+                    Qt.ConnectionType.QueuedConnection
+                )
+                
+                self._voice_signals_connected = True
+                logger.info("Voice service signal connections established successfully")
+                
+            except Exception as e:
+                logger.error(f"Error connecting voice service signals: {e}")
+                import traceback
+                logger.error(f"Signal connection error traceback: {traceback.format_exc()}")
+                
         except Exception as e:
-            logger.error(f"Error setting up voice connections: {e}")
+            logger.error(f"Error in _setup_voice_connections: {e}")
             import traceback
-            logger.error(f"Traceback: {traceback.format_exc()}")
+            logger.error(f"Setup voice connections error traceback: {traceback.format_exc()}")
 
     def _disconnect_voice_signals(self):
-        """Disconnect all voice service signals to prevent duplicates"""
-        if not self.voice_service:
-            return
-            
+        """Disconnect voice service signals with comprehensive error handling"""
         try:
-            # List of signals to disconnect
-            signals_to_disconnect = [
-                'voice_input_received', 'voice_input_error', 'tts_started', 'tts_finished',
-                'tts_error', 'recording_started', 'recording_stopped', 'recording_error',
-                'voice_processing_started', 'voice_processing_finished', 'audio_level_changed',
-                'eq_bars_changed', 'user_interrupted', 'request_cancelled', 'voice_service_ready'
-            ]
+            log_thread_info("Disconnecting voice signals")
             
-            for signal_name in signals_to_disconnect:
-                signal = getattr(self.voice_service, signal_name, None)
-                if signal:
-                    try:
-                        # Only disconnect if signal has receivers
-                        if signal.receivers() > 0:
-                            signal.disconnect()
-                            logger.debug(f"Disconnected signal: {signal_name}")
-                        else:
-                            logger.debug(f"Signal {signal_name} has no receivers, skipping disconnect")
-                    except Exception as e:
-                        logger.debug(f"Signal {signal_name} was not connected or already disconnected: {e}")
-                        
+            if not self._voice_signals_connected:
+                logger.debug("Voice signals not connected, skipping disconnect")
+                return
+            
+            if not self.voice_service:
+                logger.warning("Voice service not available for signal disconnection")
+                return
+            
+            # Disconnect signals with error handling
+            try:
+                from PySide6.QtCore import Qt
+                from pyside_chat.core.utils.threading_utils import safe_signal_disconnect
+                
+                # Disconnect all voice service signals
+                safe_signal_disconnect(self.voice_service.voice_input_received)
+                safe_signal_disconnect(self.voice_service.voice_input_error)
+                safe_signal_disconnect(self.voice_service.tts_started)
+                safe_signal_disconnect(self.voice_service.tts_finished)
+                safe_signal_disconnect(self.voice_service.tts_error)
+                safe_signal_disconnect(self.voice_service.recording_started)
+                safe_signal_disconnect(self.voice_service.recording_stopped)
+                safe_signal_disconnect(self.voice_service.recording_error)
+                safe_signal_disconnect(self.voice_service.audio_level_changed)
+                safe_signal_disconnect(self.voice_service.eq_bars_changed)
+                safe_signal_disconnect(self.voice_service.voice_status_changed)
+                
+                self._voice_signals_connected = False
+                logger.info("Voice service signal connections disconnected successfully")
+                
+            except Exception as e:
+                logger.error(f"Error disconnecting voice service signals: {e}")
+                import traceback
+                logger.error(f"Signal disconnection error traceback: {traceback.format_exc()}")
+                
         except Exception as e:
-            logger.error(f"Error disconnecting voice signals: {e}")
+            logger.error(f"Error in _disconnect_voice_signals: {e}")
+            import traceback
+            logger.error(f"Disconnect voice signals error traceback: {traceback.format_exc()}")
 
     def reset_voice_signal_connections(self):
         """Reset the internal guard flag to allow reconnection if needed (e.g., after re-init)."""
@@ -804,6 +859,7 @@ class VoiceControls(QObject):
     
     def toggle_voice_mode(self):
         """Toggle voice mode on/off with proper cleanup"""
+        log_thread_info("Voice mode toggle called", logger)
         logger.debug("Toggle voice mode called")
 
         try:
@@ -960,31 +1016,31 @@ class VoiceControls(QObject):
                 logger.debug("Voice mode is False, ignoring voice input", print_to_terminal=True)
                 return
             
-            # Prevent duplicate processing
-            # Check for duplicate voice input with improved detection
+            # Prevent duplicate processing with more robust detection
             current_time = time.time()
             
-            # Check for exact duplicate within a very short time window (0.5 seconds)
-            if hasattr(self, '_last_processed_voice_input') and hasattr(self, '_last_voice_input_time'):
-                time_diff = current_time - self._last_voice_input_time
-                if self._last_processed_voice_input == text and time_diff < 0.5:
-                    print(f"[DEBUG] Exact duplicate voice input detected within {time_diff:.2f}s, ignoring: '{text}'")
-                    logger.debug(f"Exact duplicate voice input detected within {time_diff:.2f}s, ignoring: '{text}'", print_to_terminal=True)
-                    import traceback
-                    tb = traceback.format_stack()
-                    logger.debug(f"[DUPLICATE TRACEBACK] Duplicate voice input call stack:\n{''.join(tb)}", print_to_terminal=True)
+            # Initialize tracking variables if they don't exist
+            if not hasattr(self, '_last_processed_voice_input'):
+                self._last_processed_voice_input = None
+            if not hasattr(self, '_last_voice_input_time'):
+                self._last_voice_input_time = 0
+            
+            # Check for exact duplicate within a short time window (1 second)
+            time_diff = current_time - self._last_voice_input_time
+            if (self._last_processed_voice_input == text and 
+                time_diff < 1.0):  # Increased window to 1 second
+                print(f"[DEBUG] Exact duplicate voice input detected within {time_diff:.2f}s, ignoring: '{text}'")
+                logger.debug(f"Exact duplicate voice input detected within {time_diff:.2f}s, ignoring: '{text}'", print_to_terminal=True)
+                return
+            
+            # Check for similar voice input within a longer time window (2 seconds)
+            if time_diff < 2.0:  # 2 second window for similar inputs
+                if self._is_similar_voice_input(text, self._last_processed_voice_input):
+                    print(f"[DEBUG] Similar voice input detected within {time_diff:.1f}s, ignoring: '{text}'")
+                    logger.debug(f"Similar voice input detected within {time_diff:.1f}s, ignoring: '{text}'", print_to_terminal=True)
                     return
             
-            # Check for similar voice input within a short time window (1 second)
-            if hasattr(self, '_last_voice_input_time') and hasattr(self, '_last_processed_voice_input'):
-                time_diff = current_time - self._last_voice_input_time
-                if time_diff < 1.0:  # 1 second window for similar inputs
-                    # Check if the new input is very similar to the last one
-                    if self._is_similar_voice_input(text, self._last_processed_voice_input):
-                        print(f"[DEBUG] Similar voice input detected within {time_diff:.1f}s, ignoring: '{text}'")
-                        logger.debug(f"Similar voice input detected within {time_diff:.1f}s, ignoring: '{text}'", print_to_terminal=True)
-                        return
-            
+            # Update tracking variables
             self._last_processed_voice_input = text
             self._last_voice_input_time = current_time
             
@@ -1070,21 +1126,31 @@ class VoiceControls(QObject):
     
     def on_voice_input_received(self, text: str):
         """Handle voice input received"""
-        logger.debug(f"Voice input received: {text}")
-        
-        # Use QTimer.singleShot to ensure this runs in the main thread
-        from PySide6.QtCore import QTimer
-        QTimer.singleShot(0, lambda: self._handle_voice_input_safe(text))
+        try:
+            logger.debug(f"Voice input received: {text}")
+            
+            # Use QTimer.singleShot to ensure this runs in the main thread
+            from PySide6.QtCore import QTimer
+            QTimer.singleShot(0, lambda: self._handle_voice_input_safe(text))
+        except Exception as e:
+            logger.error(f"Error in on_voice_input_received: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
     
     def on_voice_input_error(self, error: str):
         """Handle voice input error"""
-        logger.error(f"Voice input error: {error}")
-        
-        # Handle service error
-        self._handle_service_error(error)
-        
-        # Use QTimer.singleShot to ensure UI updates happen in the main thread
-        QTimer.singleShot(0, lambda: self._handle_voice_input_error_safe(error))
+        try:
+            logger.error(f"Voice input error: {error}")
+            
+            # Handle service error
+            self._handle_service_error(error)
+            
+            # Use QTimer.singleShot to ensure UI updates happen in the main thread
+            QTimer.singleShot(0, lambda: self._handle_voice_input_error_safe(error))
+        except Exception as e:
+            logger.error(f"Error in on_voice_input_error: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
     
     def _handle_voice_input_error_safe(self, error: str):
         """Handle voice input error safely in the main thread"""
@@ -1118,32 +1184,47 @@ class VoiceControls(QObject):
     
     def on_tts_started(self):
         """Handle TTS started"""
-        logger.debug("TTS started")
-        self.voice_status_changed.emit("Speaking")
-        self.tts_started.emit()
+        try:
+            logger.debug("TTS started")
+            self.voice_status_changed.emit("Speaking")
+            self.tts_started.emit()
+        except Exception as e:
+            logger.error(f"Error in on_tts_started: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
     
     def on_tts_finished(self):
         """Handle TTS finished"""
-        logger.debug("TTS finished in voice controls")
-        self.voice_status_changed.emit("Idle")
-        
-        # In continuous voice mode, restart voice input
-        if self.voice_mode:
-            self._handle_tts_finished_continuous()
-        
-        # Forward the signal
-        self.tts_finished.emit()
+        try:
+            logger.debug("TTS finished in voice controls")
+            self.voice_status_changed.emit("Idle")
+            
+            # In continuous voice mode, restart voice input
+            if self.voice_mode:
+                self._handle_tts_finished_continuous()
+            
+            # Forward the signal
+            self.tts_finished.emit()
+        except Exception as e:
+            logger.error(f"Error in on_tts_finished: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
     
     def on_tts_error(self, error: str):
         """Handle TTS error"""
-        logger.error(f"TTS error: {error}")
-        self.voice_status_changed.emit(f"TTS Error: {error}")
-        
-        # Handle service error
-        self._handle_service_error(error)
-        
-        # Use QTimer.singleShot to ensure UI updates happen in the main thread
-        QTimer.singleShot(0, lambda: self._handle_tts_error_safe(error))
+        try:
+            logger.error(f"TTS error: {error}")
+            self.voice_status_changed.emit(f"TTS Error: {error}")
+            
+            # Handle service error
+            self._handle_service_error(error)
+            
+            # Use QTimer.singleShot to ensure UI updates happen in the main thread
+            QTimer.singleShot(0, lambda: self._handle_tts_error_safe(error))
+        except Exception as e:
+            logger.error(f"Error in on_tts_error: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
     
     def _handle_tts_error_safe(self, error: str):
         """Handle TTS error safely in the main thread"""
@@ -1240,26 +1321,41 @@ class VoiceControls(QObject):
         self.voice_processing_finished.emit()
     
     def on_audio_level_changed(self, audio_level: float):
-        """Handle audio level changes"""
-        logger.debug(f"[EQ DEBUG] on_audio_level_changed called - audio_level: {audio_level:.4f}")
-        
-        # Enhanced audio level processing for better EQ responsiveness
-        # Check if TTS is currently playing
-        tts_playing = self.is_tts_playing()
-        
-        # Apply additional processing for TTS audio levels
-        if tts_playing:
-            # TTS audio often needs additional amplification for EQ visualization
-            # The streaming audio player already does some enhancement, but we can add more here
-            enhanced_level = audio_level * 1.2  # Additional 20% boost for TTS
-            logger.debug(f"[EQ DEBUG] TTS playing - enhanced level: {enhanced_level:.4f} (original: {audio_level:.4f})")
-            audio_level = enhanced_level
-        
-        # Emit signal for parent to handle
-        self.audio_level_changed.emit(audio_level)
-        
-        # Use QTimer.singleShot to ensure UI updates happen in the main thread
-        QTimer.singleShot(0, lambda: self._update_audio_level_ui_safe(audio_level))
+        """Handle audio level changes with throttling to prevent excessive processing"""
+        try:
+            # Throttle audio level processing to prevent excessive updates
+            current_time = time.time()
+            if hasattr(self, '_last_audio_level_time'):
+                time_diff = current_time - self._last_audio_level_time
+                if time_diff < 0.05:  # Only process every 50ms to prevent excessive updates
+                    return
+
+            self._last_audio_level_time = current_time
+
+            logger.debug(f"[EQ DEBUG] on_audio_level_changed called - audio_level: {audio_level:.4f}")
+
+            # Enhanced audio level processing for better EQ responsiveness
+            # Check if TTS is currently playing
+            tts_playing = self.is_tts_playing()
+
+            # Apply additional processing for TTS audio levels
+            if tts_playing:
+                # TTS audio often needs additional amplification for EQ visualization
+                # The streaming audio player already does some enhancement, but we can add more here
+                enhanced_level = audio_level * 1.2  # Additional 20% boost for TTS
+                logger.debug(f"[EQ DEBUG] TTS playing - enhanced level: {enhanced_level:.4f} (original: {audio_level:.4f})")
+                audio_level = enhanced_level
+
+            # Emit signal for parent to handle
+            self.audio_level_changed.emit(audio_level)
+
+            # Update EQ bars for visualization
+            self._update_eq_bars(audio_level)
+
+            # Use QTimer.singleShot to ensure UI updates happen in the main thread
+            QTimer.singleShot(0, lambda: self._update_audio_level_ui_safe(audio_level))
+        except Exception as e:
+            logger.error(f"Error in on_audio_level_changed: {e}")
     
     def _update_audio_level_ui_safe(self, audio_level: float):
         """Update audio level UI safely in the main thread"""
@@ -1342,34 +1438,49 @@ class VoiceControls(QObject):
     
     def update_voice_settings(self, settings: dict):
         """Update voice settings"""
-        self.voice_settings.update(settings)
-        
-        if self.voice_service_manager:
-            self.voice_service_manager.update_settings(settings)
-            logger.debug(f"Updated voice service manager settings: {settings}")
-        else:
-            logger.warning("Voice service manager not available for settings update")
-        # Emit EQ visualizer changed signal if EQ setting changes
-        if 'eq_visualizer' in settings:
-            self.eq_visualizer_changed.emit(settings['eq_visualizer'])
+        try:
+            self.voice_settings.update(settings)
+            
+            if self.voice_service_manager:
+                self.voice_service_manager.update_settings(settings)
+                logger.debug(f"Updated voice service manager settings: {settings}")
+            else:
+                logger.warning("Voice service manager not available for settings update")
+            # Emit EQ visualizer changed signal if EQ setting changes
+            if 'eq_visualizer' in settings:
+                self.eq_visualizer_changed.emit(settings['eq_visualizer'])
+        except Exception as e:
+            logger.error(f"Error updating voice settings: {e}")
 
     def get_voice_settings(self) -> dict:
         """Get current voice settings"""
-        if self.voice_service_manager:
-            return self.voice_service_manager.get_settings()
-        return self.voice_settings.copy()
+        try:
+            if self.voice_service_manager:
+                return self.voice_service_manager.get_settings()
+            return self.voice_settings.copy()
+        except Exception as e:
+            logger.error(f"Error getting voice settings: {e}")
+            return self.voice_settings.copy()
     
     def is_voice_service_ready(self) -> bool:
         """Check if voice service is ready"""
-        if self.voice_service_manager:
-            return self.voice_service_manager.is_ready()
-        return False
+        try:
+            if self.voice_service_manager:
+                return self.voice_service_manager.is_ready()
+            return False
+        except Exception as e:
+            logger.error(f"Error checking if voice service is ready: {e}")
+            return False
 
     def is_voice_service_initializing(self) -> bool:
         """Check if voice service is initializing"""
-        if self.voice_service_manager:
-            return self.voice_service_manager.is_initializing()
-        return False
+        try:
+            if self.voice_service_manager:
+                return self.voice_service_manager.is_initializing()
+            return False
+        except Exception as e:
+            logger.error(f"Error checking if voice service is initializing: {e}")
+            return False
 
     def get_voice_service_error(self) -> str:
         """Get the last voice service error"""
@@ -1379,6 +1490,8 @@ class VoiceControls(QObject):
 
     def force_reinitialize_voice_service(self):
         """Force reinitialization of the voice service"""
+        # Reset signal connection flag to allow reconnection after reinit
+        self.reset_voice_signal_connections()
         if self.voice_service_manager:
             self.voice_service_manager.force_reinitialize()
             logger.info("Forced voice service reinitialization")
@@ -1448,20 +1561,48 @@ class VoiceControls(QObject):
 
     def on_request_cancelled(self):
         """Handle request cancellation"""
-        logger.info("Request cancelled in voice controls")
-        
-        # Update UI to show cancellation
-        self.audio_level_label.setText("🎤 Cancelled - Ready")
-        self.audio_level_label.setToolTip("Previous request was cancelled")
-        
-        # In continuous mode, restart voice input after a short delay
-        if self.voice_mode:
-            from PySide6.QtCore import QTimer
-            QTimer.singleShot(1000, self._restart_voice_input_after_cancellation)
+        try:
+            logger.info("Request cancelled in voice controls")
+            
+            # Update UI to show cancellation
+            self.audio_level_label.setText("🎤 Cancelled - Ready")
+            self.audio_level_label.setToolTip("Previous request was cancelled")
+            
+            # In continuous mode, restart voice input after a short delay
+            if self.voice_mode:
+                from PySide6.QtCore import QTimer
+                QTimer.singleShot(1000, self._restart_voice_input_after_cancellation)
+        except Exception as e:
+            logger.error(f"Error handling request cancellation: {e}")
 
     def on_eq_bars_changed(self, bar_values):
         """Handle EQ bar array changes from the voice service and forward to parent (chat tab)"""
         self.eq_bars_changed.emit(bar_values)
+    
+    def _update_eq_bars(self, audio_level: float):
+        """Update EQ bars based on audio level"""
+        try:
+            # Generate EQ bar values based on audio level
+            # Create a simple frequency distribution for visualization
+            num_bars = 10
+            bar_values = []
+            
+            # Create a more realistic frequency distribution
+            base_level = audio_level * 100  # Scale to 0-100 range
+            
+            for i in range(num_bars):
+                # Create a bell curve distribution centered around the middle frequencies
+                frequency_factor = 1.0 - abs(i - (num_bars // 2)) / (num_bars // 2)
+                bar_value = base_level * frequency_factor * (0.5 + 0.5 * audio_level)
+                bar_values.append(max(0, min(100, bar_value)))
+            
+            # Emit the EQ bars signal
+            self.eq_bars_changed.emit(bar_values)
+            
+        except Exception as e:
+            logger.error(f"[EQ DEBUG] Error in _update_eq_bars: {e}")
+            import traceback
+            logger.error(f"[EQ DEBUG] Traceback: {traceback.format_exc()}")
 
     def _restart_voice_input_after_interruption(self):
         """Restart voice input after user interruption"""
@@ -1583,3 +1724,218 @@ class VoiceControls(QObject):
             self.cleanup()
         except Exception as e:
             logger.error(f"Error in voice controls destructor: {e}") 
+
+    def _on_voice_input_received(self, text: str):
+        """Handle voice input received with comprehensive error handling"""
+        try:
+            log_thread_info(f"Voice input received: {text}")
+            
+            if not text or not text.strip():
+                logger.warning("Empty voice input received")
+                return
+            
+            # Emit signal to chat tab with error handling
+            try:
+                self.voice_input_received.emit(text)
+                logger.info(f"Voice input forwarded to chat: {text}")
+            except Exception as e:
+                logger.error(f"Error emitting voice input signal: {e}")
+                
+        except Exception as e:
+            logger.error(f"Error in _on_voice_input_received: {e}")
+            import traceback
+            logger.error(f"Voice input received error traceback: {traceback.format_exc()}")
+
+    def _on_voice_input_error(self, error: str):
+        """Handle voice input error with comprehensive error handling"""
+        try:
+            log_thread_info(f"Voice input error: {error}")
+            
+            # Log the error
+            logger.error(f"Voice input error: {error}")
+            
+            # Emit error signal with error handling
+            try:
+                self.voice_input_error.emit(error)
+            except Exception as e:
+                logger.error(f"Error emitting voice input error signal: {e}")
+                
+        except Exception as e:
+            logger.error(f"Error in _on_voice_input_error: {e}")
+            import traceback
+            logger.error(f"Voice input error handler traceback: {traceback.format_exc()}")
+
+    def _on_tts_started(self):
+        """Handle TTS started with comprehensive error handling"""
+        try:
+            log_thread_info("TTS started")
+            
+            # Update UI state with error handling
+            try:
+                self.update_voice_status("TTS Playing")
+                self.voice_button.setEnabled(False)
+                logger.debug("TTS started - voice button disabled")
+            except Exception as e:
+                logger.error(f"Error updating UI for TTS started: {e}")
+                
+        except Exception as e:
+            logger.error(f"Error in _on_tts_started: {e}")
+            import traceback
+            logger.error(f"TTS started error traceback: {traceback.format_exc()}")
+
+    def _on_tts_finished(self):
+        """Handle TTS finished with comprehensive error handling"""
+        try:
+            log_thread_info("TTS finished")
+            
+            # Update UI state with error handling
+            try:
+                self.update_voice_status("Ready")
+                self.voice_button.setEnabled(True)
+                logger.debug("TTS finished - voice button enabled")
+            except Exception as e:
+                logger.error(f"Error updating UI for TTS finished: {e}")
+                
+        except Exception as e:
+            logger.error(f"Error in _on_tts_finished: {e}")
+            import traceback
+            logger.error(f"TTS finished error traceback: {traceback.format_exc()}")
+
+    def _on_tts_error(self, error: str):
+        """Handle TTS error with comprehensive error handling"""
+        try:
+            log_thread_info(f"TTS error: {error}")
+            
+            # Log the error
+            logger.error(f"TTS error: {error}")
+            
+            # Update UI state with error handling
+            try:
+                self.update_voice_status("TTS Error")
+                self.voice_button.setEnabled(True)
+                logger.debug("TTS error - voice button enabled")
+            except Exception as e:
+                logger.error(f"Error updating UI for TTS error: {e}")
+                
+        except Exception as e:
+            logger.error(f"Error in _on_tts_error: {e}")
+            import traceback
+            logger.error(f"TTS error handler traceback: {traceback.format_exc()}")
+
+    def _on_recording_started(self):
+        """Handle recording started with comprehensive error handling"""
+        try:
+            log_thread_info("Recording started")
+            
+            # Update UI state with error handling
+            try:
+                self.update_voice_status("Recording")
+                self.voice_button.setText("Stop Recording")
+                logger.debug("Recording started - UI updated")
+            except Exception as e:
+                logger.error(f"Error updating UI for recording started: {e}")
+                
+        except Exception as e:
+            logger.error(f"Error in _on_recording_started: {e}")
+            import traceback
+            logger.error(f"Recording started error traceback: {traceback.format_exc()}")
+
+    def _on_recording_stopped(self):
+        """Handle recording stopped with comprehensive error handling"""
+        try:
+            log_thread_info("Recording stopped")
+            
+            # Update UI state with error handling
+            try:
+                self.update_voice_status("Processing")
+                self.voice_button.setText("Start Recording")
+                logger.debug("Recording stopped - UI updated")
+            except Exception as e:
+                logger.error(f"Error updating UI for recording stopped: {e}")
+                
+        except Exception as e:
+            logger.error(f"Error in _on_recording_stopped: {e}")
+            import traceback
+            logger.error(f"Recording stopped error traceback: {traceback.format_exc()}")
+
+    def _on_recording_error(self, error: str):
+        """Handle recording error with comprehensive error handling"""
+        try:
+            log_thread_info(f"Recording error: {error}")
+            
+            # Log the error
+            logger.error(f"Recording error: {error}")
+            
+            # Update UI state with error handling
+            try:
+                self.update_voice_status("Recording Error")
+                self.voice_button.setText("Start Recording")
+                self.voice_button.setEnabled(True)
+                logger.debug("Recording error - UI updated")
+            except Exception as e:
+                logger.error(f"Error updating UI for recording error: {e}")
+                
+        except Exception as e:
+            logger.error(f"Error in _on_recording_error: {e}")
+            import traceback
+            logger.error(f"Recording error handler traceback: {traceback.format_exc()}")
+
+    def _on_audio_level_changed(self, level: float):
+        """Handle audio level changes with comprehensive error handling"""
+        try:
+            # Update audio level display with error handling
+            try:
+                if hasattr(self, 'audio_level_label'):
+                    self.audio_level_label.setText(f"Level: {level:.2f}")
+            except Exception as e:
+                logger.error(f"Error updating audio level display: {e}")
+                
+        except Exception as e:
+            logger.error(f"Error in _on_audio_level_changed: {e}")
+
+    def _on_eq_bars_changed(self, bars: list):
+        """Handle EQ bars changes with comprehensive error handling"""
+        try:
+            # Update EQ visualizer with error handling
+            try:
+                if hasattr(self, 'eq_visualizer') and self.eq_visualizer:
+                    self.eq_visualizer.update_bars(bars)
+            except Exception as e:
+                logger.error(f"Error updating EQ visualizer: {e}")
+                
+        except Exception as e:
+            logger.error(f"Error in _on_eq_bars_changed: {e}")
+
+    def _on_voice_status_changed(self, status: str):
+        """Handle voice status changes with comprehensive error handling"""
+        try:
+            log_thread_info(f"Voice status changed: {status}")
+            
+            # Update status display with error handling
+            try:
+                self.update_voice_status(status)
+            except Exception as e:
+                logger.error(f"Error updating voice status: {e}")
+                
+        except Exception as e:
+            logger.error(f"Error in _on_voice_status_changed: {e}")
+            import traceback
+            logger.error(f"Voice status changed error traceback: {traceback.format_exc()}")
+
+    def update_voice_status(self, status: str):
+        """Update voice status with comprehensive error handling"""
+        try:
+            log_thread_info(f"Updating voice status: {status}")
+            
+            # Update status label with error handling
+            try:
+                if hasattr(self, 'status_label'):
+                    self.status_label.setText(f"Status: {status}")
+                    logger.debug(f"Voice status updated to: {status}")
+            except Exception as e:
+                logger.error(f"Error updating status label: {e}")
+                
+        except Exception as e:
+            logger.error(f"Error in update_voice_status: {e}")
+            import traceback
+            logger.error(f"Update voice status error traceback: {traceback.format_exc()}") 

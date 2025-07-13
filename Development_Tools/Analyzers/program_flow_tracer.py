@@ -465,8 +465,8 @@ class ProgramFlowTracer:
         markdown.append("```python")
         markdown.append("# In ChatTab.append_response_chunk()")
         markdown.append("for chunk in response_chunks:")
-        markdown.append("    self.chat_display.append_chunk(chunk)")
-        markdown.append("    QApplication.processEvents()  # Update UI")
+        markdown.append("    # Thread-safe UI update using QTimer.singleShot")
+        markdown.append("    QTimer.singleShot(0, lambda: self._append_response_chunk_safe(chunk))")
         markdown.append("```")
         markdown.append("")
         

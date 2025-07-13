@@ -6,6 +6,7 @@ import pyaudio
 from typing import Optional
 from PySide6.QtCore import QObject, Signal
 from pyside_chat.core.logging.logger import CustomLogger
+from pyside_chat.core.utils.threading_utils import log_thread_info, is_main_thread
 import numpy as np
 
 logger = CustomLogger.get_logger(__name__)
@@ -78,6 +79,7 @@ class RecordingService(QObject):
         return self.available and self.audio is not None
 
     def start_recording(self):
+        log_thread_info("Starting recording service", logger)
         if self.is_recording:
             logger.warning("Recording already in progress")
             return
@@ -85,8 +87,10 @@ class RecordingService(QObject):
             self.is_recording = True
             self.frames = []
             self.speech_detected = False  # Reset at start
-            self.recording_thread = threading.Thread(target=self._record_audio)
-            self.recording_thread.start()
+            self.recording_thread = threading.Thread(target=self._record_audio, name="RecordingThread")
+            # Check if thread is already running (safety check)
+            if not self.recording_thread.is_alive():
+                self.recording_thread.start()
             self.recording_started.emit()
             logger.debug("Audio recording started")
         except Exception as e:
@@ -95,6 +99,7 @@ class RecordingService(QObject):
             self.recording_error.emit(f"Failed to start recording: {str(e)}")
 
     def _record_audio(self):
+        log_thread_info("Recording audio thread started", logger)
         try:
             self.stream = self.audio.open(
                 format=pyaudio.paInt16,

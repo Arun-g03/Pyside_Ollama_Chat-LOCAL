@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
 import sounddevice as sd
 import soundfile as sf
 import numpy as np
+from pyside_chat.core.utils.threading_utils import safe_ui_update, log_thread_info
 
 # Import EQ widgets
 from pyside_chat.ui.visualizers.widgets import (
@@ -231,7 +232,9 @@ class MainWindow(QMainWindow):
         self.waveform_net_container.setAttribute(Qt.WA_TranslucentBackground)
         self.waveform_net_container.setLayout(None)
         self.waveform_bg = QWidget(self.waveform_net_container)
-        self.waveform_bg.setStyleSheet('background: black;')
+        # Thread-safe UI update
+        from pyside_chat.core.utils.threading_utils import safe_ui_update
+        safe_ui_update(self.waveform_bg, 'setStyleSheet', 'background: black;')
         self.waveform_bg.lower()
         self.waveform_bass = CircularNetEQWidget(self.waveform_net_container, num_points=64, color=(80,180,255))
         self.waveform_mid = CircularNetEQWidget(self.waveform_net_container, num_points=64, color=(255,80,180))
@@ -242,7 +245,8 @@ class MainWindow(QMainWindow):
         self.waveform_grad_container.setAttribute(Qt.WA_TranslucentBackground)
         self.waveform_grad_container.setLayout(None)
         self.waveform_grad_bg = QWidget(self.waveform_grad_container)
-        self.waveform_grad_bg.setStyleSheet('background: black;')
+        # Thread-safe UI update
+        safe_ui_update(self.waveform_grad_bg, 'setStyleSheet', 'background: black;')
         self.waveform_grad_bg.lower()
         self.waveform_grad_bass = CircularGradientEQWidget(self.waveform_grad_container, num_points=64, color=(80,180,255))
         self.waveform_grad_mid = CircularGradientEQWidget(self.waveform_grad_container, num_points=64, color=(255,80,180))
@@ -253,7 +257,8 @@ class MainWindow(QMainWindow):
         self.waveform_bluegrad_container.setAttribute(Qt.WA_TranslucentBackground)
         self.waveform_bluegrad_container.setLayout(None)
         self.waveform_bluegrad_bg = QWidget(self.waveform_bluegrad_container)
-        self.waveform_bluegrad_bg.setStyleSheet('background: black;')
+        # Thread-safe UI update
+        safe_ui_update(self.waveform_bluegrad_bg, 'setStyleSheet', 'background: black;')
         self.waveform_bluegrad_bg.lower()
         self.waveform_blue_bass = CircularGradientEQWidget(self.waveform_bluegrad_container, num_points=64, color=(80,180,255), alpha=255, radius_scale=1.0, radius_ratio=0.30, energy_mult=1.5)
         self.waveform_blue_mid = CircularGradientEQWidget(self.waveform_bluegrad_container, num_points=64, color=(100,140,255), alpha=255, radius_scale=0.9, radius_ratio=0.30, energy_mult=1.5)
@@ -454,11 +459,12 @@ class MainWindow(QMainWindow):
             self._play_file_audio()
 
     def _play_microphone_audio(self):
+        log_thread_info("Microphone audio thread started", logger)
         device_index = self.system_audio_device_index
         if device_index is None:
             print("[MIC] No microphone device selected!")
             self.is_playing = False
-            self.play_btn.setText("Play")
+            safe_ui_update(self.play_btn, "setText", "Play")
             return
         
         print(f"[MIC] Using device index {device_index} for microphone input.")
@@ -486,7 +492,7 @@ class MainWindow(QMainWindow):
         except Exception as e:
             print(f"Microphone error: {e}")
         finally:
-            self._reset_visualizers()
+            safe_ui_update(self, "_reset_visualizers")
 
     def _play_file_audio(self):
         try:
@@ -516,7 +522,7 @@ class MainWindow(QMainWindow):
         except Exception as e:
             print(f"Audio playback error: {e}")
         finally:
-            self._reset_visualizers()
+            safe_ui_update(self, "_reset_visualizers")
 
     def _process_audio_chunk(self, chunk, samplerate):
         """Process audio chunk and update appropriate visualizer based on current mode."""
@@ -543,7 +549,7 @@ class MainWindow(QMainWindow):
                     else:
                         normalized_circle_vals.extend([0.1] * (self.circle_widget.num_sections - len(normalized_circle_vals)))
                 
-                self.circle_widget.set_eq_sections(normalized_circle_vals)
+                safe_ui_update(self.circle_widget, "set_eq_sections", normalized_circle_vals)
                 
             elif mode == 1:  # Bar EQ
                 raw_bar_values = map_frequency_to_bars(mag, samplerate, self.bar_widget.num_bars)
@@ -568,21 +574,21 @@ class MainWindow(QMainWindow):
                 treb_vals = band_energy(mag, samplerate, npts, 2000, 20000)
                 
                 if mode == 2:  # Waveform EQ
-                    self.waveform_bass.set_net_radii(bass_vals)
-                    self.waveform_mid.set_net_radii(mid_vals)
-                    self.waveform_treble.set_net_radii(treb_vals)
+                    safe_ui_update(self.waveform_bass, "set_net_radii", bass_vals)
+                    safe_ui_update(self.waveform_mid, "set_net_radii", mid_vals)
+                    safe_ui_update(self.waveform_treble, "set_net_radii", treb_vals)
                 elif mode == 3:  # Waveform Gradient
-                    self.waveform_grad_bass.set_net_radii(bass_vals)
-                    self.waveform_grad_mid.set_net_radii(mid_vals)
-                    self.waveform_grad_treble.set_net_radii(treb_vals)
+                    safe_ui_update(self.waveform_grad_bass, "set_net_radii", bass_vals)
+                    safe_ui_update(self.waveform_grad_mid, "set_net_radii", mid_vals)
+                    safe_ui_update(self.waveform_grad_treble, "set_net_radii", treb_vals)
                 elif mode == 4:  # Waveform Blue Gradient
-                    self.waveform_blue_bass.set_net_radii(bass_vals)
-                    self.waveform_blue_mid.set_net_radii(mid_vals)
-                    self.waveform_blue_treble.set_net_radii(treb_vals)
+                    safe_ui_update(self.waveform_blue_bass, "set_net_radii", bass_vals)
+                    safe_ui_update(self.waveform_blue_mid, "set_net_radii", mid_vals)
+                    safe_ui_update(self.waveform_blue_treble, "set_net_radii", treb_vals)
                     
         except Exception as e:
             print(f"Audio processing error: {e}")
-            self._reset_visualizers()
+            safe_ui_update(self, "_reset_visualizers")
 
     def _reset_visualizers(self):
         """Reset all visualizers to idle state."""

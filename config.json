@@ -25,7 +25,7 @@
     "silence_threshold": 0.001,
     "coqui_model": "tts_models/en/vctk/vits",
     "coqui_speaker": "No speakers available",
-    "eq_visualizer": "Bar EQ",
+    "eq_visualizer": "None",
     "tts_streaming": true,
     "allow_interruptions": false,
     "interruption_threshold": 0.5

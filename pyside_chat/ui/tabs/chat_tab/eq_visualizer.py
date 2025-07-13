@@ -51,54 +51,34 @@ class EQVisualizer(QObject):
         
     def switch_to_eq_visualizer(self, chat_display, voice_mode: bool):
         """Switch the chat display to EQ visualizer mode"""
-        logger.debug(f"[EQ DEBUG] switch_to_eq_visualizer called - voice_mode: {voice_mode}, eq_visualizer_mode: {self.eq_visualizer_mode}")
-        
-        # Don't switch if already showing an EQ widget
-        if self.current_eq_widget and self.current_eq_widget.isVisible():
-            logger.debug(f"[EQ DEBUG] EQ widget already visible, skipping switch")
-            return
-        
-        if not voice_mode or self.eq_visualizer_mode == "None":
-            logger.debug(f"[EQ DEBUG] Skipping EQ switch - voice_mode: {voice_mode}, eq_visualizer_mode: {self.eq_visualizer_mode}")
-            return
+        try:
+            logger.debug(f"[EQ DEBUG] switch_to_eq_visualizer called - voice_mode: {voice_mode}, eq_visualizer_mode: {self.eq_visualizer_mode}")
             
-        # Get the current EQ widget
-        if self.eq_visualizer_mode in self.eq_widgets:
-            self.current_eq_widget = self.eq_widgets[self.eq_visualizer_mode]
-            logger.debug(f"[EQ DEBUG] Selected EQ widget: {self.eq_visualizer_mode}")
+            # Don't switch if already showing an EQ widget
+            if self.current_eq_widget and self.current_eq_widget.isVisible():
+                logger.debug(f"[EQ DEBUG] EQ widget already visible, skipping switch")
+                return
             
-            # Find the scroll area containing the chat display
-            scroll_area = chat_display.parent()
-            logger.debug(f"[EQ DEBUG] Chat display parent found: {scroll_area is not None}, type: {type(scroll_area)}")
+            if not voice_mode or self.eq_visualizer_mode == "None":
+                logger.debug(f"[EQ DEBUG] Skipping EQ switch - voice_mode: {voice_mode}, eq_visualizer_mode: {self.eq_visualizer_mode}")
+                return
             
-            if scroll_area:
-                # Check if parent is a QScrollArea
-                if isinstance(scroll_area, QScrollArea):
-                    logger.debug(f"[EQ DEBUG] Parent is QScrollArea, current widget: {scroll_area.widget()}")
-                    
-                    # Store the current widget (chat display) and replace with EQ widget
-                    current_widget = scroll_area.widget()
-                    scroll_area.takeWidget()
-                    logger.debug(f"[EQ DEBUG] Removed current widget from scroll area")
-                    
-                    scroll_area.setWidget(self.current_eq_widget)
-                    logger.debug(f"[EQ DEBUG] Set EQ widget in scroll area")
-                    
-                    # Store the chat display for later restoration
-                    self.stored_chat_display = current_widget
-                else:
-                    logger.debug(f"[EQ DEBUG] Parent is not QScrollArea, it's: {type(scroll_area)}")
-                    # Try to find the scroll area in the parent hierarchy
-                    current_parent = scroll_area
-                    scroll_area = None
-                    while current_parent:
-                        if isinstance(current_parent, QScrollArea):
-                            scroll_area = current_parent
-                            break
-                        current_parent = current_parent.parent()
-                    
-                    if scroll_area:
-                        logger.debug(f"[EQ DEBUG] Found QScrollArea in parent hierarchy, current widget: {scroll_area.widget()}")
+            # Get the current EQ widget
+            if self.eq_visualizer_mode in self.eq_widgets:
+                self.current_eq_widget = self.eq_widgets[self.eq_visualizer_mode]
+                logger.debug(f"[EQ DEBUG] Selected EQ widget: {self.eq_visualizer_mode}")
+                
+                # Find the scroll area containing the chat display
+                scroll_area = chat_display.parent()
+                logger.debug(f"[EQ DEBUG] Chat display parent found: {scroll_area is not None}, type: {type(scroll_area)}")
+                
+                if scroll_area:
+                    # Check if parent is a QScrollArea
+                    if isinstance(scroll_area, QScrollArea):
+                        logger.debug(f"[EQ DEBUG] Parent is QScrollArea, current widget: {scroll_area.widget()}")
+                        
+                        # Store the current widget (chat display) and replace with EQ widget
+                        current_widget = scroll_area.widget()
                         scroll_area.takeWidget()
                         logger.debug(f"[EQ DEBUG] Removed current widget from scroll area")
                         
@@ -106,44 +86,69 @@ class EQVisualizer(QObject):
                         logger.debug(f"[EQ DEBUG] Set EQ widget in scroll area")
                         
                         # Store the chat display for later restoration
-                        self.stored_chat_display = scroll_area.widget()
+                        self.stored_chat_display = current_widget
                     else:
-                        logger.error(f"[EQ DEBUG] Could not find QScrollArea in parent hierarchy")
-                        return
-                
-                self.current_eq_widget.show()
-                chat_display.hide()
-                logger.debug(f"[EQ DEBUG] Showed EQ widget, hid chat display")
-                
-                # Ensure chat display is completely hidden and doesn't interfere
-                chat_display.setVisible(False)
-                chat_display.setEnabled(False)
-                logger.debug(f"[EQ DEBUG] Disabled chat display completely")
-                
-                # Force layout update
-                scroll_area.updateGeometry()
-                scroll_area.update()
-                self.current_eq_widget.updateGeometry()
-                self.current_eq_widget.update()
-                logger.debug(f"[EQ DEBUG] Forced layout updates")
-                
-                # Start the EQ animation
-                try:
-                    self.current_eq_widget.start_animation()
-                    logger.debug(f"[EQ DEBUG] Started EQ animation")
-                except Exception as e:
-                    logger.error(f"[EQ DEBUG] Error starting EQ animation: {e}")
-                
-                # Force a complete repaint
-                from PySide6.QtWidgets import QApplication
-                QApplication.processEvents()
-                logger.debug(f"[EQ DEBUG] Processed events")
-                
-                logger.debug(f"[EQ DEBUG] Successfully switched to EQ visualizer: {self.eq_visualizer_mode}")
+                        logger.debug(f"[EQ DEBUG] Parent is not QScrollArea, it's: {type(scroll_area)}")
+                        # Try to find the scroll area in the parent hierarchy
+                        current_parent = scroll_area
+                        scroll_area = None
+                        while current_parent:
+                            if isinstance(current_parent, QScrollArea):
+                                scroll_area = current_parent
+                                break
+                            current_parent = current_parent.parent()
+                        
+                        if scroll_area:
+                            logger.debug(f"[EQ DEBUG] Found QScrollArea in parent hierarchy, current widget: {scroll_area.widget()}")
+                            scroll_area.takeWidget()
+                            logger.debug(f"[EQ DEBUG] Removed current widget from scroll area")
+                            
+                            scroll_area.setWidget(self.current_eq_widget)
+                            logger.debug(f"[EQ DEBUG] Set EQ widget in scroll area")
+                            
+                            # Store the chat display for later restoration
+                            self.stored_chat_display = scroll_area.widget()
+                        else:
+                            logger.error(f"[EQ DEBUG] Could not find QScrollArea in parent hierarchy")
+                            return
+                    
+                    self.current_eq_widget.show()
+                    chat_display.hide()
+                    logger.debug(f"[EQ DEBUG] Showed EQ widget, hid chat display")
+                    
+                    # Ensure chat display is completely hidden and doesn't interfere
+                    chat_display.setVisible(False)
+                    chat_display.setEnabled(False)
+                    logger.debug(f"[EQ DEBUG] Disabled chat display completely")
+                    
+                    # Force layout update
+                    scroll_area.updateGeometry()
+                    scroll_area.update()
+                    self.current_eq_widget.updateGeometry()
+                    self.current_eq_widget.update()
+                    logger.debug(f"[EQ DEBUG] Forced layout updates")
+                    
+                    # Start the EQ animation
+                    try:
+                        self.current_eq_widget.start_animation()
+                        logger.debug(f"[EQ DEBUG] Started EQ animation")
+                    except Exception as e:
+                        logger.error(f"[EQ DEBUG] Error starting EQ animation: {e}")
+                    
+                    # Force a complete repaint using thread-safe alternative
+                    from pyside_chat.core.utils.threading_utils import safe_process_events_alternative
+                    safe_process_events_alternative()
+                    logger.debug(f"[EQ DEBUG] Processed events")
+                    
+                    logger.debug(f"[EQ DEBUG] Successfully switched to EQ visualizer: {self.eq_visualizer_mode}")
+                else:
+                    logger.error(f"[EQ DEBUG] No scroll area found for chat display")
             else:
-                logger.error(f"[EQ DEBUG] No scroll area found for chat display")
-        else:
-            logger.error(f"[EQ DEBUG] EQ visualizer mode '{self.eq_visualizer_mode}' not found in available widgets: {list(self.eq_widgets.keys())}")
+                logger.error(f"[EQ DEBUG] EQ visualizer mode '{self.eq_visualizer_mode}' not found in available widgets: {list(self.eq_widgets.keys())}")
+        except Exception as e:
+            logger.error(f"[EQ DEBUG] Error in switch_to_eq_visualizer: {e}")
+            import traceback
+            logger.error(f"[EQ DEBUG] Traceback: {traceback.format_exc()}")
     
     def switch_to_chat_display(self, chat_display):
         """Switch back to chat display mode"""
@@ -228,9 +233,9 @@ class EQVisualizer(QObject):
                 chat_display.update()
                 logger.debug(f"[EQ DEBUG] Forced layout updates")
                 
-                # Force a complete repaint
-                from PySide6.QtWidgets import QApplication
-                QApplication.processEvents()
+                # Force a complete repaint using thread-safe alternative
+                from pyside_chat.core.utils.threading_utils import safe_process_events_alternative
+                safe_process_events_alternative()
                 logger.debug(f"[EQ DEBUG] Processed events")
                 
                 self.current_eq_widget = None
