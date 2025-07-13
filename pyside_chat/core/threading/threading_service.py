@@ -20,6 +20,7 @@ from .qrunnable_tasks import MessageProcessingTask, FileProcessingTask, DataProc
 from .thread_pool_manager import get_global_thread_pool_manager
 from .thread_monitor import get_global_thread_monitor
 from .persistent_thread_pool import get_global_persistent_thread_pool
+from .thread_calculator import get_pool_thread_count
 
 logger = CustomLogger.get_logger(__name__)
 
@@ -71,45 +72,51 @@ class ThreadingService(QObject):
         """Initialize persistent thread pools for different operations."""
         try:
             logger.debug("[ID:TS002] Initializing persistent thread pools")
-            
+
+            # Get recommended sizes
+            chat_streaming_size = get_pool_thread_count('streaming')
+            audio_streaming_size = get_pool_thread_count('background')
+            monitoring_size = get_pool_thread_count('ui_update')
+            voice_processing_size = get_pool_thread_count('background')
+
             # Initialize chat streaming pool
             self.persistent_thread_pool.initialize_pool(
                 'chat_streaming',
                 ChatStreamingWorker,
-                size=2,
+                size=chat_streaming_size,
                 max_wait_time=30.0,
                 idle_timeout=300.0
             )
-            
+
             # Initialize audio streaming pool
             self.persistent_thread_pool.initialize_pool(
                 'audio_streaming',
                 AudioStreamingWorker,
-                size=1,
+                size=audio_streaming_size,
                 max_wait_time=10.0,
                 idle_timeout=180.0
             )
-            
+
             # Initialize monitoring pool
             self.persistent_thread_pool.initialize_pool(
                 'monitoring',
                 MonitoringWorker,
-                size=1,
+                size=monitoring_size,
                 max_wait_time=5.0,
                 idle_timeout=600.0
             )
-            
+
             # Initialize voice processing pool for voice service operations
             self.persistent_thread_pool.initialize_pool(
                 'voice_processing',
                 AudioStreamingWorker,  # Reuse audio streaming worker for voice processing
-                size=1,
+                size=voice_processing_size,
                 max_wait_time=15.0,
                 idle_timeout=240.0
             )
-            
+
             logger.debug("[ID:TS003] Persistent thread pools initialized successfully")
-            
+
         except Exception as e:
             logger.error(f"[ID:TS004] Error initializing persistent pools: {e}")
             logger.error(traceback.format_exc())

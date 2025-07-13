@@ -4,7 +4,7 @@ from pathlib import Path
 from datetime import datetime
 
 LOG_DIR = Path("Logs")  # Change this to your log folder
-OUTPUT_FILE = Path("Development Tools/log_report.md")
+OUTPUT_FILE = Path("Development_Tools/Reports/log_report.md")
 
 # Regex patterns
 LOG_LEVELS = ["ERROR", "WARNING", "CRITICAL", "EXCEPTION", "TRACEBACK"]

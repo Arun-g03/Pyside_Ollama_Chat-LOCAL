@@ -1,7 +1,7 @@
 {
   "default_model": "deepseek-r1:32b",
   "default_temperature": 0.7,
-  "default_personality": "Family members.aunt",
+  "default_personality": "Specialist.assistant",
   "auto_save_enabled": true,
   "spellcheck_enabled": true,
   "window_size": {
@@ -38,5 +38,6 @@
   "think_enabled": true,
   "theme": "Dark",
   "memory_enabled": true,
-  "logging_enabled": true
+  "logging_enabled": true,
+  "typewriter_enabled": false
 }

@@ -198,24 +198,28 @@ class UIManager:
         """Get a menu action by name"""
         return self.menu_actions.get(action_name)
     
+    def get_main_window(self) -> Optional[QMainWindow]:
+        """Get the main window"""
+        return self.main_window
+    
     def get_chat_tab(self) -> Optional[ChatTab]:
-        """Get the chat tab instance"""
+        """Get the chat tab"""
         return self.chat_tab
     
     def get_model_tab(self) -> Optional[ModelTab]:
-        """Get the model tab instance"""
+        """Get the model tab"""
         return self.model_tab
     
     def get_personality_tab(self) -> Optional[PersonalityTab]:
-        """Get the personality tab instance"""
+        """Get the personality tab"""
         return self.personality_tab
     
     def get_memory_tab(self) -> Optional[MemoryTab]:
-        """Get the memory tab instance"""
+        """Get the memory tab"""
         return self.memory_tab
     
     def get_tabs(self) -> Optional[QTabWidget]:
-        """Get the tab widget instance"""
+        """Get the tab widget"""
         return self.tabs
     
     def show_about_dialog(self):

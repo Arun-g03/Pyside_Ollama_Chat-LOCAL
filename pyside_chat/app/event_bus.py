@@ -49,9 +49,8 @@ class EventBus:
         self._chat_tab_retry_timer.setSingleShot(True)
         self._chat_tab_retry_timer.timeout.connect(self._retry_chat_tab_connection)
         
-        # Setup connections
-        self.setup_connections()
-        
+        # Note: setup_connections() is now called explicitly after UI setup
+    
     def setup_connections(self):
         """Setup all signal connections between components"""
         try:
@@ -68,24 +67,8 @@ class EventBus:
             ollama_service.model_operation_progress.connect(self._on_model_operation_progress)
             ollama_service.model_operation_error.connect(self._on_model_operation_error)
             
-            # Connect chat tab signals
-            chat_tab = self.ui_manager.get_chat_tab()
-            if chat_tab:
-                logger.debug("[EVENT DEBUG] Connecting chat tab signals...")
-                chat_tab.message_sent.connect(self._on_message_sent)
-                logger.debug("[EVENT DEBUG] Connected message_sent signal")
-                chat_tab.message_cancelled.connect(self._on_message_cancelled)
-                chat_tab.conversation_selected.connect(self._on_conversation_selected)
-                chat_tab.conversation_deleted.connect(self._on_conversation_deleted)
-                chat_tab.conversation_renamed.connect(self._on_conversation_renamed)
-                chat_tab.new_conversation_requested.connect(self._on_new_conversation_requested)
-                # Connect append_response_signal to handle streaming chunks in main thread
-                # Note: We'll call the method directly instead of using signal connection
-                logger.debug("[EVENT DEBUG] All chat tab signals connected successfully")
-            else:
-                logger.error("[EVENT ERROR] Chat tab not available for signal connection")
-                # Set up a retry mechanism to connect when chat tab becomes available
-                self._setup_chat_tab_retry()
+            # Connect chat tab signals with better error handling
+            self._connect_chat_tab_signals()
             
             # Connect model tab signals
             model_tab = self.ui_manager.get_model_tab()
@@ -190,14 +173,48 @@ class EventBus:
         except Exception as e:
             logger.error(f"[ID:0221] Error connecting menu actions: {e}")
     
+    def _connect_chat_tab_signals(self):
+        """Connect chat tab signals with proper error handling"""
+        try:
+            chat_tab = self.ui_manager.get_chat_tab()
+            if chat_tab:
+                logger.debug("[EVENT DEBUG] Connecting chat tab signals...")
+                
+                # Connect signals with proper error handling
+                signals_to_connect = [
+                    (chat_tab.message_sent, self._on_message_sent, "message_sent"),
+                    (chat_tab.message_cancelled, self._on_message_cancelled, "message_cancelled"),
+                    (chat_tab.conversation_selected, self._on_conversation_selected, "conversation_selected"),
+                    (chat_tab.conversation_deleted, self._on_conversation_deleted, "conversation_deleted"),
+                    (chat_tab.conversation_renamed, self._on_conversation_renamed, "conversation_renamed"),
+                    (chat_tab.new_conversation_requested, self._on_new_conversation_requested, "new_conversation_requested"),
+                ]
+                
+                for signal, slot, signal_name in signals_to_connect:
+                    try:
+                        signal.connect(slot, Qt.ConnectionType.QueuedConnection)
+                        logger.debug(f"[EVENT DEBUG] Connected {signal_name} signal")
+                    except Exception as e:
+                        logger.error(f"[EVENT ERROR] Failed to connect {signal_name} signal: {e}")
+                
+                logger.debug("[EVENT DEBUG] All chat tab signals connected successfully")
+            else:
+                logger.warning("[EVENT WARNING] Chat tab not available for signal connection - will retry")
+                # Set up a retry mechanism to connect when chat tab becomes available
+                self._setup_chat_tab_retry()
+        except Exception as e:
+            logger.error(f"[EVENT ERROR] Error connecting chat tab signals: {e}")
+            # Set up retry mechanism even on error
+            self._setup_chat_tab_retry()
+    
     def _on_status_updated(self, message: str):
         """Handle status updates from controller"""
         self.ui_manager.update_status(message)
     
     def _on_error_occurred(self, error_message: str):
         """Handle errors from controller"""
-        from PySide6.QtWidgets import QMessageBox
-        QMessageBox.critical(self.main_window, "Error", error_message)
+        from pyside_chat.ui.utils.message_utils import show_critical_error
+        show_critical_error("Application Error", error_message, parent=self.main_window)
     
     def _on_conversation_updated(self):
         """Handle conversation updates from controller"""
@@ -495,10 +512,12 @@ class EventBus:
             
             # Show error to user
             if hasattr(self, 'main_window') and self.main_window:
-                QMessageBox.critical(
-                    self.main_window,
+                from pyside_chat.ui.utils.message_utils import show_critical_error
+                show_critical_error(
                     "Chat Error",
-                    f"An error occurred during chat: {error_message}"
+                    "An error occurred during chat",
+                    Exception(error_message),
+                    self.main_window
                 )
             
         except Exception as e:
@@ -559,59 +578,55 @@ class EventBus:
             
             chat_tab = self.ui_manager.get_chat_tab()
             if chat_tab:
-                # Ensure UI streaming state is started for first chunk
-                if not chat_tab.is_streaming:
+                # CRITICAL FIX: Only start UI streaming state if not already streaming
+                # This prevents the repeated start_streaming() calls that were causing crashes
+                if not hasattr(chat_tab, 'is_streaming') or not chat_tab.is_streaming:
                     logger.debug("[ID:0196E] Starting UI streaming state for first chunk")
                     chat_tab.start_streaming()
+                else:
+                    logger.debug("[ID:0196F] UI already streaming, continuing")
                 
-                # Use a more robust thread-safe update mechanism
-                try:
-                    # Use QTimer.singleShot to ensure this runs in the main thread
-                    from PySide6.QtCore import QTimer
-                    QTimer.singleShot(0, lambda: self._safe_append_chunk(chat_tab, chunk))
-                    logger.debug(f"[ID:0196C] Scheduled append_response_chunk on chat tab")
-                except Exception as e:
-                    logger.error(f"[ID:0196F] Error scheduling chunk update: {e}")
-                    # Fallback to direct call if scheduling fails
-                    try:
-                        chat_tab.append_response_chunk(chunk, self._current_response_model)
-                        logger.debug(f"[ID:0196G] Direct append_response_chunk called")
-                    except Exception as e2:
-                        logger.error(f"[ID:0196H] Direct chunk update also failed: {e2}")
-                        # Final fallback - try to update the streaming handler directly
-                        try:
-                            streaming_handler = chat_tab.get_streaming_handler()
-                            if streaming_handler:
-                                streaming_handler.update_streaming_message(
-                                    chunk, "Assistant", None, False, tag="ai"
-                                )
-                                logger.debug(f"[ID:0196I] Direct streaming handler update successful")
-                        except Exception as e3:
-                            logger.error(f"[ID:0196J] All chunk update methods failed: {e3}")
-            else:
-                logger.warning("[ID:0196D] No chat tab found")
+                # CRITICAL FIX: Ensure streaming state is properly maintained
+                if not hasattr(chat_tab, 'is_streaming'):
+                    chat_tab.is_streaming = True
+                
+                # Use QTimer.singleShot to ensure UI updates happen in main thread
+                from PySide6.QtCore import QTimer
+                QTimer.singleShot(0, lambda: self._update_chat_display_safe(chunk))
                 
         except Exception as e:
-            logger.error(f"[ID:0195] Error handling worker chunk: {e}")
-            logger.error(f"[ID:0194] Worker chunk error traceback: {traceback.format_exc()}")
+            logger.error(f"[ID:0196C] Error in _on_worker_chunk: {e}")
+            logger.error(f"[ID:0196D] Worker chunk error traceback: {traceback.format_exc()}")
     
-    def _safe_append_chunk(self, chat_tab, chunk):
-        """Safely append chunk to chat tab in main thread"""
+    def _update_chat_display_safe(self, chunk):
+        """Safely update chat display in main thread"""
         try:
-            if hasattr(chat_tab, 'append_response_chunk'):
-                chat_tab.append_response_chunk(chunk, self._current_response_model)
-                logger.debug(f"[ID:0196K] Successfully appended chunk in main thread")
-            else:
-                logger.error("[ID:0196L] Chat tab has no append_response_chunk method")
+            chat_tab = self.ui_manager.get_chat_tab()
+            if chat_tab and hasattr(chat_tab, 'append_response_chunk'):
+                chat_tab.append_response_chunk(chunk)
         except Exception as e:
-            logger.error(f"[ID:0196M] Error in _safe_append_chunk: {e}")
-            logger.error(f"[ID:0196N] _safe_append_chunk traceback: {traceback.format_exc()}")
-            # Try to recover by forcing a UI update
-            try:
-                if hasattr(chat_tab, 'chat_display') and chat_tab.chat_display:
-                    chat_tab.chat_display.update()
-            except Exception as e2:
-                logger.error(f"[ID:0196O] Recovery attempt failed: {e2}")
+            logger.error(f"[ID:0196G] Error updating chat display: {e}")
+    
+    def _on_worker_progress(self, progress):
+        """Handle worker progress signal"""
+        try:
+            logger.debug(f"[ID:0197] Received worker progress: {progress}")
+            
+            # Update UI with progress using main thread
+            from PySide6.QtCore import QTimer
+            QTimer.singleShot(0, lambda: self._update_progress_safe(progress))
+            
+        except Exception as e:
+            logger.error(f"[ID:0198] Error in _on_worker_progress: {e}")
+    
+    def _update_progress_safe(self, progress):
+        """Safely update progress in main thread"""
+        try:
+            # Update status bar or progress indicator
+            if hasattr(self, 'ui_manager'):
+                self.ui_manager.update_status(progress)
+        except Exception as e:
+            logger.error(f"[ID:0198A] Error updating progress: {e}")
     
     def _on_worker_finished(self):
         """Handle worker completion"""
@@ -625,11 +640,9 @@ class EventBus:
             self.chat_controller.handle_ai_response()
             logger.debug("[ID:0193A] Called chat_controller.handle_ai_response")
             
-            # Update UI streaming state
-            chat_tab = self.ui_manager.get_chat_tab()
-            if chat_tab and chat_tab.is_streaming:
-                logger.debug("[ID:0193B] Stopping UI streaming state")
-                chat_tab.stop_streaming()
+            # Update UI streaming state using main thread
+            from PySide6.QtCore import QTimer
+            QTimer.singleShot(0, self._stop_streaming_safe)
             
             # Only clean up if TTS is also finished
             if self._tts_finished:
@@ -644,6 +657,48 @@ class EventBus:
             logger.error(f"[ID:0188] Worker finished error traceback: {traceback.format_exc()}")
             # Force cleanup on error
             self._cleanup_worker_thread()
+    
+    def _stop_streaming_safe(self):
+        """Safely stop streaming in main thread"""
+        try:
+            chat_tab = self.ui_manager.get_chat_tab()
+            if chat_tab and chat_tab.is_streaming:
+                logger.debug("[ID:0193B] Stopping UI streaming state")
+                chat_tab.stop_streaming()
+        except Exception as e:
+            logger.error(f"[ID:0193C] Error stopping streaming: {e}")
+    
+    def _on_worker_error(self, error_message):
+        """Handle worker error"""
+        logger.error(f"[ID:0166] Worker error: {error_message}")
+        
+        try:
+            # Stop UI streaming state using main thread
+            from PySide6.QtCore import QTimer
+            QTimer.singleShot(0, lambda: self._handle_worker_error_safe(error_message))
+            
+        except Exception as e:
+            logger.error(f"[ID:0165] Error handling worker error: {e}")
+            logger.error(f"[ID:0164] Worker error handler traceback: {traceback.format_exc()}")
+    
+    def _handle_worker_error_safe(self, error_message):
+        """Safely handle worker error in main thread"""
+        try:
+            chat_tab = self.ui_manager.get_chat_tab()
+            if chat_tab:
+                # Stop UI streaming state
+                if chat_tab.is_streaming:
+                    logger.debug("[ID:0166A] Stopping UI streaming state due to error")
+                    chat_tab.stop_streaming()
+                
+                from pyside_chat.core.utils.threading_utils import safe_ui_update
+                safe_ui_update(chat_tab, 'append_to_chat', "System", f"Error: {error_message}")
+                safe_ui_update(chat_tab, 'force_enable_send_button')
+            
+            self._on_worker_finished()
+            
+        except Exception as e:
+            logger.error(f"[ID:0165A] Error in _handle_worker_error_safe: {e}")
     
     def _on_tts_finished(self):
         """Handle TTS completion"""
@@ -699,7 +754,10 @@ class EventBus:
             # Reset streaming state in chat tab
             chat_tab = self.ui_manager.get_chat_tab()
             if chat_tab:
-                chat_tab.stop_streaming()
+                try:
+                    chat_tab.stop_streaming()
+                except Exception as e:
+                    logger.error(f"[ID:0163] Error stopping streaming in cleanup: {e}")
     
     def _final_worker_cleanup(self):
         """Final cleanup to ensure worker thread is properly destroyed"""
@@ -709,28 +767,6 @@ class EventBus:
         except Exception as e:
             logger.error(f"[ID:0160] Error in final worker cleanup: {e}")
             logger.error(f"[ID:0159] Final cleanup error traceback: {traceback.format_exc()}")
-    
-    def _on_worker_error(self, error_message):
-        """Handle worker error"""
-        logger.error(f"[ID:0166] Worker error: {error_message}")
-        
-        try:
-            chat_tab = self.ui_manager.get_chat_tab()
-            if chat_tab:
-                # Stop UI streaming state
-                if chat_tab.is_streaming:
-                    logger.debug("[ID:0166A] Stopping UI streaming state due to error")
-                    chat_tab.stop_streaming()
-                
-                from pyside_chat.core.utils.threading_utils import safe_ui_update
-                safe_ui_update(chat_tab, 'append_to_chat', "System", f"Error: {error_message}")
-                safe_ui_update(chat_tab, 'force_enable_send_button')
-            
-            self._on_worker_finished()
-            
-        except Exception as e:
-            logger.error(f"[ID:0165] Error handling worker error: {e}")
-            logger.error(f"[ID:0164] Worker error handler traceback: {traceback.format_exc()}")
     
     def _on_message_received(self, response: str):
         """Handle message received signal from chat controller"""
@@ -852,6 +888,10 @@ class EventBus:
         # Show user-friendly error dialog for connection issues
         if "Cannot connect to Ollama" in error or "connection" in error.lower():
             self._show_ollama_connection_error("operation")
+        else:
+            # Show copy-enabled error dialog for other model operation errors
+            from pyside_chat.ui.utils.message_utils import show_operation_error
+            show_operation_error("Model Operation", Exception(error), self.main_window)
     
     def _on_conversation_metadata_updated(self):
         """Handle conversation metadata updates"""

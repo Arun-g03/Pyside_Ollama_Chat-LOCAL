@@ -101,7 +101,7 @@ class ChatTab(QWidget):
         self.input_controls = InputControls(self)
         
         # Initialize chat display
-        self.chat_display = ChatDisplay(self)
+        self.chat_display = ChatDisplay(self, config_manager=self.config_manager)
         
         # Override AI name method in chat display
         self.chat_display.get_ai_name = self.get_ai_name
@@ -886,9 +886,9 @@ class ChatTab(QWidget):
         logger.debug("chat_display.append_to_chat completed", print_to_terminal=True)
         
         # Force immediate UI update for new messages
-        streaming_handler = self.chat_display.get_streaming_handler()
-        if streaming_handler and hasattr(streaming_handler, 'force_ui_update'):
-            streaming_handler.force_ui_update()
+        chat_renderer = self.chat_display.get_streaming_handler()
+        if chat_renderer and hasattr(chat_renderer, 'request_render'):
+            chat_renderer.request_render(immediate=True)
         
     def _force_chat_display_update(self):
         """Force immediate update of the chat display"""
@@ -932,10 +932,20 @@ class ChatTab(QWidget):
             # Ensure chat display is visible for message display
             self._ensure_chat_display_visible()
                 
-            if not self.is_streaming:
+            # CRITICAL FIX: Only start streaming if not already streaming
+            # The issue was that is_streaming was being reset to False between chunks
+            if not hasattr(self, 'is_streaming') or not self.is_streaming:
                 logger.debug("[ID:CT002A] Starting streaming")
                 self.start_streaming()
-            self.current_response += chunk  # accumulate here only!
+            else:
+                logger.debug("[ID:CT002C] Already streaming, continuing")
+                
+            # CRITICAL FIX: Ensure streaming state is properly maintained
+            if not hasattr(self, 'is_streaming'):
+                self.is_streaming = True
+                
+            # For typewriter effect: accumulate the response for logging but pass individual chunks to UI
+            self.current_response += chunk  # accumulate here for logging only!
             logger.debug(f"[ID:CT002B] Accumulated response length: {len(self.current_response)}")
             
             # Log the full accumulated message every 10 chunks to reduce log size
@@ -952,10 +962,12 @@ class ChatTab(QWidget):
             streaming_handler = self.chat_display.get_streaming_handler()
             if streaming_handler:
                 try:
+                    # CRITICAL FIX: Pass the individual chunk for typewriter effect
+                    # The streaming handler will append it to the existing content
                     streaming_handler.update_streaming_message(
-                        self.current_response, label, None, False, tag="ai"
+                        chunk, label, None, False, tag="ai", append=True
                     )
-                    logger.debug(f"[ID:CT003] Updated streaming message with label: {label}")
+                    logger.debug(f"[ID:CT003] Updated streaming message with chunk: {chunk[:20]}...")
                     
                     # Force immediate UI update for streaming responses
                     if hasattr(streaming_handler, 'force_ui_update'):
@@ -1021,34 +1033,41 @@ class ChatTab(QWidget):
     
     def _start_streaming_safe(self):
         """Start streaming state safely in the main thread"""
-        if not self.is_streaming:  # Only change state if not already streaming
-            self.is_streaming = True
-            self.current_response = ""
-            self._chunk_count = 0  # Reset chunk counter for new streaming session
-            input_components = self.input_controls.get_ui_components()
+        # CRITICAL FIX: Ensure we don't start streaming if already streaming
+        if hasattr(self, 'is_streaming') and self.is_streaming:
+            logger.debug("[ID:ST001] Already streaming, skipping start_streaming")
+            return
             
-            # Only manage send/cancel buttons in text mode
-            if not self.voice_mode:
-                input_components['send_button'].setEnabled(False)
-                input_components['cancel_button'].setVisible(True)
-                logger.debug("[VOICE DEBUG] Text mode: disabled send button, showed cancel button")
-            else:
-                # In voice mode, buttons should remain hidden
-                logger.debug("[VOICE DEBUG] Voice mode: buttons remain hidden during streaming")
-            
-            ai_name = self.get_ai_name()
-            streaming_handler = self.chat_display.get_streaming_handler()
-            if streaming_handler:
-                streaming_handler.start_streaming_message(ai_name, tag="ai")
-            
-            # Double-check that the button state is correct (only in text mode)
-            if not self.voice_mode and input_components['send_button'].isEnabled():
-                logger.warning("Send button was not disabled in text mode, forcing disable")
-                input_components['send_button'].setEnabled(False)
-                input_components['send_button'].update()
-                from pyside_chat.core.utils.threading_utils import safe_process_events_alternative
-                safe_process_events_alternative()
+        self.is_streaming = True
+        self.current_response = ""
+        self._chunk_count = 0  # Reset chunk counter for new streaming session
+        input_components = self.input_controls.get_ui_components()
         
+        # Only manage send/cancel buttons in text mode
+        if not self.voice_mode:
+            input_components['send_button'].setEnabled(False)
+            input_components['cancel_button'].setVisible(True)
+            logger.debug("[VOICE DEBUG] Text mode: disabled send button, showed cancel button")
+        else:
+            # In voice mode, buttons should remain hidden
+            logger.debug("[VOICE DEBUG] Voice mode: buttons remain hidden during streaming")
+        
+        ai_name = self.get_ai_name()
+        streaming_handler = self.chat_display.get_streaming_handler()
+        if streaming_handler:
+            streaming_handler.start_streaming_message(ai_name, tag="ai")
+            logger.debug("[ID:ST002] Started streaming message in streaming handler")
+        else:
+            logger.warning("[ID:ST003] No streaming handler found")
+        
+        # Double-check that the button state is correct (only in text mode)
+        if not self.voice_mode and input_components['send_button'].isEnabled():
+            logger.warning("Send button was not disabled in text mode, forcing disable")
+            input_components['send_button'].setEnabled(False)
+            input_components['send_button'].update()
+            from pyside_chat.core.utils.threading_utils import safe_process_events_alternative
+            safe_process_events_alternative()
+    
     def stop_streaming(self):
         """Stop streaming state"""
         # Use QTimer.singleShot to ensure this method runs in the main thread
@@ -1058,7 +1077,14 @@ class ChatTab(QWidget):
     def _stop_streaming_safe(self):
         """Stop streaming state safely in the main thread"""
         logger.debug("[DEBUG] stop_streaming called. is_streaming: %s, voice_mode: %s", self.is_streaming, self.voice_mode)
-        self.is_streaming = False
+        
+        # CRITICAL FIX: Ensure we properly reset the streaming state
+        if hasattr(self, 'is_streaming'):
+            self.is_streaming = False
+        else:
+            logger.warning("[ID:STOP001] is_streaming attribute not found, creating it")
+            self.is_streaming = False
+            
         input_components = self.input_controls.get_ui_components()
         
         # Only manage send/cancel buttons in text mode
@@ -1080,6 +1106,10 @@ class ChatTab(QWidget):
         streaming_handler = self.chat_display.get_streaming_handler()
         if streaming_handler:
             streaming_handler.finalize_streaming_message()
+            logger.debug("[ID:STOP002] Finalized streaming message in streaming handler")
+        else:
+            logger.warning("[ID:STOP003] No streaming handler found for finalization")
+            
         input_components['send_button'].update()
         input_components['cancel_button'].update()
         from pyside_chat.core.utils.threading_utils import safe_process_events_alternative

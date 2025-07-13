@@ -11,8 +11,8 @@ import traceback
 from typing import Dict, List, Any, Optional
 from pathlib import Path
 
-from PySide6.QtCore import QThread, QApplication, QTimer
-from PySide6.QtWidgets import QWidget
+from PySide6.QtCore import QThread, QTimer
+from PySide6.QtWidgets import QApplication, QWidget
 
 from pyside_chat.core.logging.logger import CustomLogger
 
@@ -82,8 +82,27 @@ class ThreadSafetyAuditor:
             logger.info(f"  Audio threads: {len(audio_threads)}")
             logger.info(f"  Other threads: {len(other_threads)}")
             
+            # Store thread breakdown for later use
+            self.thread_breakdown = {
+                'main': len([t for t in active_threads if t.name == 'MainThread']),
+                'qt': len(qt_threads),
+                'worker': len(worker_threads),
+                'voice': len(voice_threads),
+                'audio': len(audio_threads),
+                'other': len(other_threads)
+            }
+            
         except Exception as e:
             logger.error(f"Error analyzing threads: {e}")
+            # Initialize empty breakdown on error
+            self.thread_breakdown = {
+                'main': 0,
+                'qt': 0,
+                'worker': 0,
+                'voice': 0,
+                'audio': 0,
+                'other': 0
+            }
     
     def detect_cross_thread_ui_operations(self):
         """Detect potential cross-thread UI operations"""

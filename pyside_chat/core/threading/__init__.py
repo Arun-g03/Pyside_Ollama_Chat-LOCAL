@@ -25,6 +25,14 @@ from .thread_pool_manager import ThreadPoolManager, get_global_thread_pool_manag
 from .thread_monitor import ThreadMonitor, get_global_thread_monitor
 from .threading_service import ThreadingService, get_global_threading_service
 from .persistent_thread_pool import PersistentThreadPool, get_global_persistent_thread_pool
+from .thread_calculator import (
+    ThreadCalculator,
+    ThreadRecommendations,
+    thread_calculator,
+    get_thread_recommendations,
+    get_pool_thread_count,
+    analyze_system
+)
 
 # Global instances for shutdown
 _global_threading_service = None
@@ -72,6 +80,14 @@ __all__ = [
     'ThreadMonitor',
     'ThreadingService',
     'PersistentThreadPool',
+    
+    # Thread Calculator
+    'ThreadCalculator',
+    'ThreadRecommendations',
+    'thread_calculator',
+    'get_thread_recommendations',
+    'get_pool_thread_count',
+    'analyze_system',
     
     # Global instances
     'get_global_thread_pool_manager',

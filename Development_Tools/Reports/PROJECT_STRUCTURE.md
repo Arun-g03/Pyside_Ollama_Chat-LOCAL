@@ -1,6 +1,6 @@
 # 📁 Project Directory Structure
 
-**Generated:** July 13, 2025 at 06:56 PM
+**Generated:** July 13, 2025 at 08:30 PM
 **Project:** PySide Ollama Chat
 **Root Path:** `D:\Documents\Github_Repositories\Pyside_Ollama_Chat-LOCAL`
 
@@ -53,12 +53,14 @@ The following items are excluded from this tree:
     │   ├── README.md (5KB)
     │   ├── Reports/
     │   │   ├── advanced_codebase_analysis.md (660KB)
-    │   │   ├── log_report.md (5KB)
-    │   │   └── thread_safety_report.txt (28KB)
+    │   │   ├── log_report.md (3KB)
+    │   │   ├── PROJECT_STRUCTURE.md (14KB)
+    │   │   └── thread_safety_report.txt (20KB)
     │   ├── ThreadingAnalyser/
     │   │   └── thread_safety_analyzer.py (27KB)
     │   └── Utilities/
     │       ├── generate_directory_tree.py (11KB)
+    │       ├── how_many_threads.py (93B)
     │       ├── run_analyzer.py (4KB)
     │       └── verify cuda.py (432B)
     ├── DOCUMENTATION/
@@ -81,7 +83,7 @@ The following items are excluded from this tree:
     │   └── STREAMING_TTS_README.md (5KB)
     ├── LICENSE.txt (2KB)
     ├── Logs/
-    ├── main.py (6KB)
+    ├── main.py (11KB)
     ├── models/
     │   ├── vosk-model-small-en-us-0.15/
     │   │   ├── am/
@@ -111,10 +113,10 @@ The following items are excluded from this tree:
     │   ├── app/
     │   │   ├── __init__.py (0B)
     │   │   ├── app_lifecycle.py (20KB)
-    │   │   ├── event_bus.py (45KB)
-    │   │   ├── main.py (5KB)
+    │   │   ├── event_bus.py (51KB)
+    │   │   ├── main.py (6KB)
     │   │   ├── service_manager.py (8KB)
-    │   │   └── threading_integration.py (14KB)
+    │   │   └── threading_integration.py (9KB)
     │   ├── config/
     │   │   ├── __init__.py (24B)
     │   │   └── config_manager.py (10KB)
@@ -129,21 +131,26 @@ The following items are excluded from this tree:
     │   │   │   ├── base_model.py (506B)
     │   │   │   └── conversation_metadata.py (20KB)
     │   │   ├── threading/
-    │   │   │   ├── __init__.py (1KB)
+    │   │   │   ├── __init__.py (3KB)
+    │   │   │   ├── persistent_thread_config.py (8KB)
+    │   │   │   ├── persistent_thread_pool.py (16KB)
+    │   │   │   ├── PERSISTENT_THREADS_README.md (8KB)
     │   │   │   ├── qrunnable_tasks.py (27KB)
-    │   │   │   ├── qthread_workers.py (20KB)
+    │   │   │   ├── qthread_workers.py (19KB)
     │   │   │   ├── README.md (9KB)
-    │   │   │   ├── thread_monitor.py (16KB)
-    │   │   │   ├── thread_pool_manager.py (16KB)
+    │   │   │   ├── thread_calculator.py (16KB)
+    │   │   │   ├── thread_calculator_examples.py (5KB)
+    │   │   │   ├── thread_monitor.py (20KB)
+    │   │   │   ├── thread_pool_manager.py (17KB)
     │   │   │   ├── threading_guide.md (7KB)
-    │   │   │   ├── threading_service.py (25KB)
-    │   │   │   └── usage_examples.py (18KB)
+    │   │   │   ├── threading_service.py (24KB)
+    │   │   │   └── usage_examples.py (19KB)
     │   │   └── utils/
     │   │       ├── __init__.py (0B)
     │   │       ├── error_handler.py (14KB)
     │   │       ├── internet_checker.py (5KB)
     │   │       ├── prompts.py (4KB)
-    │   │       ├── streaming_handler.py (24KB)
+    │   │       ├── streaming_handler.py (23KB)
     │   │       ├── threading_audit.py (12KB)
     │   │       └── threading_utils.py (15KB)
     │   ├── features/
@@ -168,7 +175,7 @@ The following items are excluded from this tree:
     │   │   ├── ollama/
     │   │   │   ├── __init__.py (0B)
     │   │   │   ├── ollama_chat.py (5KB)
-    │   │   │   └── ollama_service.py (35KB)
+    │   │   │   └── ollama_service.py (36KB)
     │   │   ├── personality/
     │   │   │   ├── __init__.py (0B)
     │   │   │   ├── formatter.py (12KB)
@@ -223,7 +230,7 @@ The following items are excluded from this tree:
     │   │       │   ├── streaming_audio_player.py (17KB)
     │   │       │   ├── streaming_audio_worker.py (6KB)
     │   │       │   └── tts_service.py (9KB)
-    │   │       ├── voice_service.py (54KB)
+    │   │       ├── voice_service.py (55KB)
     │   │       ├── voice_service_manager.py (11KB)
     │   │       └── voice_service_wrapper.py (18KB)
     │   ├── README.md (1KB)
@@ -246,7 +253,7 @@ The following items are excluded from this tree:
     │       │   ├── chat_tab/
     │       │   │   ├── __init__.py (0B)
     │       │   │   ├── chat_display.py (14KB)
-    │       │   │   ├── chat_tab.py (63KB)
+    │       │   │   ├── chat_tab.py (66KB)
     │       │   │   ├── eq_visualizer.py (22KB)
     │       │   │   ├── input_controls.py (17KB)
     │       │   │   └── voice_controls.py (80KB)
@@ -275,6 +282,9 @@ The following items are excluded from this tree:
     │           ├── message_editor.py (7KB)
     │           └── spellchecker_widget.py (8KB)
     ├── README.md (15KB)
+    ├── test_chat_fixes.py (3KB)
+    ├── test_crash_fixes.py (6KB)
+    ├── test_persistent_threads_integration.py (7KB)
     ├── Tests/
     ├── Tools/
     │   └── Profiler/
@@ -283,34 +293,32 @@ The following items are excluded from this tree:
         ├── audio/
         │   └── voice_input_20250713_180009.wav (190KB)
         ├── Chat_history/
-        │   ├── conversation_20250713_174015.json (3KB)
-        │   ├── conversation_20250713_174230.json (2KB)
-        │   ├── conversation_20250713_180010.json (3KB)
-        │   ├── conversation_20250713_180220.json (2KB)
-        │   └── conversation_20250713_180433.json (1KB)
+        │   ├── conversation_20250713_200450.json (2KB)
+        │   ├── conversation_20250713_201513.json (2KB)
+        │   └── conversation_20250713_202043.json (2KB)
         └── memory/
             ├── embeddings/
-            │   ├── embeddings.pkl (327KB)
-            │   └── metadata.json (111KB)
-            ├── long_term_memory.json (9KB)
-            └── short_term_memory.json (9KB)
+            │   ├── embeddings.pkl (516KB)
+            │   └── metadata.json (169KB)
+            ├── long_term_memory.json (15KB)
+            └── short_term_memory.json (8KB)
 ```
 
 ## 📊 Statistics
 
-- **Total Files:** 199
+- **Total Files:** 207
 - **Total Directories:** 66
 - **Total Size:** 124MB
-- **Python Files:** 127
-- **Markdown Files:** 19
-- **JSON Files:** 26
+- **Python Files:** 135
+- **Markdown Files:** 21
+- **JSON Files:** 24
 
 ## 📝 File Types
 
-- **.py:** 127 files
-- **.json:** 26 files
+- **.py:** 135 files
+- **.json:** 24 files
 - **.txt:** 5 files
-- **.md:** 19 files
+- **.md:** 21 files
 - **.png:** 5 files
 - **.zip:** 1 files
 - **:** 1 files

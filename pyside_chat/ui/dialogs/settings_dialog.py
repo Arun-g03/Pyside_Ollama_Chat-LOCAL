@@ -155,6 +155,10 @@ class SettingsDialog(QDialog):
         self.memory_checkbox.setToolTip("Enable or disable LLM memory management features")
         options_layout.addWidget(self.memory_checkbox)
         
+        self.typewriter_checkbox = QCheckBox("Enable Typewriter Effect")
+        self.typewriter_checkbox.setToolTip("Show AI responses with a typewriter animation")
+        options_layout.addWidget(self.typewriter_checkbox)
+        
         layout.addWidget(options_group)
         
         # Chat parameters group
@@ -275,6 +279,7 @@ class SettingsDialog(QDialog):
             self.spellcheck_checkbox.setChecked(self.config_manager.is_spellcheck_enabled())
             self.enhancement_checkbox.setChecked(self.config_manager.is_enhancement_enabled())
             self.memory_checkbox.setChecked(self.config_manager.get("memory_enabled", True))
+            self.typewriter_checkbox.setChecked(self.config_manager.get("typewriter_enabled", True))
             
             # Load session variables with safety checks
             try:
@@ -323,6 +328,7 @@ class SettingsDialog(QDialog):
             self.config_manager.set_spellcheck_enabled(self.spellcheck_checkbox.isChecked())
             self.config_manager.set_enhancement_enabled(self.enhancement_checkbox.isChecked())
             self.config_manager.set("memory_enabled", self.memory_checkbox.isChecked())
+            self.config_manager.set("typewriter_enabled", self.typewriter_checkbox.isChecked())
             
             # Save session variables
             self.config_manager.set_history_enabled(self.history_checkbox.isChecked())
@@ -366,6 +372,7 @@ class SettingsDialog(QDialog):
             self.spellcheck_checkbox.setChecked(True)
             self.enhancement_checkbox.setChecked(True)
             self.memory_checkbox.setChecked(True)
+            self.typewriter_checkbox.setChecked(True)
             self.history_checkbox.setChecked(True)
             self.wordwrap_checkbox.setChecked(True)
             self.json_format_checkbox.setChecked(False)

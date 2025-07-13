@@ -46,7 +46,7 @@ class OllamaChat(QMainWindow):
             # Initialize UI manager
             self.ui_manager = UIManager(self, self.config_manager)
             
-            # Initialize Event Bus
+            # Initialize Event Bus (but don't set up connections yet)
             self.event_handler = EventBus(
                 self, 
                 self.service_manager, 
@@ -62,11 +62,11 @@ class OllamaChat(QMainWindow):
                 self.event_handler
             )
             
-            # Setup UI
+            # Setup UI first
             self._setup_ui()
             
-            # Setup connections
-            self.event_handler.setup_connections()
+            # Setup connections AFTER UI is fully set up
+            self._setup_connections()
             
             # Initialize application
             self.lifecycle_manager.initialize_application()
@@ -107,6 +107,27 @@ class OllamaChat(QMainWindow):
             logger.error(traceback.format_exc())
             traceback.print_exc()
             raise
+    
+    def _setup_connections(self):
+        """Setup EventBus connections after UI is fully initialized"""
+        try:
+            # Ensure UI is fully set up before connecting signals
+            if not self.ui_manager.get_chat_tab():
+                logger.warning("[SETUP WARNING] Chat tab not available during connection setup")
+                # Wait a bit and try again
+                from PySide6.QtCore import QTimer
+                QTimer.singleShot(100, self._setup_connections)
+                return
+            
+            # Now set up connections
+            self.event_handler.setup_connections()
+            logger.info("[ID:0235] EventBus connections set up successfully")
+            
+        except Exception as e:
+            import traceback
+            logger.error(f"[ID:0232] Error setting up connections: {e}")
+            logger.error(traceback.format_exc())
+            # Don't raise here - let the application continue
     
     def showEvent(self, event):
         """Handle application show event"""

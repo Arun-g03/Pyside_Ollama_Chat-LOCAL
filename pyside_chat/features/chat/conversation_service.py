@@ -41,7 +41,7 @@ class ConversationService(QObject):
             self._add_to_memory(role, content)
         
         self.conversation_updated.emit(self.conversation)
-        logger.debug(f"[ID:0019] DEBUG: Added message to conversation: {message}")
+        logger.debug(f"[ID:0019] DEBUG: Added message to conversation: {message}", print_to_terminal=True)
         logger.debug(f"[ID:0018] DEBUG: Total conversation length: {len(self.conversation)}")
         logger.debug(f"[ID:0017] DEBUG: Conversation contents: {[msg.get('role', 'unknown') for msg in self.conversation]}")
 

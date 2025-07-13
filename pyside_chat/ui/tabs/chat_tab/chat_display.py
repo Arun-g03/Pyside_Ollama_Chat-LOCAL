@@ -8,7 +8,7 @@ from PySide6.QtCore import QObject, Signal, QEvent, Qt
 from PySide6.QtWidgets import QTextEdit, QScrollArea, QPushButton
 from PySide6.QtGui import QTextCursor
 
-from pyside_chat.core.utils.streaming_handler import StreamingHandler
+from pyside_chat.ui.tabs.chat_tab.chat_renderer import ChatRenderer
 from pyside_chat.core.logging.logger import CustomLogger
 
 logger = CustomLogger.get_logger(__name__)
@@ -19,15 +19,16 @@ class ChatDisplay(QObject):
     # Signals
     message_edited = Signal(int, str)  # Emitted when a message is edited
     
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, config_manager=None):
         super().__init__(parent)
         self.parent = parent
+        self.config_manager = config_manager
         
         # Setup UI components
         self.setup_ui_components()
         
-        # Setup streaming handler
-        self.setup_streaming_handler()
+        # Setup chat renderer
+        self.setup_chat_renderer()
         
         # Initialize hover state
         self.hover_message_index = None
@@ -61,16 +62,24 @@ class ChatDisplay(QObject):
         self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         
-    def setup_streaming_handler(self):
-        """Setup the streaming handler for chat display"""
+    def setup_chat_renderer(self):
+        """Setup the chat renderer for chat display"""
         if hasattr(self, 'chat_display'):
             ai_name = self.get_ai_name()
-            self.streaming_handler = StreamingHandler(self.chat_display, ai_name)
+            self.chat_renderer = ChatRenderer(self.chat_display, ai_name, config_manager=self.config_manager)
+            self.chat_renderer.render_completed.connect(self.on_render_completed)
+            self.chat_renderer.render_error.connect(self.on_render_error)
+            
+            # Setup streaming handler for business logic only (no render callback)
+            from pyside_chat.core.utils.streaming_handler import StreamingHandler
+            self.streaming_handler = StreamingHandler(render_callback=None, ai_name=ai_name)
             self.streaming_handler.message_edited.connect(self.on_message_edited)
         
     def get_ai_name(self) -> str:
         """Get the AI name - this should be overridden by parent"""
         return "AI"
+    
+
         
     def chat_display_mouse_move_event(self, event):
         """Handle mouse move events to show/hide edit buttons"""
@@ -85,9 +94,9 @@ class ChatDisplay(QObject):
         # Check if this block contains a user message by looking for "You:" at the start
         if block_text.strip().startswith("You:"):
             # Find the corresponding message index by counting user messages
-            if hasattr(self, 'streaming_handler'):
+            if hasattr(self, 'chat_renderer'):
                 user_message_count = 0
-                for message in self.streaming_handler.get_messages():
+                for message in self.chat_renderer.get_messages():
                     if message.get('sender') == 'You':
                         user_message_count += 1
                         if block_text.strip() == f"You: {message.get('content', '')}".strip():
@@ -142,8 +151,8 @@ class ChatDisplay(QObject):
         
     def edit_message_at_index(self, message_index):
         """Edit message at specific index"""
-        if hasattr(self, 'streaming_handler'):
-            messages = self.streaming_handler.get_messages()
+        if hasattr(self, 'chat_renderer'):
+            messages = self.chat_renderer.get_messages()
             user_messages = [msg for msg in messages if msg.get('sender') == 'You']
             
             if 0 <= message_index < len(user_messages):
@@ -244,23 +253,44 @@ class ChatDisplay(QObject):
     def save_message_edit(self, dialog, message_index: int, new_content: str):
         """Save the edited message"""
         if new_content.strip():
-            if hasattr(self, 'streaming_handler'):
-                success = self.streaming_handler.edit_message(message_index, new_content.strip())
+            if hasattr(self, 'chat_renderer'):
+                success = self.chat_renderer.edit_message(message_index, new_content.strip())
                 if success:
+                    # Also update the streaming handler for consistency
+                    if hasattr(self, 'streaming_handler'):
+                        self.streaming_handler.edit_message(message_index, new_content.strip())
                     # Emit signal to notify parent about the edit
                     self.message_edited.emit(message_index, new_content.strip())
                     dialog.accept()
                 else:
-                    from PySide6.QtWidgets import QMessageBox
-                    QMessageBox.warning(self.parent, "Error", "Failed to edit message.")
+                    from pyside_chat.ui.utils.message_utils import show_operation_error
+                    show_operation_error("Edit Message", Exception("Failed to edit message"), self.parent)
         else:
-            from PySide6.QtWidgets import QMessageBox
-            QMessageBox.warning(self.parent, "Error", "Message cannot be empty.")
+            from pyside_chat.ui.utils.message_utils import show_validation_error
+            show_validation_error("message", "Message cannot be empty", self.parent)
 
+    def on_render_completed(self):
+        """Handle completion of rendering"""
+        logger.debug("Chat rendering completed.")
+        self.force_update_display()
+
+    def on_render_error(self, error_message: str):
+        """Handle rendering errors"""
+        logger.error(f"Chat rendering error: {error_message}")
+        from pyside_chat.ui.dialogs.error_dialog import show_error_dialog
+        show_error_dialog(
+            title="Chat Rendering Error",
+            message="Failed to render chat display",
+            details=error_message,
+            parent=self.parent
+        )
+    
     def on_message_edited(self, message_index: int, new_content: str):
-        """Handle message edit"""
-        if hasattr(self, 'streaming_handler'):
-            self.streaming_handler.edit_message(message_index, new_content)
+        """Handle message edit from streaming handler"""
+        logger.debug(f"Message edited: index={message_index}, content='{new_content[:50]}...'")
+        # Sync the edit to the renderer
+        if hasattr(self, 'chat_renderer') and self.chat_renderer:
+            self.chat_renderer.edit_message(message_index, new_content)
     
     def append_to_chat(self, sender: str, message: str, is_code: bool = False):
         """Add a message to the chat display"""
@@ -269,20 +299,22 @@ class ChatDisplay(QObject):
         if sender == "System" and message.startswith("Switched to "):
             if hasattr(self, 'last_message_type') and self.last_message_type == "system_switch":
                 # Update the last system switch message instead of appending
-                self.streaming_handler.update_last_system_switch(message)
+                self.chat_renderer.update_last_system_switch(message)
                 return
             else:
                 self.last_message_type = "system_switch"
         else:
             self.last_message_type = tag
         
-        # Ensure streaming handler exists
-        if not hasattr(self, 'streaming_handler') or not self.streaming_handler:
-            logger.error("Streaming handler not available for chat display")
+        # Ensure chat renderer exists
+        if not hasattr(self, 'chat_renderer') or not self.chat_renderer:
+            logger.error("Chat renderer not available for chat display")
             return
             
-        # Append message to streaming handler
+        # Add message to renderer and sync with streaming handler
+        message_id = self.chat_renderer.add_message(sender, message, is_code, False, tag)
         self.streaming_handler.append_message(sender, message, is_code, tag)
+        self.chat_renderer.request_render()
         
     def force_update_display(self):
         """Force an immediate update of the chat display"""
@@ -299,9 +331,9 @@ class ChatDisplay(QObject):
     def _force_render_display(self):
         """Force render the chat display immediately"""
         try:
-            if hasattr(self, 'streaming_handler') and self.streaming_handler:
+            if hasattr(self, 'chat_renderer') and self.chat_renderer:
                 # Force immediate render without throttling
-                self.streaming_handler._render_chat_display_safe()
+                self.chat_renderer.request_render(immediate=True)
                 
                 # Ensure scroll to bottom
                 if hasattr(self, 'chat_display') and self.chat_display:
@@ -326,17 +358,20 @@ class ChatDisplay(QObject):
         if not hasattr(self, 'current_response'):
             self.current_response = ""
             
-        self.current_response += chunk  # accumulate here only!
+        # For typewriter effect: accumulate for logging but pass individual chunks to renderer
+        self.current_response += chunk  # accumulate here for logging only!
         ai_name = self.get_ai_name()
         label = f"{ai_name} ({model_name})" if model_name else ai_name
         
-        # Ensure streaming handler exists
-        if hasattr(self, 'streaming_handler') and self.streaming_handler:
-            self.streaming_handler.update_streaming_message(
-                self.current_response, label, None, False, tag="ai"
+        # Ensure chat renderer exists
+        if hasattr(self, 'chat_renderer') and self.chat_renderer:
+            # CRITICAL FIX: Pass the individual chunk for typewriter effect
+            # The renderer will append it to the existing content
+            self.chat_renderer.update_streaming_message(
+                chunk, "ai", None, False, tag="ai", append=True
             )
         else:
-            logger.error("Streaming handler not available for response chunk")
+            logger.error("Chat renderer not available for response chunk")
         
     def start_streaming(self):
         """Start streaming state"""
@@ -345,27 +380,29 @@ class ChatDisplay(QObject):
             self.current_response = ""
             ai_name = self.get_ai_name()
             
-            # Ensure streaming handler exists
-            if hasattr(self, 'streaming_handler') and self.streaming_handler:
-                self.streaming_handler.start_streaming_message(ai_name, tag="ai")
+            # Ensure chat renderer exists
+            if hasattr(self, 'chat_renderer') and self.chat_renderer:
+                self.chat_renderer.start_streaming_message(ai_name, tag="ai")
             else:
-                logger.error("Streaming handler not available for streaming start")
+                logger.error("Chat renderer not available for streaming start")
             
     def stop_streaming(self):
         """Stop streaming state"""
         logger.debug("[DEBUG] stop_streaming called. is_streaming: %s", self.is_streaming)
         self.is_streaming = False
         
-        # Ensure streaming handler exists
-        if hasattr(self, 'streaming_handler') and self.streaming_handler:
-            self.streaming_handler.finalize_streaming_message()
+        # Ensure chat renderer exists
+        if hasattr(self, 'chat_renderer') and self.chat_renderer:
+            self.chat_renderer.finalize_streaming_message()
         else:
-            logger.error("Streaming handler not available for streaming stop")
+            logger.error("Chat renderer not available for streaming stop")
         
     def clear_chat(self):
         """Clear the chat display"""
         if hasattr(self, 'streaming_handler'):
-            self.streaming_handler.clear_chat()
+            self.streaming_handler.clear_messages()
+        if hasattr(self, 'chat_renderer'):
+            self.chat_renderer.clear_messages()
         if hasattr(self, 'chat_display'):
             self.chat_display.clear()
             # Force update after clearing
@@ -379,5 +416,5 @@ class ChatDisplay(QObject):
         }
     
     def get_streaming_handler(self):
-        """Get the streaming handler"""
-        return self.streaming_handler if hasattr(self, 'streaming_handler') else None 
+        """Get the streaming handler (now returns chat renderer for compatibility)"""
+        return self.chat_renderer if hasattr(self, 'chat_renderer') else None 

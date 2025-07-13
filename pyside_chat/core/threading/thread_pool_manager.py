@@ -13,6 +13,7 @@ import time
 import traceback
 from typing import Dict, List, Any, Optional, Callable
 from pyside_chat.core.logging.logger import CustomLogger
+from .thread_calculator import get_pool_thread_count
 
 logger = CustomLogger.get_logger(__name__)
 
@@ -448,8 +449,9 @@ def get_global_thread_pool_manager() -> ThreadPoolManager:
     global _global_thread_pool_manager
     try:
         if _global_thread_pool_manager is None:
-            _global_thread_pool_manager = ThreadPoolManager(max_threads=4)
-            logger.debug("[ID:TP028] Created global ThreadPoolManager")
+            recommended_threads = get_pool_thread_count('worker')
+            _global_thread_pool_manager = ThreadPoolManager(max_threads=recommended_threads)
+            logger.debug(f"[ID:TP028] Created global ThreadPoolManager with {recommended_threads} threads")
         return _global_thread_pool_manager
     except Exception as e:
         logger.error(f"[ID:TP028A] Error getting global ThreadPoolManager: {e}\n{traceback.format_exc()}")
