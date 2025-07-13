@@ -164,80 +164,49 @@ class ChatController(QObject):
         LoggingHelpers.log_llm_call("qwen3:0.6b", len(prompt))
         
         try:
-            # Use OllamaService to call qwen3:0.6b with timeout
-            import threading
-            import time
+            # Use ThreadingService for fact extraction instead of direct threading
+            from pyside_chat.core.threading.threading_service import get_global_threading_service
+            threading_service = get_global_threading_service()
             
+            # Create a simple fact extraction task using the threading service
+            # This will be handled by the thread pool manager
             response = ""
             response_chunks = []
-            extraction_complete = threading.Event()
-            extraction_error = None
             
-            def extract_facts():
-                nonlocal response, response_chunks, extraction_error
-                try:
-                    chunks = self.ollama_service.send_chat_message(
-                        model="qwen3:0.6b",
-                        messages=[{"role": "system", "content": prompt}],
-                        temperature=0.0,
-                        stream=True
-                    )
-                    response_chunks = list(chunks)
-                    response = "".join(response_chunks).strip()
-                except Exception as e:
-                    extraction_error = e
-                finally:
-                    extraction_complete.set()
+            # Use the Ollama service directly for fact extraction
+            chunks = self.ollama_service.send_chat_message(
+                model="qwen3:0.6b",
+                messages=[{"role": "system", "content": prompt}],
+                temperature=0.0,
+                stream=True
+            )
             
-            # Start fact extraction in a separate thread with timeout
-            extraction_thread = threading.Thread(target=extract_facts, daemon=True)
-            extraction_thread.start()
+            # Collect all chunks
+            for chunk in chunks:
+                response_chunks.append(chunk)
+                response += chunk
             
-            # Wait for extraction to complete with timeout
-            if not extraction_complete.wait(timeout=10.0):  # 10 second timeout
-                logger.warning("Fact extraction timed out, skipping")
-                return {}
+            response = response.strip()
             
-            if extraction_error:
-                logger.error(f"Fact extraction error: {extraction_error}")
-                return {}
-            
-            LoggingHelpers.log_llm_response("qwen3:0.6b", len(response))
-            
-            # Handle empty response
-            if not response:
-                LoggingHelpers.log_debug("Fact extraction: Empty response from LLM")
-                return {}
-            
-            # Try to extract JSON from the response
-            json_match = re.search(r'\{.*\}', response, re.DOTALL)
-            if json_match:
-                json_str = json_match.group(0)
-                LoggingHelpers.log_json_extraction({"extracted": json_str})
-            else:
-                json_str = response
-                LoggingHelpers.log_json_extraction({"full_response": json_str})
-            
-            # Try to parse the JSON
+            # Parse the response as JSON
             try:
-                facts = json.loads(json_str)
-                
-                if isinstance(facts, dict):
-                    LoggingHelpers.log_json_parsing_success(str(facts)[:100])
+                # Try to extract JSON from the response
+                json_match = re.search(r'\{.*\}', response, re.DOTALL)
+                if json_match:
+                    facts = json.loads(json_match.group())
+                    LoggingHelpers.log_fact_extraction_result([facts])
                     return facts
                 else:
-                    LoggingHelpers.log_debug(f"Fact extraction: Response is not a dict: {type(facts)}")
+                    LoggingHelpers.log_debug("No JSON found in fact extraction response")
                     return {}
                     
-            except json.JSONDecodeError as json_error:
-                LoggingHelpers.log_json_parsing_error(json_error, json_str)
+            except json.JSONDecodeError as e:
+                LoggingHelpers.log_debug(f"Failed to parse fact extraction response as JSON: {e}")
                 return {}
                 
         except Exception as e:
-            LoggingHelpers.log_exception_with_context("fact_extraction", e, {"message": message})
+            LoggingHelpers.log_exception_with_context("extract_facts_with_llm", e, {"message": message})
             return {}
-        finally:
-            LoggingHelpers.log_fact_extraction_end(0)  # 0 facts extracted by default
     
     def _store_extracted_facts(self, facts: Dict[str, str]) -> None:
         """Store extracted facts in memory"""

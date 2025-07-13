@@ -208,6 +208,7 @@ class VoiceProcessManager(QObject):
             logger.debug(f"[ID:0550] Handling voice process response: {response_type}")
             
             if response_type == "voice_input_received":
+                logger.debug(f"[EMIT] voice_process_manager.py: voice_input_received.emit({data!r}) from id={id(self)}")
                 self.voice_input_received.emit(data)
             elif response_type == "voice_input_error":
                 self.voice_input_error.emit(data)

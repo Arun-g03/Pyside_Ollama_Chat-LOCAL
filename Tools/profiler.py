@@ -4,6 +4,7 @@ Application Profiler Tool
 
 A comprehensive profiling tool for the PySide Ollama Chat application.
 Profiles CPU usage, memory consumption, system resources, and application performance.
+Enhanced with detailed thread analysis and QThread monitoring.
 """
 
 import sys
@@ -40,6 +41,158 @@ except ImportError:
     print("Warning: cProfile not available, detailed profiling disabled")
 
 
+class ThreadAnalyzer:
+    """Analyze thread usage and identify thread sources"""
+    
+    def __init__(self):
+        self.thread_snapshots = []
+        self.qt_threads = []
+        self.python_threads = []
+        
+    def capture_thread_snapshot(self):
+        """Capture current thread state"""
+        try:
+            current_process = psutil.Process()
+            threads = current_process.threads()
+            
+            # Get Python threads
+            python_threads = []
+            for thread in threading.enumerate():
+                thread_info = {
+                    'name': thread.name,
+                    'ident': thread.ident,
+                    'daemon': thread.daemon,
+                    'alive': thread.is_alive(),
+                    'type': 'python_thread'
+                }
+                python_threads.append(thread_info)
+            
+            # Get Qt threads if available
+            qt_threads = []
+            if QT_AVAILABLE:
+                try:
+                    app = QApplication.instance()
+                    if app:
+                        # Get all QThread objects
+                        qt_threads = self._get_qt_threads()
+                except Exception as e:
+                    print(f"Error getting Qt threads: {e}")
+            
+            snapshot = {
+                'timestamp': time.time(),
+                'total_threads': len(threads),
+                'python_threads': python_threads,
+                'qt_threads': qt_threads,
+                'system_threads': threads
+            }
+            
+            self.thread_snapshots.append(snapshot)
+            return snapshot
+            
+        except Exception as e:
+            print(f"Error capturing thread snapshot: {e}")
+            return None
+    
+    def _get_qt_threads(self):
+        """Get information about Qt threads"""
+        qt_threads = []
+        try:
+            # Get main thread
+            main_thread = QThread.currentThread()
+            qt_threads.append({
+                'name': main_thread.objectName() or 'MainThread',
+                'type': 'QThread',
+                'is_main': True,
+                'is_running': main_thread.isRunning(),
+                'priority': main_thread.priority()
+            })
+            
+            # Try to get other QThread instances
+            # This is limited by Qt's design, but we can try to track them
+            # through our application's thread management
+            
+        except Exception as e:
+            print(f"Error getting Qt thread details: {e}")
+        
+        return qt_threads
+    
+    def analyze_thread_growth(self):
+        """Analyze thread count changes over time"""
+        if len(self.thread_snapshots) < 2:
+            return {}
+        
+        analysis = {
+            'initial_thread_count': self.thread_snapshots[0]['total_threads'],
+            'final_thread_count': self.thread_snapshots[-1]['total_threads'],
+            'thread_growth': self.thread_snapshots[-1]['total_threads'] - self.thread_snapshots[0]['total_threads'],
+            'snapshots': len(self.thread_snapshots),
+            'thread_history': []
+        }
+        
+        for i, snapshot in enumerate(self.thread_snapshots):
+            analysis['thread_history'].append({
+                'snapshot': i,
+                'timestamp': snapshot['timestamp'],
+                'total_threads': snapshot['total_threads'],
+                'python_threads': len(snapshot['python_threads']),
+                'qt_threads': len(snapshot['qt_threads'])
+            })
+        
+        return analysis
+    
+    def get_thread_details(self):
+        """Get detailed information about current threads"""
+        if not self.thread_snapshots:
+            return {}
+        
+        latest = self.thread_snapshots[-1]
+        
+        # Categorize threads by type
+        thread_categories = {
+            'python_threads': [],
+            'qt_threads': [],
+            'system_threads': [],
+            'unknown_threads': []
+        }
+        
+        # Python threads
+        for thread in latest['python_threads']:
+            thread_categories['python_threads'].append({
+                'name': thread['name'],
+                'daemon': thread['daemon'],
+                'alive': thread['alive'],
+                'type': 'python'
+            })
+        
+        # Qt threads
+        for thread in latest['qt_threads']:
+            thread_categories['qt_threads'].append({
+                'name': thread['name'],
+                'is_main': thread.get('is_main', False),
+                'is_running': thread.get('is_running', False),
+                'type': 'qt'
+            })
+        
+        # System threads (from psutil)
+        for thread in latest['system_threads']:
+            thread_categories['system_threads'].append({
+                'id': thread.id,
+                'user_time': thread.user_time,
+                'system_time': thread.system_time,
+                'type': 'system'
+            })
+        
+        return {
+            'total_threads': latest['total_threads'],
+            'categories': thread_categories,
+            'summary': {
+                'python_threads': len(thread_categories['python_threads']),
+                'qt_threads': len(thread_categories['qt_threads']),
+                'system_threads': len(thread_categories['system_threads'])
+            }
+        }
+
+
 class SystemMonitor(QObject):
     """Monitor system resources during application execution"""
     
@@ -48,6 +201,7 @@ class SystemMonitor(QObject):
     memory_usage_updated = Signal(float)
     disk_io_updated = Signal(dict)
     network_io_updated = Signal(dict)
+    thread_count_updated = Signal(int)
     
     def __init__(self, interval: float = 1.0):
         super().__init__()
@@ -55,6 +209,7 @@ class SystemMonitor(QObject):
         self.monitoring = False
         self.monitor_thread = None
         self.data_points = []
+        self.thread_analyzer = ThreadAnalyzer()
         
         # Get initial system info
         self.cpu_count = psutil.cpu_count()
@@ -111,6 +266,10 @@ class SystemMonitor(QObject):
                 process_cpu_percent = current_process.cpu_percent()
                 process_memory_info = current_process.memory_info()
                 
+                # Thread analysis
+                thread_snapshot = self.thread_analyzer.capture_thread_snapshot()
+                thread_count = thread_snapshot['total_threads'] if thread_snapshot else 0
+                
                 data_point = {
                     'timestamp': timestamp,
                     'cpu_percent': cpu_percent,
@@ -123,7 +282,8 @@ class SystemMonitor(QObject):
                     'network_bytes_recv': network_bytes_recv,
                     'process_cpu_percent': process_cpu_percent,
                     'process_memory_rss': process_memory_info.rss,
-                    'process_memory_vms': process_memory_info.vms
+                    'process_memory_vms': process_memory_info.vms,
+                    'thread_count': thread_count
                 }
                 
                 self.data_points.append(data_point)
@@ -139,6 +299,7 @@ class SystemMonitor(QObject):
                     'bytes_sent': network_bytes_sent,
                     'bytes_recv': network_bytes_recv
                 })
+                self.thread_count_updated.emit(thread_count)
                 
                 time.sleep(self.interval)
                 
@@ -155,6 +316,11 @@ class SystemMonitor(QObject):
         memory_values = [dp['memory_percent'] for dp in self.data_points]
         process_cpu_values = [dp['process_cpu_percent'] for dp in self.data_points]
         process_memory_values = [dp['process_memory_rss'] for dp in self.data_points]
+        thread_values = [dp['thread_count'] for dp in self.data_points]
+        
+        # Thread analysis
+        thread_analysis = self.thread_analyzer.analyze_thread_growth()
+        thread_details = self.thread_analyzer.get_thread_details()
         
         return {
             'monitoring_duration': self.data_points[-1]['timestamp'] - self.data_points[0]['timestamp'],
@@ -178,6 +344,13 @@ class SystemMonitor(QObject):
                 'mean': sum(process_memory_values) / len(process_memory_values),
                 'max': max(process_memory_values),
                 'min': min(process_memory_values)
+            },
+            'threads': {
+                'mean': sum(thread_values) / len(thread_values),
+                'max': max(thread_values),
+                'min': min(thread_values),
+                'growth_analysis': thread_analysis,
+                'current_details': thread_details
             }
         }
 
@@ -201,7 +374,7 @@ class ApplicationProfiler:
         
     def start_profiling(self):
         """Start profiling the application"""
-        print("Starting application profiling...")
+        self.start_time = time.time()
         
         # Start system monitoring
         self.system_monitor.start_monitoring()
@@ -210,70 +383,69 @@ class ApplicationProfiler:
         if PROFILE_AVAILABLE:
             self.profiler = cProfile.Profile()
             self.profiler.enable()
-            
-        self.start_time = time.time()
+            print("Detailed function profiling started")
+        
+        print("Application profiling started")
         
     def stop_profiling(self):
         """Stop profiling and collect results"""
-        print("Stopping application profiling...")
-        
         self.end_time = time.time()
         
         # Stop system monitoring
         self.system_monitor.stop_monitoring()
         
-        # Stop cProfile if available
-        if PROFILE_AVAILABLE and self.profiler:
+        # Stop cProfile if active
+        if self.profiler:
             self.profiler.disable()
-            
-            # Create stats object
-            s = io.StringIO()
-            self.stats = pstats.Stats(self.profiler, stream=s)
-            self.stats.sort_stats('cumulative')
-            
+            self.stats = pstats.Stats(self.profiler)
+            print("Detailed function profiling stopped")
+        
+        print("Application profiling stopped")
+        
     def collect_process_info(self):
-        """Collect information about the application process and its children"""
+        """Collect detailed process information"""
         try:
             current_process = psutil.Process()
+            
+            # Get process info
             self.app_process = {
                 'pid': current_process.pid,
                 'name': current_process.name(),
-                'cmdline': current_process.cmdline(),
+                'status': current_process.status(),
+                'create_time': current_process.create_time(),
                 'cpu_percent': current_process.cpu_percent(),
                 'memory_info': current_process.memory_info()._asdict(),
                 'num_threads': current_process.num_threads(),
-                'status': current_process.status()
+                'connections': len(current_process.connections()),
+                'open_files': len(current_process.open_files()),
+                'environ': dict(current_process.environ())
             }
             
             # Get child processes
             children = current_process.children(recursive=True)
             for child in children:
-                try:
-                    child_info = {
-                        'pid': child.pid,
-                        'name': child.name(),
-                        'cmdline': child.cmdline(),
-                        'cpu_percent': child.cpu_percent(),
-                        'memory_info': child.memory_info()._asdict(),
-                        'num_threads': child.num_threads(),
-                        'status': child.status()
-                    }
-                    self.child_processes.append(child_info)
-                except (psutil.NoSuchProcess, psutil.AccessDenied):
-                    continue
-                    
+                child_info = {
+                    'pid': child.pid,
+                    'name': child.name(),
+                    'status': child.status(),
+                    'cpu_percent': child.cpu_percent(),
+                    'memory_info': child.memory_info()._asdict(),
+                    'num_threads': child.num_threads()
+                }
+                self.child_processes.append(child_info)
+                
         except Exception as e:
             print(f"Error collecting process info: {e}")
             
     def collect_system_info(self) -> Dict[str, Any]:
-        """Collect comprehensive system information"""
+        """Collect system information"""
         try:
             # CPU info
             cpu_info = {
                 'count': psutil.cpu_count(),
                 'count_logical': psutil.cpu_count(logical=True),
                 'freq': psutil.cpu_freq()._asdict() if psutil.cpu_freq() else None,
-                'usage_per_cpu': psutil.cpu_percent(percpu=True)
+                'usage_per_core': psutil.cpu_percent(interval=1, percpu=True)
             }
             
             # Memory info
@@ -283,16 +455,15 @@ class ApplicationProfiler:
                 'available': memory.available,
                 'used': memory.used,
                 'free': memory.free,
-                'percent': memory.percent
+                'percent': memory.percent,
+                'swap': psutil.swap_memory()._asdict()
             }
             
             # Disk info
-            disk = psutil.disk_usage('/')
             disk_info = {
-                'total': disk.total,
-                'used': disk.used,
-                'free': disk.free,
-                'percent': disk.percent
+                'partitions': [p._asdict() for p in psutil.disk_partitions()],
+                'usage': psutil.disk_usage('/')._asdict(),
+                'io_counters': psutil.disk_io_counters()._asdict()
             }
             
             # Network info
@@ -301,20 +472,12 @@ class ApplicationProfiler:
                 'io_counters': psutil.net_io_counters()._asdict()
             }
             
-            # Platform info
-            platform_info = {
-                'system': psutil.sys.platform,
-                'python_version': sys.version,
-                'architecture': psutil.sys.maxsize > 2**32 and "64bit" or "32bit"
-            }
-            
             return {
                 'cpu': cpu_info,
                 'memory': memory_info,
                 'disk': disk_info,
                 'network': network_info,
-                'platform': platform_info,
-                'timestamp': datetime.datetime.now().isoformat()
+                'boot_time': psutil.boot_time()
             }
             
         except Exception as e:
@@ -322,150 +485,182 @@ class ApplicationProfiler:
             return {}
             
     def generate_report(self, report_name: str = None) -> str:
-        """Generate a comprehensive profiling report"""
+        """Generate comprehensive profiling report"""
         if not report_name:
             timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
             report_name = f"profiling_report_{timestamp}"
-            
-        report_path = self.output_dir / f"{report_name}.json"
         
         # Collect final data
         self.collect_process_info()
         system_info = self.collect_system_info()
-        monitoring_summary = self.system_monitor.get_summary()
+        summary = self.system_monitor.get_summary()
         
-        # Prepare report data
+        # Generate detailed report
         report_data = {
-            'profiling_info': {
+            'report_info': {
+                'name': report_name,
                 'start_time': self.start_time,
                 'end_time': self.end_time,
-                'duration': self.end_time - self.start_time if self.end_time else None,
-                'report_generated': datetime.datetime.now().isoformat()
+                'duration': self.end_time - self.start_time if self.end_time else 0
             },
             'system_info': system_info,
-            'monitoring_summary': monitoring_summary,
             'process_info': {
                 'main_process': self.app_process,
                 'child_processes': self.child_processes
             },
-            'raw_monitoring_data': self.system_monitor.data_points
+            'performance_summary': summary,
+            'thread_analysis': summary.get('threads', {}).get('current_details', {}),
+            'thread_growth': summary.get('threads', {}).get('growth_analysis', {})
         }
         
-        # Add cProfile stats if available
+        # Add function profiling if available
         if self.stats:
             # Get top functions by cumulative time
-            s = io.StringIO()
-            self.stats.print_stats(20)  # Top 20 functions
-            report_data['profile_stats'] = s.getvalue()
-            
-            # Get function call counts
-            call_counts = {}
-            for func, (cc, nc, tt, ct, callers) in self.stats.stats.items():
-                call_counts[f"{func[0]}:{func[1]}:{func[2]}"] = {
-                    'call_count': cc,
-                    'primitive_call_count': nc,
-                    'total_time': tt,
-                    'cumulative_time': ct
-                }
-            report_data['function_stats'] = call_counts
+            io = io.StringIO()
+            self.stats.sort_stats('cumulative')
+            self.stats.print_stats(20, file=io)  # Top 20 functions
+            report_data['function_profiling'] = io.getvalue()
         
-        # Save report
-        with open(report_path, 'w') as f:
+        # Save detailed report
+        detailed_report_path = self.output_dir / f"{report_name}_detailed.json"
+        with open(detailed_report_path, 'w') as f:
             json.dump(report_data, f, indent=2, default=str)
-            
-        print(f"Profiling report saved to: {report_path}")
-        return str(report_path)
         
-    def generate_summary_report(self, report_path: str) -> str:
-        """Generate a human-readable summary report"""
+        # Generate summary report
+        summary_report_path = self.output_dir / f"{report_name}_summary.txt"
+        self.generate_summary_report(summary_report_path, report_data)
+        
+        print(f"Detailed report saved: {detailed_report_path}")
+        print(f"Summary report saved: {summary_report_path}")
+        
+        return str(detailed_report_path)
+        
+    def generate_summary_report(self, report_path: str, report_data: Dict[str, Any]) -> str:
+        """Generate human-readable summary report"""
         try:
-            with open(report_path, 'r') as f:
-                data = json.load(f)
-                
-            summary_path = report_path.replace('.json', '_summary.txt')
-            
-            with open(summary_path, 'w') as f:
+            with open(report_path, 'w') as f:
                 f.write("=" * 80 + "\n")
                 f.write("APPLICATION PROFILING REPORT SUMMARY\n")
                 f.write("=" * 80 + "\n\n")
                 
-                # Profiling duration
-                if data['profiling_info']['duration']:
-                    f.write(f"Profiling Duration: {data['profiling_info']['duration']:.2f} seconds\n\n")
+                # Report info
+                report_info = report_data['report_info']
+                f.write(f"Profiling Duration: {report_info['duration']:.2f} seconds\n\n")
                 
-                # System summary
+                # System information
                 f.write("SYSTEM INFORMATION:\n")
                 f.write("-" * 40 + "\n")
-                f.write(f"CPU Cores: {data['system_info']['cpu']['count']}\n")
-                f.write(f"Memory Total: {data['system_info']['memory']['total'] / (1024**3):.2f} GB\n")
-                f.write(f"Disk Total: {data['system_info']['disk']['total'] / (1024**3):.2f} GB\n\n")
+                system_info = report_data['system_info']
+                if system_info:
+                    f.write(f"CPU Cores: {system_info['cpu']['count']}\n")
+                    f.write(f"Memory Total: {system_info['memory']['total'] / (1024**3):.2f} GB\n")
+                    f.write(f"Disk Total: {system_info['disk']['usage']['total'] / (1024**3):.2f} GB\n")
+                f.write("\n")
                 
                 # Performance summary
-                if data['monitoring_summary']:
-                    f.write("PERFORMANCE SUMMARY:\n")
-                    f.write("-" * 40 + "\n")
-                    summary = data['monitoring_summary']
+                f.write("PERFORMANCE SUMMARY:\n")
+                f.write("-" * 40 + "\n")
+                summary = report_data['performance_summary']
+                if summary:
+                    # CPU usage
+                    cpu_stats = summary.get('cpu', {})
+                    if cpu_stats:
+                        f.write("CPU Usage:\n")
+                        f.write(f"  Average: {cpu_stats.get('mean', 0):.2f}%\n")
+                        f.write(f"  Maximum: {cpu_stats.get('max', 0):.2f}%\n")
+                        f.write(f"  Minimum: {cpu_stats.get('min', 0):.2f}%\n\n")
                     
-                    f.write(f"CPU Usage:\n")
-                    f.write(f"  Average: {summary['cpu']['mean']:.2f}%\n")
-                    f.write(f"  Maximum: {summary['cpu']['max']:.2f}%\n")
-                    f.write(f"  Minimum: {summary['cpu']['min']:.2f}%\n\n")
+                    # Memory usage
+                    memory_stats = summary.get('memory', {})
+                    if memory_stats:
+                        f.write("Memory Usage:\n")
+                        f.write(f"  Average: {memory_stats.get('mean', 0):.2f}%\n")
+                        f.write(f"  Maximum: {memory_stats.get('max', 0):.2f}%\n")
+                        f.write(f"  Minimum: {memory_stats.get('min', 0):.2f}%\n\n")
                     
-                    f.write(f"Memory Usage:\n")
-                    f.write(f"  Average: {summary['memory']['mean']:.2f}%\n")
-                    f.write(f"  Maximum: {summary['memory']['max']:.2f}%\n")
-                    f.write(f"  Minimum: {summary['memory']['min']:.2f}%\n\n")
+                    # Process CPU usage
+                    process_cpu_stats = summary.get('process_cpu', {})
+                    if process_cpu_stats:
+                        f.write("Process CPU Usage:\n")
+                        f.write(f"  Average: {process_cpu_stats.get('mean', 0):.2f}%\n")
+                        f.write(f"  Maximum: {process_cpu_stats.get('max', 0):.2f}%\n")
+                        f.write(f"  Minimum: {process_cpu_stats.get('min', 0):.2f}%\n\n")
                     
-                    f.write(f"Process CPU Usage:\n")
-                    f.write(f"  Average: {summary['process_cpu']['mean']:.2f}%\n")
-                    f.write(f"  Maximum: {summary['process_cpu']['max']:.2f}%\n")
-                    f.write(f"  Minimum: {summary['process_cpu']['min']:.2f}%\n\n")
-                    
-                    f.write(f"Process Memory Usage:\n")
-                    f.write(f"  Average: {summary['process_memory']['mean'] / (1024**2):.2f} MB\n")
-                    f.write(f"  Maximum: {summary['process_memory']['max'] / (1024**2):.2f} MB\n")
-                    f.write(f"  Minimum: {summary['process_memory']['min'] / (1024**2):.2f} MB\n\n")
+                    # Process memory usage
+                    process_memory_stats = summary.get('process_memory', {})
+                    if process_memory_stats:
+                        f.write("Process Memory Usage:\n")
+                        f.write(f"  Average: {process_memory_stats.get('mean', 0) / (1024**2):.2f} MB\n")
+                        f.write(f"  Maximum: {process_memory_stats.get('max', 0) / (1024**2):.2f} MB\n")
+                        f.write(f"  Minimum: {process_memory_stats.get('min', 0) / (1024**2):.2f} MB\n\n")
                 
                 # Process information
-                if data['process_info']['main_process']:
-                    f.write("PROCESS INFORMATION:\n")
-                    f.write("-" * 40 + "\n")
-                    proc = data['process_info']['main_process']
-                    f.write(f"Main Process: {proc['name']} (PID: {proc['pid']})\n")
-                    f.write(f"Threads: {proc['num_threads']}\n")
-                    f.write(f"Status: {proc['status']}\n\n")
+                f.write("PROCESS INFORMATION:\n")
+                f.write("-" * 40 + "\n")
+                process_info = report_data['process_info']
+                if process_info and process_info['main_process']:
+                    main_process = process_info['main_process']
+                    f.write(f"Main Process: {main_process['name']} (PID: {main_process['pid']})\n")
                     
-                    if data['process_info']['child_processes']:
-                        f.write(f"Child Processes: {len(data['process_info']['child_processes'])}\n")
-                        for i, child in enumerate(data['process_info']['child_processes'][:5]):  # Show first 5
-                            f.write(f"  {i+1}. {child['name']} (PID: {child['pid']})\n")
-                        if len(data['process_info']['child_processes']) > 5:
-                            f.write(f"  ... and {len(data['process_info']['child_processes']) - 5} more\n\n")
+                    # Thread information
+                    thread_stats = summary.get('threads', {})
+                    if thread_stats:
+                        f.write(f"Threads: {thread_stats.get('max', 0)}\n")
+                        f.write(f"Status: {main_process['status']}\n\n")
+                        
+                        # Thread growth analysis
+                        growth_analysis = thread_stats.get('growth_analysis', {})
+                        if growth_analysis:
+                            f.write("THREAD ANALYSIS:\n")
+                            f.write("-" * 40 + "\n")
+                            f.write(f"Initial Thread Count: {growth_analysis.get('initial_thread_count', 0)}\n")
+                            f.write(f"Final Thread Count: {growth_analysis.get('final_thread_count', 0)}\n")
+                            f.write(f"Thread Growth: {growth_analysis.get('thread_growth', 0)}\n")
+                            f.write(f"Snapshots Taken: {growth_analysis.get('snapshots', 0)}\n\n")
+                            
+                            # Thread details
+                            thread_details = thread_stats.get('current_details', {})
+                            if thread_details:
+                                f.write("CURRENT THREAD BREAKDOWN:\n")
+                                f.write("-" * 40 + "\n")
+                                summary_details = thread_details.get('summary', {})
+                                f.write(f"Python Threads: {summary_details.get('python_threads', 0)}\n")
+                                f.write(f"Qt Threads: {summary_details.get('qt_threads', 0)}\n")
+                                f.write(f"System Threads: {summary_details.get('system_threads', 0)}\n\n")
+                                
+                                # Detailed thread information
+                                categories = thread_details.get('categories', {})
+                                if categories:
+                                    f.write("DETAILED THREAD INFORMATION:\n")
+                                    f.write("-" * 40 + "\n")
+                                    
+                                    # Python threads
+                                    python_threads = categories.get('python_threads', [])
+                                    if python_threads:
+                                        f.write("Python Threads:\n")
+                                        for thread in python_threads:
+                                            f.write(f"  - {thread['name']} (daemon: {thread['daemon']}, alive: {thread['alive']})\n")
+                                        f.write("\n")
+                                    
+                                    # Qt threads
+                                    qt_threads = categories.get('qt_threads', [])
+                                    if qt_threads:
+                                        f.write("Qt Threads:\n")
+                                        for thread in qt_threads:
+                                            f.write(f"  - {thread['name']} (main: {thread.get('is_main', False)}, running: {thread.get('is_running', False)})\n")
+                                        f.write("\n")
                 
-                # Top functions (if available)
-                if 'function_stats' in data:
+                # Function profiling
+                if 'function_profiling' in report_data:
                     f.write("TOP FUNCTIONS BY EXECUTION TIME:\n")
                     f.write("-" * 40 + "\n")
-                    
-                    # Sort by cumulative time
-                    sorted_funcs = sorted(
-                        data['function_stats'].items(),
-                        key=lambda x: x[1]['cumulative_time'],
-                        reverse=True
-                    )
-                    
-                    for i, (func_name, stats) in enumerate(sorted_funcs[:10]):  # Top 10
-                        f.write(f"{i+1}. {func_name}\n")
-                        f.write(f"   Calls: {stats['call_count']}\n")
-                        f.write(f"   Total Time: {stats['total_time']:.4f}s\n")
-                        f.write(f"   Cumulative Time: {stats['cumulative_time']:.4f}s\n\n")
+                    f.write(report_data['function_profiling'])
                 
-                f.write("=" * 80 + "\n")
+                f.write("\n" + "=" * 80 + "\n")
                 f.write("Report generated by Application Profiler Tool\n")
                 f.write("=" * 80 + "\n")
-                
-            print(f"Summary report saved to: {summary_path}")
-            return summary_path
+            
+            return str(report_path)
             
         except Exception as e:
             print(f"Error generating summary report: {e}")
@@ -473,96 +668,53 @@ class ApplicationProfiler:
 
 
 def profile_application(duration: int = 60, output_dir: str = "profiling_reports"):
-    """Profile the main application for a specified duration"""
+    """Profile the application for a specified duration"""
     profiler = ApplicationProfiler(output_dir)
     
+    print(f"Starting application profiling for {duration} seconds...")
+    profiler.start_profiling()
+    
     try:
-        print(f"Starting application profiling for {duration} seconds...")
-        profiler.start_profiling()
-        
-        # Import and run the main application
-        from pyside_chat.features.ollama.ollama_chat import OllamaChat
-        from PySide6.QtWidgets import QApplication
-        
-        app = QApplication(sys.argv)
-        window = OllamaChat()
-        window.show()
-        
-        # Set up a timer to stop profiling after the specified duration
-        timer = QTimer()
-        timer.timeout.connect(lambda: stop_profiling_and_save(profiler))
-        timer.start(duration * 1000)
-        
-        # Run the application
-        result = app.exec()
-        
-        # If the app exits before the timer, stop profiling
-        if profiler.system_monitor.monitoring:
-            profiler.stop_profiling()
-            report_path = profiler.generate_report()
-            profiler.generate_summary_report(report_path)
-            
-        return result
-        
-    except Exception as e:
-        print(f"Error during profiling: {e}")
-        traceback.print_exc()
-        return 1
+        time.sleep(duration)
+    except KeyboardInterrupt:
+        print("\nProfiling interrupted by user")
+    
+    profiler.stop_profiling()
+    report_path = profiler.generate_report()
+    
+    print(f"Profiling completed. Report saved to: {report_path}")
+    return profiler
 
 
 def stop_profiling_and_save(profiler):
-    """Stop profiling and save reports"""
+    """Stop profiling and save results"""
     profiler.stop_profiling()
-    report_path = profiler.generate_report()
-    profiler.generate_summary_report(report_path)
-    print("Profiling completed and reports saved.")
+    return profiler.generate_report()
 
 
 def main():
-    """Main entry point for the profiler tool"""
+    """Main entry point"""
     parser = argparse.ArgumentParser(description="Application Profiler Tool")
-    parser.add_argument(
-        "--duration", 
-        type=int, 
-        default=60,
-        help="Profiling duration in seconds (default: 60)"
-    )
-    parser.add_argument(
-        "--output-dir", 
-        type=str, 
-        default="profiling_reports",
-        help="Output directory for reports (default: profiling_reports)"
-    )
-    parser.add_argument(
-        "--quick", 
-        action="store_true",
-        help="Quick profiling mode (30 seconds)"
-    )
+    parser.add_argument("--duration", type=int, default=60, help="Profiling duration in seconds")
+    parser.add_argument("--output-dir", default="profiling_reports", help="Output directory for reports")
+    parser.add_argument("--continuous", action="store_true", help="Run continuous profiling until interrupted")
     
     args = parser.parse_args()
     
-    if args.quick:
-        duration = 30
+    if args.continuous:
+        print("Starting continuous profiling (press Ctrl+C to stop)...")
+        profiler = ApplicationProfiler(args.output_dir)
+        profiler.start_profiling()
+        
+        try:
+            while True:
+                time.sleep(1)
+        except KeyboardInterrupt:
+            print("\nStopping continuous profiling...")
+            stop_profiling_and_save(profiler)
     else:
-        duration = args.duration
-        
-    print(f"Application Profiler Tool")
-    print(f"Duration: {duration} seconds")
-    print(f"Output directory: {args.output_dir}")
-    print(f"Quick mode: {args.quick}")
-    print("-" * 50)
-    
-    # Check dependencies
-    if not QT_AVAILABLE:
-        print("Error: PySide6 is required for application profiling")
-        return 1
-        
-    if not PROFILE_AVAILABLE:
-        print("Warning: cProfile not available, detailed function profiling disabled")
-        
-    # Run profiling
-    return profile_application(duration, args.output_dir)
+        profile_application(args.duration, args.output_dir)
 
 
 if __name__ == "__main__":
-    sys.exit(main()) 
+    main() 

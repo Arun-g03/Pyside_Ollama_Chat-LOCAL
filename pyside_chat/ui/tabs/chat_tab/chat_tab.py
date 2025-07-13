@@ -29,6 +29,21 @@ from .input_controls import InputControls
 
 logger = CustomLogger.get_logger(__name__)
 
+# Utility function for safe signal disconnection
+
+def safe_disconnect(signal, slot, logger=logger):
+    try:
+        if signal is not None and hasattr(signal, 'disconnect'):
+            try:
+                signal.disconnect(slot)
+                logger.debug(f"[SAFE DISCONNECT] Disconnected {slot} from {signal}")
+            except Exception as e:
+                logger.debug(f"[SAFE DISCONNECT] Could not disconnect {slot} from {signal}: {e}")
+        else:
+            logger.debug(f"[SAFE DISCONNECT] Signal {signal} is None or has no disconnect method, skipping")
+    except Exception as e:
+        logger.error(f"[SAFE DISCONNECT] Exception during disconnect: {e}")
+
 class ChatTab(QWidget):
     """Main chat interface tab that orchestrates all components"""
     
@@ -283,7 +298,7 @@ class ChatTab(QWidget):
             logger.error(f"[VOICE ERROR] Traceback: {traceback.format_exc()}")
         
     def on_message_sent(self, message: str):
-        """Handle message sent from input controls"""
+        """Handle message sent (text or voice)"""
         logger.debug(f"[VOICE DEBUG] on_message_sent called with message: '{message}', voice_mode: {self.voice_mode}")
         
         # Add user message to chat immediately
@@ -294,6 +309,21 @@ class ChatTab(QWidget):
         logger.debug(f"[VOICE DEBUG] Emitting message_sent signal for parent")
         self.message_sent.emit(message)
         
+        # Instead of directly starting TTS, use the new method
+        if self.voice_mode:
+            self.finalize_streaming_and_start_tts(message)
+        else:
+            # Show chat input widgets
+            input_components = self.input_controls.get_ui_components()
+            
+            input_components['message_input'].show()
+            input_components['send_button'].show()
+            self.voice_controls_widget.hide()
+            
+            self.voice_mode = False
+            self.eq_visualizer.switch_to_chat_display(self.chat_display.chat_display)
+            logger.debug("[VOICE DEBUG] Switched to Chat mode")
+    
     def on_message_cancelled(self):
         """Handle message cancelled from input controls"""
         self.stop_streaming()
@@ -309,6 +339,9 @@ class ChatTab(QWidget):
                 # Import and initialize voice controls
                 from pyside_chat.ui.tabs.chat_tab.voice_controls import VoiceControls
                 self.voice_controls = VoiceControls(self, self.config_manager)
+                
+                # Reset the signal connection guard flag on re-init
+                self._voice_controls_signals_connected = False
                 
                 # Get voice settings and update EQ visualizer
                 voice_settings = self.voice_controls.get_voice_settings()
@@ -328,38 +361,42 @@ class ChatTab(QWidget):
                 voice_layout.addWidget(voice_components['voice_settings_button'])
                 voice_layout.addWidget(voice_components['audio_level_widget'])
                 
-                # Connect voice control signals (only if not already connected)
-                print(f"[DEBUG] Connecting voice control signals to chat tab")
-                logger.debug("Connecting voice control signals to chat tab", print_to_terminal=True)
-                
-                # List of (signal, slot) pairs to disconnect/connect
-                signal_slot_pairs = [
-                    (self.voice_controls.voice_input_received, self.on_voice_input_received),
-                    (self.voice_controls.voice_input_error, self.on_voice_input_error),
-                    (self.voice_controls.tts_started, self.on_tts_started),
-                    (self.voice_controls.tts_finished, self.on_tts_finished),
-                    (self.voice_controls.tts_error, self.on_tts_error),
-                    (self.voice_controls.recording_started, self.on_recording_started),
-                    (self.voice_controls.recording_stopped, self.on_recording_stopped),
-                    (self.voice_controls.recording_error, self.on_recording_error),
-                    (self.voice_controls.voice_processing_started, self.on_voice_processing_started),
-                    (self.voice_controls.voice_processing_finished, self.on_voice_processing_finished),
-                    (self.voice_controls.audio_level_changed, self.on_audio_level_changed),
-                    (self.voice_controls.user_interrupted, self.on_user_interrupted),
-                    (self.voice_controls.request_cancelled, self.on_request_cancelled),
-                    (self.voice_controls.voice_status_changed, self.on_voice_status_changed),
-                ]
-                for signal, slot in signal_slot_pairs:
-                    try:
-                        signal.disconnect(slot)
-                    except (TypeError, RuntimeError):
-                        pass
-                    signal.connect(slot)
+                # Add a flag to prevent multiple connections
+                if not hasattr(self, '_voice_controls_signals_connected'):
+                    self._voice_controls_signals_connected = False
+
+                if not self._voice_controls_signals_connected:
+                    print(f"[DEBUG] Connecting voice control signals to chat tab")
+                    logger.debug("Connecting voice control signals to chat tab", print_to_terminal=True)
+                    
+                    # List of (signal, slot) pairs to disconnect/connect
+                    signal_slot_pairs = [
+                        (self.voice_controls.voice_input_received, self.on_voice_input_received),
+                        (self.voice_controls.voice_input_error, self.on_voice_input_error),
+                        (self.voice_controls.tts_started, self.on_tts_started),
+                        (self.voice_controls.tts_finished, self.on_tts_finished),
+                        (self.voice_controls.tts_error, self.on_tts_error),
+                        (self.voice_controls.recording_started, self.on_recording_started),
+                        (self.voice_controls.recording_stopped, self.on_recording_stopped),
+                        (self.voice_controls.recording_error, self.on_recording_error),
+                        (self.voice_controls.voice_processing_started, self.on_voice_processing_started),
+                        (self.voice_controls.voice_processing_finished, self.on_voice_processing_finished),
+                        (self.voice_controls.audio_level_changed, self.on_audio_level_changed),
+                        (self.voice_controls.user_interrupted, self.on_user_interrupted),
+                        (self.voice_controls.request_cancelled, self.on_request_cancelled),
+                        (self.voice_controls.voice_status_changed, self.on_voice_status_changed),
+                    ]
+                    for signal, slot in signal_slot_pairs:
+                        try:
+                            signal.disconnect(slot)
+                        except (TypeError, RuntimeError):
+                            pass
+                        signal.connect(slot)
+                    self._voice_controls_signals_connected = True
                 
                 # Connect voice settings button
-                voice_components = self.voice_controls.get_ui_components()
                 try:
-                    voice_components['voice_settings_button'].clicked.disconnect(self.open_voice_settings)
+                    safe_disconnect(voice_components['voice_settings_button'].clicked, self.open_voice_settings)
                 except (TypeError, RuntimeError):
                     pass
                 voice_components['voice_settings_button'].clicked.connect(self.open_voice_settings)
@@ -530,6 +567,19 @@ class ChatTab(QWidget):
         
         # Process the voice input as a user message
         self.process_voice_input(text)
+        
+    def on_voice_input_received_direct(self, text: str):
+        """Handle voice input received directly from voice service (fallback)"""
+        print(f"[DEBUG] ChatTab received direct voice input: {text}")
+        logger.debug(f"Direct voice input received in chat tab: {text}", print_to_terminal=True)
+        
+        # Stop any current streaming
+        if self.is_streaming:
+            logger.debug("Stopping current streaming to process direct voice input")
+            self.stop_streaming()
+        
+        # Process the voice input as a user message
+        self.process_voice_input(text)
 
     def process_voice_input(self, text: str):
         """Process voice input as a user message"""
@@ -537,8 +587,15 @@ class ChatTab(QWidget):
             print(f"[DEBUG] Processing voice input: '{text}'")
             logger.debug(f"Processing voice input: '{text}'", print_to_terminal=True)
             
-            # Don't add user message to chat here - let on_message_sent handle it
-            # This prevents duplication since on_message_sent will be called via the message_sent signal
+            # Add user message to chat immediately for voice input
+            print(f"[DEBUG] Adding voice input to chat display: '{text}'")
+            logger.debug(f"Adding voice input to chat display: '{text}'", print_to_terminal=True)
+            self.append_to_chat("You", text)
+            
+            # Start streaming for AI response
+            print(f"[DEBUG] Starting streaming for voice input")
+            logger.debug("Starting streaming for voice input", print_to_terminal=True)
+            self.start_streaming()
             
             # Emit message_sent signal to go through the same event bus system as text input
             print(f"[DEBUG] Emitting message_sent signal for voice input")
@@ -630,16 +687,20 @@ class ChatTab(QWidget):
         
     def on_audio_level_changed(self, audio_level: float):
         """Handle audio level changes"""
-        logger.debug(f"[EQ DEBUG] on_audio_level_changed called - audio_level: {audio_level:.4f}")
-        
-        # Update EQ visualizer if in voice mode with EQ enabled
-        if self.voice_mode and self.eq_visualizer.get_eq_mode() != "None":
-            logger.debug(f"[EQ DEBUG] Calling update_eq_visualizer")
-            if self.voice_controls_initialized and self.voice_controls:
-                tts_playing = self.voice_controls.is_tts_playing()
-                self.eq_visualizer.update_eq_visualizer(audio_level, tts_playing)
-        else:
-            logger.debug(f"[EQ DEBUG] Skipping EQ update - voice_mode: {self.voice_mode}, eq_mode: {self.eq_visualizer.get_eq_mode()}")
+        try:
+            logger.debug(f"[EQ DEBUG] on_audio_level_changed called - audio_level: {audio_level:.4f}")
+            
+            # Update EQ visualizer if in voice mode with EQ enabled
+            if self.voice_mode and self.eq_visualizer.get_eq_mode() != "None":
+                logger.debug(f"[EQ DEBUG] Calling update_eq_visualizer")
+                if self.voice_controls_initialized and self.voice_controls:
+                    tts_playing = self.voice_controls.is_tts_playing()
+                    self.eq_visualizer.update_eq_visualizer(audio_level, tts_playing)
+            else:
+                pass
+        except Exception as e:
+            logger.error(f"Error in on_audio_level_changed: {traceback.format_exc()}")
+            raise (f"Error in on_audio_level_changed: {traceback.format_exc()}\n{e}")
         
     def on_message_edited(self, message_index: int, new_content: str):
         """Handle message edit"""
@@ -704,10 +765,17 @@ class ChatTab(QWidget):
         # Always append to chat display - never skip this
         # The EQ visualizer is just a visual overlay, it shouldn't prevent chat messages from appearing
         
+        print(f"[DEBUG] append_to_chat called - sender: {sender}, message: '{message[:50]}...', is_code: {is_code}")
+        logger.debug(f"append_to_chat called - sender: {sender}, message: '{message[:50]}...', is_code: {is_code}", print_to_terminal=True)
+        
         # Ensure chat display is visible for message display
         self._ensure_chat_display_visible()
         
+        print(f"[DEBUG] Calling chat_display.append_to_chat")
+        logger.debug("Calling chat_display.append_to_chat", print_to_terminal=True)
         self.chat_display.append_to_chat(sender, message, is_code)
+        print(f"[DEBUG] chat_display.append_to_chat completed")
+        logger.debug("chat_display.append_to_chat completed", print_to_terminal=True)
         
     def append_response_chunk(self, chunk: str, model_name: str = None):
         """Append a streaming response chunk"""
@@ -1028,3 +1096,19 @@ class ChatTab(QWidget):
     def streaming_handler(self):
         """Property to access streaming handler for backward compatibility"""
         return self.chat_display.get_streaming_handler() 
+
+    def finalize_streaming_and_start_tts(self, tts_text):
+        """Finalize chat display after streaming, then start TTS playback"""
+        logger.debug("[VOICE] Finalizing streaming before starting TTS playback")
+        def _finalize_and_start():
+            try:
+                # Finalize streaming message in the chat display
+                streaming_handler = self.chat_display.get_streaming_handler()
+                if streaming_handler:
+                    streaming_handler.finalize_streaming_message()
+                logger.debug("[VOICE] Chat display finalized, starting TTS playback")
+                self.speak_ai_response(tts_text)
+            except Exception as e:
+                logger.error(f"[VOICE] Error finalizing streaming or starting TTS: {e}")
+        from PySide6.QtCore import QTimer
+        QTimer.singleShot(0, _finalize_and_start) 

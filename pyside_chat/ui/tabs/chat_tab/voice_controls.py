@@ -13,7 +13,24 @@ from pyside_chat.core.logging.logger import CustomLogger
 
 logger = CustomLogger.get_logger(__name__)
 
+def safe_disconnect(signal, slot=None, logger=logger):
+    try:
+        if signal is not None and hasattr(signal, 'disconnect'):
+            try:
+                if slot is not None:
+                    signal.disconnect(slot)
+                    logger.debug(f"[SAFE DISCONNECT] Disconnected {slot} from {signal}")
+                else:
+                    signal.disconnect()
+                    logger.debug(f"[SAFE DISCONNECT] Disconnected all slots from {signal}")
+            except Exception as e:
+                logger.debug(f"[SAFE DISCONNECT] Could not disconnect {slot} from {signal}: {e}")
+        else:
+            logger.debug(f"[SAFE DISCONNECT] Signal {signal} is None or has no disconnect method, skipping")
+    except Exception as e:
+        logger.error(f"[SAFE DISCONNECT] Exception during disconnect: {e}")
 
+        
 class VoiceControls(QObject):
     """Voice Controls component for voice mode, TTS, and audio level handling"""
 
@@ -40,6 +57,7 @@ class VoiceControls(QObject):
         super().__init__(parent)
         self.parent = parent
         self.config_manager = config_manager
+        self._voice_signals_connected = False  # Ensure guard flag is always defined
 
         # Thread safety improvements
         self._mutex = QMutex()
@@ -71,6 +89,11 @@ class VoiceControls(QObject):
         self._ui_refresh_timer = QTimer()
         self._ui_refresh_timer.timeout.connect(self._periodic_ui_refresh)
         self._ui_refresh_timer.start(5000)  # Check every 5 seconds
+        
+        # Add a timer to clear last processed voice input
+        self._clear_voice_input_timer = QTimer()
+        self._clear_voice_input_timer.setSingleShot(True)
+        self._clear_voice_input_timer.timeout.connect(self._clear_last_voice_input)
 
         # Load voice settings from config or use defaults
         if self.config_manager:
@@ -625,168 +648,55 @@ class VoiceControls(QObject):
      print_to_terminal=True)
             return
 
+        # Guard: only connect once per instance
+        if self._voice_signals_connected:
+            logger.debug("Voice service signals already connected (internal guard), skipping re-connection.")
+            return
+
         try:
             logger.info(
     "Setting up voice service UI connections...",
      print_to_terminal=True)
-            # Wait a moment for signals to be properly initialized
             import time
             time.sleep(0.1)
 
-            # Disconnect any existing connections to avoid duplicates
-            # Only disconnect if the signal exists and is not None
-            signal_mappings = [
-                ('voice_input_received', getattr(
-                    self.voice_service, 'voice_input_received', None)),
-                ('voice_input_error', getattr(
-                    self.voice_service, 'voice_input_error', None)),
-                ('tts_started', getattr(self.voice_service, 'tts_started', None)),
-                ('tts_finished', getattr(self.voice_service, 'tts_finished', None)),
-                ('tts_error', getattr(self.voice_service, 'tts_error', None)),
-                ('recording_started', getattr(
-                    self.voice_service, 'recording_started', None)),
-                ('recording_stopped', getattr(
-                    self.voice_service, 'recording_stopped', None)),
-                ('recording_error', getattr(
-                    self.voice_service, 'recording_error', None)),
-                ('voice_processing_started', getattr(
-                    self.voice_service, 'voice_processing_started', None)),
-                ('voice_processing_finished', getattr(
-                    self.voice_service, 'voice_processing_finished', None)),
-                ('audio_level_changed', getattr(
-                    self.voice_service, 'audio_level_changed', None)),
-                ('user_interrupted', getattr(
-                    self.voice_service, 'user_interrupted', None)),
-                ('request_cancelled', getattr(
-                    self.voice_service, 'request_cancelled', None)),
-                ('voice_service_ready', getattr(
-                    self.voice_service, 'voice_service_ready', None))
+            from pyside_chat.ui.tabs.chat_tab.voice_controls import safe_disconnect
+            signal_slot_mappings = [
+                (getattr(self.voice_service, 'voice_input_received', None), self.on_voice_input_received),
+                (getattr(self.voice_service, 'voice_input_error', None), self.on_voice_input_error),
+                (getattr(self.voice_service, 'tts_started', None), self.on_tts_started),
+                (getattr(self.voice_service, 'tts_finished', None), self.on_tts_finished),
+                (getattr(self.voice_service, 'tts_error', None), self.on_tts_error),
+                (getattr(self.voice_service, 'recording_started', None), self.on_recording_started),
+                (getattr(self.voice_service, 'recording_stopped', None), self.on_recording_stopped),
+                (getattr(self.voice_service, 'recording_error', None), self.on_recording_error),
+                (getattr(self.voice_service, 'voice_processing_started', None), self.on_voice_processing_started),
+                (getattr(self.voice_service, 'voice_processing_finished', None), self.on_voice_processing_finished),
+                (getattr(self.voice_service, 'audio_level_changed', None), self.on_audio_level_changed),
+                (getattr(self.voice_service, 'user_interrupted', None), self.on_user_interrupted),
+                (getattr(self.voice_service, 'request_cancelled', None), self.on_request_cancelled),
+                (getattr(self.voice_service, 'voice_service_ready', None), self._on_voice_service_ready)
             ]
 
-            for signal_name, signal in signal_mappings:
-                if signal is not None and hasattr(signal, 'disconnect'):
-                    try:
-                        signal.disconnect()
-                        logger.debug(
-                            f"Disconnected existing {signal_name} signal")
-                    except Exception as e:
-                        logger.debug(
-                            f"Could not disconnect {signal_name} signal: {e}")
-                else:
-                    logger.debug(
-                        f"Signal {signal_name} is None or has no disconnect method, skipping disconnect")
-
-            # Connect voice service signals (only if they exist)
             connections_made = 0
-            if hasattr(
-    self.voice_service,
-     'voice_input_received') and self.voice_service.voice_input_received is not None:
-                print(f"[DEBUG] Connecting voice_input_received signal")
-                logger.debug(
-    "Connecting voice_input_received signal",
-     print_to_terminal=True)
-                self.voice_service.voice_input_received.connect(
-                    self.on_voice_input_received)
-                connections_made += 1
-            else:
-                print(f"[DEBUG] voice_input_received signal not available")
-                logger.warning(
-    "voice_input_received signal not available",
-     print_to_terminal=True)
+            for signal, slot in signal_slot_mappings:
+                if signal is not None:
+                    safe_disconnect(signal, slot)
+                    signal.connect(slot)
+                    connections_made += 1
 
-            if hasattr(
-    self.voice_service,
-     'voice_input_error') and self.voice_service.voice_input_error is not None:
-                self.voice_service.voice_input_error.connect(
-                    self.on_voice_input_error)
-                connections_made += 1
-            if hasattr(
-    self.voice_service,
-     'tts_started') and self.voice_service.tts_started is not None:
-                self.voice_service.tts_started.connect(self.on_tts_started)
-                connections_made += 1
-            if hasattr(
-    self.voice_service,
-     'tts_finished') and self.voice_service.tts_finished is not None:
-                self.voice_service.tts_finished.connect(self.on_tts_finished)
-                connections_made += 1
-            if hasattr(
-    self.voice_service,
-     'tts_error') and self.voice_service.tts_error is not None:
-                self.voice_service.tts_error.connect(self.on_tts_error)
-                connections_made += 1
-            if hasattr(
-    self.voice_service,
-     'recording_started') and self.voice_service.recording_started is not None:
-                self.voice_service.recording_started.connect(
-                    self.on_recording_started)
-                connections_made += 1
-            if hasattr(
-    self.voice_service,
-     'recording_stopped') and self.voice_service.recording_stopped is not None:
-                self.voice_service.recording_stopped.connect(
-                    self.on_recording_stopped)
-                connections_made += 1
-            if hasattr(
-    self.voice_service,
-     'recording_error') and self.voice_service.recording_error is not None:
-                self.voice_service.recording_error.connect(
-                    self.on_recording_error)
-                connections_made += 1
-            if hasattr(
-    self.voice_service,
-     'voice_processing_started') and self.voice_service.voice_processing_started is not None:
-                self.voice_service.voice_processing_started.connect(
-                    self.on_voice_processing_started)
-                connections_made += 1
-            if hasattr(
-    self.voice_service,
-     'voice_processing_finished') and self.voice_service.voice_processing_finished is not None:
-                self.voice_service.voice_processing_finished.connect(
-                    self.on_voice_processing_finished)
-                connections_made += 1
-            if hasattr(
-    self.voice_service,
-     'audio_level_changed') and self.voice_service.audio_level_changed is not None:
-                self.voice_service.audio_level_changed.connect(
-                    self.on_audio_level_changed)
-                connections_made += 1
-
-            # Connect new interruption signals
-            if hasattr(
-    self.voice_service,
-     'user_interrupted') and self.voice_service.user_interrupted is not None:
-                self.voice_service.user_interrupted.connect(
-                    self.on_user_interrupted)
-                connections_made += 1
-            if hasattr(
-    self.voice_service,
-     'request_cancelled') and self.voice_service.request_cancelled is not None:
-                self.voice_service.request_cancelled.connect(
-                    self.on_request_cancelled)
-                connections_made += 1
-
-            # Connect voice service ready signal
-            if hasattr(
-    self.voice_service,
-     'voice_service_ready') and self.voice_service.voice_service_ready is not None:
-                self.voice_service.voice_service_ready.connect(
-                    self._on_direct_voice_service_ready)
-                connections_made += 1
-
-            print(
-                f"[DEBUG] Voice service UI connections established: {connections_made} connections made")
-            logger.info(
-    f"Voice service UI connections established successfully: {connections_made} connections made",
-     print_to_terminal=True)
-
+            logger.debug(f"Voice service UI connections established: {connections_made} connections made", print_to_terminal=True)
+            logger.info(f"Voice service UI connections established successfully: {connections_made} connections made", print_to_terminal=True)
+            self._voice_signals_connected = True
         except Exception as e:
-            print(f"[DEBUG] Error setting up voice connections: {e}")
-            logger.error(
-    f"Error setting up voice connections: {e}",
-     print_to_terminal=True)
+            logger.error(f"Error setting up voice connections: {e}", print_to_terminal=True)
             import traceback
             logger.error(f"Traceback: {traceback.format_exc()}")
+            raise
+
+    def reset_voice_signal_connections(self):
+        """Reset the internal guard flag to allow reconnection if needed (e.g., after re-init)."""
+        self._voice_signals_connected = False
 
     def _is_voice_service_ready(self) -> bool:
         """Check if voice service is ready to use"""
@@ -873,55 +783,60 @@ class VoiceControls(QObject):
         try:
             if not self.voice_mode:
                 # Start voice mode
-                    logger.debug("Starting voice mode")
-                    self.voice_mode = True
+                logger.debug("Starting voice mode")
+                self.voice_mode = True
 
-                    # Check if voice service is initialized
-                    voice_service = self.get_voice_service()
-                    logger.debug(
+                # Reset duplicate detection state
+                self._reset_duplicate_detection_state()
+
+                # Check if voice service is initialized
+                voice_service = self.get_voice_service()
+                logger.debug(
     f"Voice service obtained: {voice_service is not None}",
      print_to_terminal=True)
 
-                    if not voice_service or not self._is_voice_service_ready():
-                        # Voice service not ready, disable button and show
-                        # initializing
-                        logger.debug(
+                if not voice_service or not self._is_voice_service_ready():
+                    # Voice service not ready, disable button and show
+                    # initializing
+                    logger.debug(
     "Voice service not ready, disabling button",
      print_to_terminal=True)
-                        self._update_voice_button_state(False, "Initializing")
-                        self.voice_status_changed.emit("Initializing")
-                        return
+                    self._update_voice_button_state(False, "Initializing")
+                    self.voice_status_changed.emit("Initializing")
+                    return
 
-                    # Voice service is ready, enable button and start voice
-                    # mode
-                    logger.debug(
+                # Voice service is ready, enable button and start voice
+                # mode
+                logger.debug(
     "Voice service is ready, starting voice mode",
      print_to_terminal=True)
-                    self._update_voice_button_state(True, "Ready")
-                    self.voice_status_changed.emit("Ready")
-                    self.voice_button.setText("🎤 Stop Voice")
-                    self.voice_button.setStyleSheet("""
-                    QPushButton {
-                        background-color: #dc3545;
-                        color: #ffffff;
-                        border: none;
-                        border-radius: 5px;
-                        padding: 8px 16px;
-                        font-size: 14px;
-                        font-weight: bold;
-                        min-width: 120px;
-                    }
-                    QPushButton:hover {
-                        background-color: #c82333;
-                    }
-                    QPushButton:pressed {
-                        background-color: #bd2130;
-                    }
-                """)
+                self._update_voice_button_state(True, "Ready")
+                self.voice_status_changed.emit("Ready")
+                self.voice_button.setText("🎤 Stop Voice")
+                self.voice_button.setStyleSheet("""
+                QPushButton {
+                    background-color: #dc3545;
+                    color: #ffffff;
+                    border: none;
+                    border-radius: 5px;
+                    padding: 8px 16px;
+                    font-size: 14px;
+                    font-weight: bold;
+                    min-width: 120px;
+                }
+                QPushButton:hover {
+                    background-color: #c82333;
+                }
+                QPushButton:pressed {
+                    background-color: #bd2130;
+                }
+            """)
 
+                # Reset duplicate detection state
+                self._reset_duplicate_detection_state()
                 # Start continuous voice mode
-                    self._start_continuous_voice_mode()
-                    logger.debug("Voice mode started successfully")
+                self._start_continuous_voice_mode()
+                logger.debug("Voice mode started successfully")
             else:
                 # Stop voice mode
                 logger.debug("Stopping voice mode")
@@ -1009,6 +924,8 @@ class VoiceControls(QObject):
             # Reset voice mode on error
             self.voice_mode = False
             self._reset_voice_button()
+
+    
     
     def _handle_voice_input_safe(self, text: str):
         """Handle voice input safely in the main thread"""
@@ -1021,6 +938,39 @@ class VoiceControls(QObject):
                 logger.debug("Voice mode is False, ignoring voice input", print_to_terminal=True)
                 return
             
+            # Prevent duplicate processing
+            # Check for duplicate voice input with improved detection
+            current_time = time.time()
+            
+            # Check for exact duplicate within a very short time window (0.5 seconds)
+            if hasattr(self, '_last_processed_voice_input') and hasattr(self, '_last_voice_input_time'):
+                time_diff = current_time - self._last_voice_input_time
+                if self._last_processed_voice_input == text and time_diff < 0.5:
+                    print(f"[DEBUG] Exact duplicate voice input detected within {time_diff:.2f}s, ignoring: '{text}'")
+                    logger.debug(f"Exact duplicate voice input detected within {time_diff:.2f}s, ignoring: '{text}'", print_to_terminal=True)
+                    import traceback
+                    tb = traceback.format_stack()
+                    logger.debug(f"[DUPLICATE TRACEBACK] Duplicate voice input call stack:\n{''.join(tb)}", print_to_terminal=True)
+                    return
+            
+            # Check for similar voice input within a short time window (1 second)
+            if hasattr(self, '_last_voice_input_time') and hasattr(self, '_last_processed_voice_input'):
+                time_diff = current_time - self._last_voice_input_time
+                if time_diff < 1.0:  # 1 second window for similar inputs
+                    # Check if the new input is very similar to the last one
+                    if self._is_similar_voice_input(text, self._last_processed_voice_input):
+                        print(f"[DEBUG] Similar voice input detected within {time_diff:.1f}s, ignoring: '{text}'")
+                        logger.debug(f"Similar voice input detected within {time_diff:.1f}s, ignoring: '{text}'", print_to_terminal=True)
+                        return
+            
+            self._last_processed_voice_input = text
+            self._last_voice_input_time = current_time
+            
+            # Stop any existing timer before starting a new one
+            self._clear_voice_input_timer.stop()
+            # Clear the last processed voice input after 2 seconds
+            self._clear_voice_input_timer.start(2000)
+            
             logger.debug(f"Voice input received in continuous mode: {text}")
             
             # In non-interruptive mode, we don't stop voice input immediately
@@ -1030,6 +980,7 @@ class VoiceControls(QObject):
             # Forward to parent for processing
             print(f"[DEBUG] Emitting voice_input_received signal with text: '{text}'")
             logger.debug(f"Emitting voice_input_received signal with text: '{text}'", print_to_terminal=True)
+            logger.debug(f"[EMIT] voice_controls.py: voice_input_received.emit({text!r}) from id={id(self)}")
             self.voice_input_received.emit(text)
             
             # Voice service will handle the flow:
@@ -1041,11 +992,11 @@ class VoiceControls(QObject):
             print(f"[DEBUG] Error in _handle_voice_input_safe: {e}")
             logger.error(f"[VOICE ERROR] Error handling voice input: {e}", print_to_terminal=True)
             logger.error(f"[VOICE ERROR] Traceback: {traceback.format_exc()}")
-            # Try to emit error signal
             try:
                 self.voice_input_error.emit(f"Voice input error: {str(e)}")
             except:
                 pass
+            raise
     
     def _handle_tts_finished_continuous(self):
         """Handle TTS finished in continuous voice mode"""
@@ -1141,6 +1092,7 @@ class VoiceControls(QObject):
         except Exception as e:
             logger.error(f"Error handling voice input error: {e}")
             self.voice_input_error.emit(f"Voice input error: {str(e)}")
+            raise
     
     def on_tts_started(self):
         """Handle TTS started"""
@@ -1498,4 +1450,62 @@ class VoiceControls(QObject):
                 self.audio_level_label.setText("🎤 Continuous Recording...")
                 logger.debug("Voice input restarted after cancellation")
         except Exception as e:
-            logger.error(f"Failed to restart voice input after cancellation: {e}") 
+            logger.error(f"Failed to restart voice input after cancellation: {e}")
+    
+    def _clear_last_voice_input(self):
+        """Clear the last processed voice input to allow reprocessing"""
+        try:
+            if hasattr(self, '_last_processed_voice_input'):
+                old_input = self._last_processed_voice_input
+                delattr(self, '_last_processed_voice_input')
+                logger.debug(f"Cleared last processed voice input: '{old_input}'")
+            if hasattr(self, '_last_voice_input_time'):
+                delattr(self, '_last_voice_input_time')
+                logger.debug("Cleared last voice input time")
+        except Exception as e:
+            logger.error(f"Error clearing last voice input: {e}")
+    
+    def _is_similar_voice_input(self, text1: str, text2: str) -> bool:
+        """Check if two voice inputs are similar enough to be considered duplicates"""
+        if not text1 or not text2:
+            return False
+        
+        # Convert to lowercase for comparison
+        t1 = text1.lower().strip()
+        t2 = text2.lower().strip()
+        
+        # Exact match
+        if t1 == t2:
+            return True
+        
+        # Check if one is contained within the other (for partial matches)
+        if len(t1) > 10 and len(t2) > 10:  # Only for longer inputs
+            if t1 in t2 or t2 in t1:
+                return True
+        
+        # Check for high similarity using word overlap
+        words1 = set(t1.split())
+        words2 = set(t2.split())
+        
+        if len(words1) > 0 and len(words2) > 0:
+            overlap = len(words1.intersection(words2))
+            total_words = len(words1.union(words2))
+            similarity = overlap / total_words if total_words > 0 else 0
+            
+            # Consider similar if more than 70% word overlap
+            return similarity > 0.7
+        
+        return False 
+
+    def _reset_duplicate_detection_state(self):
+        """Reset the duplicate detection state for voice input."""
+        try:
+            if hasattr(self, '_last_processed_voice_input'):
+                delattr(self, '_last_processed_voice_input')
+            if hasattr(self, '_last_voice_input_time'):
+                delattr(self, '_last_voice_input_time')
+            if hasattr(self, '_clear_voice_input_timer'):
+                self._clear_voice_input_timer.stop()
+            logger.debug("Duplicate detection state reset.")
+        except Exception as e:
+            logger.error(f"Error resetting duplicate detection state: {e}") 

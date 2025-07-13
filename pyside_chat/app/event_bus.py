@@ -5,7 +5,7 @@ Event Bus - Manages signal connections and event handling
 from PySide6.QtCore import QTimer, QThread
 from typing import Optional, Callable, Dict, Any, List
 from pyside_chat.core.logging.logger import CustomLogger
-from pyside_chat.app.threading_integration import EventBusThreadingBridge
+from pyside_chat.core.threading.threading_service import get_global_threading_service
 import traceback
 
 logger = CustomLogger.get_logger(__name__)
@@ -20,11 +20,14 @@ class EventBus:
         self.ui_manager = ui_manager
         self.chat_controller = chat_controller
         
-        # New threading architecture support
-       
+        # Initialize threading service for new architecture
+        self.threading_service = get_global_threading_service()
         
-        # New threading architecture integration
-        self.threading_bridge = EventBusThreadingBridge(self)
+        # Connect threading service signals to event bus handlers
+        self.threading_service.worker_chunk_received.connect(self._on_worker_chunk)
+        self.threading_service.worker_progress_updated.connect(self._on_worker_progress)
+        self.threading_service.worker_finished.connect(self._on_worker_finished)
+        self.threading_service.worker_error.connect(self._on_worker_error)
         
         self._current_response_model = None
         self._tts_finished = False  # Track TTS completion
@@ -362,8 +365,20 @@ class EventBus:
         try:
             logger.debug(f"[ID:0213] Creating worker thread for model: {chosen_model}")
             
+            # Get configuration from service manager
+            config_manager = self.service_manager.config_manager
+            
             # Use new threading architecture
-            success = self.threading_bridge.start_chat_streaming(context_messages, chosen_model, temperature)
+            success = self.threading_service.start_chat_streaming(
+                messages=context_messages,
+                model=chosen_model,
+                temperature=temperature,
+                ollama_url=config_manager.get_ollama_url(),
+                max_tokens=config_manager.get_max_tokens(),
+                top_p=config_manager.get_top_p(),
+                frequency_penalty=config_manager.get_frequency_penalty(),
+                presence_penalty=config_manager.get_presence_penalty()
+            )
             
             if success:
                 logger.debug("[ID:0207] Worker thread started successfully with new architecture")
@@ -503,9 +518,9 @@ class EventBus:
             logger.debug("[ID:0180] Starting worker thread cleanup")
             
             # Clean up new threading architecture
-            if hasattr(self, 'threading_bridge'):
+            if hasattr(self, 'threading_service'):
                 logger.debug("[ID:0179] Cleaning up new threading architecture")
-                self.threading_bridge.stop_chat_streaming()
+                self.threading_service.stop_chat_streaming()
             
             # No legacy worker cleanup needed
                         
@@ -572,8 +587,8 @@ class EventBus:
             
             # Stop the worker thread if it's running using safe cleanup
             # (Legacy worker cleanup - now handled by new threading system)
-            if hasattr(self, 'threading_bridge'):
-                self.threading_bridge.stop_chat_streaming()
+            if hasattr(self, 'threading_service'):
+                self.threading_service.stop_chat_streaming()
             
             # Update the chat tab (prevent recursive call)
             chat_tab = self.ui_manager.get_chat_tab()
@@ -870,8 +885,8 @@ class EventBus:
     def get_threading_status(self) -> Dict[str, Any]:
         """Get current threading status and statistics."""
         try:
-            if hasattr(self, 'threading_bridge'):
-                return self.threading_bridge.get_threading_status()
+            if hasattr(self, 'threading_service'):
+                return self.threading_service.get_threading_status()
             else:
                 return {}
         except Exception as e:
@@ -884,9 +899,9 @@ class EventBus:
             logger.debug("[ID:0151] Starting application exit cleanup")
             
             # Clean up new threading architecture
-            if hasattr(self, 'threading_bridge'):
+            if hasattr(self, 'threading_service'):
                 logger.debug("[ID:0150] Cleaning up threading bridge on exit")
-                self.threading_bridge.cleanup()
+                self.threading_service.cleanup()
             
             # Clean up any running worker threads (legacy cleanup removed)
             # All cleanup is now handled by the new threading system

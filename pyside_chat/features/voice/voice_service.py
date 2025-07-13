@@ -582,20 +582,41 @@ class VoiceService(QObject):
                 "data": None
             })
         
-        # Only emit if text is not empty or whitespace
-        if text.strip():
-            # Log voice input received
-            logger.info(f"Voice input received: '{text}'", print_to_terminal=True)
+        # Clean and validate the text
+        cleaned_text = text.strip()
+        
+        # Only emit if text is not empty and meets minimum length requirements
+        if cleaned_text and len(cleaned_text) >= 2:  # Minimum 2 characters
+            # Check for common noise patterns and filter them out
+            noise_patterns = [
+                "um", "uh", "ah", "er", "hmm", "huh", "what", "yeah", "okay", "right",
+                "so", "well", "like", "you know", "i mean", "basically", "actually"
+            ]
             
-            self.voice_input_received.emit(text)
+            # Convert to lowercase for comparison
+            text_lower = cleaned_text.lower()
+            
+            # Skip if it's just noise
+            if any(pattern in text_lower for pattern in noise_patterns) and len(cleaned_text) < 10:
+                logger.info(f"Filtered out noise: '{cleaned_text}'", print_to_terminal=True)
+                return
+            
+            # Log voice input received
+            logger.info(f"Voice input received: '{cleaned_text}'", print_to_terminal=True)
+            
+            logger.debug(f"[EMIT] voice_service.py: voice_input_received.emit({cleaned_text!r}) from id={id(self)}")
+            self.voice_input_received.emit(cleaned_text)
             # Forward to response queue if in separate process
             if self.response_queue:
                 self.response_queue.put({
                     "type": "voice_input_received",
-                    "data": text
+                    "data": cleaned_text
                 })
         else:
-            logger.info("STT result was empty, skipping message emission.", print_to_terminal=True)
+            if cleaned_text:
+                logger.info(f"Voice input too short ({len(cleaned_text)} chars): '{cleaned_text}'", print_to_terminal=True)
+            else:
+                logger.info("STT result was empty, skipping message emission.", print_to_terminal=True)
         
         # Complete the request
         self._complete_request()
@@ -769,6 +790,38 @@ class VoiceService(QObject):
     def get_silence_duration(self) -> float:
         """Get silence duration setting"""
         return self.voice_settings.get("silence_duration", 2.0)
+    
+    def get_silence_threshold(self) -> float:
+        """Get silence threshold setting"""
+        return self.voice_settings.get("silence_threshold", 0.005)
+    
+    def get_recording_timeout(self) -> float:
+        """Get recording timeout setting"""
+        return self.voice_settings.get("recording_timeout", 10.0)
+    
+    def get_current_audio_level(self) -> float:
+        """Get current audio level from recording service"""
+        if self.recording_service and hasattr(self.recording_service, 'get_current_audio_level'):
+            return self.recording_service.get_current_audio_level()
+        return 0.0
+    
+    def set_recording_timeout(self, timeout: float):
+        """Set recording timeout setting"""
+        self.voice_settings["recording_timeout"] = timeout
+    
+    def set_silence_duration(self, duration: float):
+        """Set silence duration setting"""
+        self.voice_settings["silence_duration"] = duration
+    
+    def set_silence_threshold(self, threshold: float):
+        """Set silence threshold setting"""
+        self.voice_settings["silence_threshold"] = threshold
+    
+    def set_audio_gate_enabled(self, enabled: bool):
+        """Set audio gate enabled setting"""
+        # This would be implemented in the recording service
+        if self.recording_service and hasattr(self.recording_service, 'set_audio_gate_enabled'):
+            self.recording_service.set_audio_gate_enabled(enabled)
     
     def cleanup_on_exit(self):
         """Clean up resources when the application exits"""

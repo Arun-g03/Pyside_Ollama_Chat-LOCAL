@@ -17,6 +17,25 @@ from typing import Dict
 
 logger = CustomLogger.get_logger(__name__)
 
+# Utility function for safe signal disconnection
+
+def safe_disconnect(signal, slot=None, logger=logger):
+    try:
+        if signal is not None and hasattr(signal, 'disconnect'):
+            try:
+                if slot is not None:
+                    signal.disconnect(slot)
+                    logger.debug(f"[SAFE DISCONNECT] Disconnected {slot} from {signal}")
+                else:
+                    signal.disconnect()
+                    logger.debug(f"[SAFE DISCONNECT] Disconnected all slots from {signal}")
+            except Exception as e:
+                logger.debug(f"[SAFE DISCONNECT] Could not disconnect {slot} from {signal}: {e}")
+        else:
+            logger.debug(f"[SAFE DISCONNECT] Signal {signal} is None or has no disconnect method, skipping")
+    except Exception as e:
+        logger.error(f"[SAFE DISCONNECT] Exception during disconnect: {e}")
+
 class MemoryTab(QWidget):
     """Memory management tab for LLM memory settings and overview"""
     
@@ -485,7 +504,7 @@ class MemoryTab(QWidget):
         """Set the conversation service for summarization"""
         self.conversation_service = conversation_service
         # Reconnect the summarize button to use the actual service
-        self.summarize_btn.clicked.disconnect()
+        safe_disconnect(self.summarize_btn.clicked)
         self.summarize_btn.clicked.connect(self._summarize_with_service)
     
     def _summarize_with_service(self):

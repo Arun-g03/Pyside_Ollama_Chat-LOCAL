@@ -45,12 +45,17 @@ class ThreadPoolManager(QObject):
         self.completed_tasks: List[Dict] = []
         self.failed_tasks: List[Dict] = []
         
+        # Queue management
+        self.max_queue_size = 50  # Maximum number of tasks in queue
+        self.task_queue: List[Dict] = []
+        
         # Statistics
         self.stats = {
             'total_tasks': 0,
             'active_tasks': 0,
             'completed_tasks': 0,
             'failed_tasks': 0,
+            'queued_tasks': 0,
             'pool_utilization': 0.0
         }
         
@@ -76,6 +81,11 @@ class ThreadPoolManager(QObject):
             if task_id is None:
                 task_id = f"task_{int(time.time() * 1000)}"
             
+            # Check queue size limit
+            if len(self.active_tasks) >= self.max_queue_size:
+                logger.warning(f"[ID:TP011] Queue full ({len(self.active_tasks)} tasks), rejecting task: {task_id}")
+                return task_id
+            
             # Track task
             task_info = {
                 'id': task_id,
@@ -87,6 +97,7 @@ class ThreadPoolManager(QObject):
             self.active_tasks[task_id] = task_info
             self.stats['total_tasks'] += 1
             self.stats['active_tasks'] += 1
+            self.stats['queued_tasks'] = len(self.active_tasks)
             
             logger.debug(f"[ID:TP002] Starting task: {task_id} ({task_info['task_type']})")
             
@@ -326,6 +337,7 @@ class ThreadPoolManager(QObject):
             self.stats['active_tasks'] = len(self.active_tasks)
             self.stats['completed_tasks'] = len(self.completed_tasks)
             self.stats['failed_tasks'] = len(self.failed_tasks)
+            self.stats['queued_tasks'] = len(self.active_tasks)
             
             # Calculate pool utilization
             active_count = self.thread_pool.activeThreadCount()
@@ -358,6 +370,7 @@ class ThreadPoolManager(QObject):
                 # Update statistics
                 self.stats['active_tasks'] -= 1
                 self.stats['completed_tasks'] += 1
+                self.stats['queued_tasks'] = len(self.active_tasks)
                 
                 logger.debug(f"[ID:TP021] Task completed: {task_id}")
                 self.task_completed.emit(task_id)
@@ -387,6 +400,7 @@ class ThreadPoolManager(QObject):
                 # Update statistics
                 self.stats['active_tasks'] -= 1
                 self.stats['failed_tasks'] += 1
+                self.stats['queued_tasks'] = len(self.active_tasks)
                 
                 logger.error(f"[ID:TP023] Task failed: {task_id} - {error_message}")
                 self.task_failed.emit(task_id, error_message)

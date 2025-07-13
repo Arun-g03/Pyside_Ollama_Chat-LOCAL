@@ -562,6 +562,11 @@ class VoiceSettingsDialog(QDialog):
             }
         """)
         silence_threshold_layout.addWidget(self.silence_threshold_spinbox)
+
+        # Add Calibrate button
+        self.calibrate_button = QPushButton("Calibrate")
+        self.calibrate_button.setToolTip("Automatically calibrate silence threshold using your microphone")
+        silence_threshold_layout.addWidget(self.calibrate_button)
         silence_threshold_layout.addStretch()
 
         audio_gate_layout.addLayout(silence_threshold_layout)
@@ -641,6 +646,8 @@ class VoiceSettingsDialog(QDialog):
         self.test_button.clicked.connect(self.test_settings)
         self.cancel_button.clicked.connect(self.reject)
         self.save_button.clicked.connect(self.save_settings)
+        # Connect calibrate button
+        self.calibrate_button.clicked.connect(self.open_calibration_dialog)
 
     def check_internet_connection(self):
         """Check internet connectivity"""
@@ -716,11 +723,7 @@ class VoiceSettingsDialog(QDialog):
                 self.coqui_service = CoquiTTSService.get_instance()  # Singleton enforced in class
 
             # Disconnect previous signal to avoid duplicates
-            try:
-                self.coqui_service.voices_loaded.disconnect(self._on_voices_loaded)
-            except Exception:
-                pass
-            self.coqui_service.voices_loaded.connect(self._on_voices_loaded)
+            safe_disconnect(self.coqui_service.voices_loaded, self._on_voices_loaded)
 
             # Always refresh model list from backend
             if hasattr(self.coqui_service, 'get_available_models'):
@@ -1385,3 +1388,101 @@ class VoiceSettingsDialog(QDialog):
             self.main_tts_service.load_model(model)
             if speaker:
                 self.main_tts_service.set_voice(speaker)
+
+    def open_calibration_dialog(self):
+        dialog = CalibrateSilenceThresholdDialog(self)
+        if dialog.exec_() == QDialog.Accepted:
+            new_threshold = dialog.get_result()
+            if new_threshold:
+                self.silence_threshold_spinbox.setValue(new_threshold)
+
+# --- Calibration Dialog ---
+class CalibrateSilenceThresholdDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Calibrate Silence Threshold")
+        self.setModal(True)
+        self.setMinimumWidth(400)
+        self.result = None
+        self.layout = QVBoxLayout(self)
+        self.instructions = QLabel("Step 1: Please stay silent. Measuring background noise...")
+        self.layout.addWidget(self.instructions)
+        self.progress = QProgressBar()
+        self.progress.setRange(0, 100)
+        self.layout.addWidget(self.progress)
+        self.cancel_button = QPushButton("Cancel")
+        self.cancel_button.clicked.connect(self.reject)
+        self.layout.addWidget(self.cancel_button)
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self._on_timer)
+        self.step = 0
+        self.samples = []
+        self.silence_level = None
+        self.speech_level = None
+        self.duration_ms = 5000  # 5 seconds per step
+        self._start_step(0)
+
+    def _start_step(self, step):
+        self.step = step
+        self.samples = []
+        self.progress.setValue(0)
+        if step == 0:
+            self.instructions.setText("Step 1: Please stay silent. Measuring background noise...")
+        else:
+            self.instructions.setText("Step 2: Please speak at a normal volume. Measuring speech level...")
+        self._start_recording()
+        self.timer.start(50)
+        self.start_time = None
+
+    def _start_recording(self):
+        import pyaudio
+        self.audio = pyaudio.PyAudio()
+        self.stream = self.audio.open(format=pyaudio.paInt16, channels=1, rate=16000, input=True, frames_per_buffer=1024)
+        self.start_time = None
+
+    def _on_timer(self):
+        import struct
+        import time
+        if self.start_time is None:
+            self.start_time = time.time()
+        elapsed = (time.time() - self.start_time) * 1000
+        self.progress.setValue(int(min(100, 100 * elapsed / self.duration_ms)))
+        data = self.stream.read(1024, exception_on_overflow=False)
+        samples = struct.unpack(f'{len(data)//2}h', data)
+        if samples:
+            rms = (sum(sample * sample for sample in samples) / len(samples)) ** 0.5
+            normalized_rms = rms / 32768.0
+            self.samples.append(normalized_rms)
+        if elapsed >= self.duration_ms:
+            self.timer.stop()
+            self.stream.close()
+            self.audio.terminate()
+            avg_level = sum(self.samples) / len(self.samples) if self.samples else 0.0
+            if self.step == 0:
+                self.silence_level = avg_level
+                self._start_step(1)
+            else:
+                self.speech_level = avg_level
+                self._finish()
+
+    def _finish(self):
+        # Calculate threshold: noise + 30% of (speech - noise)
+        if self.silence_level is not None and self.speech_level is not None:
+            margin = (self.speech_level - self.silence_level) * 0.3
+            threshold = self.silence_level + margin
+            self.result = max(0.001, min(0.1, threshold))
+            self.instructions.setText(f"Calibration complete!\nSilence: {self.silence_level:.4f}, Speech: {self.speech_level:.4f}\nNew threshold: {self.result:.4f}\n(Setting automatically...)")
+            self.progress.setValue(100)
+            self.cancel_button.setVisible(False)
+            # Auto-close after 1 second
+            QTimer.singleShot(1000, self.accept)
+        else:
+            self.instructions.setText("Calibration failed. Please try again.")
+            self.progress.setValue(0)
+            self.cancel_button.setText("Close")
+            self.cancel_button.setVisible(True)
+            safe_disconnect(self.cancel_button.clicked)
+            self.cancel_button.clicked.connect(self.reject)
+
+    def get_result(self):
+        return self.result

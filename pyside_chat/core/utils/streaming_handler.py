@@ -38,6 +38,13 @@ class StreamingHandler(QObject):
         
         # Track active streaming tasks
         self._active_streaming_tasks = set()
+        
+        # Throttling mechanism to prevent excessive UI updates
+        self._ui_update_timer = QTimer()
+        self._ui_update_timer.setInterval(100)  # 100ms throttle
+        self._ui_update_timer.setSingleShot(True)
+        self._ui_update_timer.timeout.connect(self._perform_ui_update)
+        self._pending_ui_update = False
 
     def _get_next_message_id(self):
         """Generate a unique message ID"""
@@ -64,7 +71,29 @@ class StreamingHandler(QObject):
         self._schedule_ui_update()
 
     def _schedule_ui_update(self):
-        """Schedule UI update using thread pool manager"""
+        """Schedule UI update using thread pool manager with throttling"""
+        # If we already have a pending update, just mark it as pending
+        if self._pending_ui_update:
+            return
+        
+        # Check if thread pool is overwhelmed
+        if hasattr(self, 'thread_pool_manager') and self.thread_pool_manager:
+            pool_status = self.thread_pool_manager.get_pool_status()
+            if pool_status.get('queued_tasks', 0) > 20:  # If more than 20 tasks queued
+                logger.warning("Thread pool queue is full, skipping UI update")
+                return
+        
+        # Mark that we have a pending update
+        self._pending_ui_update = True
+        
+        # Start the throttle timer
+        if not self._ui_update_timer.isActive():
+            self._ui_update_timer.start()
+    
+    def _perform_ui_update(self):
+        """Perform the actual UI update after throttling"""
+        self._pending_ui_update = False
+        
         try:
             # Create streaming update task
             task = StreamingUpdateTask(
@@ -102,8 +131,9 @@ class StreamingHandler(QObject):
         })
         logger.debug("[DEBUG][append_message] messages: %s", ', '.join(f"{m['sender']} streaming={m['is_streaming']} len={len(m['content'])}" for m in self.messages))
         
-        # Use thread pool for UI update
-        self._schedule_ui_update()
+        # For new messages, update immediately without throttling
+        logger.debug(f"[DEBUG] Adding new message from {sender}: '{content[:50]}...'")
+        QTimer.singleShot(0, self._render_chat_display_safe)
 
     def start_streaming_message(self, sender: str, tag: str = "ai"):
         """Append a streaming placeholder message and re-render chat display"""
@@ -405,6 +435,10 @@ class StreamingHandler(QObject):
             # Stop stream timer
             if self._stream_timer.isActive():
                 self._stream_timer.stop()
+            
+            # Stop UI update timer
+            if self._ui_update_timer.isActive():
+                self._ui_update_timer.stop()
             
             # Wait for active streaming tasks to complete
             if self._active_streaming_tasks:

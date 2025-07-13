@@ -31,6 +31,24 @@ from .streaming_audio_worker import StreamingAudioWorker
 logger = CustomLogger.get_logger(__name__)
 
 
+def safe_disconnect(signal, slot=None, logger=logger):
+    try:
+        if signal is not None and hasattr(signal, 'disconnect'):
+            try:
+                if slot is not None:
+                    signal.disconnect(slot)
+                    logger.debug(f"[SAFE DISCONNECT] Disconnected {slot} from {signal}")
+                else:
+                    signal.disconnect()
+                    logger.debug(f"[SAFE DISCONNECT] Disconnected all slots from {signal}")
+            except Exception as e:
+                logger.debug(f"[SAFE DISCONNECT] Could not disconnect {slot} from {signal}: {e}")
+        else:
+            logger.debug(f"[SAFE DISCONNECT] Signal {signal} is None or has no disconnect method, skipping")
+    except Exception as e:
+        logger.error(f"[SAFE DISCONNECT] Exception during disconnect: {e}")
+
+
 class CoquiTTSService(QObject):
     """Advanced TTS service using Coqui TTS library with streaming support
     
@@ -462,94 +480,70 @@ class CoquiTTSService(QObject):
     def _on_streaming_finished(self):
         """Handle streaming playback finished"""
         try:
-            logger.debug("Streaming TTS playback finished")
-            
+            logger.debug("[VOICE] Streaming TTS playback finished - starting cleanup")
             # Ensure proper cleanup of streaming player
             if hasattr(self, 'streaming_player') and self.streaming_player:
                 try:
-                    # Disconnect signals before stopping
-                    try:
-                        self.streaming_player.playback_finished.disconnect()
-                    except Exception:
-                        pass  # Signal might not be connected
-                    try:
-                        self.streaming_player.playback_error.disconnect()
-                    except Exception:
-                        pass  # Signal might not be connected
-                    try:
-                        self.streaming_player.audio_level_changed.disconnect()
-                    except Exception:
-                        pass  # Signal might not be connected
-                    try:
-                        self.streaming_player.player_started.disconnect()
-                    except Exception:
-                        pass  # Signal might not be connected
-                    
+                    logger.debug("[VOICE] Disconnecting streaming_player signals")
+                    safe_disconnect(self.streaming_player.playback_finished)
+                    logger.debug("[VOICE] Disconnected playback_finished signal")
+                    safe_disconnect(self.streaming_player.playback_error)
+                    logger.debug("[VOICE] Disconnected playback_error signal")
+                    safe_disconnect(self.streaming_player.audio_level_changed)
+                    logger.debug("[VOICE] Disconnected audio_level_changed signal")
+                    safe_disconnect(self.streaming_player.player_started)
+                    logger.debug("[VOICE] Disconnected player_started signal")
                     self.streaming_player.stop_playback()
                     if self.streaming_player.isRunning():
                         self.streaming_player.quit()
                         if not self.streaming_player.wait(500):  # 500ms timeout
-                            logger.warning("Streaming player cleanup timeout in finished callback")
+                            logger.warning("[VOICE] Streaming player cleanup timeout in finished callback")
                             self.streaming_player.terminate()
                             self.streaming_player.wait(200)  # Additional 200ms timeout
                 except Exception as e:
-                    logger.error(f"Error cleaning up streaming player in finished callback: {e}")
-            
+                    logger.error(f"[VOICE] Error cleaning up streaming player in finished callback: {e}")
             # Clean up streaming worker and thread
             if hasattr(self, 'streaming_worker') and self.streaming_worker:
                 try:
-                    # Disconnect worker signals
-                    try:
-                        self.streaming_worker.audio_chunk_ready.disconnect()
-                    except Exception:
-                        pass
-                    try:
-                        self.streaming_worker.progress_updated.disconnect()
-                    except Exception:
-                        pass
-                    try:
-                        self.streaming_worker.streaming_finished.disconnect()
-                    except Exception:
-                        pass
-                    try:
-                        self.streaming_worker.streaming_error.disconnect()
-                    except Exception:
-                        pass
+                    logger.debug("[VOICE] Disconnecting streaming_worker signals")
+                    safe_disconnect(self.streaming_worker.audio_chunk_ready)
+                    logger.debug("[VOICE] Disconnected audio_chunk_ready signal")
+                    safe_disconnect(self.streaming_worker.progress_updated)
+                    logger.debug("[VOICE] Disconnected progress_updated signal")
+                    safe_disconnect(self.streaming_worker.streaming_finished)
+                    logger.debug("[VOICE] Disconnected streaming_finished signal")
+                    safe_disconnect(self.streaming_worker.streaming_error)
+                    logger.debug("[VOICE] Disconnected streaming_error signal")
                 except Exception as e:
-                    logger.error(f"Error disconnecting streaming worker signals: {e}")
-            
+                    logger.error(f"[VOICE] Error cleaning up streaming worker in finished callback: {e}")
             if hasattr(self, 'streaming_thread') and self.streaming_thread:
                 try:
                     if self.streaming_thread.isRunning():
-                        logger.debug("Stopping streaming thread")
+                        logger.debug("[VOICE] Stopping streaming thread")
                         self.streaming_thread.quit()
                         if not self.streaming_thread.wait(1000):  # 1 second timeout
-                            logger.warning("Streaming thread quit timeout, forcing termination")
+                            logger.warning("[VOICE] Streaming thread quit timeout, forcing termination")
                             self.streaming_thread.terminate()
                             if not self.streaming_thread.wait(500):  # Additional timeout
-                                logger.error("Streaming thread termination failed")
+                                logger.error("[VOICE] Streaming thread termination failed")
                         else:
-                            logger.debug("Streaming thread stopped successfully")
+                            logger.debug("[VOICE] Streaming thread stopped successfully")
                     self.streaming_thread.deleteLater()
                 except Exception as e:
-                    logger.error(f"Error cleaning up streaming thread: {e}")
-            
+                    logger.error(f"[VOICE] Error cleaning up streaming thread: {e}")
             # Reset streaming state
             self.is_streaming = False
             self.streaming_player = None
             self.streaming_worker = None
             self.streaming_thread = None
-            
             # Reset TTS in progress flag to allow new TTS requests
             if hasattr(self, '_tts_in_progress'):
                 self._tts_in_progress = False
-                logger.debug("TTS in progress flag reset")
-            
-            # Emit finished signal
+                logger.debug("[VOICE] TTS in progress flag reset")
+            logger.debug("[VOICE] Emitting tts_finished after cleanup")
             self.tts_finished.emit()
-            
         except Exception as e:
-            logger.error(f"Error in streaming finished callback: {e}")
+            logger.error(f"[VOICE] Error in streaming finished callback: {e}")
             # Ensure flag is reset even on error
             if hasattr(self, '_tts_in_progress'):
                 self._tts_in_progress = False
@@ -569,46 +563,22 @@ class CoquiTTSService(QObject):
             
             # Stop the streaming worker
             if hasattr(self, 'streaming_worker'):
+                safe_disconnect(self.streaming_worker.audio_chunk_ready)
+                safe_disconnect(self.streaming_worker.progress_updated)
+                safe_disconnect(self.streaming_worker.streaming_finished)
+                safe_disconnect(self.streaming_worker.streaming_error)
                 self.streaming_worker.stop()
             
             # Disconnect streaming worker signals
-            if hasattr(self, 'streaming_worker') and self.streaming_worker:
-                try:
-                    self.streaming_worker.audio_chunk_ready.disconnect()
-                except Exception:
-                    pass
-                try:
-                    self.streaming_worker.progress_updated.disconnect()
-                except Exception:
-                    pass
-                try:
-                    self.streaming_worker.streaming_finished.disconnect()
-                except Exception:
-                    pass
-                try:
-                    self.streaming_worker.streaming_error.disconnect()
-                except Exception:
-                    pass
+            # These are now handled by safe_disconnect in _on_streaming_finished
             
             # Stop the streaming player with timeout
             try:
                 # Disconnect player signals
-                try:
-                    self.streaming_player.playback_finished.disconnect()
-                except Exception:
-                    pass
-                try:
-                    self.streaming_player.playback_error.disconnect()
-                except Exception:
-                    pass
-                try:
-                    self.streaming_player.audio_level_changed.disconnect()
-                except Exception:
-                    pass
-                try:
-                    self.streaming_player.player_started.disconnect()
-                except Exception:
-                    pass
+                safe_disconnect(self.streaming_player.playback_finished)
+                safe_disconnect(self.streaming_player.playback_error)
+                safe_disconnect(self.streaming_player.audio_level_changed)
+                safe_disconnect(self.streaming_player.player_started)
                 
                 self.streaming_player.stop_playback()
                 if self.streaming_player.isRunning():
