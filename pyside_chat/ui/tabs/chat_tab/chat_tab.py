@@ -794,7 +794,7 @@ class ChatTab(QWidget):
         # Always append to chat display - never skip this
         # The EQ visualizer is just a visual overlay, it shouldn't prevent chat messages from appearing
         
-        print(f"[DEBUG] append_to_chat called - sender: {sender}, message: '{message[:50]}...', is_code: {is_code}")
+        print(f"[DEBUG][ChatDisplay] append_to_chat: sender={sender}, message={message[:50]}")
         logger.debug(f"append_to_chat called - sender: {sender}, message: '{message[:50]}...', is_code: {is_code}", print_to_terminal=True)
         
         # Ensure chat display is visible for message display
@@ -806,6 +806,30 @@ class ChatTab(QWidget):
         print(f"[DEBUG] chat_display.append_to_chat completed")
         logger.debug("chat_display.append_to_chat completed", print_to_terminal=True)
         
+    def _force_chat_display_update(self):
+        """Force immediate update of the chat display"""
+        try:
+            # Ensure chat display is visible and updated
+            if hasattr(self, 'chat_display') and self.chat_display:
+                # Force update of the chat display widget
+                if hasattr(self.chat_display, 'chat_display') and self.chat_display.chat_display:
+                    self.chat_display.chat_display.update()
+                    
+                    # Ensure scroll to bottom
+                    cursor = self.chat_display.chat_display.textCursor()
+                    cursor.movePosition(cursor.End)
+                    self.chat_display.chat_display.setTextCursor(cursor)
+                    
+                    # Force layout update
+                    self.chat_display.chat_display.updateGeometry()
+                    
+                # Force update of the scroll area
+                if hasattr(self.chat_display, 'scroll_area') and self.chat_display.scroll_area:
+                    self.chat_display.scroll_area.update()
+                    
+        except Exception as e:
+            logger.error(f"Error in _force_chat_display_update: {e}")
+    
     def append_response_chunk(self, chunk: str, model_name: str = None):
         """Append a streaming response chunk"""
         # Use QTimer.singleShot to ensure this method runs in the main thread

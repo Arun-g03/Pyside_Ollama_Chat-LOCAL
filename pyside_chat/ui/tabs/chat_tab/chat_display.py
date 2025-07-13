@@ -275,8 +275,46 @@ class ChatDisplay(QObject):
                 self.last_message_type = "system_switch"
         else:
             self.last_message_type = tag
+        
+        # Ensure streaming handler exists
+        if not hasattr(self, 'streaming_handler') or not self.streaming_handler:
+            logger.error("Streaming handler not available for chat display")
+            return
+            
+        # Append message to streaming handler
         self.streaming_handler.append_message(sender, message, is_code, tag)
         
+    def force_update_display(self):
+        """Force an immediate update of the chat display"""
+        try:
+            # Ensure we're in the main thread
+            from PySide6.QtCore import QTimer
+            
+            # Force immediate update without calling processEvents
+            QTimer.singleShot(0, self._force_render_display)
+                
+        except Exception as e:
+            logger.error(f"Error in force_update_display: {e}")
+    
+    def _force_render_display(self):
+        """Force render the chat display immediately"""
+        try:
+            if hasattr(self, 'streaming_handler') and self.streaming_handler:
+                # Force immediate render without throttling
+                self.streaming_handler._render_chat_display_safe()
+                
+                # Ensure scroll to bottom
+                if hasattr(self, 'chat_display') and self.chat_display:
+                    cursor = self.chat_display.textCursor()
+                    cursor.movePosition(cursor.End)
+                    self.chat_display.setTextCursor(cursor)
+                    
+                    # Force update without processEvents
+                    self.chat_display.update()
+                    
+        except Exception as e:
+            logger.error(f"Error in _force_render_display: {e}")
+    
     def append_response_chunk(self, chunk: str, model_name: str = None):
         """Append a streaming response chunk"""
         if not hasattr(self, 'is_streaming'):
@@ -291,9 +329,14 @@ class ChatDisplay(QObject):
         self.current_response += chunk  # accumulate here only!
         ai_name = self.get_ai_name()
         label = f"{ai_name} ({model_name})" if model_name else ai_name
-        self.streaming_handler.update_streaming_message(
-            self.current_response, label, None, False, tag="ai"
-        )
+        
+        # Ensure streaming handler exists
+        if hasattr(self, 'streaming_handler') and self.streaming_handler:
+            self.streaming_handler.update_streaming_message(
+                self.current_response, label, None, False, tag="ai"
+            )
+        else:
+            logger.error("Streaming handler not available for response chunk")
         
     def start_streaming(self):
         """Start streaming state"""
@@ -301,13 +344,23 @@ class ChatDisplay(QObject):
             self.is_streaming = True
             self.current_response = ""
             ai_name = self.get_ai_name()
-            self.streaming_handler.start_streaming_message(ai_name, tag="ai")
+            
+            # Ensure streaming handler exists
+            if hasattr(self, 'streaming_handler') and self.streaming_handler:
+                self.streaming_handler.start_streaming_message(ai_name, tag="ai")
+            else:
+                logger.error("Streaming handler not available for streaming start")
             
     def stop_streaming(self):
         """Stop streaming state"""
         logger.debug("[DEBUG] stop_streaming called. is_streaming: %s", self.is_streaming)
         self.is_streaming = False
-        self.streaming_handler.finalize_streaming_message()
+        
+        # Ensure streaming handler exists
+        if hasattr(self, 'streaming_handler') and self.streaming_handler:
+            self.streaming_handler.finalize_streaming_message()
+        else:
+            logger.error("Streaming handler not available for streaming stop")
         
     def clear_chat(self):
         """Clear the chat display"""
@@ -315,6 +368,8 @@ class ChatDisplay(QObject):
             self.streaming_handler.clear_chat()
         if hasattr(self, 'chat_display'):
             self.chat_display.clear()
+            # Force update after clearing
+            self.force_update_display()
     
     def get_ui_components(self) -> dict:
         """Get UI components for integration with parent"""

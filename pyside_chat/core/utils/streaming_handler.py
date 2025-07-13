@@ -79,7 +79,7 @@ class StreamingHandler(QObject):
         # Check if thread pool is overwhelmed
         if hasattr(self, 'thread_pool_manager') and self.thread_pool_manager:
             pool_status = self.thread_pool_manager.get_pool_status()
-            if pool_status.get('queued_tasks', 0) > 20:  # If more than 20 tasks queued
+            if pool_status.get('queued_tasks', 0) > 10:  # Reduced from 20 to 10
                 logger.warning("Thread pool queue is full, skipping UI update")
                 return
         
@@ -120,20 +120,40 @@ class StreamingHandler(QObject):
 
     def append_message(self, sender: str, content: str, is_code: bool = False, tag: str = "ai"):
         """Append a new message (user or system) and re-render chat display"""
-        message_id = self._get_next_message_id()
-        self.messages.append({
-            'sender': sender,
-            'content': content,
-            'is_code': is_code,
-            'is_streaming': False,
-            'tag': tag,
-            'message_id': message_id
-        })
-        logger.debug("[DEBUG][append_message] messages: %s", ', '.join(f"{m['sender']} streaming={m['is_streaming']} len={len(m['content'])}" for m in self.messages))
-        
-        # For new messages, update immediately without throttling
-        logger.debug(f"[DEBUG] Adding new message from {sender}: '{content[:50]}...'")
-        QTimer.singleShot(0, self._render_chat_display_safe)
+        try:
+            message_id = self._get_next_message_id()
+            self.messages.append({
+                'sender': sender,
+                'content': content,
+                'is_code': is_code,
+                'is_streaming': False,
+                'tag': tag,
+                'message_id': message_id
+            })
+            logger.debug("[DEBUG][append_message] messages: %s", ', '.join(f"{m['sender']} streaming={m['is_streaming']} len={len(m['content'])}" for m in self.messages))
+            
+            # Use throttled updates for new messages to prevent overwhelming the UI
+            logger.debug(f"[DEBUG] Adding new message from {sender}: '{content[:50]}...'")
+            self._render_chat_display_safe()
+        except Exception as e:
+            logger.error(f"Error in append_message: {e}")
+            raise
+    
+    def _force_immediate_render(self):
+        """Force immediate render without throttling"""
+        try:
+            # Cancel any pending throttled updates
+            if self._ui_update_timer.isActive():
+                self._ui_update_timer.stop()
+            self._pending_ui_update = False
+            
+            # Force immediate render without processEvents
+            QTimer.singleShot(0, self._render_chat_display_safe)
+                
+        except Exception as e:
+            logger.error(f"Error in _force_immediate_render: {e}")
+            # Fallback to normal render
+            QTimer.singleShot(0, self._render_chat_display_safe)
 
     def start_streaming_message(self, sender: str, tag: str = "ai"):
         """Append a streaming placeholder message and re-render chat display"""
@@ -147,8 +167,9 @@ class StreamingHandler(QObject):
             'message_id': message_id
         })
         
-        # Use thread pool for UI update
+        # Use throttled updates for streaming start to prevent overwhelming the UI
         self._schedule_ui_update()
+        QTimer.singleShot(0, self._render_chat_display_safe)
 
     def edit_message(self, message_index: int, new_content: str):
         """Edit a specific message by index"""
@@ -198,6 +219,7 @@ class StreamingHandler(QObject):
     def _render_chat_display_safe(self):
         """Re-render the chat display safely in the main thread"""
         try:
+            print(f"[DEBUG][StreamingHandler] _render_chat_display_safe called. Messages: {len(self.messages)}")
             # Ensure we're in the main thread
             current_thread = QApplication.instance().thread()
             main_thread = self.chat_display.thread()
@@ -372,8 +394,9 @@ class StreamingHandler(QObject):
                     msg['tag'] = tag
                     break
             
-            # Use thread pool for UI update
+            # Use throttled updates for streaming messages to prevent excessive UI updates
             self._schedule_ui_update()
+            QTimer.singleShot(0, self._render_chat_display_safe)
             
         except Exception as e:
             logger.error(f"Error updating streaming message: {e}")
@@ -389,8 +412,9 @@ class StreamingHandler(QObject):
                     logger.debug(f"[DEBUG] Finalized streaming message: {msg.get('message_id', 'unknown')}")
                     break
             
-            # Use thread pool for UI update
+            # Use throttled updates for finalization to prevent overwhelming the UI
             self._schedule_ui_update()
+            QTimer.singleShot(0, self._render_chat_display_safe)
             
         except Exception as e:
             logger.error(f"Error finalizing streaming message: {e}")
