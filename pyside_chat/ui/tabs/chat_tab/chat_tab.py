@@ -84,11 +84,15 @@ class ChatTab(QWidget):
         self.last_system_message_widget = None  # Track last system message widget (if using custom widgets)
         self.voice_mode = False  # Track voice mode state
         
+        # Voice controls state tracking
+        self._voice_controls_signals_connected = False  # Track if voice control signals are connected
+    
     def setup_components(self):
         """Initialize all modular components"""
         # Initialize voice controls with lazy loading (only when voice mode is activated)
         self.voice_controls = None
         self.voice_controls_initialized = False
+        self._voice_controls_signals_connected = False  # Track signal connection state
         
         # Initialize EQ visualizer
         self.eq_visualizer = EQVisualizer(self)
@@ -330,78 +334,85 @@ class ChatTab(QWidget):
         self.message_cancelled.emit()
         
     def _ensure_voice_controls_initialized(self):
-        """Initialize voice controls if not already initialized"""
+        """Ensure voice controls are initialized with proper signal management"""
         if not self.voice_controls_initialized:
             try:
-                print(f"[DEBUG] Initializing voice controls (lazy loading)")
-                logger.info("Initializing voice controls (lazy loading)", print_to_terminal=True)
+                print(f"[DEBUG] Initializing voice controls")
+                logger.debug("Initializing voice controls", print_to_terminal=True)
                 
-                # Import and initialize voice controls
-                from pyside_chat.ui.tabs.chat_tab.voice_controls import VoiceControls
+                # Initialize voice controls
                 self.voice_controls = VoiceControls(self, self.config_manager)
-                
-                # Reset the signal connection guard flag on re-init
-                self._voice_controls_signals_connected = False
-                
-                # Get voice settings and update EQ visualizer
-                voice_settings = self.voice_controls.get_voice_settings()
-                self.eq_visualizer.update_eq_visualizer_mode(voice_settings.get("eq_visualizer", "None"))
-                
-                # Replace placeholder widgets with actual voice controls
                 voice_components = self.voice_controls.get_ui_components()
                 
-                # Remove placeholder widgets
-                self.voice_button_placeholder.setParent(None)
-                self.voice_settings_button_placeholder.setParent(None)
-                self.audio_level_widget_placeholder.setParent(None)
+                # Replace the placeholder widgets in the existing voice controls widget
+                voice_controls_layout = self.voice_controls_widget.layout()
+                if voice_controls_layout:
+                    # Clear existing placeholder widgets
+                    while voice_controls_layout.count():
+                        child = voice_controls_layout.takeAt(0)
+                        if child.widget():
+                            child.widget().deleteLater()
+                    
+                    # Add the real voice control components
+                    voice_controls_layout.addWidget(voice_components['voice_button'])
+                    voice_controls_layout.addWidget(voice_components['voice_settings_button'])
+                    voice_controls_layout.addWidget(voice_components['audio_level_widget'])
+                    voice_controls_layout.addStretch()  # Add stretch to push controls to the left
+                    
+                    logger.debug("Voice control components added to existing layout")
+                else:
+                    logger.error("Voice controls widget has no layout")
                 
-                # Add actual voice control widgets
-                voice_layout = self.voice_controls_widget.layout()
-                voice_layout.addWidget(voice_components['voice_button'])
-                voice_layout.addWidget(voice_components['voice_settings_button'])
-                voice_layout.addWidget(voice_components['audio_level_widget'])
-                
-                # Add a flag to prevent multiple connections
-                if not hasattr(self, '_voice_controls_signals_connected'):
-                    self._voice_controls_signals_connected = False
-
+                # Connect voice control signals to chat tab with proper cleanup
                 if not self._voice_controls_signals_connected:
                     print(f"[DEBUG] Connecting voice control signals to chat tab")
                     logger.debug("Connecting voice control signals to chat tab", print_to_terminal=True)
                     
-                    # List of (signal, slot) pairs to disconnect/connect
+                    # Define signal-slot pairs with names for logging
                     signal_slot_pairs = [
-                        (self.voice_controls.voice_input_received, self.on_voice_input_received),
-                        (self.voice_controls.voice_input_error, self.on_voice_input_error),
-                        (self.voice_controls.tts_started, self.on_tts_started),
-                        (self.voice_controls.tts_finished, self.on_tts_finished),
-                        (self.voice_controls.tts_error, self.on_tts_error),
-                        (self.voice_controls.recording_started, self.on_recording_started),
-                        (self.voice_controls.recording_stopped, self.on_recording_stopped),
-                        (self.voice_controls.recording_error, self.on_recording_error),
-                        (self.voice_controls.voice_processing_started, self.on_voice_processing_started),
-                        (self.voice_controls.voice_processing_finished, self.on_voice_processing_finished),
-                        (self.voice_controls.audio_level_changed, self.on_audio_level_changed),
-                        (self.voice_controls.eq_bars_changed, self.on_eq_bars_changed),  # NEW
-                        (self.voice_controls.user_interrupted, self.on_user_interrupted),
-                        (self.voice_controls.request_cancelled, self.on_request_cancelled),
-                        (self.voice_controls.voice_status_changed, self.on_voice_status_changed),
-                        (self.voice_controls.eq_visualizer_changed, self.on_eq_visualizer_changed_from_voice_controls),
+                        (self.voice_controls.voice_input_received, self.on_voice_input_received, "voice_input_received"),
+                        (self.voice_controls.voice_input_error, self.on_voice_input_error, "voice_input_error"),
+                        (self.voice_controls.tts_started, self.on_tts_started, "tts_started"),
+                        (self.voice_controls.tts_finished, self.on_tts_finished, "tts_finished"),
+                        (self.voice_controls.tts_error, self.on_tts_error, "tts_error"),
+                        (self.voice_controls.recording_started, self.on_recording_started, "recording_started"),
+                        (self.voice_controls.recording_stopped, self.on_recording_stopped, "recording_stopped"),
+                        (self.voice_controls.recording_error, self.on_recording_error, "recording_error"),
+                        (self.voice_controls.voice_processing_started, self.on_voice_processing_started, "voice_processing_started"),
+                        (self.voice_controls.voice_processing_finished, self.on_voice_processing_finished, "voice_processing_finished"),
+                        (self.voice_controls.audio_level_changed, self.on_audio_level_changed, "audio_level_changed"),
+                        (self.voice_controls.eq_bars_changed, self.on_eq_bars_changed, "eq_bars_changed"),
+                        (self.voice_controls.user_interrupted, self.on_user_interrupted, "user_interrupted"),
+                        (self.voice_controls.request_cancelled, self.on_request_cancelled, "request_cancelled"),
+                        (self.voice_controls.voice_status_changed, self.on_voice_status_changed, "voice_status_changed"),
+                        (self.voice_controls.eq_visualizer_changed, self.on_eq_visualizer_changed_from_voice_controls, "eq_visualizer_changed"),
                     ]
-                    for signal, slot in signal_slot_pairs:
+                    
+                    # Connect all signals with QueuedConnection for thread safety
+                    from PySide6.QtCore import Qt
+                    for signal, slot, signal_name in signal_slot_pairs:
                         try:
-                            signal.disconnect(slot)
-                        except (TypeError, RuntimeError):
-                            pass
-                        signal.connect(slot)
+                            # Only connect if not already connected
+                            if not signal.receivers(slot):
+                                signal.connect(slot, Qt.ConnectionType.QueuedConnection)
+                                logger.debug(f"Connected signal {signal_name} to {slot.__name__}")
+                            else:
+                                logger.debug(f"Signal {signal_name} already connected to {slot.__name__}")
+                        except Exception as e:
+                            logger.error(f"Failed to connect signal {signal_name} to {slot.__name__}: {e}")
+                    
                     self._voice_controls_signals_connected = True
                 
                 # Connect voice settings button
                 try:
-                    safe_disconnect(voice_components['voice_settings_button'].clicked, self.open_voice_settings)
-                except (TypeError, RuntimeError):
-                    pass
-                voice_components['voice_settings_button'].clicked.connect(self.open_voice_settings)
+                    # Only connect if not already connected
+                    if not voice_components['voice_settings_button'].clicked.receivers(self.open_voice_settings):
+                        voice_components['voice_settings_button'].clicked.connect(self.open_voice_settings)
+                        logger.debug("Connected voice settings button")
+                    else:
+                        logger.debug("Voice settings button already connected")
+                except Exception as e:
+                    logger.error(f"Failed to connect voice settings button: {e}")
 
                 self.voice_controls_initialized = True
                 print(f"[DEBUG] Voice controls initialized successfully")
