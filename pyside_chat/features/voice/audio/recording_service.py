@@ -6,6 +6,7 @@ import pyaudio
 from typing import Optional
 from PySide6.QtCore import QObject, Signal
 from pyside_chat.core.logging.logger import CustomLogger
+import numpy as np
 
 logger = CustomLogger.get_logger(__name__)
 
@@ -17,6 +18,7 @@ class RecordingService(QObject):
     recording_error = Signal(str)
     audio_level_changed = Signal(float)  # Emitted when audio level changes
     recording_auto_stopped = Signal()    # Emitted when recording stops due to silence detection
+    eq_bars_changed = Signal(list)  # NEW: Emit EQ bar array for visualization
 
     def __init__(self):
         super().__init__()
@@ -115,6 +117,35 @@ class RecordingService(QObject):
                     self.last_audio_level = audio_level
                     frame_count += 1
                     
+                    # --- FFT-based EQ bar calculation ---
+                    def calculate_eq_bars_pcm(audio_bytes, num_bars=24, sample_rate=16000):
+                        import struct
+                        samples = np.array(struct.unpack(f'{len(audio_bytes)//2}h', audio_bytes), dtype=np.float32)
+                        if len(samples) < 256:
+                            return [0.0]*num_bars
+                        # Normalize
+                        samples = samples / 32768.0
+                        fft = np.fft.rfft(samples, n=2048)
+                        mag = np.abs(fft)
+                        freqs = np.fft.rfftfreq(2048, 1/sample_rate)
+                        band_edges = np.logspace(np.log10(20), np.log10(sample_rate/2), num_bars+1)
+                        bar_vals = []
+                        for i in range(num_bars):
+                            idx = np.where((freqs >= band_edges[i]) & (freqs < band_edges[i+1]))[0]
+                            if len(idx) > 0:
+                                energy = float(np.sqrt(np.mean(mag[idx]**2)))
+                                bar_vals.append(energy)
+                            else:
+                                bar_vals.append(0.0)
+                        max_val = max(bar_vals) or 1.0
+                        bar_vals = [0.1 + 0.9 * (v / max_val) for v in bar_vals]
+                        return bar_vals
+                    eq_bars = calculate_eq_bars_pcm(data, num_bars=24, sample_rate=16000)
+                    try:
+                        self.eq_bars_changed.emit(eq_bars)
+                    except Exception:
+                        pass
+                    # --- End FFT-based EQ bar calculation ---
                     try:
                         self.audio_level_changed.emit(audio_level)
                     except Exception:

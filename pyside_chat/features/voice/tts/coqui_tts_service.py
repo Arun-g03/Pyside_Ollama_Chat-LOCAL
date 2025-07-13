@@ -75,6 +75,7 @@ class CoquiTTSService(QObject):
     voices_loaded = Signal(list)
     streaming_progress = Signal(int)  # Progress percentage for streaming
     audio_level_changed = Signal(float)  # Audio level for EQ visualization
+    eq_bars_changed = Signal(list)  # NEW: Emit EQ bar array for visualization
     
     def __new__(cls):
         """Singleton pattern to prevent multiple model loading"""
@@ -416,6 +417,12 @@ class CoquiTTSService(QObject):
             from PySide6.QtCore import Qt
             self.streaming_player.audio_level_changed.connect(
                 lambda level: self.audio_level_changed.emit(level), 
+                Qt.ConnectionType.QueuedConnection
+            )
+            
+            # NEW: Connect eq_bars_changed
+            self.streaming_player.eq_bars_changed.connect(
+                lambda bars: self.eq_bars_changed.emit(bars),
                 Qt.ConnectionType.QueuedConnection
             )
             

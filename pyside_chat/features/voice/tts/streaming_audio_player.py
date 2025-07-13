@@ -16,6 +16,7 @@ class StreamingAudioPlayer(QThread):
     playback_finished = Signal()
     playback_error = Signal(str)
     audio_level_changed = Signal(float)  # Emit audio level for EQ visualization
+    eq_bars_changed = Signal(list)  # NEW: Emit EQ bar array for visualization
     player_started = Signal()  # Signal when player starts successfully
 
     def __init__(self, sample_rate=22050, channels=1, chunk_size=512):
@@ -134,23 +135,54 @@ class StreamingAudioPlayer(QThread):
             audio_chunk = audio_chunk * self.volume
             audio_chunk = np.clip(audio_chunk, -1.0, 1.0)
             
+            # --- FFT-based EQ bar calculation ---
+            def calculate_eq_bars(chunk, num_bars=24, sample_rate=22050):
+                fft = np.fft.rfft(chunk, n=2048)
+                mag = np.abs(fft)
+                freqs = np.fft.rfftfreq(2048, 1/sample_rate)
+                # Logarithmic bands
+                band_edges = np.logspace(np.log10(20), np.log10(sample_rate/2), num_bars+1)
+                bar_vals = []
+                for i in range(num_bars):
+                    idx = np.where((freqs >= band_edges[i]) & (freqs < band_edges[i+1]))[0]
+                    if len(idx) > 0:
+                        energy = float(np.sqrt(np.mean(mag[idx]**2)))
+                        bar_vals.append(energy)
+                    else:
+                        bar_vals.append(0.0)
+                # Normalize
+                max_val = max(bar_vals) or 1.0
+                bar_vals = [0.1 + 0.9 * (v / max_val) for v in bar_vals]
+                return bar_vals
+            eq_bars = calculate_eq_bars(audio_chunk, num_bars=24, sample_rate=self.sample_rate)
+            self.eq_bars_changed.emit(eq_bars)
+            # --- End FFT-based EQ bar calculation ---
+
+            # (Keep the old audio level logic for backward compatibility)
             rms_level = np.sqrt(np.mean(audio_chunk**2))
             peak_level = np.max(np.abs(audio_chunk))
-            combined_level = (rms_level * 0.7 + peak_level * 0.3)
-            amplified_level = combined_level * 2.0
+            combined_level = (rms_level * 0.4 + peak_level * 0.6)
+            amplified_level = combined_level * 4.0
+            if len(audio_chunk) > 0:
+                fft = np.fft.rfft(audio_chunk)
+                magnitude = np.abs(fft)
+                low_freq_energy = np.mean(magnitude[:len(magnitude)//4])
+                mid_freq_energy = np.mean(magnitude[len(magnitude)//4:len(magnitude)//2])
+                high_freq_energy = np.mean(magnitude[len(magnitude)//2:])
+                freq_enhancement = (low_freq_energy * 0.3 + mid_freq_energy * 0.4 + high_freq_energy * 0.3) / np.max(magnitude) if np.max(magnitude) > 0 else 1.0
+                amplified_level *= (1.0 + freq_enhancement * 0.5)
+            amplified_level = max(amplified_level, 0.05)
             self.current_audio_level = amplified_level
             self.audio_level_buffer.append(amplified_level)
-            
             if len(self.audio_level_buffer) > 5:
                 self.audio_level_buffer.pop(0)
-                
             if self.audio_level_buffer:
                 avg_level = sum(self.audio_level_buffer) / len(self.audio_level_buffer)
-                self.audio_level_changed.emit(avg_level)
-                
-            logger.debug(f"Audio chunk processed: max={np.max(audio_chunk)}, min={np.min(audio_chunk)}")
+                smoothed_level = avg_level * 0.8 + amplified_level * 0.2
+                self.audio_level_changed.emit(smoothed_level)
+                logger.debug(f"Emitted audio level: {smoothed_level:.4f} (raw: {amplified_level:.4f})")
+            logger.debug(f"Audio chunk processed: max={np.max(audio_chunk)}, min={np.min(audio_chunk)}, level={amplified_level:.4f}")
             return audio_chunk
-            
         except Exception as e:
             logger.error(f"Error processing audio chunk: {e}")
             import traceback

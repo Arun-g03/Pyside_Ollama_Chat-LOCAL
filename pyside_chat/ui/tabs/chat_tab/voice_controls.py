@@ -52,6 +52,9 @@ class VoiceControls(QObject):
     # New status signal
     # Emitted when voice service status changes
     voice_status_changed = Signal(str)
+    # New EQ visualizer signal
+    eq_visualizer_changed = Signal(str)  # Emitted when EQ visualizer setting changes
+    eq_bars_changed = Signal(list)  # NEW: EQ bar array for visualization
 
     def __init__(self, parent=None, config_manager=None):
         super().__init__(parent)
@@ -673,6 +676,7 @@ class VoiceControls(QObject):
                 (getattr(self.voice_service, 'voice_processing_started', None), self.on_voice_processing_started),
                 (getattr(self.voice_service, 'voice_processing_finished', None), self.on_voice_processing_finished),
                 (getattr(self.voice_service, 'audio_level_changed', None), self.on_audio_level_changed),
+                (getattr(self.voice_service, 'eq_bars_changed', None), self.on_eq_bars_changed),  # NEW
                 (getattr(self.voice_service, 'user_interrupted', None), self.on_user_interrupted),
                 (getattr(self.voice_service, 'request_cancelled', None), self.on_request_cancelled),
                 (getattr(self.voice_service, 'voice_service_ready', None), self._on_voice_service_ready)
@@ -1221,6 +1225,18 @@ class VoiceControls(QObject):
         """Handle audio level changes"""
         logger.debug(f"[EQ DEBUG] on_audio_level_changed called - audio_level: {audio_level:.4f}")
         
+        # Enhanced audio level processing for better EQ responsiveness
+        # Check if TTS is currently playing
+        tts_playing = self.is_tts_playing()
+        
+        # Apply additional processing for TTS audio levels
+        if tts_playing:
+            # TTS audio often needs additional amplification for EQ visualization
+            # The streaming audio player already does some enhancement, but we can add more here
+            enhanced_level = audio_level * 1.2  # Additional 20% boost for TTS
+            logger.debug(f"[EQ DEBUG] TTS playing - enhanced level: {enhanced_level:.4f} (original: {audio_level:.4f})")
+            audio_level = enhanced_level
+        
         # Emit signal for parent to handle
         self.audio_level_changed.emit(audio_level)
         
@@ -1315,7 +1331,10 @@ class VoiceControls(QObject):
             logger.debug(f"Updated voice service manager settings: {settings}")
         else:
             logger.warning("Voice service manager not available for settings update")
-    
+        # Emit EQ visualizer changed signal if EQ setting changes
+        if 'eq_visualizer' in settings:
+            self.eq_visualizer_changed.emit(settings['eq_visualizer'])
+
     def get_voice_settings(self) -> dict:
         """Get current voice settings"""
         if self.voice_service_manager:
@@ -1421,6 +1440,10 @@ class VoiceControls(QObject):
         if self.voice_mode:
             from PySide6.QtCore import QTimer
             QTimer.singleShot(1000, self._restart_voice_input_after_cancellation)
+
+    def on_eq_bars_changed(self, bar_values):
+        """Handle EQ bar array changes from the voice service and forward to parent (chat tab)"""
+        self.eq_bars_changed.emit(bar_values)
 
     def _restart_voice_input_after_interruption(self):
         """Restart voice input after user interruption"""

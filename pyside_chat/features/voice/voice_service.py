@@ -45,6 +45,7 @@ class VoiceService(QObject):
     voice_processing_started = Signal() # Emitted when voice processing starts
     voice_processing_finished = Signal() # Emitted when voice processing finishes
     audio_level_changed = Signal(float) # Emitted when audio level changes
+    eq_bars_changed = Signal(list)      # NEW: EQ bar array for visualization
     user_interrupted = Signal()         # Emitted when user interrupts AI response
     request_cancelled = Signal()        # Emitted when Ollama request is cancelled
     voice_status_changed = Signal(str)  # Emitted when voice status changes
@@ -133,17 +134,20 @@ class VoiceService(QObject):
                 logger.debug("STT service signals connected")
             except Exception as e:
                 logger.error(f"Failed to connect STT signals: {e}")
-            
+        
         # Connect TTS service signals
         if self.tts_service:
             try:
                 self.tts_service.tts_started.connect(self._on_tts_started)
                 self.tts_service.tts_finished.connect(self._on_tts_finished)
                 self.tts_service.tts_error.connect(self._on_tts_error)
+                self.tts_service.audio_level_changed.connect(self.audio_level_changed.emit)
+                # NEW: Connect eq_bars_changed
+                self.tts_service.eq_bars_changed.connect(self.eq_bars_changed.emit)
                 logger.debug("TTS service signals connected")
             except Exception as e:
                 logger.error(f"Failed to connect TTS signals: {e}")
-            
+        
         # Connect recording service signals
         if self.recording_service:
             try:
@@ -151,6 +155,8 @@ class VoiceService(QObject):
                 self.recording_service.recording_stopped.connect(self._on_recording_stopped)
                 self.recording_service.recording_error.connect(self._on_recording_error)
                 self.recording_service.audio_level_changed.connect(self._on_audio_level_changed)
+                # NEW: Connect eq_bars_changed from mic
+                self.recording_service.eq_bars_changed.connect(self.eq_bars_changed.emit)
                 logger.debug("Recording service signals connected")
             except Exception as e:
                 logger.error(f"Failed to connect recording signals: {e}")
@@ -175,6 +181,7 @@ class VoiceService(QObject):
                     self.tts_service.tts_finished.connect(self._on_tts_finished, Qt.ConnectionType.QueuedConnection)
                     self.tts_service.tts_error.connect(self._on_tts_error, Qt.ConnectionType.QueuedConnection)
                     self.tts_service.audio_level_changed.connect(self.audio_level_changed.emit, Qt.ConnectionType.QueuedConnection)
+                    self.tts_service.eq_bars_changed.connect(self.eq_bars_changed.emit, Qt.ConnectionType.QueuedConnection)
                     logger.info("TTS service signals connected", print_to_terminal=True)
                 except Exception as e:
                     logger.error(f"Failed to connect TTS signals: {e}", print_to_terminal=True)

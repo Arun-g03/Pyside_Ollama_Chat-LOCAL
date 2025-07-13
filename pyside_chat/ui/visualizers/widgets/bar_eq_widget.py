@@ -139,8 +139,13 @@ class BarEQWidget(QWidget):
         Returns:
             dict: Geometry information for rendering bars
         """
-        bar_width = widget_width // (self.num_bars * self.BAR_WIDTH_RATIO)
-        gap = bar_width // 2
+        # Calculate optimal bar width and gap to fill the widget width
+        num_bars = self.num_bars
+        total_gap_ratio = 0.18  # 18% of width is gaps, 82% is bars
+        gap = max(2, int(widget_width * total_gap_ratio / (num_bars + 1)))
+        bar_width = max(4, int((widget_width * (1 - total_gap_ratio)) / num_bars))
+        total_width = num_bars * bar_width + (num_bars + 1) * gap
+        start_x = (widget_width - total_width) // 2 + gap  # Centered, first bar after initial gap
         max_bar_height = int(widget_height * self.BAR_HEIGHT_RATIO)
         base_y = int(widget_height * self.BASE_Y_RATIO)
         
@@ -148,7 +153,8 @@ class BarEQWidget(QWidget):
             'bar_width': bar_width,
             'gap': gap,
             'max_bar_height': max_bar_height,
-            'base_y': base_y
+            'base_y': base_y,
+            'start_x': start_x
         }
 
     def _create_bar_gradient(self, x, y, width, height, is_reflection=False, bar_index=0):
@@ -250,9 +256,9 @@ class BarEQWidget(QWidget):
         # Calculate geometry
         geometry = self._calculate_bar_geometry(self.width(), self.height())
         
-        # Draw all bars
+        # Draw all bars, centered horizontally
         for i, value in enumerate(self._bar_values):
-            x = geometry['gap'] + i * (geometry['bar_width'] + geometry['gap'])
+            x = geometry['start_x'] + i * (geometry['bar_width'] + geometry['gap'])
             self._draw_bar(
                 painter, 
                 x, 

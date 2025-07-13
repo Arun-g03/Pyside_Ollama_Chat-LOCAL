@@ -242,7 +242,7 @@ class EQVisualizer(QObject):
     
     def update_eq_visualizer(self, audio_level: float, tts_playing: bool = False):
         """Update the EQ visualizer with audio level data."""
-        logger.debug(f"[EQ DEBUG] update_eq_visualizer called with audio_level: {audio_level:.4f}")
+        logger.debug(f"[EQ DEBUG] update_eq_visualizer called with audio_level: {audio_level:.4f}, tts_playing: {tts_playing}")
         logger.debug(f"[EQ DEBUG] current_eq_widget exists: {self.current_eq_widget is not None}")
         logger.debug(f"[EQ DEBUG] current_eq_widget type: {type(self.current_eq_widget)}")
         
@@ -253,19 +253,28 @@ class EQVisualizer(QObject):
         try:
             logger.debug(f"[EQ DEBUG] Received audio level: {audio_level:.4f}")
             
-            # Process audio level based on source (TTS vs microphone)
+            # Enhanced audio level processing for better EQ responsiveness
             if tts_playing:
-                # TTS audio levels need more amplification for better EQ response
-                base_level = audio_level * 15.0  # Higher amplification for TTS
+                # TTS audio needs special handling - it's often more compressed
+                # Use higher amplification and more dynamic response
+                base_level = audio_level * 8.0  # Increased from 15.0 to 8.0 for better balance
                 logger.debug(f"[EQ DEBUG] TTS playing - base level: {base_level:.4f}")
+                
+                # Add additional enhancement for TTS audio
+                if audio_level > 0.1:
+                    # High TTS levels get extra boost for visual impact
+                    base_level *= 1.5
+                elif audio_level > 0.05:
+                    # Medium TTS levels get moderate boost
+                    base_level *= 1.2
             else:
                 # Microphone levels need more amplification
-                base_level = audio_level * 20.0  # Much higher amplification for microphone
+                base_level = audio_level * 25.0  # Increased from 20.0 to 25.0
                 logger.debug(f"[EQ DEBUG] Microphone input - base level: {base_level:.4f}")
             
             # Generate frequency-based bar values for 24 bars (matching BarEQWidget default)
             bar_values = []
-            num_bars = 24  # Match BarEQWidget.DEFAULT_NUM_BARS
+            num_bars = 24
             
             # Define frequency bands for 24 bars (20Hz to 20kHz)
             # Each bar represents a specific frequency range
@@ -297,9 +306,7 @@ class EQVisualizer(QObject):
             ]
             
             for i, (low_freq, high_freq) in enumerate(frequency_bands):
-                # Calculate frequency response based on audio level
-                # Different frequency bands respond differently to the same audio level
-                
+                # Enhanced frequency response calculation
                 # Base response from audio level
                 base_response = base_level
                 
@@ -307,33 +314,46 @@ class EQVisualizer(QObject):
                 # Each bar should respond differently to create realistic EQ movement
                 if i < 6:  # Bass frequencies (0-5) - 25% of bars
                     # Bass bars respond more to lower frequencies
-                    freq_multiplier = 1.5 + (i * 0.1)  # Increasing response for bass
+                    freq_multiplier = 1.8 + (i * 0.15)  # Increased response for bass
                 elif i < 12:  # Low-mid frequencies (6-11) - 25% of bars
                     # Low-mid bars have moderate response
-                    freq_multiplier = 1.0 + ((i - 6) * 0.05)
+                    freq_multiplier = 1.2 + ((i - 6) * 0.08)
                 elif i < 18:  # Mid frequencies (12-17) - 25% of bars
                     # Mid bars have varied response
-                    freq_multiplier = 0.8 + ((i - 12) * 0.1)
+                    freq_multiplier = 1.0 + ((i - 12) * 0.12)
                 else:  # Upper frequencies (18-23) - 25% of bars
                     # Upper bars are more sensitive to changes
-                    freq_multiplier = 1.2 + ((i - 18) * 0.15)
+                    freq_multiplier = 1.4 + ((i - 18) * 0.18)
                 
-                # Add frequency-specific variations based on audio level
-                # Higher audio levels should affect different frequency ranges differently
-                if audio_level > 0.1:  # High audio level
-                    if i < 6:  # Bass gets more prominent
-                        freq_multiplier *= 1.3
-                    elif i > 18:  # High frequencies get more sensitive
-                        freq_multiplier *= 1.4
-                elif audio_level > 0.05:  # Medium audio level
-                    if i >= 6 and i < 18:  # Mid frequencies get more response
-                        freq_multiplier *= 1.2
+                # Enhanced frequency-specific variations based on audio level and source
+                if tts_playing:
+                    # TTS-specific enhancements
+                    if audio_level > 0.15:  # High TTS audio level
+                        if i < 6:  # Bass gets more prominent for TTS
+                            freq_multiplier *= 1.4
+                        elif i > 18:  # High frequencies get more sensitive for TTS
+                            freq_multiplier *= 1.6
+                    elif audio_level > 0.08:  # Medium TTS audio level
+                        if i >= 6 and i < 18:  # Mid frequencies get more response for TTS
+                            freq_multiplier *= 1.3
+                else:
+                    # Microphone-specific enhancements
+                    if audio_level > 0.1:  # High microphone level
+                        if i < 6:  # Bass gets more prominent
+                            freq_multiplier *= 1.3
+                        elif i > 18:  # High frequencies get more sensitive
+                            freq_multiplier *= 1.4
+                    elif audio_level > 0.05:  # Medium microphone level
+                        if i >= 6 and i < 18:  # Mid frequencies get more response
+                            freq_multiplier *= 1.2
                 
                 # Calculate final value for this frequency band
                 value = base_response * freq_multiplier
                 
-                # Add some randomness for natural movement
-                value *= (0.7 + 0.6 * random.random())  # More variation
+                # Add enhanced randomness for more natural movement
+                # More variation for higher audio levels
+                variation_factor = 0.6 + (audio_level * 0.8)  # More variation for higher levels
+                value *= (0.7 + variation_factor * random.random())
                 
                 # Clamp to valid range (0.1 to 1.0 as expected by BarEQWidget)
                 value = max(0.1, min(1.0, value))

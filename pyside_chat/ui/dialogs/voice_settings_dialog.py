@@ -55,6 +55,7 @@ class VoiceSettingsDialog(QDialog):
 
     # Signals
     settings_changed = Signal(dict)  # Emitted when settings are changed
+    eq_visualizer_changed = Signal(str)  # Emitted when EQ visualizer setting changes
 
     def __init__(self, parent=None, config_manager=None):
         super().__init__(parent)
@@ -827,6 +828,8 @@ class VoiceSettingsDialog(QDialog):
         """Handle EQ visualizer selection change"""
         # Update the current settings
         self.current_settings["eq_visualizer"] = eq_type
+        # Emit signal for EQ visualizer change
+        self.eq_visualizer_changed.emit(eq_type)
         # Can be used for voice preview
         logger.info(f"EQ visualizer changed to: {eq_type}")
 

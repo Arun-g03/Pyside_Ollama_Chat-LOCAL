@@ -24,6 +24,7 @@ class TTSService(QObject):
     tts_finished = Signal()
     tts_error = Signal(str)
     audio_level_changed = Signal(float)  # Audio level for EQ visualization
+    eq_bars_changed = Signal(list)  # NEW: EQ bar array for visualization
 
     # Singleton instance
     _instance = None
@@ -56,6 +57,8 @@ class TTSService(QObject):
                 self.coqui_service.tts_finished.connect(self.tts_finished.emit, Qt.ConnectionType.QueuedConnection)
                 self.coqui_service.tts_error.connect(self.tts_error.emit, Qt.ConnectionType.QueuedConnection)
                 self.coqui_service.audio_level_changed.connect(self.audio_level_changed.emit, Qt.ConnectionType.QueuedConnection)
+                # NEW: Connect eq_bars_changed
+                self.coqui_service.eq_bars_changed.connect(self.eq_bars_changed.emit, Qt.ConnectionType.QueuedConnection)
             except Exception as e:
                 logger.error(f"Failed to initialize Coqui TTS service: {e}")
 

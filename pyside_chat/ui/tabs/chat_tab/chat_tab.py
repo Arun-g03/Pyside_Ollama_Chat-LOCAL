@@ -382,9 +382,11 @@ class ChatTab(QWidget):
                         (self.voice_controls.voice_processing_started, self.on_voice_processing_started),
                         (self.voice_controls.voice_processing_finished, self.on_voice_processing_finished),
                         (self.voice_controls.audio_level_changed, self.on_audio_level_changed),
+                        (self.voice_controls.eq_bars_changed, self.on_eq_bars_changed),  # NEW
                         (self.voice_controls.user_interrupted, self.on_user_interrupted),
                         (self.voice_controls.request_cancelled, self.on_request_cancelled),
                         (self.voice_controls.voice_status_changed, self.on_voice_status_changed),
+                        (self.voice_controls.eq_visualizer_changed, self.on_eq_visualizer_changed_from_voice_controls),
                     ]
                     for signal, slot in signal_slot_pairs:
                         try:
@@ -694,7 +696,18 @@ class ChatTab(QWidget):
             if self.voice_mode and self.eq_visualizer.get_eq_mode() != "None":
                 logger.debug(f"[EQ DEBUG] Calling update_eq_visualizer")
                 if self.voice_controls_initialized and self.voice_controls:
+                    # Enhanced TTS playing detection
                     tts_playing = self.voice_controls.is_tts_playing()
+                    
+                    # Additional check: if we're in voice mode and TTS should be playing
+                    # but the voice controls don't detect it, we can infer from audio level patterns
+                    if not tts_playing and audio_level > 0.05:
+                        # If we have significant audio level in voice mode, it's likely TTS
+                        # This helps catch cases where TTS detection might be delayed
+                        tts_playing = True
+                        logger.debug(f"[EQ DEBUG] Inferred TTS playing from audio level: {audio_level:.4f}")
+                    
+                    logger.debug(f"[EQ DEBUG] TTS playing: {tts_playing}, audio_level: {audio_level:.4f}")
                     self.eq_visualizer.update_eq_visualizer(audio_level, tts_playing)
             else:
                 pass
@@ -702,6 +715,11 @@ class ChatTab(QWidget):
             logger.error(f"Error in on_audio_level_changed: {traceback.format_exc()}")
             raise (f"Error in on_audio_level_changed: {traceback.format_exc()}\n{e}")
         
+    def on_eq_bars_changed(self, bar_values):
+        """Handle EQ bar array changes and update the EQ visualizer directly"""
+        if self.voice_mode and self.eq_visualizer.get_eq_mode() != "None":
+            self.eq_visualizer.current_eq_widget.set_eq_bars(bar_values)
+
     def on_message_edited(self, message_index: int, new_content: str):
         """Handle message edit"""
         self.message_edited.emit(message_index, new_content)
@@ -1009,6 +1027,8 @@ class ChatTab(QWidget):
         
         # Connect the settings changed signal
         dialog.settings_changed.connect(self.on_voice_settings_changed)
+        # Connect the EQ visualizer changed signal for immediate UI updates
+        dialog.eq_visualizer_changed.connect(self.on_eq_visualizer_changed_immediate)
         
         result = dialog.exec()
         if result == QDialog.DialogCode.Accepted:
@@ -1019,6 +1039,40 @@ class ChatTab(QWidget):
             new_eq_mode = dialog.get_settings().get("eq_visualizer", "None")
             if new_eq_mode != self.eq_visualizer.get_eq_mode():
                 self.eq_visualizer.update_eq_visualizer_mode(new_eq_mode)
+    
+    def on_eq_visualizer_changed_immediate(self, eq_mode: str):
+        """Handle immediate EQ visualizer changes from the settings dialog"""
+        logger.debug(f"[EQ DEBUG] Immediate EQ visualizer change: {eq_mode}")
+        
+        # Update the EQ visualizer mode immediately
+        if eq_mode != self.eq_visualizer.get_eq_mode():
+            self.eq_visualizer.update_eq_visualizer_mode(eq_mode)
+            
+            # If in voice mode, switch to the new EQ visualizer immediately
+            if self.voice_mode and eq_mode != "None":
+                self.eq_visualizer.switch_to_eq_visualizer(self.chat_display.chat_display, self.voice_mode)
+                logger.debug(f"[EQ DEBUG] Switched to EQ visualizer: {eq_mode}")
+            elif self.voice_mode and eq_mode == "None":
+                # Switch back to chat display if EQ is disabled
+                self.eq_visualizer.switch_to_chat_display(self.chat_display.chat_display)
+                logger.debug("[EQ DEBUG] Switched back to chat display")
+    
+    def on_eq_visualizer_changed_from_voice_controls(self, eq_mode: str):
+        """Handle EQ visualizer changes from voice controls"""
+        logger.debug(f"[EQ DEBUG] EQ visualizer change from voice controls: {eq_mode}")
+        
+        # Update the EQ visualizer mode
+        if eq_mode != self.eq_visualizer.get_eq_mode():
+            self.eq_visualizer.update_eq_visualizer_mode(eq_mode)
+            
+            # If in voice mode, switch to the new EQ visualizer immediately
+            if self.voice_mode and eq_mode != "None":
+                self.eq_visualizer.switch_to_eq_visualizer(self.chat_display.chat_display, self.voice_mode)
+                logger.debug(f"[EQ DEBUG] Switched to EQ visualizer from voice controls: {eq_mode}")
+            elif self.voice_mode and eq_mode == "None":
+                # Switch back to chat display if EQ is disabled
+                self.eq_visualizer.switch_to_chat_display(self.chat_display.chat_display)
+                logger.debug("[EQ DEBUG] Switched back to chat display from voice controls")
     
     def on_voice_settings_changed(self, settings: dict):
         """Handle voice settings changes"""
