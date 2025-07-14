@@ -421,22 +421,20 @@ class ChatController(QObject):
                         if content_after_think in thought_content:
                             logger.debug(f"[CHAT_CONTROLLER_DEBUG] Skipping duplicate content after </think>: '{content_after_think[:50]}...'")
                         else:
+                            # Start accumulating the response after </think> in the main message
                             self.conversation_service.update_streaming_message_content(content_after_think)
-                            logger.debug(f"[CHAT_CONTROLLER_DEBUG] Added to main message after </think>: '{content_after_think[:50]}...'")
+                            logger.debug(f"[CHAT_CONTROLLER_DEBUG] Started main message after </think>: '{content_after_think[:50]}...'")
                     
                     return
                 
                 # If we're still in think block but think is completed, accumulate in main message
                 elif self._think_completed:
                     # We're out of think block, add to main message
-                    # But first check if this content is already in the thought
-                    current_thought = self.conversation_service.get_streaming_message_thought()
-                    if current_thought and chunk.strip() in current_thought:
-                        logger.debug(f"[CHAT_CONTROLLER_DEBUG] Skipping duplicate chunk in thought: '{chunk[:20]}...'")
-                        return
-                    
-                    self.conversation_service.update_streaming_message_content(chunk)
-                    logger.debug(f"[CHAT_CONTROLLER_DEBUG] Added to main message (post-think): '{chunk[:20]}...'")
+                    # Since we're in post-think mode, just append to the main message
+                    current_content = self.conversation_service.get_streaming_message_content()
+                    new_content = current_content + chunk
+                    self.conversation_service.update_streaming_message_content(new_content)
+                    logger.debug(f"[CHAT_CONTROLLER_DEBUG] Appended to main message (post-think): '{chunk[:20]}...'")
                     return
                 
                 # Still in think block, continue accumulating

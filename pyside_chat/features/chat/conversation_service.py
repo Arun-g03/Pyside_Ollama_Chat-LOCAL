@@ -397,4 +397,11 @@ class ConversationService(QObject):
         streaming_message = self.get_streaming_message()
         if streaming_message:
             return streaming_message.get('thought', '')
+        return None
+    
+    def get_streaming_message_content(self) -> Optional[str]:
+        """Get the content field of the current streaming message"""
+        streaming_message = self.get_streaming_message()
+        if streaming_message:
+            return streaming_message.get('content', '')
         return None 
