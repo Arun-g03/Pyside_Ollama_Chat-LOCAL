@@ -516,12 +516,20 @@ class AppLifecycleManager:
             ollama_executable = self._find_ollama_executable()
             
             # Create progress dialog
-            progress = QProgressDialog("Starting Ollama app.exe...", "Cancel", 0, 100, self.main_window)
-            progress.setWindowTitle("Starting Ollama app.exe")
+            progress = QProgressDialog("Starting Ollama...", "Cancel", 0, 100, self.main_window)
+            progress.setWindowTitle("Starting Ollama")
             progress.setModal(True)
             progress.setAutoClose(False)
+            progress.setMinimumDuration(0)  # Show immediately
             progress.setValue(0)
+            progress.setLabelText("Starting Ollama...")
             progress.show()
+            progress.raise_()  # Bring to front
+            progress.activateWindow()  # Activate the window
+            
+            # Force the dialog to update and process events
+            QApplication.processEvents()
+            time.sleep(0.1)  # Small delay to ensure dialog is visible
             
             logger.info(f"[ID:OLLAMA_START] Starting Ollama with executable: {ollama_executable}")
             
@@ -571,9 +579,17 @@ class AppLifecycleManager:
                     progress_value = min(int((elapsed_time / max_wait_time) * 100), 95)
                     progress.setValue(progress_value)
                     
+                    # Update progress text to show elapsed time
+                    progress.setLabelText(f"Starting Ollama... ({elapsed_time}s)")
+                    
+                    # Force the dialog to update
+                    QApplication.processEvents()
+                    
                     # Check if Ollama is responding
                     if self.check_ollama_connection():
                         progress.setValue(100)
+                        progress.setLabelText("Ollama started successfully!")
+                        QApplication.processEvents()
                         logger.info(f"[ID:0239] Ollama started successfully after {elapsed_time} seconds")
                         return True
                     

@@ -1267,45 +1267,68 @@ class ChatTab(QWidget):
         try:
             with open(filepath, 'r', encoding='utf-8') as f:
                 data = json.load(f)
-                
-            # Clear current chat
+
+            # Determine conversation list
+            if isinstance(data, dict):
+                conversation = data.get('conversation', [])
+            elif isinstance(data, list):
+                conversation = data
+            else:
+                conversation = []
+
+            # Clear current chat and renderer
             self.clear_chat()
-            
-            # Load messages
-            streaming_handler = self.chat_display.get_streaming_handler()
-            if streaming_handler:
-                for message in data:
-                    sender = message.get('sender', 'Unknown')
+            chat_renderer = getattr(self.chat_display, 'chat_renderer', None)
+            if chat_renderer:
+                chat_renderer.clear_messages()
+
+            # Load messages using the renderer for proper formatting
+            for message in conversation:
+                if isinstance(message, dict):
+                    sender_raw = message.get('sender') or message.get('role', 'Unknown')
+                    sender = sender_raw[:1].upper() + sender_raw[1:] if sender_raw else "Unknown"
                     content = message.get('content', '')
                     is_code = message.get('is_code', False)
                     tag = message.get('tag', 'user' if sender == 'You' else 'ai')
-                    
-                    streaming_handler.append_message(sender, content, is_code, tag)
-            
+                elif isinstance(message, str):
+                    sender = 'Unknown'
+                    content = message
+                    is_code = False
+                    tag = 'user'
+                else:
+                    continue  # skip unrecognized message types
+
+                if chat_renderer:
+                    chat_renderer.add_message(sender, content, is_code, False, tag)
+
+            # Trigger a render after loading all messages
+            if chat_renderer:
+                chat_renderer.request_render(immediate=True)
+
             # Set current conversation file
             self.current_conversation_file = filepath
             self.set_current_conversation_file(filepath)
-            
+
             # Load metadata if available
             try:
                 from pyside_chat.core.models.conversation_metadata import ConversationMetadata
                 metadata = ConversationMetadata.from_file(filepath)
-                
+
                 # Restore settings from metadata
                 if metadata.temperature is not None:
                     self.temperature = metadata.temperature
                     input_components = self.input_controls.get_ui_components()
                     input_components['temperature_slider'].setValue(int(metadata.temperature * 100))
-                
+
                 if metadata.model and metadata.model in [self.input_controls.model_combo.itemText(i) for i in range(self.input_controls.model_combo.count())]:
                     self.input_controls.model_combo.setCurrentText(metadata.model)
-                
+
                 if metadata.personality and metadata.personality in [self.input_controls.personality_combo.itemText(i) for i in range(self.input_controls.personality_combo.count())]:
                     self.input_controls.personality_combo.setCurrentText(metadata.personality)
-                
+
             except Exception as e:
                 logger.warning(f"Could not load conversation metadata: {e}")
-                
+
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to load conversation: {str(e)}")
     
