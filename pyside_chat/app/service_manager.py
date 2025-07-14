@@ -2,8 +2,9 @@
 Service Manager - Handles initialization and management of all application services
 """
 
-import threading
-from typing import Optional
+from pyside_chat.core.shared_imports.shared_imports import *
+
+
 from pyside_chat.features.ollama.ollama_service import OllamaService
 from pyside_chat.features.chat.conversation_service import ConversationService
 from pyside_chat.features.chat.enhancers.enhancement_service import EnhancementService

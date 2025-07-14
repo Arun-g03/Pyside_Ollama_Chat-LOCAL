@@ -1,7 +1,7 @@
 # Shared imports
 from pyside_chat.core.shared_imports.pyside_imports import *
 from pyside_chat.core.shared_imports.shared_imports import *
-from pyside_chat.core.utils.prompts import PromptFormatter
+
 
 
 """
