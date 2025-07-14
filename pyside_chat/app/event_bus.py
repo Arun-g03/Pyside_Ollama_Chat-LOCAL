@@ -13,11 +13,12 @@ logger.info("Starting Event Bus", print_to_terminal=True)
 class EventBus:
     """Manages signal connections and event handling"""
     
-    def __init__(self, main_window, service_manager, ui_manager, chat_controller):
+    def __init__(self, main_window, service_manager, ui_manager, chat_controller, lifecycle_manager=None):
         self.main_window = main_window
         self.service_manager = service_manager
         self.ui_manager = ui_manager
         self.chat_controller = chat_controller
+        self.lifecycle_manager = lifecycle_manager
         
         # Initialize threading service for new architecture
         self.threading_service = get_global_threading_service()
@@ -297,10 +298,16 @@ class EventBus:
         
         # Check Ollama connection
         if not self._check_ollama_connection():
-            self._show_ollama_connection_error("message", force_show=True)
+            # Only show error if not already shown recently
+            if not self.lifecycle_manager or not self.lifecycle_manager.get_ollama_error_shown():
+                self._show_ollama_connection_error("message", force_show=True)
             if chat_tab:
                 chat_tab.append_to_chat("System", "Failed to send: Could not connect to Ollama.\n Please check the Ollama connection and try again.")
             return
+        
+        # Reset error flag on successful connection
+        if self.lifecycle_manager:
+            self.lifecycle_manager.set_ollama_error_shown(False)
         # Get conversation service and messages
         conversation_service = self.service_manager.get_conversation_service()
         messages = conversation_service.get_messages()
@@ -880,7 +887,9 @@ class EventBus:
         
         # Show user-friendly error dialog for connection issues
         if "Cannot connect to Ollama" in error or "connection" in error.lower():
-            self._show_ollama_connection_error("operation")
+            # Only show error if not already shown recently
+            if not self.lifecycle_manager or not self.lifecycle_manager.get_ollama_error_shown():
+                self._show_ollama_connection_error("operation")
         else:
             # Show copy-enabled error dialog for other model operation errors
             from pyside_chat.ui.utils.message_utils import show_operation_error
@@ -987,7 +996,11 @@ class EventBus:
             ollama_service = self.service_manager.get_ollama_service()
             models = ollama_service.get_models()
             if models:
-                self.ollama_error_shown = False  # Reset error flag on success
+                # Reset error flag on success
+                if self.lifecycle_manager:
+                    self.lifecycle_manager.set_ollama_error_shown(False)
+                else:
+                    self.ollama_error_shown = False
                 
                 chat_tab = self.ui_manager.get_chat_tab()
                 model_tab = self.ui_manager.get_model_tab()
@@ -996,6 +1009,9 @@ class EventBus:
                     chat_tab.update_model_list(models)
                 if model_tab:
                     model_tab.update_model_list(models)
+                    
+                # Log successful connection
+                logger.info("[ID:CONNECTION_SUCCESS] Ollama connection successful, models loaded")
             else:
                 # No models returned - likely Ollama is not running
                 self._show_ollama_connection_error("startup")
@@ -1047,42 +1063,51 @@ class EventBus:
     
     def _show_ollama_connection_error(self, context="general", force_show=False):
         """Show a user-friendly error dialog when Ollama is not running"""
-
-        if not force_show and self.ollama_error_shown:
-            return
-        if not force_show:
-            self.ollama_error_shown = True
-            
-        download_link = "https://ollama.com/download"
-        if context == "startup":
-            title = "Ollama Not Running"
-            message = (
-                'Ollama is not running or not accessible.<br><br>'
-                'To fix this:<br>'
-                '1. Make sure Ollama is installed<br>'
-                "2. Start Ollama by running 'ollama serve' in a terminal<br>"
-                f'3. Or download from: <a href="{download_link}">{download_link}</a><br><br>'
-                "The application will continue to work, but you won't be able to send messages until Ollama is running."
-            )
+        # Delegate to the lifecycle manager's enhanced error dialog
+        if self.lifecycle_manager:
+            # Sync the error shown flag with lifecycle manager
+            if not force_show and self.lifecycle_manager.get_ollama_error_shown():
+                return
+            if not force_show:
+                self.lifecycle_manager.set_ollama_error_shown(True)
+            self.lifecycle_manager.show_ollama_connection_error(context, force_show)
         else:
-            title = "Connection Error"
-            message = (
-                'Cannot connect to Ollama.<br><br>'
-                'Please make sure:<br>'
-                "1. Ollama is running (run 'ollama serve' in a terminal)<br>"
-                '2. Ollama is accessible at http://localhost:11434<br>'
-                '3. No firewall is blocking the connection<br>'
-                f'4. Download Ollama from: <a href="{download_link}">{download_link}</a><br><br>'
-                'Try sending your message again once Ollama is running.'
-            )
-        
-        msg_box = QMessageBox(self.main_window)
-        msg_box.setWindowTitle(title)
-        msg_box.setIcon(QMessageBox.Warning)
-        msg_box.setTextFormat(Qt.RichText)
-        msg_box.setTextInteractionFlags(Qt.TextBrowserInteraction)
-        msg_box.setText(message)
-        msg_box.exec()
+            # Fallback to basic dialog if lifecycle manager not available
+            if not force_show and self.ollama_error_shown:
+                return
+            if not force_show:
+                self.ollama_error_shown = True
+                
+            download_link = "https://ollama.com/download"
+            if context == "startup":
+                title = "Ollama Not Running"
+                message = (
+                    'Ollama is not running or not accessible.<br><br>'
+                    'To fix this:<br>'
+                    '1. Make sure Ollama is installed<br>'
+                    "2. Start Ollama by running the Ollama app.exe application<br>"
+                    f'3. Or download from: <a href="{download_link}">{download_link}</a><br><br>'
+                    "The application will continue to work, but you won't be able to send messages until Ollama is running."
+                )
+            else:
+                title = "Connection Error"
+                message = (
+                    'Cannot connect to Ollama.<br><br>'
+                    'Please make sure:<br>'
+                    "1. Ollama is running (start the Ollama app.exe application)<br>"
+                    '2. Ollama is accessible at http://localhost:11434<br>'
+                    '3. No firewall is blocking the connection<br>'
+                    f'4. Download Ollama from: <a href="{download_link}">{download_link}</a><br><br>'
+                    'Try sending your message again once Ollama is running.'
+                )
+            
+            msg_box = QMessageBox(self.main_window)
+            msg_box.setWindowTitle(title)
+            msg_box.setIcon(QMessageBox.Warning)
+            msg_box.setTextFormat(Qt.RichText)
+            msg_box.setTextInteractionFlags(Qt.TextBrowserInteraction)
+            msg_box.setText(message)
+            msg_box.exec()
     
     def get_threading_status(self) -> Dict[str, Any]:
         """Get current threading status and statistics."""

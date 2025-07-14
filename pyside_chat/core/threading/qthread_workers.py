@@ -200,7 +200,7 @@ class ChatStreamingWorker(StreamingWorker):
                 stream_url,
                 json=request_data,
                 stream=True,
-                timeout=30
+                timeout=120
             )
             
             if response.status_code != 200:

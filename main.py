@@ -134,13 +134,21 @@ def main():
             raise
 
         logger.info("[ID:0272] 🏗️  Creating main window...",print_to_terminal=True)
-        # Create and show the main window
+        # Create the main window (but don't show it yet)
         try:
             window = OllamaChat()
-            logger.info("[ID:0271] 📱 Showing main window...",print_to_terminal=True)
-            window.show()
+            logger.info("[ID:0271] 📱 Main window created successfully")
+            
+            # Check if initialization was successful (Ollama verification)
+            if window.lifecycle_manager.initialization_complete:
+                logger.info("[ID:0271A] 📱 Ollama verification successful - showing main window...")
+                window.show()
+            else:
+                logger.info("[ID:0271B] 📱 Ollama verification failed - main window will be shown after verification")
+                # The window will be shown later when Ollama verification succeeds
+                
         except Exception as e:
-            logger.error(f"[ID:WINDOW_MAIN] Exception creating/showing main window: {e}")
+            logger.error(f"[ID:WINDOW_MAIN] Exception creating main window: {e}")
             logger.error(traceback.format_exc())
             raise
         

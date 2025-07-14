@@ -45,10 +45,24 @@ class ThreadingService(QObject):
         try:
             super().__init__(parent)
             
-            # Initialize threading managers
-            self.thread_pool_manager = get_global_thread_pool_manager()
-            self.thread_monitor = get_global_thread_monitor()
-            self.persistent_thread_pool = get_global_persistent_thread_pool()
+            # Initialize threading managers with error handling
+            try:
+                self.thread_pool_manager = get_global_thread_pool_manager()
+            except Exception as e:
+                logger.error(f"[ID:TS001A] Failed to initialize thread_pool_manager: {e}")
+                self.thread_pool_manager = None
+            
+            try:
+                self.thread_monitor = get_global_thread_monitor()
+            except Exception as e:
+                logger.error(f"[ID:TS001B] Failed to initialize thread_monitor: {e}")
+                self.thread_monitor = None
+            
+            try:
+                self.persistent_thread_pool = get_global_persistent_thread_pool()
+            except Exception as e:
+                logger.error(f"[ID:TS001C] Failed to initialize persistent_thread_pool: {e}")
+                self.persistent_thread_pool = None
             
             # Initialize persistent thread pools
             self._initialize_persistent_pools()
@@ -66,17 +80,59 @@ class ThreadingService(QObject):
         except Exception as e:
             logger.error(f"[ID:TS001E] Exception in __init__: {e}")
             logger.error(traceback.format_exc())
+            
+            # Ensure critical attributes are set even if initialization fails
+            if not hasattr(self, 'persistent_thread_pool'):
+                self.persistent_thread_pool = None
+            if not hasattr(self, 'current_chat_thread'):
+                self.current_chat_thread = None
+            if not hasattr(self, 'current_audio_thread'):
+                self.current_audio_thread = None
+            if not hasattr(self, 'current_monitoring_thread'):
+                self.current_monitoring_thread = None
+            if not hasattr(self, 'current_voice_thread'):
+                self.current_voice_thread = None
+            if not hasattr(self, 'active_tasks'):
+                self.active_tasks = {}
+            if not hasattr(self, 'thread_pool_manager'):
+                self.thread_pool_manager = None
+            if not hasattr(self, 'thread_monitor'):
+                self.thread_monitor = None
     
     def _initialize_persistent_pools(self):
         """Initialize persistent thread pools for different operations."""
         try:
             logger.debug("[ID:TS002] Initializing persistent thread pools")
 
-            # Get recommended sizes
-            chat_streaming_size = get_pool_thread_count('streaming')
-            audio_streaming_size = get_pool_thread_count('background')
-            monitoring_size = get_pool_thread_count('ui_update')
-            voice_processing_size = get_pool_thread_count('background')
+            # Get recommended sizes with fallback values
+            try:
+                chat_streaming_size = get_pool_thread_count('streaming')
+            except Exception as e:
+                logger.error(f"[ID:TS002A] Failed to get chat_streaming_size: {e}")
+                chat_streaming_size = 2
+            
+            try:
+                audio_streaming_size = get_pool_thread_count('background')
+            except Exception as e:
+                logger.error(f"[ID:TS002B] Failed to get audio_streaming_size: {e}")
+                audio_streaming_size = 1
+            
+            try:
+                monitoring_size = get_pool_thread_count('ui_update')
+            except Exception as e:
+                logger.error(f"[ID:TS002C] Failed to get monitoring_size: {e}")
+                monitoring_size = 1
+            
+            try:
+                voice_processing_size = get_pool_thread_count('background')
+            except Exception as e:
+                logger.error(f"[ID:TS002D] Failed to get voice_processing_size: {e}")
+                voice_processing_size = 1
+
+            # Only initialize pools if persistent_thread_pool is available
+            if self.persistent_thread_pool is None:
+                logger.error("[ID:TS002E] Persistent thread pool is None, skipping initialization")
+                return
 
             # Initialize chat streaming pool
             self.persistent_thread_pool.initialize_pool(
@@ -133,11 +189,16 @@ class ThreadingService(QObject):
         try:
             logger.debug(f"[ID:TS005] Starting chat streaming for model: {model}")
             
+            # Check if persistent thread pool is available
+            if self.persistent_thread_pool is None:
+                logger.error("[ID:TS005A] Persistent thread pool is not available")
+                return False
+            
             # Stop any existing chat streaming
             self.stop_chat_streaming()
             
             # Get thread from persistent pool
-            thread = self.persistent_thread_pool.get_thread('chat_streaming', timeout=30.0)
+            thread = self.persistent_thread_pool.get_thread('chat_streaming', timeout=120.0)
             if not thread:
                 logger.error("[ID:TS006] Failed to get chat streaming thread from pool")
                 return False
@@ -193,8 +254,12 @@ class ThreadingService(QObject):
                 while self.current_chat_thread.worker.is_running() and (time.time() - start_time) < timeout:
                     time.sleep(0.1)
                 
-                # Return thread to pool
-                self.persistent_thread_pool.return_thread(self.current_chat_thread)
+                # Return thread to pool if persistent thread pool is available
+                if self.persistent_thread_pool is not None:
+                    self.persistent_thread_pool.return_thread(self.current_chat_thread)
+                else:
+                    logger.warning("[ID:TS009A] Persistent thread pool not available, cannot return thread")
+                
                 self.current_chat_thread = None
                 
                 logger.debug("[ID:TS010] Chat streaming stopped and thread returned to pool")

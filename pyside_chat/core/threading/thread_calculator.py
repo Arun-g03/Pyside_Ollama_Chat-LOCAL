@@ -138,6 +138,33 @@ class ThreadCalculator:
             )
             
             self._cache = recommendations
+            
+            # Log the final statistics being used
+            logger.info("=" * 60)
+            logger.info("THREAD CALCULATOR FINAL STATISTICS")
+            logger.info("=" * 60)
+            logger.info(f"System Information:")
+            logger.info(f"  Platform: {recommendations.system_type}")
+            logger.info(f"  CPU Count: {recommendations.cpu_count}")
+            logger.info(f"  Logical Cores: {recommendations.logical_cores}")
+            logger.info(f"  Physical Cores: {recommendations.physical_cores}")
+            logger.info(f"  Total Memory: {recommendations.memory_gb:.1f} GB")
+            logger.info(f"  Available Memory: {system_info['available_memory_gb']:.1f} GB")
+            logger.info(f"  Memory Usage: {system_info['memory_percent']:.1f}%")
+            
+            logger.info(f"Thread Recommendations:")
+            logger.info(f"  Max Worker Threads: {recommendations.max_worker_threads}")
+            logger.info(f"  Default Worker Threads: {recommendations.default_worker_threads}")
+            logger.info(f"  IO-Bound Threads: {recommendations.io_bound_threads}")
+            logger.info(f"  CPU-Bound Threads: {recommendations.cpu_bound_threads}")
+            logger.info(f"  UI Update Threads: {recommendations.ui_update_threads}")
+            logger.info(f"  Background Threads: {recommendations.background_threads}")
+            logger.info(f"  Streaming Threads: {recommendations.streaming_threads}")
+            logger.info(f"  Chunk Processing Threads: {recommendations.chunk_processing_threads}")
+            logger.info(f"  Memory-Safe Threads: {recommendations.memory_safe_threads}")
+            logger.info(f"  Conservative Threads: {recommendations.conservative_threads}")
+            logger.info("=" * 60)
+            
             return recommendations
         except Exception as e:
             logger.error(f"Error calculating thread recommendations: {e}")
@@ -308,7 +335,9 @@ class ThreadCalculator:
                 'max': recommendations.max_worker_threads
             }
             
-            return pool_recommendations.get(pool_type, recommendations.default_worker_threads)
+            recommended_count = pool_recommendations.get(pool_type, recommendations.default_worker_threads)
+            logger.info(f"Thread Calculator: {pool_type} pool recommendation: {recommended_count} threads")
+            return recommended_count
         except Exception as e:
             logger.error(f"Error in get_recommendations_for_pool: {e}")
             return 2
@@ -391,9 +420,12 @@ def get_thread_recommendations() -> ThreadRecommendations:
 def get_pool_thread_count(pool_type: str) -> int:
     """Get recommended thread count for a specific pool type"""
     try:
-        return thread_calculator.get_recommendations_for_pool(pool_type)
+        thread_count = thread_calculator.get_recommendations_for_pool(pool_type)
+        logger.info(f"Thread Calculator: {pool_type} pool using {thread_count} threads")
+        return thread_count
     except Exception as e:
         logger.error(f"Error in get_pool_thread_count: {e}")
+        logger.info(f"Thread Calculator: {pool_type} pool using fallback 2 threads")
         return 2
 
 

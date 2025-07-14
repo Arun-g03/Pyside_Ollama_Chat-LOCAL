@@ -363,7 +363,7 @@ class OllamaService(QObject):
             LoggingHelpers.log_network_request(url, "POST")
             
             try:
-                with requests.post(url, json=data, stream=stream, timeout=30) as response:
+                with requests.post(url, json=data, stream=stream, timeout=120) as response:
                     response.raise_for_status()
                     LoggingHelpers.log_network_request(url, "POST", response.status_code)
                     

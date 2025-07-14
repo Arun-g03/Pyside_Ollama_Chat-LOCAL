@@ -43,21 +43,25 @@ class OllamaChat(QMainWindow):
             # Initialize UI manager
             self.ui_manager = UIManager(self, self.config_manager)
             
+            # Initialize lifecycle manager first
+            self.lifecycle_manager = AppLifecycleManager(
+                self,
+                self.service_manager,
+                self.ui_manager,
+                None  # Will set event_handler later
+            )
+            
             # Initialize Event Bus (but don't set up connections yet)
             self.event_handler = EventBus(
                 self, 
                 self.service_manager, 
                 self.ui_manager, 
-                self.chat_controller
+                self.chat_controller,
+                self.lifecycle_manager  # Pass lifecycle_manager to event_bus
             )
             
-            # Initialize lifecycle manager
-            self.lifecycle_manager = AppLifecycleManager(
-                self,
-                self.service_manager,
-                self.ui_manager,
-                self.event_handler
-            )
+            # Update lifecycle manager with event_handler reference
+            self.lifecycle_manager.event_handler = self.event_handler
             
             # Setup UI first
             self._setup_ui()

@@ -13,6 +13,9 @@ This manager provides:
 - Error handling and recovery
 """
 
+# Import thread calculator for pool sizing
+from .thread_calculator import get_pool_thread_count
+
 logger = CustomLogger.get_logger(__name__)
 
 
