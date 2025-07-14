@@ -472,31 +472,46 @@ class ConversationManager(QObject):
         self.metadata_updated.emit()
     
     def get_current_metadata(self) -> ConversationMetadata:
-        """Get current metadata"""
+        """Get the current conversation metadata"""
         return self.metadata
+    
+    def create_new_conversation(self) -> Optional[str]:
+        """
+        Create a new conversation file and return the filepath
+        
+        Returns:
+            Path to the new conversation file, or None if failed
+        """
+        try:
+            # Reset metadata for new conversation
+            self.metadata.reset()
+            
+            # Generate a new filename
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"conversation_{timestamp}.json"
+            filepath = os.path.join(self.history_dir, filename)
+            
+            # Create empty conversation file
+            save_data = {
+                "metadata": self.metadata.to_dict(),
+                "conversation": []
+            }
+            
+            with open(filepath, 'w', encoding='utf-8') as f:
+                json.dump(save_data, f, indent=2, ensure_ascii=False)
+            
+            # Update current conversation file reference
+            self.metadata.current_conversation_file = filepath
+            self.metadata_updated.emit()
+            
+            logger.debug(f"[ID:0143] Created new conversation file: {filepath}")
+            return filepath
+            
+        except Exception as e:
+            logger.error(f"[ID:0144] Failed to create new conversation: {str(e)}")
+            return None
     
     def set_auto_save_enabled(self, enabled: bool) -> None:
         """Enable or disable auto-save"""
         self.metadata.auto_save_enabled = enabled
-        self.metadata_updated.emit()
-    
-    def find_blank_conversation(self) -> Optional[str]:
-        """
-        Find the most recent blank conversation (0 messages)
-        
-        Returns:
-            Filepath of the most recent blank conversation, or None if none found
-        """
-        conversations = self.list_conversations()
-        
-        # Look for conversations with 0 messages
-        blank_conversations = [
-            (filepath, metadata) for filepath, metadata in conversations 
-            if metadata.message_count == 0
-        ]
-        
-        if blank_conversations:
-            # Return the most recent blank conversation (first in the sorted list)
-            return blank_conversations[0][0]
-        
-        return None 
+        self.metadata_updated.emit() 

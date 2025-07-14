@@ -60,6 +60,9 @@ class ConversationService(QObject):
             "id": message_id,
             "is_streaming": False
         }
+        # Add thought field for assistant messages
+        if role == "assistant":
+            message["thought"] = ""
         self.conversation.append(message)
         
         # Add to memory if it's a user message or assistant response
@@ -88,6 +91,9 @@ class ConversationService(QObject):
             "id": message_id,
             "is_streaming": True
         }
+        # Add thought field for assistant messages
+        if role == "assistant":
+            message["thought"] = ""
         self.conversation.append(message)
         self._streaming_message_id = message_id
         self.conversation_updated.emit(self.conversation)
@@ -155,72 +161,19 @@ class ConversationService(QObject):
             logger.debug(f"[STREAM_FINALIZE] Message {i}: id={msg.get('id')}, role={msg.get('role')}, is_streaming={msg.get('is_streaming')}, content_len={len(msg.get('content', ''))}")
         
         if not self._streaming_message_id:
-            logger.warning("[ID:STREAM005] No streaming message ID to finalize")
+            logger.warning("[STREAM_FINALIZE] No streaming message to finalize")
             return False
         
-        # Find and finalize the streaming message
-        for i, message in enumerate(self.conversation):
-            logger.debug(f"[STREAM_FINALIZE] Checking message {i}: id={message.get('id')}, role={message.get('role')}, is_streaming={message.get('is_streaming')}")
-            if message.get("id") == self._streaming_message_id:
-                # Check if already finalized
-                if not message.get("is_streaming", False):
-                    logger.debug(f"[ID:STREAM008] Streaming message {self._streaming_message_id} already finalized")
-                    self._streaming_message_id = None  # Clear the ID even if already finalized
-                    return True
-                
-                # Log the message state before finalization
-                content = message["content"]
-                content_length = len(content)
-                logger.debug(f"[STREAM_FINALIZE] Finalizing message {self._streaming_message_id}: content_length={content_length}")
-                logger.debug(f"[STREAM_FINALIZE] Content preview: '{content[:100]}...'")
-                
-                # CRITICAL FIX: Set is_streaming to False BEFORE emitting
-                message["is_streaming"] = False
-                logger.debug(f"[ID:STREAM006] Finalized streaming message {self._streaming_message_id}: final content length = {len(content)}")
-                
-                # CRITICAL FIX: Only remove empty messages if they have been given time to accumulate chunks
-                # Check if this is a premature finalization (message was just created and is still empty)
-                if not content.strip():
-                    logger.warning(f"[STREAM_FINALIZE] WARNING: Empty message detected during finalization!")
-                    logger.warning(f"[STREAM_FINALIZE] Message ID: {message.get('id')}, Role: {message.get('role')}")
-                    logger.warning(f"[STREAM_FINALIZE] This might be premature finalization - keeping message for potential chunk accumulation")
-                    
-                    # Don't remove the message - let it stay for potential chunk accumulation
-                    # Just mark it as not streaming but keep it in the conversation
-                    logger.debug(f"[STREAM_FINALIZE] Keeping empty message in conversation for potential chunk accumulation")
-                    self._streaming_message_id = None
-                    self.conversation_updated.emit(self.conversation)
-                    return True
-                
-                # Add to memory if it's an assistant response
-                if self.memory_service and message["role"] == "assistant":
-                    self._add_to_memory("assistant", content)
-                
+        for msg in self.conversation:
+            if msg.get('id') == self._streaming_message_id and msg.get('is_streaming', False):
+                msg['is_streaming'] = False
+                # No legacy <think> migration needed; 'thought' is always used
+                logger.debug(f"[STREAM_FINALIZE] Finalized streaming message: {msg['id']}")
                 self._streaming_message_id = None
                 self.conversation_updated.emit(self.conversation)
-                # CRITICAL FIX: Only auto-save if the message has content (there should never be empty messages)
-                if content.strip():
-                    if self.conversation_manager:
-                        saved_filepath = self.conversation_manager.auto_save_conversation(self.conversation)
-                        if saved_filepath:
-                            logger.debug(f"[ID:STREAM009] Auto-save completed: {saved_filepath}")
-                            # CRITICAL FIX: Emit signal to notify UI of auto-save completion
-                            self.auto_save_completed.emit(saved_filepath)
-                        else:
-                            logger.warning("[ID:STREAM010] Auto-save failed")
-                    else:
-                        logger.warning("[ID:STREAM010A] No conversation manager available for auto-save")
-                else:
-                    logger.error(f"[ID:STREAM012] ERROR: Empty message detected - this should never happen! Message ID: {message.get('id')}, Role: {message.get('role')}")
-                    logger.error(f"[ID:STREAM012A] This indicates a chunk accumulation issue - chunks are not being properly accumulated!")
-                
-                # Log the final message state for debugging
-                logger.debug(f"[ID:STREAM011] Finalized streaming message with content length: {len(content)}")
-                
                 return True
-        
-        logger.warning(f"[ID:STREAM007] Streaming message {self._streaming_message_id} not found for finalization")
-        logger.debug(f"[STREAM_FINALIZE] Available message IDs: {[msg.get('id') for msg in self.conversation]}")
+        logger.warning(f"[STREAM_FINALIZE] Streaming message id {self._streaming_message_id} not found or already finalized")
+        self._streaming_message_id = None
         return False
     
     def get_streaming_message_id(self) -> Optional[str]:
@@ -294,6 +247,15 @@ class ConversationService(QObject):
         for i, msg in enumerate(self.conversation):
             logger.debug(f"[CS_DEBUG] Message {i}: {{role: {msg.get('role')}, content_len: {len(msg.get('content', ''))}, content_preview: '{msg.get('content', '')[:50]}', is_streaming: {msg.get('is_streaming')}, id: {msg.get('id')}}}", print_to_terminal=True)
         
+        # --- MIGRATION LOGIC: Extract <think>...</think> to 'thought' field if needed (for legacy/finalized messages) ---
+        import re
+        for msg in self.conversation:
+            if msg.get("role") == "assistant" and 'thought' in msg and not msg['thought'] and '<think>' in msg['content'] and '</think>' in msg['content']:
+                match = re.search(r'<think>(.*?)</think>', msg['content'], re.DOTALL)
+                if match:
+                    msg['thought'] = match.group(1).strip()
+                    msg['content'] = re.sub(r'<think>.*?</think>', '', msg['content'], flags=re.DOTALL).lstrip('\n')
+        # --- END MIGRATION LOGIC ---
         return self.conversation.copy()
     
     def get_context_messages(self) -> List[Dict]:
@@ -405,3 +367,34 @@ class ConversationService(QObject):
         self._message_counter = 0
         self._current_filename = None
         self.conversation_updated.emit(self.conversation) 
+
+    def get_streaming_message(self) -> Optional[Dict]:
+        """Get the current streaming message"""
+        if not self._streaming_message_id:
+            return None
+        return self.get_message_by_id(self._streaming_message_id)
+    
+    def update_streaming_message_content(self, content: str) -> bool:
+        """Update the content field of the current streaming message"""
+        streaming_message = self.get_streaming_message()
+        if streaming_message:
+            streaming_message['content'] = content
+            self.conversation_updated.emit(self.conversation)
+            return True
+        return False
+    
+    def update_streaming_message_thought(self, thought: str) -> bool:
+        """Update the thought field of the current streaming message"""
+        streaming_message = self.get_streaming_message()
+        if streaming_message:
+            streaming_message['thought'] = thought
+            self.conversation_updated.emit(self.conversation)
+            return True
+        return False
+    
+    def get_streaming_message_thought(self) -> Optional[str]:
+        """Get the thought field of the current streaming message"""
+        streaming_message = self.get_streaming_message()
+        if streaming_message:
+            return streaming_message.get('thought', '')
+        return None 

@@ -343,6 +343,7 @@ class ChatRenderer(QObject):
                 is_streaming = msg['is_streaming']
                 tag = msg.get('tag', 'ai')
                 message_id = msg.get('message_id', '')
+                thought = msg.get('thought', '')
                 
                 if is_streaming:
                     logger.debug(f"[RENDER] Streaming message for {sender}: '{content}'")
@@ -372,14 +373,13 @@ class ChatRenderer(QObject):
                     else:
                         # Format streaming AI messages just like finalized ones
                         if tag == 'ai':
-                            thoughts, main_answer = MessageFormatter.split_thoughts_and_answer(content)
-                            if thoughts:
-                                # Render thoughts block first
+                            # Use the thought field if present
+                            if thought:
                                 thoughts_html = f"""
                                 <table width='100%' cellspacing='0' cellpadding='0'><tr>
                                   <td align='left'>
                                     <div style='background-color: #23272e; color: #aaa; border-radius: 8px; padding: 10px 16px; margin: 8px 0 4px 0; max-width: 500px; min-width: 60px; display: inline-block; word-break: break-word; border: 2px dashed #888; font-style: italic;'>
-                                      <b style='color: #aaa;'>{self.ai_name} Thoughts💭:</b><br> {MessageFormatter.format_markdown(thoughts)}
+                                      <b style='color: #aaa;'>{self.ai_name} Thoughts💭:</b><br> {MessageFormatter.format_markdown(thought)}
                                     </div>
                                   </td>
                                   <td></td>
@@ -389,24 +389,25 @@ class ChatRenderer(QObject):
                                 self.chat_display.insertHtml("<br>")
                                 # Add spacing between thoughts and reply
                                 self.chat_display.insertHtml("<div style='margin: 8px 0;'></div>")
-                                # Now render the main answer as the AI bubble
-                                content = main_answer
-                        formatted_content = MessageFormatter.detect_and_format_code(content)
-                        formatted_content = MessageFormatter.format_markdown(formatted_content)
+                            formatted_content = MessageFormatter.detect_and_format_code(content)
+                            formatted_content = MessageFormatter.format_markdown(formatted_content)
+                        elif is_code:
+                            formatted_content = MessageFormatter.syntax_highlight_code(content)
+                        else:
+                            formatted_content = MessageFormatter.format_markdown(content)
                 elif is_code:
                     formatted_content = MessageFormatter.syntax_highlight_code(content)
                 else:
                     # Check for <think>...</think> in AI messages
                     if tag == 'ai':
-                        thoughts, main_answer = MessageFormatter.split_thoughts_and_answer(content)
-                        if thoughts:
-                            logger.debug(f"[THOUGHTS_DEBUG] Found thoughts in message: {thoughts[:100]}...")
+                        if thought:
+                            logger.debug(f"[THOUGHTS_DEBUG] Found thoughts in message: {thought[:100]}...")
                             # Render thoughts block first
                             thoughts_html = f"""
                             <table width='100%' cellspacing='0' cellpadding='0'><tr>
                               <td align='left'>
                                 <div style='background-color: #23272e; color: #aaa; border-radius: 8px; padding: 10px 16px; margin: 8px 0 4px 0; max-width: 500px; min-width: 60px; display: inline-block; word-break: break-word; border: 2px dashed #888; font-style: italic;'>
-                                  <b style='color: #aaa;'>{self.ai_name} Thoughts💭:</b><br> {MessageFormatter.format_markdown(thoughts)}
+                                  <b style='color: #aaa;'>{self.ai_name} Thoughts💭:</b><br> {MessageFormatter.format_markdown(thought)}
                                 </div>
                               </td>
                               <td></td>
@@ -416,13 +417,12 @@ class ChatRenderer(QObject):
                             self.chat_display.insertHtml("<br>")
                             # Add spacing between thoughts and reply
                             self.chat_display.insertHtml("<div style='margin: 8px 0;'></div>")
-                            # Now render the main answer as the AI bubble
-                            content = main_answer
-                        else:
-                            logger.debug(f"[THOUGHTS_DEBUG] No thoughts found in message: {content[:100]}...")
                         formatted_content = MessageFormatter.detect_and_format_code(content)
                         formatted_content = MessageFormatter.format_markdown(formatted_content)
-                
+                    else:
+                        logger.debug(f"[THOUGHTS_DEBUG] No thoughts found in message: {content[:100]}...")
+                        formatted_content = MessageFormatter.detect_and_format_code(content)
+                        formatted_content = MessageFormatter.format_markdown(formatted_content)
                 # Fallback: if still not set, just escape the content
                 if not formatted_content:
                     from html import escape

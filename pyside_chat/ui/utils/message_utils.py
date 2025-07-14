@@ -1,4 +1,6 @@
 from pyside_chat.core.shared_imports.pyside_imports import *
+from pyside_chat.core.shared_imports.shared_imports import *
+from pyside_chat.ui.dialogs.error_dialog import *
 """
 Message Box Utilities - Replace QMessageBox with copy-enabled dialogs
 """

@@ -615,6 +615,10 @@ class EventBus:
             logger.warning(f"[EVENT_BUS_DEBUG] Received empty or whitespace-only chunk from worker, skipping")
             return
         
+        # CRITICAL FIX: Call accumulate_assistant_response to ensure chunks are properly accumulated
+        logger.debug(f"[EVENT_BUS_DEBUG] Calling chat_controller.accumulate_assistant_response with chunk length: {len(chunk)}")
+        self.chat_controller.accumulate_assistant_response(chunk)
+        
         # Validate message ID
         if not msg_id or msg_id == "None" or msg_id == "msg_id_placeholder":
             logger.error(f"[EVENT_BUS_DEBUG] Invalid message ID received: '{msg_id}', this will cause chunk processing to fail")

@@ -58,6 +58,7 @@ class ChatController(QObject):
                  personality_service=None):
         super().__init__()
         
+        # Store service references
         self.ollama_service = ollama_service
         self.conversation_service = conversation_service
         self.enhancement_service = enhancement_service
@@ -65,12 +66,24 @@ class ChatController(QObject):
         self.conversation_manager = conversation_manager
         self.personality_service = personality_service
         
-        # State tracking
-        self.is_new_conversation = False
-        self.current_model = None
-        self.current_temperature = 0.7
-        self._pending_assistant_response = ""  # Accumulate assistant response here
+        # Initialize streaming state variables
+        self._streaming_thoughts_buffer = ''
+        self._in_think_block = False
+        self._think_completed = False  # Initialize the missing attribute
+        self._last_streaming_chunk = ""
+        self._last_streaming_msg_id = None
         
+        # Initialize pending response buffer
+        self._pending_assistant_response = ""
+        
+        # Track if this is a new conversation
+        self.is_new_conversation = True
+        
+        # Chat tab reference for TTS functionality
+        self.chat_tab_reference = None
+        
+        logger.debug("[ID:0156] ChatController initialized successfully")
+    
     def is_memory_active(self) -> bool:
         """Check if memory is enabled and available"""
         return self.memory_service is not None
@@ -313,52 +326,157 @@ class ChatController(QObject):
     
     def accumulate_assistant_response(self, chunk: str):
         """Accumulate assistant response chunk, handling <think> blocks during streaming."""
-        logger.debug(f"[CHAT_CONTROLLER_DEBUG] accumulate_assistant_response called with chunk length: {len(chunk)}")
-        logger.debug(f"[CHAT_CONTROLLER_DEBUG] Chunk content preview: '{chunk[:50]}...'")
-        
-        # Check if chunk is empty or whitespace
-        if not chunk or not chunk.strip():
-            logger.warning(f"[CHAT_CONTROLLER_DEBUG] Received empty or whitespace-only chunk, skipping accumulation")
-            return
-        
-        # Streaming <think> block handling
-        if not hasattr(self, '_streaming_thoughts_buffer'):
-            self._streaming_thoughts_buffer = ''
-            self._in_think_block = False
-        
-        # Detect start of <think>
-        if '<think>' in chunk.lower():
-            self._in_think_block = True
-            # Everything after <think> goes to thoughts buffer
-            idx = chunk.lower().find('<think>') + 7
-            self._streaming_thoughts_buffer += chunk[idx:]
-            return
-        # Detect end of </think>
-        if self._in_think_block:
-            if '</think>' in chunk.lower():
-                idx = chunk.lower().find('</think>')
-                self._streaming_thoughts_buffer += chunk[:idx]
-                self._in_think_block = False
-                # After </think>, the rest is main message
-                main_chunk = chunk[idx+8:]
-                # Update streaming message with main_chunk
+        try:
+            logger.debug(f"[CHAT_CONTROLLER_DEBUG] accumulate_assistant_response called with chunk length: {len(chunk)}")
+            logger.debug(f"[CHAT_CONTROLLER_DEBUG] Chunk content preview: '{chunk[:50]}...'")
+            logger.debug(f"[CHAT_CONTROLLER_DEBUG] Full chunk content: '{chunk}'")
+            
+            # Check if chunk is empty or whitespace
+            if not chunk or not chunk.strip():
+                logger.warning(f"[CHAT_CONTROLLER_DEBUG] Received empty or whitespace-only chunk, skipping accumulation")
+                return
+            
+            # Check for malformed output (repeating patterns that suggest AI malfunction)
+            if len(chunk) > 10:
+                # Check for repeating patterns like "wordword" or "phrase phrase"
+                import re
+                # More comprehensive pattern detection
+                repeating_pattern = re.search(r'(\w+)\1{2,}', chunk)  # 3 or more repetitions
+                double_word_pattern = re.search(r'(\w+)\s+\1', chunk)  # repeated words with space
+                if repeating_pattern or double_word_pattern:
+                    logger.warning(f"[CHAT_CONTROLLER_DEBUG] Detected repeating pattern in chunk: '{chunk[:50]}...'")
+                    logger.warning(f"[CHAT_CONTROLLER_DEBUG] Pattern type: repeating={repeating_pattern}, double_word={double_word_pattern}")
+                    return  # Skip this chunk to prevent corruption
+            
+            # Initialize streaming state if needed
+            if self._last_streaming_msg_id is None:
                 streaming_message_id = self.conversation_service.get_streaming_message_id()
-                if streaming_message_id and main_chunk.strip():
-                    logger.debug(f"[CHAT_CONTROLLER_DEBUG] Appending main message after </think> with streaming_message_id: {streaming_message_id}")
-                    self.conversation_service.update_streaming_message(main_chunk, append=True)
+                if streaming_message_id:
+                    self._last_streaming_msg_id = streaming_message_id
+            
+            # Check for qwen model format: "Thinking..." and "...done thinking."
+            if not self._in_think_block and "Thinking..." in chunk:
+                # Start of qwen thinking format
+                self._in_think_block = True
+                self._think_completed = False
+                self._streaming_thoughts_buffer = ""
+                logger.debug(f"[CHAT_CONTROLLER_DEBUG] Started qwen thinking format")
                 return
-            else:
-                # Still in <think> block, buffer all
+            
+            # If we're in a think block, accumulate in thought buffer and check for closing tag
+            if self._in_think_block:
                 self._streaming_thoughts_buffer += chunk
+                logger.debug(f"[CHAT_CONTROLLER_DEBUG] Added to thought buffer: '{chunk[:20]}...'")
+                
+                # Check for qwen thinking end: "...done thinking."
+                if "...done thinking." in self._streaming_thoughts_buffer:
+                    # Split the buffer at "...done thinking."
+                    parts = self._streaming_thoughts_buffer.split("...done thinking.", 1)
+                    
+                    # The first part is the thought content (without "...done thinking.")
+                    thought_content = parts[0].strip()
+                    
+                    # The second part (if any) is content that came after "...done thinking."
+                    content_after_think = parts[1].strip() if len(parts) > 1 else ""
+                    
+                    # Store the thought
+                    self.conversation_service.update_streaming_message_thought(thought_content)
+                    logger.debug(f"[CHAT_CONTROLLER_DEBUG] Completed qwen thought: '{thought_content[:50]}...'")
+                    
+                    # Reset think block state
+                    self._in_think_block = False
+                    self._think_completed = True
+                    self._streaming_thoughts_buffer = ""
+                    
+                    # If there's content after "...done thinking.", add it to the main message
+                    if content_after_think:
+                        self.conversation_service.update_streaming_message_content(content_after_think)
+                        logger.debug(f"[CHAT_CONTROLLER_DEBUG] Added to main message after qwen thinking: '{content_after_think[:50]}...'")
+                    
+                    return
+                
+                # Check if we have a complete </think> tag in the accumulated buffer (for other models)
+                elif '</think>' in self._streaming_thoughts_buffer:
+                    # Split the buffer at </think>
+                    parts = self._streaming_thoughts_buffer.split('</think>', 1)
+                    
+                    # The first part is the thought content (without </think>)
+                    thought_content = parts[0].strip()
+                    
+                    # The second part (if any) is content that came after </think>
+                    content_after_think = parts[1].strip() if len(parts) > 1 else ""
+                    
+                    # Store the thought
+                    self.conversation_service.update_streaming_message_thought(thought_content)
+                    logger.debug(f"[CHAT_CONTROLLER_DEBUG] Completed thought: '{thought_content[:50]}...'")
+                    
+                    # Reset think block state
+                    self._in_think_block = False
+                    self._think_completed = True
+                    self._streaming_thoughts_buffer = ""
+                    
+                    # If there's content after </think>, check if it's the same as what's in the thought
+                    if content_after_think:
+                        # Check if the content after </think> is already in the thought
+                        if content_after_think in thought_content:
+                            logger.debug(f"[CHAT_CONTROLLER_DEBUG] Skipping duplicate content after </think>: '{content_after_think[:50]}...'")
+                        else:
+                            self.conversation_service.update_streaming_message_content(content_after_think)
+                            logger.debug(f"[CHAT_CONTROLLER_DEBUG] Added to main message after </think>: '{content_after_think[:50]}...'")
+                    
+                    return
+                
+                # If we're still in think block but think is completed, accumulate in main message
+                elif self._think_completed:
+                    # We're out of think block, add to main message
+                    # But first check if this content is already in the thought
+                    current_thought = self.conversation_service.get_streaming_message_thought()
+                    if current_thought and chunk.strip() in current_thought:
+                        logger.debug(f"[CHAT_CONTROLLER_DEBUG] Skipping duplicate chunk in thought: '{chunk[:20]}...'")
+                        return
+                    
+                    self.conversation_service.update_streaming_message_content(chunk)
+                    logger.debug(f"[CHAT_CONTROLLER_DEBUG] Added to main message (post-think): '{chunk[:20]}...'")
+                    return
+                
+                # Still in think block, continue accumulating
                 return
-        # If not in a <think> block, just append to main message
-        streaming_message_id = self.conversation_service.get_streaming_message_id()
-        if streaming_message_id:
-            logger.debug(f"[CHAT_CONTROLLER_DEBUG] Appending chunk to main message with streaming_message_id: {streaming_message_id}")
-            self.conversation_service.update_streaming_message(chunk, append=True)
-        else:
-            logger.warning(f"[CHAT_CONTROLLER_DEBUG] No streaming message ID available, falling back to old method")
-            self._pending_assistant_response += chunk
+            
+            # If we're not in a think block, check if this chunk starts a new think block
+            if not self._in_think_block:
+                # Check if this chunk starts a new think block
+                if '<think>' in chunk:
+                    # Split at <think> to get content before and after
+                    parts = chunk.split('<think>', 1)
+                    
+                    # If there's content before <think>, add it to main message
+                    if parts[0].strip():
+                        self.conversation_service.update_streaming_message_content(parts[0].strip())
+                        logger.debug(f"[CHAT_CONTROLLER_DEBUG] Added to main message before <think>: '{parts[0].strip()[:20]}...'")
+                    
+                    # Start accumulating in thought buffer
+                    self._in_think_block = True
+                    self._think_completed = False
+                    self._streaming_thoughts_buffer = parts[1] if len(parts) > 1 else ""
+                    logger.debug(f"[CHAT_CONTROLLER_DEBUG] Started thought buffer: '{self._streaming_thoughts_buffer[:20]}...'")
+                    return
+                
+                # If think is completed, add to main message
+                elif self._think_completed:
+                    self.conversation_service.update_streaming_message_content(chunk)
+                    logger.debug(f"[CHAT_CONTROLLER_DEBUG] Added to main message (think completed): '{chunk[:20]}...'")
+                    return
+                
+                # Regular content, add to main message
+                else:
+                    self.conversation_service.update_streaming_message_content(chunk)
+                    logger.debug(f"[CHAT_CONTROLLER_DEBUG] Added to main message: '{chunk[:20]}...'")
+                    return
+            
+        except Exception as e:
+            logger.error(f"[CHAT_CONTROLLER_ERROR] Error in accumulate_assistant_response: {str(e)}")
+            logger.error(f"[CHAT_CONTROLLER_ERROR] Chunk was: '{chunk[:100]}...'")
+            # Don't crash the application, just log the error
 
     def clear_pending_assistant_response(self):
         self._pending_assistant_response = ""
@@ -367,6 +485,7 @@ class ChatController(QObject):
         """Start a new streaming assistant response, resetting streaming state."""
         # Reset streaming state variables
         self._in_think_block = False
+        self._think_completed = False
         self._streaming_thoughts_buffer = ""
         self._last_streaming_chunk = ""
         self._last_streaming_msg_id = None
@@ -376,24 +495,107 @@ class ChatController(QObject):
 
     def finalize_streaming_response(self) -> bool:
         """Finalize the current streaming response, merging any buffered thoughts if present."""
-        # If we have a buffered thoughts block, prepend it to the message content
-        if (hasattr(self, '_streaming_thoughts_buffer') and self._streaming_thoughts_buffer.strip()) or getattr(self, '_in_think_block', False):
+        try:
             streaming_message_id = self.conversation_service.get_streaming_message_id()
-            if streaming_message_id:
-                # Prepend <think>...</think> to the message content
-                thoughts_block = f"<think>{self._streaming_thoughts_buffer}</think>"
-                logger.debug(f"[CHAT_CONTROLLER_DEBUG] Prepending buffered thoughts to streaming message before finalization (forced flush)")
-                self.conversation_service.update_streaming_message(thoughts_block, append=False)
-            # Clear buffer
-            self._streaming_thoughts_buffer = ''
-            self._in_think_block = False
-        # Finalize via conversation service only (do not call super())
-        success = self.conversation_service.finalize_streaming_message()
-        if success:
-            logger.debug("[ID:STREAM002] Successfully finalized streaming response")
-        else:
-            logger.warning("[ID:STREAM003] Failed to finalize streaming response")
-        return success
+            current_msg = self.conversation_service.get_message_by_id(streaming_message_id) if streaming_message_id else None
+            
+            # Handle case where entire response was in think block
+            if current_msg is not None and self._in_think_block and self._streaming_thoughts_buffer.strip():
+                # Extract the actual response from within the thought
+                thought_content = self._streaming_thoughts_buffer.strip()
+                
+                # Check for malformed thought content (repeating patterns)
+                import re
+                # More comprehensive pattern detection for thought content
+                repeating_pattern = re.search(r'(\w+)\1{2,}', thought_content)
+                double_word_pattern = re.search(r'(\w+)\s+\1', thought_content)
+                if repeating_pattern or double_word_pattern:
+                    logger.warning(f"[CHAT_CONTROLLER_DEBUG] Detected malformed thought content with repeating patterns")
+                    logger.warning(f"[CHAT_CONTROLLER_DEBUG] Thought content preview: '{thought_content[:100]}...'")
+                    logger.warning(f"[CHAT_CONTROLLER_DEBUG] Pattern type: repeating={repeating_pattern}, double_word={double_word_pattern}")
+                    # Use a simple fallback response
+                    actual_response = "I apologize, but I'm experiencing some technical difficulties. How can I help you?"
+                else:
+                    # Look for patterns that indicate the actual response within the thought
+                    # Common patterns: "I should say:", "My response:", "Let me respond:", etc.
+                    response_indicators = [
+                        "I should say:", "My response:", "Let me respond:", 
+                        "I'll respond:", "I should respond:", "My answer:",
+                        "Here's my response:", "I'll say:", "I should tell them:"
+                    ]
+                    
+                    actual_response = ""
+                    for indicator in response_indicators:
+                        if indicator in thought_content:
+                            # Extract everything after the indicator
+                            parts = thought_content.split(indicator, 1)
+                            if len(parts) > 1:
+                                actual_response = parts[1].strip()
+                                # Remove any remaining quotes or formatting
+                                actual_response = actual_response.strip('"').strip("'").strip()
+                                logger.debug(f"[CHAT_CONTROLLER_DEBUG] Found response using indicator '{indicator}': '{actual_response[:50]}...'")
+                                break
+                    
+                    # If no indicator found, try to extract the last quoted text as the response
+                    if not actual_response:
+                        quotes = re.findall(r'"([^"]*)"', thought_content)
+                        if quotes:
+                            actual_response = quotes[-1]  # Use the last quoted text
+                            logger.debug(f"[CHAT_CONTROLLER_DEBUG] Found response in quotes: '{actual_response[:50]}...'")
+                    
+                    # If still no response found, use the entire thought as response
+                    if not actual_response:
+                        actual_response = thought_content
+                        logger.debug(f"[CHAT_CONTROLLER_DEBUG] Using entire thought as response: '{actual_response[:50]}...'")
+                
+                # Store the thought and set the actual response as content
+                self.conversation_service.update_streaming_message_thought(thought_content)
+                
+                # Ensure the response is not empty or just punctuation
+                if not actual_response or actual_response.strip() in ['!', '.', ',', ';', ':']:
+                    logger.warning(f"[CHAT_CONTROLLER_DEBUG] Response is empty or just punctuation: '{actual_response}'")
+                    actual_response = "I'm here to help! How can I assist you today?"
+                
+                self.conversation_service.update_streaming_message_content(actual_response)
+                logger.debug(f"[CHAT_CONTROLLER_DEBUG] Final extracted response: '{actual_response[:50]}...'")
+                
+                # Reset the thought buffer and state after processing
+                self._streaming_thoughts_buffer = ''
+                self._in_think_block = False
+                self._think_completed = True
+            
+            elif ((hasattr(self, '_streaming_thoughts_buffer') and self._streaming_thoughts_buffer.strip()) or getattr(self, '_in_think_block', False)) and current_msg is not None:
+                # Store any remaining thought in the thought field
+                remaining_thought = self._streaming_thoughts_buffer.strip()
+                if remaining_thought:
+                    current_thought = current_msg.get('thought', '')
+                    new_thought = current_thought + remaining_thought
+                    self.conversation_service.update_streaming_message_thought(new_thought)
+                self._streaming_thoughts_buffer = ''
+                self._in_think_block = False
+                self.conversation_service.conversation_updated.emit(self.conversation_service.conversation)
+            
+            # Ensure message content is never empty
+            if current_msg is not None and not current_msg['content']:
+                current_msg['content'] = ''
+                self.conversation_service.conversation_updated.emit(self.conversation_service.conversation)
+            
+            # Finalize via conversation service only (do not call super())
+            success = self.conversation_service.finalize_streaming_message()
+            if success:
+                logger.debug("[ID:STREAM002] Successfully finalized streaming response")
+            else:
+                logger.warning("[ID:STREAM003] Failed to finalize streaming response")
+            return success
+        except Exception as e:
+            logger.error(f"[CHAT_CONTROLLER_ERROR] Error in finalize_streaming_response: {str(e)}")
+            # Don't crash the application, just log the error
+            # Try to reset state anyway
+            try:
+                self.reset_streaming_state()
+            except:
+                pass
+            return False
 
     def handle_ai_response(self) -> None:
         """Handle AI response completion using accumulated response."""
@@ -502,59 +704,64 @@ class ChatController(QObject):
         # Emit signal for UI to handle name generation
         self.name_generation_requested.emit(filepath)
         
-    
+    def reset_streaming_state(self):
+        """Reset all streaming state variables for a clean start"""
+        self._streaming_thoughts_buffer = ''
+        self._in_think_block = False
+        self._think_completed = False
+        self._last_streaming_chunk = ""
+        self._last_streaming_msg_id = None
+        self._pending_assistant_response = ""
+        logger.debug("[STREAM_RESET] Reset all streaming state variables")
+
     def start_new_conversation(self) -> None:
         """Start a new conversation"""
-        logger.debug("[ID:0146] DEBUG: start_new_conversation called")
-        
-        # Check if there's already a blank conversation we can reuse
-        existing_blank = self.conversation_manager.find_blank_conversation()
-        if existing_blank:
-            logger.debug(f"[ID:0145] DEBUG: Found existing blank conversation: {existing_blank}")
-            # Use the existing blank conversation instead of creating a new one
-            self.is_new_conversation = True
+        try:
+            logger.debug("[ID:0146] DEBUG: start_new_conversation called")
+            
+            # Reset streaming state for clean start
+            self.reset_streaming_state()
+            
+            # Clear the current conversation
             self.conversation_service.clear_conversation()
             
-            # Set the current conversation file to the existing blank one
-            self.conversation_manager.get_current_metadata().current_conversation_file = existing_blank
-            logger.debug(f"[ID:0144] DEBUG: Reusing existing blank conversation: {existing_blank}")
+            # Reset new conversation flag
+            self.is_new_conversation = True
             
-            # Emit signals to update UI
-            self.conversation_updated.emit()
-            self.status_updated.emit("Reused existing blank conversation")
-            return
-        
-        # No blank conversation found, create a new one
-        logger.debug("[ID:0143] DEBUG: No blank conversation found, creating new one")
-        self.is_new_conversation = True
-        self.conversation_service.clear_conversation()
-        self.conversation_manager.clear_current_conversation()
-        
-        # Initialize a new conversation file for auto-saving
-        from datetime import datetime
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        new_filepath = os.path.join(
-            self.conversation_manager.history_dir, 
-            f"conversation_{timestamp}.json"
-        )
-        self.conversation_manager.get_current_metadata().current_conversation_file = new_filepath
-        logger.debug(f"[ID:0142] DEBUG: Set new conversation file: {new_filepath}")
-        
-        # Create the initial empty conversation file
-        saved_filepath = self.conversation_manager.auto_save_conversation([])
-        if saved_filepath:
-            logger.debug(f"[ID:0141] DEBUG: Initial conversation file created: {saved_filepath}")
-        else:
-            logger.debug("[ID:0140] DEBUG: Failed to create initial conversation file")
-        
-        self.conversation_updated.emit()
-        self.status_updated.emit("Started new conversation")
-    
+            # Create a new conversation file
+            new_filepath = self.conversation_manager.create_new_conversation()
+            if new_filepath:
+                logger.debug(f"[ID:0142] DEBUG: Set new conversation file: {new_filepath}")
+                logger.debug(f"[ID:0141] DEBUG: Initial conversation file created: {new_filepath}")
+                
+                # Trigger name generation for the new conversation
+                self.name_generation_requested.emit(new_filepath)
+            else:
+                logger.error("[ID:0140] DEBUG: Failed to create new conversation file")
+                
+        except Exception as e:
+            logger.error(f"[ID:0139] Error starting new conversation: {e}")
+            self.error_occurred.emit(f"Failed to start new conversation: {str(e)}")
+
     def clear_conversation(self) -> None:
         """Clear the current conversation"""
-        self.conversation_service.clear_conversation()
-        self.conversation_updated.emit()
-        self.status_updated.emit("Conversation cleared")
+        try:
+            logger.debug("[ID:0145] DEBUG: clear_conversation called")
+            
+            # Reset streaming state for clean start
+            self.reset_streaming_state()
+            
+            # Clear the conversation
+            self.conversation_service.clear_conversation()
+            
+            # Reset new conversation flag
+            self.is_new_conversation = True
+            
+            logger.debug("[ID:0144] DEBUG: Conversation cleared successfully")
+            
+        except Exception as e:
+            logger.error(f"[ID:0143] Error clearing conversation: {e}")
+            self.error_occurred.emit(f"Failed to clear conversation: {str(e)}")
     
     def load_conversation(self, filepath: str) -> None:
         """Load a conversation from file"""

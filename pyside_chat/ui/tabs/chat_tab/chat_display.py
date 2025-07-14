@@ -113,6 +113,9 @@ class ChatDisplay(QObject):
                         'tag': 'ai' if role == 'assistant' else 'user',
                         'message_id': msg.get('id', '')
                     }
+                    # Pass the thought field if present
+                    if 'thought' in msg:
+                        renderer_msg['thought'] = msg['thought']
                     renderer_messages.append(renderer_msg)
                     
                     # DEBUG: Log each converted message with actual content
@@ -439,23 +442,12 @@ class ChatDisplay(QObject):
             self.current_response += chunk
             ai_name = self.get_ai_name()
             label = f"{ai_name} ({model_name})" if model_name else ai_name
-            # Always use conversation service - no fallback needed
-            if not hasattr(self.parent, 'chat_controller') or not hasattr(self.parent.chat_controller, 'conversation_service'):
-                logger.error("[PATCH] Conversation service not available - this should not happen!")
-                return
-                
-            conversation_service = self.parent.chat_controller.conversation_service
-            logger.debug(f"[CHAT_DISPLAY_DEBUG] About to call conversation_service.update_streaming_message with chunk: {chunk[:50]}, msg_id: {msg_id}, chunk_index: {chunk_index}")
-            success = conversation_service.update_streaming_message(chunk, append=True, msg_id=msg_id, chunk_index=chunk_index)
-            logger.debug(f"[CHAT_DISPLAY_DEBUG] conversation_service.update_streaming_message returned: {success}")
             
-            if not success:
-                logger.error("[PATCH] conversation_service.update_streaming_message failed!")
-                logger.error(f"[PATCH] Failed to update streaming message with chunk: {chunk[:50]}, msg_id: {msg_id}")
+            # CRITICAL FIX: Don't call conversation_service.update_streaming_message here
+            # The accumulation is already handled by the chat controller in the event bus
+            # Just sync the display with the conversation service
+            self._sync_messages_from_conversation_service()
             
-            # CRITICAL FIX: Don't call _sync_messages_from_conversation_service() here
-            # The conversation service already emits conversation_updated which should trigger UI updates
-            # Calling _sync_messages_from_conversation_service() here creates an infinite loop
         except Exception as e:
             logger.error(f"[PATCH] Error in append_response_chunk: {e}")
             logger.error(traceback.format_exc())
