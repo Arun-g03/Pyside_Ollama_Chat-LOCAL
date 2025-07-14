@@ -1,19 +1,14 @@
+# Shared imports
+from pyside_chat.core.shared_imports.shared_imports import *
+from pyside_chat.core.shared_imports.pyside_imports import *
+
+
 """
 Ollama Service Module
 
 Handles all communication with the Ollama API using both the official library
 and requests as fallback, with proper threading support.
 """
-
-import requests
-import json
-import time
-import traceback
-from typing import List, Dict, Optional, Generator
-from PySide6.QtCore import QObject, Signal, QThread, QTimer
-from pyside_chat.core.logging.logger import CustomLogger
-from pyside_chat.core.logging.helpers import LoggingHelpers
-from pyside_chat.core.threading import get_global_threading_service, get_global_persistent_thread_pool
 
 logger = CustomLogger.get_logger(__name__)
 

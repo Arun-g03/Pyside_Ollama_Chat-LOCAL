@@ -1,17 +1,14 @@
+# Shared imports
+from pyside_chat.core.shared_imports.pyside_imports import *
+from pyside_chat.core.shared_imports.shared_imports import *
+
+
 """
 Memory Service - Handles LLM memory management across conversations
 """
 
-import os
-import json
-import hashlib
-import re
-from typing import List, Dict, Optional, Tuple, Set
-from datetime import datetime, timedelta
-from dataclasses import dataclass, asdict
-from PySide6.QtCore import QObject, Signal
-from pyside_chat.core.logging.logger import CustomLogger
-from pyside_chat.core.logging.helpers import LoggingHelpers
+
+
 # Import semantic search services
 try:
     import sentence_transformers

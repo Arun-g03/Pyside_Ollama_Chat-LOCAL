@@ -1,3 +1,6 @@
+# Shared imports
+from pyside_chat.core.shared_imports.shared_imports import *
+
 """
 Personality Service - Main personality management service
 
@@ -7,7 +10,6 @@ coordinating between the loader, formatter, and other components.
 
 from typing import Dict, List, Optional, Any
 from datetime import datetime
-import os
 
 from pyside_chat.features.personality.models.personality_types import PersonalityTraits, PersonalityPrompt, PersonalityConfig, PersonalityMetadata
 from pyside_chat.features.personality.loader import PersonalityLoader

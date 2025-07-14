@@ -1,16 +1,15 @@
+# Shared imports
+from pyside_chat.core.shared_imports.pyside_imports import *
+from pyside_chat.core.shared_imports.shared_imports import *
+
+
 """
 Voice Controls Component - Voice mode, TTS, STT, and audio level handling
 """
 
-import time
 import logging
 import traceback
 from typing import Dict, Optional
-from PySide6.QtCore import QObject, Signal, Qt, QTimer, QMutex, QMutexLocker
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QProgressBar, QMessageBox
-
-from pyside_chat.core.logging.logger import CustomLogger
-from pyside_chat.core.utils.threading_utils import log_thread_info, safe_signal_connect, safe_signal_disconnect
 
 logger = CustomLogger.get_logger(__name__)
 
@@ -643,9 +642,7 @@ class VoiceControls(QObject):
             # Connect voice service signals with error handling
             try:
                 # Use safe signal connection utility
-                from PySide6.QtCore import Qt
-                from pyside_chat.core.utils.threading_utils import safe_signal_connect
-                
+
                 # Connect voice input signals
                 safe_signal_connect(
                     self.voice_service.voice_input_received,
@@ -746,9 +743,7 @@ class VoiceControls(QObject):
             
             # Disconnect signals with error handling
             try:
-                from PySide6.QtCore import Qt
-                from pyside_chat.core.utils.threading_utils import safe_signal_disconnect
-                
+
                 # Disconnect all voice service signals
                 safe_signal_disconnect(self.voice_service.voice_input_received)
                 safe_signal_disconnect(self.voice_service.voice_input_error)
@@ -1130,7 +1125,7 @@ class VoiceControls(QObject):
             logger.debug(f"Voice input received: {text}")
             
             # Use QTimer.singleShot to ensure this runs in the main thread
-            from PySide6.QtCore import QTimer
+
             QTimer.singleShot(0, lambda: self._handle_voice_input_safe(text))
         except Exception as e:
             logger.error(f"Error in on_voice_input_received: {e}")
@@ -1556,8 +1551,7 @@ class VoiceControls(QObject):
         
         # In continuous mode, restart voice input after a short delay
         if self.voice_mode:
-            from PySide6.QtCore import QTimer
-            QTimer.singleShot(500, self._restart_voice_input_after_interruption)
+            self._restart_voice_input_after_interruption()
 
     def on_request_cancelled(self):
         """Handle request cancellation"""
@@ -1570,8 +1564,8 @@ class VoiceControls(QObject):
             
             # In continuous mode, restart voice input after a short delay
             if self.voice_mode:
-                from PySide6.QtCore import QTimer
-                QTimer.singleShot(1000, self._restart_voice_input_after_cancellation)
+                self._restart_voice_input_after_cancellation()
+
         except Exception as e:
             logger.error(f"Error handling request cancellation: {e}")
 

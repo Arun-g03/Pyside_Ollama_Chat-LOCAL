@@ -1,3 +1,7 @@
+# Shared imports
+from pyside_chat.core.shared_imports.pyside_imports import *
+from pyside_chat.core.shared_imports.shared_imports import *
+
 """
 Voice Settings Dialog
 
@@ -8,26 +12,8 @@ Allows users to configure voice input/output settings including:
 - Internet connectivity checks
 """
 
-import os
 from typing import Dict, List, Optional
-from PySide6.QtWidgets import (
-    QDialog,
-    QVBoxLayout,
-    QHBoxLayout,
-    QLabel,
-    QComboBox,
-    QPushButton,
-    QGroupBox,
-    QCheckBox,
-    QMessageBox,
-    QProgressBar,
-    QTextEdit,
-    QTabWidget,
-    QWidget,
-    QSpinBox,
-    QDoubleSpinBox)
-from PySide6.QtCore import Qt, Signal, QThread, QObject, QTimer
-from PySide6.QtGui import QFont
+
 # Thread-safe alternative to QApplication.processEvents()
 from pyside_chat.core.utils.threading_utils import safe_process_events_alternative
 

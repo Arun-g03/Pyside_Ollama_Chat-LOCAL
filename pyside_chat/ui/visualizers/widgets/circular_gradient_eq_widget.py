@@ -1,8 +1,6 @@
+from pyside_chat.core.shared_imports.pyside_imports import *
 import math
 import random
-from PySide6.QtCore import Qt, QTimer, Slot
-from PySide6.QtGui import QPainter, QColor, QRadialGradient, QBrush, QPainterPath
-from PySide6.QtWidgets import QWidget
 
 class CircularGradientEQWidget(QWidget):
     """

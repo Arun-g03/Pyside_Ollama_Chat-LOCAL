@@ -1,13 +1,15 @@
+# Shared imports
+from pyside_chat.core.shared_imports.pyside_imports import *
+from pyside_chat.core.shared_imports.shared_imports import *
+
+
 """
 Semantic Search Service - Advanced memory retrieval using vector embeddings
 """
 
-import os
-import json
 import pickle
 import numpy as np
 from typing import List, Dict, Tuple, Optional
-from datetime import datetime
 from dataclasses import dataclass
 from sklearn.metrics.pairwise import cosine_similarity
 from pyside_chat.core.logging.logger import CustomLogger
@@ -20,10 +22,6 @@ try:
 except ImportError:
     SENTENCE_TRANSFORMERS_AVAILABLE = False
     logger.warning("[ID:0336] sentence_transformers not available, using fallback mode", print_to_terminal=True)
-
-from PySide6.QtCore import QObject, Signal, QThread, QMutex
-from pyside_chat.core.logging.logger import CustomLogger
-import traceback
 
 logger = CustomLogger.get_logger(__name__)
 

@@ -948,7 +948,7 @@ class RefactoringAnalyzer:
                 analysis.recommendations.append("Extract duplicate classes into a shared base module")
                 analysis.recommendations.append("Consider using inheritance to reduce code duplication")
 
-def save_report_as_markdown(report: RefactoringReport, output_path: str = "Reports/refactoring_report.md"):
+def save_report_as_markdown(report: RefactoringReport, output_path: str = "Development_Tools/Reports/refactoring_report.md"):
     """Save the refactoring report as a markdown file"""
     
     with open(output_path, 'w', encoding='utf-8') as f:
@@ -1170,7 +1170,7 @@ def main():
         if len(report.high_priority_files) > 5:
             print(f"   ... and {len(report.high_priority_files) - 5} more")
     
-    print(f"\n✅ Report saved to: Reports/refactoring_report.md")
+    print(f"\n✅ Report saved to: Development_Tools/Reports/refactoring_report.md")
 
 if __name__ == "__main__":
     main() 

@@ -1,3 +1,8 @@
+# Shared imports
+from pyside_chat.core.shared_imports.shared_imports import *
+from pyside_chat.core.shared_imports.pyside_imports import *
+
+
 """
 Logging Helpers Module
 
@@ -8,10 +13,7 @@ and reduce code duplication throughout the application.
 import logging
 import traceback
 import threading
-import time
 from typing import Optional, Dict, List
-from PySide6.QtCore import QThread, QObject, Signal
-from pyside_chat.core.logging.logger import CustomLogger
 
 logger = CustomLogger.get_logger(__name__)
 

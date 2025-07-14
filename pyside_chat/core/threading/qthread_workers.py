@@ -1,3 +1,8 @@
+# Shared imports
+from pyside_chat.core.shared_imports.pyside_imports import *
+from pyside_chat.core.shared_imports.shared_imports import *
+
+
 """
 QThread-based workers for long-running, persistent tasks.
 
@@ -8,14 +13,6 @@ These workers are designed for tasks that need:
 - Complex state management
 - Reusable configuration for persistent thread pools
 """
-
-from PySide6.QtCore import QObject, Signal, QThread, Qt
-import requests
-import json
-import time
-import traceback
-from typing import Dict, List, Any, Optional
-from pyside_chat.core.logging.logger import CustomLogger
 
 logger = CustomLogger.get_logger(__name__)
 
@@ -449,7 +446,6 @@ class MonitoringWorker(StreamingWorker):
             alert_threshold = self._configuration.get('alert_threshold', alert_threshold)
             
             import psutil
-            import time
             
             while self._running and not self._should_stop:
                 try:

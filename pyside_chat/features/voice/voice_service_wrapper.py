@@ -1,3 +1,4 @@
+from pyside_chat.core.shared_imports.pyside_imports import *
 """
 Voice Service Wrapper
 
@@ -6,10 +7,6 @@ for running voice services in a separate process.
 """
 
 from typing import Dict, Any, Optional
-from PySide6.QtCore import QObject, Signal
-
-from pyside_chat.core.logging.logger import CustomLogger
-from pyside_chat.features.voice.orchestrator import VoiceProcessManager as VoiceProcessManager
 
 logger = CustomLogger.get_logger(__name__)
 
@@ -56,19 +53,7 @@ class VoiceServiceWrapper(QObject):
             self.process_manager = create_voice_process_manager()
             
             # Connect signals from process manager with QueuedConnection for thread safety
-            from PySide6.QtCore import Qt
-            self.process_manager.voice_input_received.connect(self.voice_input_received.emit, Qt.ConnectionType.QueuedConnection)
-            self.process_manager.voice_input_error.connect(self.voice_input_error.emit, Qt.ConnectionType.QueuedConnection)
-            self.process_manager.tts_started.connect(self.tts_started.emit, Qt.ConnectionType.QueuedConnection)
-            self.process_manager.tts_finished.connect(self.tts_finished.emit, Qt.ConnectionType.QueuedConnection)
-            self.process_manager.tts_error.connect(self.tts_error.emit, Qt.ConnectionType.QueuedConnection)
-            self.process_manager.recording_started.connect(self.recording_started.emit, Qt.ConnectionType.QueuedConnection)
-            self.process_manager.recording_stopped.connect(self.recording_stopped.emit, Qt.ConnectionType.QueuedConnection)
-            self.process_manager.recording_error.connect(self.recording_error.emit, Qt.ConnectionType.QueuedConnection)
-            self.process_manager.voice_processing_started.connect(self.voice_processing_started.emit, Qt.ConnectionType.QueuedConnection)
-            self.process_manager.voice_processing_finished.connect(self.voice_processing_finished.emit, Qt.ConnectionType.QueuedConnection)
-            self.process_manager.state_updated.connect(self._update_cached_state_from_signal, Qt.ConnectionType.QueuedConnection)
-            
+
             # Connect interruption signals if they exist
             if hasattr(self.process_manager, 'user_interrupted'):
                 self.process_manager.user_interrupted.connect(self.user_interrupted.emit, Qt.ConnectionType.QueuedConnection)
@@ -89,19 +74,7 @@ class VoiceServiceWrapper(QObject):
             self.direct_service = VoiceService.get_instance()
             
             # Connect signals from direct service with QueuedConnection for thread safety
-            from PySide6.QtCore import Qt
-            self.direct_service.voice_input_received.connect(self.voice_input_received.emit, Qt.ConnectionType.QueuedConnection)
-            self.direct_service.voice_input_error.connect(self.voice_input_error.emit, Qt.ConnectionType.QueuedConnection)
-            self.direct_service.tts_started.connect(self.tts_started.emit, Qt.ConnectionType.QueuedConnection)
-            self.direct_service.tts_finished.connect(self.tts_finished.emit, Qt.ConnectionType.QueuedConnection)
-            self.direct_service.tts_error.connect(self.tts_error.emit, Qt.ConnectionType.QueuedConnection)
-            self.direct_service.recording_started.connect(self.recording_started.emit, Qt.ConnectionType.QueuedConnection)
-            self.direct_service.recording_stopped.connect(self.recording_stopped.emit, Qt.ConnectionType.QueuedConnection)
-            self.direct_service.recording_error.connect(self.recording_error.emit, Qt.ConnectionType.QueuedConnection)
-            self.direct_service.voice_processing_started.connect(self.voice_processing_started.emit, Qt.ConnectionType.QueuedConnection)
-            self.direct_service.voice_processing_finished.connect(self.voice_processing_finished.emit, Qt.ConnectionType.QueuedConnection)
-            self.direct_service.audio_level_changed.connect(self.audio_level_changed.emit, Qt.ConnectionType.QueuedConnection)
-            
+
             # Connect interruption signals
             self.direct_service.user_interrupted.connect(self.user_interrupted.emit, Qt.ConnectionType.QueuedConnection)
             self.direct_service.request_cancelled.connect(self.request_cancelled.emit, Qt.ConnectionType.QueuedConnection)
@@ -112,7 +85,7 @@ class VoiceServiceWrapper(QObject):
             self.direct_service.voice_service_ready.connect(self._on_voice_service_ready)
             
             # Set up a timer to check if the service becomes ready
-            from PySide6.QtCore import QTimer
+
             self._ready_check_timer = QTimer()
             self._ready_check_timer.timeout.connect(self._check_service_readiness)
             self._ready_check_timer.start(1000)  # Check every second

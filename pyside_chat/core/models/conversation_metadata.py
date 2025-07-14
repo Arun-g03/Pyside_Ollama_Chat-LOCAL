@@ -1,15 +1,15 @@
+# Shared imports
+from pyside_chat.core.shared_imports.pyside_imports import *
+from pyside_chat.core.shared_imports.shared_imports import *
+
+
 """
 Conversation Metadata Model - Extracted from ollama_chat.py
 Handles conversation metadata and persistence.
 """
 
 from dataclasses import dataclass, field
-from datetime import datetime
 from typing import Optional, Dict, Any
-import json
-import os
-from PySide6.QtCore import QObject, Signal
-from pyside_chat.core.logging.logger import CustomLogger
 
 logger = CustomLogger.get_logger(__name__)
 

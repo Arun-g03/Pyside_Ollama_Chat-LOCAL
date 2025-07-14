@@ -1,21 +1,16 @@
+# Shared imports
+from pyside_chat.core.shared_imports.pyside_imports import *
+from pyside_chat.core.shared_imports.shared_imports import *
+
+
+from pyside_chat.core.models.conversation_metadata import ConversationManager
+from pyside_chat.features.chat.summarization.summarization_service import SummarizationService
+from pyside_chat.core.models.conversation_metadata import ConversationMetadata
+
 """
 Chat Navigation Widget
 Displays a list of previous conversations for easy navigation.
 """
-
-from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QListWidget, 
-                               QListWidgetItem, QPushButton, QLabel, QFrame,
-                               QMenu, QMessageBox, QInputDialog)
-from PySide6.QtCore import Signal, Qt, QTimer
-from PySide6.QtGui import QFont, QIcon, QCursor
-import os
-import time
-from datetime import datetime
-from typing import List, Tuple, Optional
-
-from pyside_chat.core.models.conversation_metadata import ConversationManager, ConversationMetadata
-from pyside_chat.features.chat.summarization.summarization_service import SummarizationService
-
 
 class ChatNavigationWidget(QWidget):
     """Widget for navigating between previous conversations"""

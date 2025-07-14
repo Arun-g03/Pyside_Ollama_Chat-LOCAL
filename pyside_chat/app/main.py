@@ -1,11 +1,8 @@
+from pyside_chat.core.shared_imports.pyside_imports import *
 """
 Ollama Chat Main Window - Refactored Version
 This is the refactored main window that uses modular components for better separation of concerns.
 """
-
-from PySide6.QtWidgets import QMainWindow
-from PySide6.QtCore import QEvent
-import traceback
 
 # Import our modular components
 from pyside_chat.app.service_manager import ServiceManager
@@ -115,10 +112,7 @@ class OllamaChat(QMainWindow):
             if not self.ui_manager.get_chat_tab():
                 logger.warning("[SETUP WARNING] Chat tab not available during connection setup")
                 # Wait a bit and try again
-                from PySide6.QtCore import QTimer
-                QTimer.singleShot(100, self._setup_connections)
-                return
-            
+
             # Now set up connections
             self.event_handler.setup_connections()
             logger.info("[ID:0235] EventBus connections set up successfully")

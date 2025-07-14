@@ -1,15 +1,13 @@
+from pyside_chat.core.shared_imports.pyside_imports import *
+from pyside_chat.core.shared_imports.shared_imports import *
+
+from pyside_chat.ui.tabs.chat_tab.chat_renderer import ChatRenderer
+
 """
 Chat Display Component - Message display and editing functionality
 """
 
-import logging
-from typing import Optional
-from PySide6.QtCore import QObject, Signal, QEvent, Qt
-from PySide6.QtWidgets import QTextEdit, QScrollArea, QPushButton
-from PySide6.QtGui import QTextCursor
 
-from pyside_chat.ui.tabs.chat_tab.chat_renderer import ChatRenderer
-from pyside_chat.core.logging.logger import CustomLogger
 
 logger = CustomLogger.get_logger(__name__)
 
@@ -162,8 +160,7 @@ class ChatDisplay(QObject):
     
     def show_message_edit_dialog(self, message_index: int, current_content: str):
         """Show dialog to edit a message"""
-        from PySide6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QTextEdit, QPushButton, QLabel
-        
+
         dialog = QDialog(self.parent)
         dialog.setWindowTitle("Edit Message")
         dialog.setModal(True)
@@ -320,8 +317,7 @@ class ChatDisplay(QObject):
         """Force an immediate update of the chat display"""
         try:
             # Ensure we're in the main thread
-            from PySide6.QtCore import QTimer
-            
+
             # Force immediate update using thread-safe alternative
             QTimer.singleShot(0, self._force_render_display)
                 

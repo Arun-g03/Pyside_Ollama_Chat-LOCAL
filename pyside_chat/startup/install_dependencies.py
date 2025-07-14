@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# Shared imports
+from pyside_chat.core.shared_imports.shared_imports import *
+
+
 """
 PySide Chat System - Dependency Installation Script
 
@@ -6,9 +10,6 @@ This script installs all required dependencies in stages with proper error handl
 """
 
 import subprocess
-import sys
-import os
-import time
 from typing import List, Dict, Tuple, Optional
 import shutil
 import ctypes

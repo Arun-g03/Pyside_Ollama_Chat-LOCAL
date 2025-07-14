@@ -1,3 +1,6 @@
+# Shared imports
+
+
 """
 Internet Connection Test Utility
 
@@ -9,7 +12,6 @@ import socket
 import urllib.request
 import urllib.error
 from typing import List, Tuple
-import time
 
 
 class InternetConnectionTester:

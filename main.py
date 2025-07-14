@@ -1,6 +1,8 @@
-import sys
-import traceback
-from PySide6.QtWidgets import QApplication
+# Shared imports
+from pyside_chat.core.shared_imports.shared_imports import *
+from pyside_chat.core.shared_imports.pyside_imports import *
+
+
 from pyside_chat.core.logging.logger import CustomLogger
 from pyside_chat.app.main import OllamaChat
 from pyside_chat.core.threading import get_global_threading_service, shutdown_global_threading_service

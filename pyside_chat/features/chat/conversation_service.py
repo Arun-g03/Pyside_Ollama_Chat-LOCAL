@@ -1,13 +1,14 @@
+# Shared imports
+from pyside_chat.core.shared_imports.pyside_imports import *
+from pyside_chat.core.shared_imports.shared_imports import *
+
+
 """
 Conversation Service - Extracted from ollama_chat.py
 Handles conversation state, adding/loading/saving/clearing messages, and persistence.
 """
 
-import os
-import json
 from typing import List, Dict, Optional
-from PySide6.QtCore import QObject, Signal
-from pyside_chat.core.logging.logger import CustomLogger
 
 logger = CustomLogger.get_logger(__name__)
 
@@ -48,7 +49,6 @@ class ConversationService(QObject):
     def _add_to_memory(self, role: str, content: str):
         """Add message to memory service"""
         if not self.current_conversation_id:
-            from datetime import datetime
             self.current_conversation_id = f"conv_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         
         # Determine importance based on role and content length
@@ -97,7 +97,6 @@ class ConversationService(QObject):
     def save_conversation(self, filename: Optional[str] = None) -> str:
         """Save the conversation to a file"""
         if not filename:
-            from datetime import datetime
             filename = f"conversation_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
         filepath = os.path.join(self.history_dir, filename)
         

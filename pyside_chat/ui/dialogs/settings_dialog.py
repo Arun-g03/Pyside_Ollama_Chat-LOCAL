@@ -1,11 +1,5 @@
-from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, 
-                               QComboBox, QPushButton, QCheckBox, QSpinBox,
-                               QFormLayout, QGroupBox, QMessageBox, QTabWidget,
-                               QWidget)
-from PySide6.QtCore import Qt, QTimer
-from pyside_chat.config.config_manager import ConfigManager
-from pyside_chat.core.logging.logger import CustomLogger
 
+from pyside_chat.core.shared_imports.pyside_imports import *
 logger = CustomLogger.get_logger(__name__)
 
 class SettingsDialog(QDialog):

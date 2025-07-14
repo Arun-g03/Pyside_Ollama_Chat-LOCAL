@@ -1,13 +1,10 @@
+from pyside_chat.core.shared_imports.pyside_imports import *
 """
 SpellChecker Widget - Extracted from ollama_chat.py
 Handles spell checking functionality for text input widgets.
 """
 
 import re
-from PySide6.QtCore import Qt, QTimer
-from PySide6.QtWidgets import QTextEdit, QMenu
-from PySide6.QtGui import QTextCharFormat, QColor, QTextCursor, QAction
-from pyside_chat.utils.Logging.Custom_Logger import CustomLogger
 
 logger = CustomLogger.get_logger(__name__)
 

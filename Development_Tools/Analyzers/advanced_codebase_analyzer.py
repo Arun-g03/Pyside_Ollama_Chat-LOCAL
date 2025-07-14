@@ -284,7 +284,7 @@ class AdvancedCodebaseAnalyzer:
                     target_file = target.split('.')[0]
                     self.dependency_graph.add_edge(source, target_file)
     
-    def generate_markdown_report(self, output_file: str = "Reports/advanced_codebase_analysis.md"):
+    def generate_markdown_report(self, output_file: str = "Development_Tools/Reports/advanced_codebase_analysis.md"):
         """Generate a comprehensive markdown report."""
         print(f"📝 Generating advanced markdown report: {output_file}")
         

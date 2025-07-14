@@ -1,3 +1,7 @@
+# Shared imports
+from pyside_chat.core.shared_imports.shared_imports import *
+
+
 """
 Personality Loader - File operations for personality management
 
@@ -5,11 +9,8 @@ This module handles loading and saving personality data from/to JSON files,
 including recursive directory scanning and file path management.
 """
 
-import json
-import os
 from typing import Dict, List, Optional, Any
 from dataclasses import asdict
-from datetime import datetime
 
 from pyside_chat.features.personality.models.personality_types import PersonalityTraits, PersonalityPrompt, PersonalityConfig, PersonalityMetadata
 from pyside_chat.core.logging.logger import CustomLogger
@@ -193,7 +194,6 @@ class PersonalityLoader:
                 os.makedirs(backup_dir)
             
             # Create backup filename with timestamp
-            from datetime import datetime
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             backup_filename = f"{name}_{timestamp}.json"
             backup_filepath = os.path.join(backup_dir, backup_filename)

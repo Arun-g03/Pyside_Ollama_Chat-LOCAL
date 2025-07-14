@@ -1,13 +1,16 @@
+# Shared imports
+from pyside_chat.core.shared_imports.pyside_imports import *
+from pyside_chat.core.shared_imports.shared_imports import *
+
+
+# Import Ollama service
+from pyside_chat.features.ollama.ollama_service import OllamaService
+
 """
 Summarization Service
 Handles AI-powered conversation summarization for generating chat names.
 """
 
-import json
-from typing import List, Dict, Optional
-from PySide6.QtCore import QObject, Signal
-from pyside_chat.features.ollama.ollama_service import OllamaService
-from pyside_chat.core.logging.logger import CustomLogger
 
 logger = CustomLogger.get_logger(__name__)
 

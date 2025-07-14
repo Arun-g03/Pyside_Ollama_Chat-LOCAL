@@ -1,12 +1,10 @@
+from pyside_chat.core.shared_imports.pyside_imports import *
 """
 Threading utilities for safe signal connections and UI updates.
 """
 
 import threading
 from typing import Any, Callable, Optional
-from PySide6.QtCore import QObject, QThread, QMetaObject, Qt, Q_ARG, QTimer
-from PySide6.QtWidgets import QApplication
-from pyside_chat.core.logging.logger import CustomLogger
 
 logger = CustomLogger.get_logger(__name__)
 

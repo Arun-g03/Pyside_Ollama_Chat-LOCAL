@@ -1,19 +1,11 @@
+from pyside_chat.core.shared_imports.pyside_imports import *
+from pyside_chat.core.shared_imports.shared_imports import *
+
+from pyside_chat.features.memory.memory_service import MemoryService
+
 """
 Memory Management Tab - UI for managing LLM memory across conversations
 """
-
-from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QTabWidget, 
-                               QLabel, QSlider, QSpinBox, QCheckBox, QPushButton,
-                               QTextEdit, QListWidget, QListWidgetItem, QGroupBox,
-                               QProgressBar, QComboBox, QLineEdit, QSplitter,
-                               QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox)
-from PySide6.QtCore import Qt, QTimer, Signal
-from PySide6.QtGui import QFont, QColor
-from datetime import datetime
-import hashlib
-from pyside_chat.features.memory.memory_service import MemoryService, MemoryEntry
-from pyside_chat.core.logging.logger import CustomLogger
-from typing import Dict
 
 logger = CustomLogger.get_logger(__name__)
 

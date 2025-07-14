@@ -1,3 +1,8 @@
+# Shared imports
+from pyside_chat.core.shared_imports.shared_imports import *    
+from pyside_chat.core.shared_imports.pyside_imports import *
+
+
 """
 Persistent Thread Pool - Manages long-running threads that stay alive throughout app lifecycle.
 
@@ -7,13 +12,6 @@ This module provides:
 - Better resource management for long-running tasks
 - Unified interface for persistent threading operations
 """
-
-from PySide6.QtCore import QObject, Signal, QThread, QTimer, Qt
-import time
-import traceback
-from typing import Dict, List, Any, Optional, Callable
-from threading import Lock
-from pyside_chat.core.logging.logger import CustomLogger
 
 logger = CustomLogger.get_logger(__name__)
 

@@ -1,22 +1,23 @@
-"""
-UI Manager - Handles UI setup, menu creation, and styling
-"""
+from pyside_chat.core.shared_imports.pyside_imports import *
+from pyside_chat.core.shared_imports.shared_imports import *
 
-from PySide6.QtWidgets import (QMainWindow, QTabWidget, QVBoxLayout, QWidget, QStatusBar,
-                               QMenuBar, QMenu, QMessageBox)
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QIcon, QAction
-from typing import Optional
 
+# Import UI components
 from pyside_chat.ui.tabs.chat_tab.chat_tab import ChatTab
 from pyside_chat.ui.tabs.model_tab import ModelTab
 from pyside_chat.ui.tabs.personality_tab import PersonalityTab
 from pyside_chat.ui.tabs.memory_tab import MemoryTab
-from pyside_chat.config.config_manager import ConfigManager
-from pyside_chat.ui.themes.styles import dark_stylesheet, light_stylesheet
 from pyside_chat.ui.tabs.tab_styles import TabStyles
+from pyside_chat.ui.themes.styles import light_stylesheet, dark_stylesheet
 from pyside_chat.core.utils.prompts import PromptFormatter
-from pyside_chat.core.logging.logger import CustomLogger
+
+# Import ConfigManager
+from pyside_chat.config.config_manager import ConfigManager
+
+
+"""
+UI Manager - Handles UI setup, menu creation, and styling
+"""
 
 logger = CustomLogger.get_logger(__name__)
 

@@ -1,3 +1,7 @@
+# Shared imports
+from pyside_chat.core.shared_imports.pyside_imports import *
+
+
 """
 Usage examples for QThread vs QRunnable in the chat application.
 
@@ -5,18 +9,6 @@ This file demonstrates the clear distinction between:
 - QThread: For long-running, persistent tasks with signal/slot communication
 - QRunnable: For short-lived, fire-and-forget tasks using thread pool
 """
-
-from PySide6.QtCore import QThread, Qt, QMetaObject, Q_ARG
-from PySide6.QtWidgets import QApplication
-import time
-import traceback
-from typing import Dict, List, Any
-
-from .qthread_workers import ChatStreamingWorker, AudioStreamingWorker
-from .qrunnable_tasks import MessageProcessingTask, FileProcessingTask
-from .thread_pool_manager import get_global_thread_pool_manager
-from .thread_monitor import get_global_thread_monitor
-from pyside_chat.core.logging.logger import CustomLogger
 
 logger = CustomLogger.get_logger(__name__)
 

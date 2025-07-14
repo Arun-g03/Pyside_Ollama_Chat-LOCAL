@@ -1,16 +1,11 @@
+from pyside_chat.core.shared_imports.pyside_imports import *
+from pyside_chat.core.shared_imports.shared_imports import *
 """
 Input Controls Component - Message input, send/cancel buttons, and settings
 """
 
 import logging
 from typing import Dict, Optional
-from PySide6.QtCore import QObject, Signal, QEvent, Qt
-from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QTextEdit, QPushButton, 
-    QLabel, QComboBox, QSpinBox, QGroupBox, QSlider
-)
-
-from pyside_chat.core.logging.logger import CustomLogger
 
 logger = CustomLogger.get_logger(__name__)
 

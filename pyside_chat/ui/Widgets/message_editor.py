@@ -1,15 +1,8 @@
+from pyside_chat.core.shared_imports.pyside_imports import *
 """
 Editable Message Widget
 Provides an editable message interface with edit/save/cancel functionality.
 """
-
-from PySide6.QtWidgets import (
-    QWidget, QHBoxLayout, QVBoxLayout, QPushButton, 
-    QTextEdit, QLabel, QFrame
-)
-from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QTextCursor
-
 
 class EditableMessageWidget(QWidget):
     """Widget for displaying and editing user messages"""

@@ -1,19 +1,11 @@
+from pyside_chat.core.shared_imports.shared_imports import *
+from pyside_chat.core.shared_imports.pyside_imports import *
+from pyside_chat.features.personality.models.personality_model import PersonalityModel
+
 """
 Personality Tab - Extracted from ollama_chat.py
 Handles personality selection and management.
 """
-
-from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
-                               QComboBox, QPushButton, QTextEdit, QLineEdit,
-                               QFormLayout, QGroupBox, QCheckBox, QSpinBox,
-                               QMessageBox, QListWidget, QSplitter, QTabWidget,
-                               QScrollArea, QDoubleSpinBox)
-from PySide6.QtCore import Signal, Qt
-from pyside_chat.features.personality.models.personality_model import PersonalityModel
-from pyside_chat.features.personality.models.personality_types import PersonalityTraits, PersonalityPrompt, PersonalityConfig, PersonalityMetadata
-from datetime import datetime
-from pyside_chat.core.logging.logger import CustomLogger
-import traceback
 
 logger = CustomLogger.get_logger(__name__)
 

@@ -1,13 +1,10 @@
+from pyside_chat.core.shared_imports.pyside_imports import *
 """
 Message Box Utilities - Replace QMessageBox with copy-enabled dialogs
 """
 
 import traceback
 from typing import Optional
-from PySide6.QtWidgets import QMessageBox
-
-from pyside_chat.ui.dialogs.error_dialog import show_error_dialog, ErrorDialog
-from pyside_chat.core.logging.logger import CustomLogger
 
 logger = CustomLogger.get_logger(__name__)
 

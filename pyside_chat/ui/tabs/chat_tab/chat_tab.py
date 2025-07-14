@@ -1,25 +1,14 @@
+# Shared imports
+from pyside_chat.core.shared_imports.pyside_imports import *
+from pyside_chat.core.shared_imports.shared_imports import *
+from pyside_chat.ui.Widgets.chat_navigation import ChatNavigationWidget
+
+
 """
 Main Chat Tab Component - Orchestrates all chat interface components
 """
 
-import sys
-import os
-import time
-import json
-import logging
-import traceback
-from typing import Optional, Dict, Any
-from PySide6.QtCore import Qt, Signal, QTimer, QThread, QMutex, QWaitCondition, QEvent
-from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QSplitter, QScrollArea, QMessageBox,
-    QDialog, QPushButton, QLabel
-)
 
-from pyside_chat.ui.Widgets.chat_navigation import ChatNavigationWidget
-from pyside_chat.ui.dialogs.voice_settings_dialog import VoiceSettingsDialog
-from pyside_chat.core.models.conversation_metadata import ConversationManager
-from pyside_chat.features.ollama.ollama_service import OllamaService
-from pyside_chat.core.logging.logger import CustomLogger
 
 # Import modular components
 from .chat_display import ChatDisplay
@@ -389,7 +378,7 @@ class ChatTab(QWidget):
                     ]
                     
                     # Connect all signals with QueuedConnection for thread safety
-                    from PySide6.QtCore import Qt
+
                     for signal, slot, signal_name in signal_slot_pairs:
                         try:
                             # Connect signal directly (PySide6 handles duplicates gracefully)
@@ -672,7 +661,7 @@ class ChatTab(QWidget):
         self._tts_finished_handled = True
         
         # Reset the flag after a short delay
-        from PySide6.QtCore import QTimer
+
         QTimer.singleShot(100, lambda: setattr(self, '_tts_finished_handled', False))
         
         logger.debug("TTS finished in chat tab")
@@ -917,7 +906,7 @@ class ChatTab(QWidget):
     def append_response_chunk(self, chunk: str, model_name: str = None):
         """Append a streaming response chunk"""
         # Use QTimer.singleShot to ensure this method runs in the main thread
-        from PySide6.QtCore import QTimer
+
         QTimer.singleShot(0, lambda: self._append_response_chunk_safe(chunk, model_name))
     
     def _append_response_chunk_safe(self, chunk: str, model_name: str = None):
@@ -1028,9 +1017,7 @@ class ChatTab(QWidget):
     def start_streaming(self):
         """Start streaming state"""
         # Use QTimer.singleShot to ensure this method runs in the main thread
-        from PySide6.QtCore import QTimer
-        QTimer.singleShot(0, self._start_streaming_safe)
-    
+
     def _start_streaming_safe(self):
         """Start streaming state safely in the main thread"""
         # CRITICAL FIX: Ensure we don't start streaming if already streaming
@@ -1071,9 +1058,7 @@ class ChatTab(QWidget):
     def stop_streaming(self):
         """Stop streaming state"""
         # Use QTimer.singleShot to ensure this method runs in the main thread
-        from PySide6.QtCore import QTimer
-        QTimer.singleShot(0, self._stop_streaming_safe)
-    
+
     def _stop_streaming_safe(self):
         """Stop streaming state safely in the main thread"""
         logger.debug("[DEBUG] stop_streaming called. is_streaming: %s, voice_mode: %s", self.is_streaming, self.voice_mode)
@@ -1125,9 +1110,7 @@ class ChatTab(QWidget):
     def force_enable_send_button(self):
         """Force enable the send button and ensure UI is updated"""
         # Use QTimer.singleShot to ensure this method runs in the main thread
-        from PySide6.QtCore import QTimer
-        QTimer.singleShot(0, self._force_enable_send_button_safe)
-    
+
     def _force_enable_send_button_safe(self):
         """Force enable the send button safely in the main thread"""
         logger.debug("Force enabling send button")
@@ -1358,5 +1341,3 @@ class ChatTab(QWidget):
                 self.speak_ai_response(tts_text)
             except Exception as e:
                 logger.error(f"[VOICE] Error finalizing streaming or starting TTS: {e}")
-        from PySide6.QtCore import QTimer
-        QTimer.singleShot(0, _finalize_and_start) 

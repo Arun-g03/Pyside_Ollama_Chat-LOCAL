@@ -1,11 +1,12 @@
+# Shared imports
+from pyside_chat.core.shared_imports.pyside_imports import *
+
+
 """
 StreamingAudioWorker - split from coqui_tts.py
 """
-import time
 import numpy as np
 from typing import List, Optional
-from PySide6.QtCore import QObject, Signal
-from pyside_chat.core.logging.logger import CustomLogger
 
 logger = CustomLogger.get_logger(__name__)
 

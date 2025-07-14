@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Shared imports
+from pyside_chat.core.shared_imports.shared_imports import *
+
 """
 Dependency Checker Module
 
@@ -8,9 +11,7 @@ the application.
 """
 
 import subprocess
-import sys
 import importlib
-import os
 from typing import List, Dict, Tuple, Optional
 
 class DependencyChecker:

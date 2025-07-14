@@ -1,3 +1,7 @@
+from pyside_chat.core.shared_imports.pyside_imports import *
+from pyside_chat.core.shared_imports.shared_imports import *
+from pyside_chat.ui.themes.message_formatter import MessageFormatter
+
 """
 Chat Renderer - Localized rendering system for chat display
 """
@@ -5,12 +9,6 @@ Chat Renderer - Localized rendering system for chat display
 import logging
 import traceback
 from typing import List, Dict, Optional
-from PySide6.QtCore import QObject, QTimer, Signal
-from PySide6.QtWidgets import QTextEdit
-from PySide6.QtGui import QTextCursor
-
-from pyside_chat.core.logging.logger import CustomLogger
-from pyside_chat.ui.themes.message_formatter import MessageFormatter
 
 logger = CustomLogger.get_logger(__name__)
 
@@ -300,9 +298,7 @@ class ChatRenderer(QObject):
             self._render_timer.stop()
         
         # Reset render counter periodically
-        from PySide6.QtCore import QTimer
-        QTimer.singleShot(1000, self._reset_render_counter)
-    
+
     def _reset_render_counter(self):
         """Reset the render counter periodically"""
         self._render_counter = 0
@@ -310,7 +306,7 @@ class ChatRenderer(QObject):
     def _render_chat_display(self):
         """Render the chat display with all messages"""
         try:
-            from PySide6.QtWidgets import QApplication
+
             current_thread = QApplication.instance().thread()
             main_thread = self.chat_display.thread()
             

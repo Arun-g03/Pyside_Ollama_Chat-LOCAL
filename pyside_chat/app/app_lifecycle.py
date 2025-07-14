@@ -1,17 +1,15 @@
+# Shared imports
+from pyside_chat.core.shared_imports.pyside_imports import *
+from pyside_chat.core.shared_imports.shared_imports import *
+from pyside_chat.core.utils.prompts import PromptFormatter
+
+
 """
 Application Lifecycle Manager - Handles startup, shutdown, and error handling
 """
 
 import subprocess
-import time
 import threading
-from PySide6.QtWidgets import QMainWindow, QMessageBox, QProgressDialog
-from PySide6.QtCore import Qt, QTimer
-from typing import Optional
-from pyside_chat.core.logging.logger import CustomLogger
-from pyside_chat.core.logging.helpers import LoggingHelpers
-from pyside_chat.core.utils.prompts import PromptFormatter
-import traceback
 
 logger = CustomLogger.get_logger(__name__)
 

@@ -1,11 +1,8 @@
+from pyside_chat.core.shared_imports.pyside_imports import *
 """
 Ollama Chat Main Window - Refactored Version
 This is the refactored main window that uses modular components for better separation of concerns.
 """
-
-from PySide6.QtWidgets import QMainWindow
-from PySide6.QtCore import QEvent
-import traceback
 
 # Import our modular components
 from pyside_chat.app.service_manager import ServiceManager

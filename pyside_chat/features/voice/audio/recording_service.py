@@ -1,13 +1,12 @@
-import os
+from pyside_chat.core.shared_imports.pyside_imports import *
 import threading
-import time
 import wave
-import pyaudio
 from typing import Optional
-from PySide6.QtCore import QObject, Signal
-from pyside_chat.core.logging.logger import CustomLogger
-from pyside_chat.core.utils.threading_utils import log_thread_info, is_main_thread
-import numpy as np
+
+# Shared imports
+from pyside_chat.core.shared_imports.shared_imports import *
+
+from pyside_chat.core.shared_imports.audio_imports import *
 
 logger = CustomLogger.get_logger(__name__)
 

@@ -1,3 +1,4 @@
+from pyside_chat.core.shared_imports.pyside_imports import *
 """
 Threading Integration - Bridges new QThread/QRunnable architecture with existing event system.
 
@@ -6,11 +7,6 @@ This module provides:
 - Modern QThread/QRunnable architecture
 - Unified interface for all threading operations
 """
-
-from PySide6.QtCore import QObject, Signal
-from typing import Dict, List, Any, Optional
-from pyside_chat.core.logging.logger import CustomLogger
-from pyside_chat.core.threading import get_global_threading_service
 
 logger = CustomLogger.get_logger(__name__)
 

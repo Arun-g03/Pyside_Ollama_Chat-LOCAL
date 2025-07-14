@@ -1,3 +1,8 @@
+# Shared imports
+from pyside_chat.core.shared_imports.pyside_imports import *
+from pyside_chat.core.shared_imports.shared_imports import *
+
+
 """
 Thread monitor for tracking and debugging QThread and QRunnable usage.
 
@@ -7,12 +12,6 @@ This monitor provides:
 - Resource usage analysis
 - Debug information for threading issues
 """
-
-from PySide6.QtCore import QObject, Signal, QThread, QTimer
-import time
-import traceback
-from typing import Dict, List, Any, Optional
-from pyside_chat.core.logging.logger import CustomLogger
 
 logger = CustomLogger.get_logger(__name__)
 

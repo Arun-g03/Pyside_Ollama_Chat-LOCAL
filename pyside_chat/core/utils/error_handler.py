@@ -1,3 +1,6 @@
+# Shared imports
+
+
 """
 Error Handler Module
 
@@ -8,7 +11,6 @@ across the application.
 
 import functools
 import traceback
-import time
 from typing import Callable, Any, Optional, Dict, Type, Union
 from contextlib import contextmanager
 from pyside_chat.utils.Logging.logging_helpers import LoggingHelpers
@@ -344,7 +346,6 @@ def safe_json_parse(json_str: str, default: Any = None) -> Any:
         Parsed JSON object or default value
     """
     try:
-        import json
         return json.loads(json_str)
     except json.JSONDecodeError as e:
         LoggingHelpers.log_json_parsing_error(e, json_str)

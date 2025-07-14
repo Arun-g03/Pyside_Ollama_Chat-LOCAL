@@ -1,3 +1,7 @@
+from pyside_chat.core.shared_imports.shared_imports import *
+from pyside_chat.core.shared_imports.pyside_imports import *
+
+
 """
 QRunnable-based tasks for short-lived, fire-and-forget operations.
 
@@ -9,15 +13,6 @@ These tasks are designed for:
 - Resource cleanup
 - UI updates for streaming content
 """
-
-from PySide6.QtCore import QRunnable, QObject, Signal, QMetaObject, Q_ARG, Qt, QThread
-from PySide6.QtWidgets import QApplication
-import time
-import traceback
-import json
-import re
-from typing import Dict, List, Any, Optional, Callable
-from pyside_chat.core.logging.logger import CustomLogger
 
 logger = CustomLogger.get_logger(__name__)
 
@@ -56,9 +51,7 @@ class StreamingUpdateTask(QRunnable, QObject):
                 raise RuntimeError("No QApplication instance found")
             
             # Use QTimer.singleShot for safer main thread execution
-            from PySide6.QtCore import QTimer
-            QTimer.singleShot(0, self._execute_target)
-            
+
             logger.debug(f"[DEBUG] StreamingUpdateTask completed - ID: {self.task_id}")
             
         except Exception as e:

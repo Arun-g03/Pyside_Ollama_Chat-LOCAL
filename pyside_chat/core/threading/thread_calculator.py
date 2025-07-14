@@ -1,9 +1,11 @@
+# Shared imports
+from pyside_chat.core.shared_imports.shared_imports import *
+
 """
 Thread Calculator Utility
 Calculates optimal thread counts for different use cases based on system capabilities.
 """
 
-import os
 import psutil
 import platform
 from typing import Dict, Any, Optional

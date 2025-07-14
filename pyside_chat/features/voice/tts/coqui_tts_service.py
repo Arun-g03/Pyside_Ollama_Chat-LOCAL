@@ -1,3 +1,9 @@
+# Shared imports
+from pyside_chat.core.shared_imports.pyside_imports import *
+from pyside_chat.core.shared_imports.shared_imports import *
+
+from pyside_chat.core.shared_imports.audio_imports import *
+
 """
 Coqui TTS Service Module
 
@@ -10,24 +16,10 @@ Features include:
 - Streaming synthesis for real-time playback
 """
 
-import os
-import tempfile
-import time
-import json
 import numpy as np
 import io
 import wave
 from typing import List, Dict, Optional, Tuple, Generator
-from PySide6.QtCore import QObject, Signal, QTimer, QThread
-from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
-from PySide6.QtCore import QUrl
-import pyaudio
-import threading
-
-from pyside_chat.core.logging.logger import CustomLogger
-from pyside_chat.core.utils.threading_utils import log_thread_info, safe_signal_connect, safe_signal_disconnect, safe_thread_cleanup
-from .streaming_audio_player import StreamingAudioPlayer
-from .streaming_audio_worker import StreamingAudioWorker
 
 logger = CustomLogger.get_logger(__name__)
 
@@ -224,7 +216,6 @@ class CoquiTTSService(QObject):
         return model_name.replace('/', '--')
 
     def _is_model_fully_downloaded(self, model_name: str) -> bool:
-        import os
         folder = self._model_name_to_folder(model_name)
         for base_dir in self._get_tts_model_cache_dirs():
             model_dir = os.path.join(base_dir, folder)
@@ -240,7 +231,6 @@ class CoquiTTSService(QObject):
         return False
 
     def get_downloaded_models(self) -> list:
-        import os
         downloaded = set()
         cache_dirs = self._get_tts_model_cache_dirs()
         logger.info(f"[CoquiTTS] Checking model cache directories: {cache_dirs}")
@@ -367,7 +357,7 @@ class CoquiTTSService(QObject):
             self._tts_in_progress = False
         finally:
             # Reset the flag after a short delay to allow for cleanup
-            from PySide6.QtCore import QTimer
+
             QTimer.singleShot(100, lambda: setattr(self, '_tts_in_progress', False))
     
     def _generate_and_play_audio(self, text: str):
@@ -393,7 +383,7 @@ class CoquiTTSService(QObject):
                 self.stop_playback()
                 
             # Wait a moment for cleanup to complete
-            from PySide6.QtCore import QTimer
+
             QTimer.singleShot(100, lambda: None)  # Small delay to ensure cleanup
             
             # Reset streaming state
@@ -427,8 +417,7 @@ class CoquiTTSService(QObject):
             self.streaming_player.player_started.connect(self._on_player_started)
             
             # Use QueuedConnection for thread safety - connect to our signal, not directly to emit
-            from PySide6.QtCore import Qt
-            self.streaming_player.audio_level_changed.connect(
+
                 lambda level: self.audio_level_changed.emit(level), 
                 Qt.ConnectionType.QueuedConnection
             )
@@ -443,7 +432,7 @@ class CoquiTTSService(QObject):
             self.streaming_player.set_volume(0.5)
             
             # Start streaming in a separate QThread instead of threading.Thread
-            from PySide6.QtCore import QThread
+
             self.streaming_thread = QThread()
             self.streaming_worker = StreamingAudioWorker(text, self)
             self.streaming_worker.moveToThread(self.streaming_thread)
@@ -649,7 +638,7 @@ class CoquiTTSService(QObject):
             self._emitting_finished = True
             self.tts_finished.emit()
             # Reset the flag after a short delay
-            from PySide6.QtCore import QTimer
+
             QTimer.singleShot(100, lambda: setattr(self, '_emitting_finished', False))
     
     def cleanup(self):

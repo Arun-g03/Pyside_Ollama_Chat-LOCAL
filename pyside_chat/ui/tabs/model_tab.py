@@ -1,16 +1,8 @@
+from pyside_chat.core.shared_imports.pyside_imports import *
 """
 Model Tab - Extracted from ollama_chat.py
 Handles model management, pulling, removing, and updating models.
 """
-
-from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QListWidget, 
-                               QPushButton, QLineEdit, QLabel, QTextEdit, 
-                               QGroupBox, QProgressBar, QMessageBox, QSplitter)
-from PySide6.QtCore import Signal, Qt, QTimer
-from PySide6.QtGui import QFont, QTextCursor
-
-from pyside_chat.features.ollama.ollama_service import OllamaService
-
 
 class ModelTab(QWidget):
     """Model management tab"""

@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
+# Shared imports
+from pyside_chat.core.shared_imports.shared_imports import *
+
 """
 Examples of using the Thread Calculator with existing threading components
 """
 
-import sys
-import os
 
 # Add the project root to the path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..'))

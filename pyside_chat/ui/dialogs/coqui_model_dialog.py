@@ -1,19 +1,14 @@
+# Shared imports
+from pyside_chat.core.shared_imports.pyside_imports import *
+from pyside_chat.core.shared_imports.shared_imports import *
+
 """
 Coqui TTS Model Selection Dialog
 
 Allows users to select Coqui TTS models and speakers with download functionality.
 """
 
-import os
 from typing import List, Dict, Optional
-from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, 
-                               QComboBox, QPushButton, QGroupBox, QListWidget,
-                               QListWidgetItem, QProgressBar, QMessageBox,
-                               QSplitter, QWidget, QTextEdit)
-from PySide6.QtCore import Qt, Signal, QThread, QTimer
-from PySide6.QtGui import QFont
-
-from pyside_chat.core.logging.logger import CustomLogger
 
 logger = CustomLogger.get_logger(__name__)
 

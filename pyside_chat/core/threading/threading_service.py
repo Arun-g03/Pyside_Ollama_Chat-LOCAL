@@ -1,3 +1,8 @@
+# Shared imports
+from pyside_chat.core.shared_imports.pyside_imports import *
+from pyside_chat.core.shared_imports.shared_imports import *
+
+
 """
 Threading Service - Integrates QThread/QRunnable architecture with existing chat system.
 
@@ -7,12 +12,6 @@ This service provides:
 - Modern threading architecture without legacy patterns
 - Persistent thread pool integration for better resource management
 """
-
-from PySide6.QtCore import QObject, Signal, QThread, Qt
-import time
-import traceback
-from typing import Dict, List, Any, Optional, Callable
-from pyside_chat.core.logging.logger import CustomLogger
 
 # Import new threading components
 from .qthread_workers import ChatStreamingWorker, AudioStreamingWorker, MonitoringWorker

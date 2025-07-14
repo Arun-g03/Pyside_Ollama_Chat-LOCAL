@@ -1,14 +1,11 @@
+# Shared imports
+from pyside_chat.core.shared_imports.pyside_imports import *
+from pyside_chat.core.shared_imports.shared_imports import *
+
+
 """
 Event Bus - Manages signal connections and event handling
 """
-
-from PySide6.QtCore import QTimer, QThread, Qt
-from typing import Optional, Callable, Dict, Any, List
-from pyside_chat.core.logging.logger import CustomLogger
-from pyside_chat.core.threading.threading_service import get_global_threading_service
-import traceback
-import time
-from PySide6.QtWidgets import QWidget, QMessageBox
 
 logger = CustomLogger.get_logger(__name__)
 logger.info("Starting Event Bus", print_to_terminal=True)
@@ -591,7 +588,7 @@ class EventBus:
                     chat_tab.is_streaming = True
                 
                 # Use QTimer.singleShot to ensure UI updates happen in main thread
-                from PySide6.QtCore import QTimer
+
                 QTimer.singleShot(0, lambda: self._update_chat_display_safe(chunk))
                 
         except Exception as e:
@@ -613,7 +610,7 @@ class EventBus:
             logger.debug(f"[ID:0197] Received worker progress: {progress}")
             
             # Update UI with progress using main thread
-            from PySide6.QtCore import QTimer
+
             QTimer.singleShot(0, lambda: self._update_progress_safe(progress))
             
         except Exception as e:
@@ -641,9 +638,7 @@ class EventBus:
             logger.debug("[ID:0193A] Called chat_controller.handle_ai_response")
             
             # Update UI streaming state using main thread
-            from PySide6.QtCore import QTimer
-            QTimer.singleShot(0, self._stop_streaming_safe)
-            
+
             # Only clean up if TTS is also finished
             if self._tts_finished:
                 logger.debug("[ID:0191] Both worker and TTS finished, cleaning up")
@@ -674,7 +669,7 @@ class EventBus:
         
         try:
             # Stop UI streaming state using main thread
-            from PySide6.QtCore import QTimer
+
             QTimer.singleShot(0, lambda: self._handle_worker_error_safe(error_message))
             
         except Exception as e:
@@ -706,9 +701,7 @@ class EventBus:
         self._tts_finished = True
         
         # Use QTimer.singleShot to ensure this runs in the main thread
-        from PySide6.QtCore import QTimer
-        QTimer.singleShot(100, self._handle_tts_finished_delayed)
-    
+
     def _handle_tts_finished_delayed(self):
         """Handle TTS finished with a delay to ensure proper coordination"""
         try:
@@ -728,7 +721,7 @@ class EventBus:
         # Only clean up if both worker and TTS are finished
         if not self._tts_finished:
             # TTS not finished yet, wait a bit more but don't recurse
-            from PySide6.QtCore import QTimer
+
             logger.debug("[ID:0181] TTS not finished, scheduling cleanup for later")
             QTimer.singleShot(500, self._cleanup_worker_thread_once)
             return
@@ -1054,9 +1047,7 @@ class EventBus:
     
     def _show_ollama_connection_error(self, context="general", force_show=False):
         """Show a user-friendly error dialog when Ollama is not running"""
-        from PySide6.QtCore import Qt
-        from PySide6.QtWidgets import QMessageBox
-        
+
         if not force_show and self.ollama_error_shown:
             return
         if not force_show:

@@ -1,14 +1,6 @@
-"""
-Chat Controller Module
-
-This module implements the mediator pattern to separate business logic from UI components.
-It handles communication between different services and UI components.
-"""
-
-import os
-from typing import Dict, Any, Optional, List
-from PySide6.QtCore import QObject, Signal
-import re
+# Shared imports
+from pyside_chat.core.shared_imports.pyside_imports import *
+from pyside_chat.core.shared_imports.shared_imports import *
 
 from pyside_chat.features.ollama.ollama_service import OllamaService
 from pyside_chat.features.chat.conversation_service import ConversationService
@@ -16,9 +8,16 @@ from pyside_chat.features.chat.enhancers.enhancement_service import EnhancementS
 from pyside_chat.features.memory.memory_service import MemoryService
 from pyside_chat.core.models.conversation_metadata import ConversationManager
 from pyside_chat.core.utils.prompts import PromptFormatter
-from pyside_chat.core.logging.helpers import LoggingHelpers
 from pyside_chat.features.chat.complexity_analyser.complexity_analyzer import RequestComplexityAnalyzer
-from pyside_chat.core.logging.logger import CustomLogger
+
+"""
+Chat Controller Module
+
+This module implements the mediator pattern to separate business logic from UI components.
+It handles communication between different services and UI components.
+"""
+
+from typing import Dict, Any, Optional, List
 
 logger = CustomLogger.get_logger(__name__)
 

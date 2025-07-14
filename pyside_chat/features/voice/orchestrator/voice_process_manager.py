@@ -1,3 +1,8 @@
+# Shared imports
+from pyside_chat.core.shared_imports.pyside_imports import *
+from pyside_chat.core.shared_imports.shared_imports import *
+
+
 """
 Voice Process Manager
 
@@ -7,16 +12,7 @@ Handles communication between the main application and voice services via multip
 
 import multiprocessing as mp
 import pickle
-import time
-import os
-import sys
 from typing import Dict, Any, Optional, Callable
-from PySide6.QtCore import QObject, Signal, QThread, QTimer
-from PySide6.QtWidgets import QApplication
-import queue
-import traceback
-
-from pyside_chat.core.logging.logger import CustomLogger
 
 logger = CustomLogger.get_logger(__name__)
 

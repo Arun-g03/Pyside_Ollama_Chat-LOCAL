@@ -1,6 +1,7 @@
 import subprocess
-import sys
-import os
+
+# Shared imports
+from pyside_chat.core.shared_imports.shared_imports import *
 
 def install_python_requirements(requirements_path=None):
     # If no path provided, look in the same directory as this script

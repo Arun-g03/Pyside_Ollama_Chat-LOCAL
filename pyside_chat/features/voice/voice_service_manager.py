@@ -1,3 +1,4 @@
+from pyside_chat.core.shared_imports.pyside_imports import *
 """
 Voice Service Manager
 
@@ -7,10 +8,6 @@ to prevent multiple initializations and reduce resource usage.
 
 import threading
 from typing import Optional, Dict, Any
-from PySide6.QtCore import QObject, Signal
-
-from pyside_chat.core.logging.logger import CustomLogger
-from pyside_chat.features.voice.voice_service import VoiceService
 
 logger = CustomLogger.get_logger(__name__)
 

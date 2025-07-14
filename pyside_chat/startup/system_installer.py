@@ -1,8 +1,9 @@
-import sys
 import shutil
 import subprocess
 import ctypes
-import os
+
+# Shared imports
+from pyside_chat.core.shared_imports.shared_imports import *
 
 def is_admin():
     try:

@@ -1,16 +1,16 @@
+# Shared imports
+from pyside_chat.core.shared_imports.pyside_imports import *
+from pyside_chat.core.shared_imports.shared_imports import *
+
+
 """
 Fallback Semantic Search Service - Simple keyword-based memory retrieval
 Used when sentence_transformers is not available
 """
 
-import os
-import json
 import re
 from typing import List, Dict, Tuple, Optional
-from datetime import datetime
 from dataclasses import dataclass
-from PySide6.QtCore import QObject, Signal, QMutex
-from pyside_chat.core.logging.logger import CustomLogger
 
 logger = CustomLogger.get_logger(__name__)
 

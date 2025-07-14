@@ -1,3 +1,4 @@
+from pyside_chat.core.shared_imports.pyside_imports import *
 """
 EQ Visualizer Component - Audio visualization for the chat interface
 """
@@ -5,8 +6,6 @@ EQ Visualizer Component - Audio visualization for the chat interface
 import logging
 import random
 from typing import Dict, Optional
-from PySide6.QtCore import QObject, Signal
-from PySide6.QtWidgets import QWidget, QScrollArea
 
 # Import EQ visualizer components
 from pyside_chat.ui.visualizers.widgets.circle_eq_widget import CircleEQWidget
@@ -367,7 +366,7 @@ class EQVisualizer(QObject):
             logger.debug(f"[EQ DEBUG] Generated {len(bar_values)} bar values: {[f'{v:.3f}' for v in bar_values]}")
             
             # Use QTimer.singleShot to ensure UI update happens in main thread
-            from PySide6.QtCore import QTimer
+
             QTimer.singleShot(0, lambda: self._update_eq_widget_safe(bar_values))
             logger.debug(f"[EQ DEBUG] Scheduled EQ widget update for main thread")
             

@@ -6,14 +6,13 @@ This script packages the PySide Chat application into a distributable format.
 Supports multiple packaging options: PyInstaller, cx_Freeze, and simple distribution.
 """
 
-import os
-import sys
-import subprocess
-import shutil
-import json
-import platform
-from pathlib import Path
-from typing import List, Dict, Optional
+# Shared imports
+from pyside_chat.core.shared_imports.shared_imports import *
+from pyside_chat.core.shared_imports.pyside_imports import *
+
+from pyside_chat.core.shared_imports.shared_imports import *
+
+
 
 class AppPackager:
     def __init__(self):

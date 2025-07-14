@@ -1,3 +1,8 @@
+# Shared imports
+from pyside_chat.core.shared_imports.pyside_imports import *
+from pyside_chat.core.shared_imports.shared_imports import *
+
+
 """
 Thread pool manager for handling QRunnable tasks efficiently.
 
@@ -7,13 +12,6 @@ This manager provides:
 - Resource monitoring
 - Error handling and recovery
 """
-
-from PySide6.QtCore import QThreadPool, QObject, Signal, QTimer
-import time
-import traceback
-from typing import Dict, List, Any, Optional, Callable
-from pyside_chat.core.logging.logger import CustomLogger
-from .thread_calculator import get_pool_thread_count
 
 logger = CustomLogger.get_logger(__name__)
 

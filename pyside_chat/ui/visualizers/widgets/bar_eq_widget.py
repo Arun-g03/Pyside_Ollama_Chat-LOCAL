@@ -1,7 +1,5 @@
-from PySide6.QtCore import Qt, QTimer, Slot
-from PySide6.QtGui import QPainter, QColor, QLinearGradient, QBrush
-from PySide6.QtWidgets import QWidget
 
+from pyside_chat.core.shared_imports.pyside_imports import *
 class BarEQWidget(QWidget):
     """
     A bar equalizer widget that displays audio frequency data as animated bars.

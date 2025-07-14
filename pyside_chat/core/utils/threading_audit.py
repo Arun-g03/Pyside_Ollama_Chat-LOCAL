@@ -1,20 +1,16 @@
+# Shared imports
+from pyside_chat.core.shared_imports.pyside_imports import *
+from pyside_chat.core.shared_imports.shared_imports import *
+
 """
 Thread Safety Auditor for PySide6 Chat Application
 
 This module provides comprehensive thread safety analysis and reporting.
 """
 
-import os
-import sys
 import threading
 import traceback
 from typing import Dict, List, Any, Optional
-from pathlib import Path
-
-from PySide6.QtCore import QThread, QTimer
-from PySide6.QtWidgets import QApplication, QWidget
-
-from pyside_chat.core.logging.logger import CustomLogger
 
 logger = CustomLogger.get_logger(__name__)
 

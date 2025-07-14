@@ -1,12 +1,7 @@
+from pyside_chat.core.shared_imports.pyside_imports import *
 """
 Custom Error Dialog with Copy Button
 """
-
-from PySide6.QtWidgets import QMessageBox, QPushButton, QHBoxLayout, QVBoxLayout, QWidget, QTextEdit, QLabel, QDialog
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QClipboard, QFont
-
-from pyside_chat.core.logging.logger import CustomLogger
 
 logger = CustomLogger.get_logger(__name__)
 
@@ -86,7 +81,7 @@ class ErrorDialog(QMessageBox):
                 """)
                 
                 # Reset button text after 2 seconds
-                from PySide6.QtCore import QTimer
+
                 QTimer.singleShot(2000, lambda: self.reset_copy_button(copy_button))
                 
         except Exception as e:
@@ -252,7 +247,7 @@ class DetailedErrorDialog(QDialog):
                     """)
                     
                     # Reset button text after 2 seconds
-                    from PySide6.QtCore import QTimer
+
                     QTimer.singleShot(2000, lambda: self.reset_copy_button(child))
                     break
                     

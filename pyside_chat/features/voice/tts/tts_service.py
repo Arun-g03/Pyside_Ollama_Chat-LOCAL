@@ -1,8 +1,9 @@
-import os
+from pyside_chat.core.shared_imports.pyside_imports import *
 import subprocess
 import platform
-from PySide6.QtCore import QObject, Signal, QTimer, Qt
-from pyside_chat.core.logging.logger import CustomLogger
+
+# Shared imports
+from pyside_chat.core.shared_imports.shared_imports import *
 
 logger = CustomLogger.get_logger(__name__)
 

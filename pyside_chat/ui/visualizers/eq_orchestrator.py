@@ -1,11 +1,12 @@
-import sys
+from pyside_chat.core.shared_imports.pyside_imports import *
 import math
 import random
 import threading
-import os
-from PySide6.QtCore import Qt, QTimer, QMetaObject, Slot, Signal
-from PySide6.QtGui import QPainter, QColor, QLinearGradient, QBrush, QRadialGradient, QPainterPath, QTransform, QPen
-from PySide6.QtWidgets import (
+
+# Shared imports
+from pyside_chat.core.shared_imports.shared_imports import *
+from pyside_chat.core.shared_imports.audio_imports import *
+
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QFileDialog, QComboBox, QCheckBox
 )
 import sounddevice as sd

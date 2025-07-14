@@ -1,3 +1,9 @@
+# Shared imports
+from pyside_chat.core.shared_imports.pyside_imports import *
+from pyside_chat.core.shared_imports.shared_imports import *
+
+from pyside_chat.core.shared_imports.audio_imports import *
+
 """
 Voice Service Module
 
@@ -7,27 +13,9 @@ Handles voice input/output functionality including:
 - Voice recording and playback
 """
 
-import os
-import tempfile
-import time
 import wave
-import pyaudio
 import speech_recognition as sr
 from typing import Optional, Callable
-from PySide6.QtCore import QObject, Signal, QTimer, Qt
-from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
-from PySide6.QtCore import QUrl
-import subprocess
-import platform
-import json
-import traceback
-
-from pyside_chat.core.logging.logger import CustomLogger
-from pyside_chat.core.logging.helpers import LoggingHelpers
-from pyside_chat.core.utils.threading_utils import log_thread_info
-from pyside_chat.features.voice.tts.tts_service import TTSService
-from pyside_chat.core.threading import get_global_threading_service, get_global_persistent_thread_pool
-from pyside_chat.core.threading.qrunnable_tasks import DataProcessingTask
 
 logger = CustomLogger.get_logger(__name__)
 
@@ -72,7 +60,7 @@ class VoiceService(QObject):
         
         # Check if we're in a Qt context
         try:
-            from PySide6.QtCore import QCoreApplication
+
             self.in_qt_context = QCoreApplication.instance() is not None
         except Exception as e:
             logger.warning(f"Failed to check Qt context: {e}")
@@ -178,12 +166,7 @@ class VoiceService(QObject):
             if self.tts_service:
                 try:
                     # Connect TTS signals with QueuedConnection for thread safety
-                    from PySide6.QtCore import Qt
-                    self.tts_service.tts_started.connect(self.tts_started.emit, Qt.ConnectionType.QueuedConnection)
-                    self.tts_service.tts_finished.connect(self._on_tts_finished, Qt.ConnectionType.QueuedConnection)
-                    self.tts_service.tts_error.connect(self._on_tts_error, Qt.ConnectionType.QueuedConnection)
-                    self.tts_service.audio_level_changed.connect(self.audio_level_changed.emit, Qt.ConnectionType.QueuedConnection)
-                    self.tts_service.eq_bars_changed.connect(self.eq_bars_changed.emit, Qt.ConnectionType.QueuedConnection)
+
                     logger.info("TTS service signals connected", print_to_terminal=True)
                 except Exception as e:
                     logger.error(f"Failed to connect TTS signals: {e}", print_to_terminal=True)
@@ -1048,7 +1031,6 @@ class VoiceService(QObject):
             return
         
         # Calculate cutoff time for age-based cleanup
-        import time
         cutoff_time = time.time() - (max_age_days * 24 * 60 * 60)
         
         files_to_delete = []

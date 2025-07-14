@@ -1,8 +1,9 @@
-import os
+from pyside_chat.core.shared_imports.pyside_imports import *
 import wave
-import json
-from PySide6.QtCore import QObject, Signal
-from pyside_chat.core.logging.logger import CustomLogger
+
+# Shared imports
+from pyside_chat.core.shared_imports.shared_imports import *
+
 
 logger = CustomLogger.get_logger(__name__)
 
@@ -135,7 +136,6 @@ class STTService(QObject):
             result = rec.FinalResult()
             print(f"[DEBUG] Final result: {result}")
             
-            import json
             text = json.loads(result).get("text", "")
             print(f"[DEBUG] STT final result: {text}")
             logger.debug(f"STT final result: {text}", print_to_terminal=True)
