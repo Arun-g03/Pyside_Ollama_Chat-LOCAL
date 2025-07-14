@@ -99,6 +99,12 @@ class OllamaChat(QMainWindow):
             chat_tab = self.ui_manager.get_chat_tab()
             if chat_tab:
                 self.chat_controller.set_chat_tab_reference(chat_tab)
+                # Set chat controller reference in chat tab
+                chat_tab.set_chat_controller(self.chat_controller)
+            
+            # CRITICAL FIX: Reconnect chat tab signals after UI setup
+            # This ensures signals are connected even if chat tab is recreated
+            self.event_handler.reconnect_chat_tab_signals()
             
             logger.info("[ID:0234] UI setup completed successfully")
             

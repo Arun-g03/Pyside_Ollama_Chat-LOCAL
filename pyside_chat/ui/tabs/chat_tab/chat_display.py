@@ -72,7 +72,69 @@ class ChatDisplay(QObject):
             from pyside_chat.core.utils.streaming_handler import StreamingHandler
             self.streaming_handler = StreamingHandler(render_callback=None, ai_name=ai_name)
             self.streaming_handler.message_edited.connect(self.on_message_edited)
+            
+            # CRITICAL FIX: Sync messages from conversation service to renderer
+            # This ensures the renderer uses the same message list as the conversation service
+            self._sync_messages_from_conversation_service()
+    
+    def _sync_messages_from_conversation_service(self):
+        """Sync messages from conversation service to renderer to prevent duplicates"""
+        try:
+            if hasattr(self.parent, 'chat_controller') and hasattr(self.parent.chat_controller, 'conversation_service'):
+                conversation_service = self.parent.chat_controller.conversation_service
+                messages = conversation_service.get_messages()
+                
+                # DEBUG: Log the raw conversation service messages with actual content
+                logger.debug(f"[SYNC_DEBUG] Raw conversation service messages: " + 
+                           ", ".join([f"{{role: {msg.get('role')}, content_len: {len(msg.get('content', ''))}, content_preview: '{msg.get('content', '')[:50]}', is_streaming: {msg.get('is_streaming')}, id: {msg.get('id')}}}" for msg in messages]), print_to_terminal=True)
+                
+                # Get the AI name from the personality
+                ai_name = self.get_ai_name()
+                logger.debug(f"[SYNC_DEBUG] Using AI name: {ai_name}", print_to_terminal=True)
+                
+                renderer_messages = []
+                for i, msg in enumerate(messages):
+                    # Convert role to sender name
+                    role = msg.get('role', 'unknown')
+                    if role == 'assistant':
+                        sender = ai_name  # Use personality name for assistant messages
+                    elif role == 'user':
+                        sender = 'You'  # Use 'You' for user messages
+                    elif role == 'system':
+                        sender = 'System'  # Use 'System' for system messages
+                    else:
+                        sender = role  # Fallback to role name
+                    
+                    renderer_msg = {
+                        'sender': sender,
+                        'content': msg.get('content', ''),
+                        'is_code': msg.get('is_code', False),
+                        'is_streaming': msg.get('is_streaming', False),
+                        'tag': 'ai' if role == 'assistant' else 'user',
+                        'message_id': msg.get('id', '')
+                    }
+                    renderer_messages.append(renderer_msg)
+                    
+                    # DEBUG: Log each converted message with actual content
+                    logger.debug(f"[SYNC_DEBUG] Converted message {i}: {{sender: {renderer_msg['sender']}, content_len: {len(renderer_msg['content'])}, content_preview: '{renderer_msg['content'][:50]}', is_streaming: {renderer_msg['is_streaming']}, message_id: {renderer_msg['message_id']}}}", print_to_terminal=True)
+                
+                # Only filter out streaming messages that are truly empty (no content at all)
+                renderer_messages = [m for m in renderer_messages if not (m.get('is_streaming') and not m.get('content'))]
+                logger.debug(f"[PATCH] Renderer message list after conversion: " + ', '.join([f"{{id: {m.get('message_id')}, sender: {m['sender']}, is_streaming: {m.get('is_streaming')}, content: {m['content'][:30]}}}" for m in renderer_messages]), print_to_terminal=True)
+                if hasattr(self, 'chat_renderer') and self.chat_renderer:
+                    self.chat_renderer.sync_messages_from_conversation(renderer_messages)
+                    logger.debug(f"[SYNC] Synced {len(renderer_messages)} messages from conversation service to renderer")
+        except Exception as e:
+            logger.error(f"Error syncing messages from conversation service: {e}")
+    
+    def sync_messages_from_conversation_service(self):
         
+        import traceback
+        stack = ''.join(traceback.format_stack(limit=10))
+        logger.debug(f"[ID:CT001] caller traceback:\n{stack}", print_to_terminal=True)
+        """Public method to sync messages from conversation service to renderer"""
+        self._sync_messages_from_conversation_service()
+    
     def get_ai_name(self) -> str:
         """Get the AI name - this should be overridden by parent"""
         return "AI"
@@ -290,29 +352,31 @@ class ChatDisplay(QObject):
             self.chat_renderer.edit_message(message_index, new_content)
     
     def append_to_chat(self, sender: str, message: str, is_code: bool = False):
-        """Add a message to the chat display"""
+        import traceback
+        
         tag = "user" if sender == "You" else "ai"
         # If sender is System and message is a personality switch
         if sender == "System" and message.startswith("Switched to "):
             if hasattr(self, 'last_message_type') and self.last_message_type == "system_switch":
                 # Update the last system switch message instead of appending
-                self.chat_renderer.update_last_system_switch(message)
+                logger.warning("[PATCH] System switch update path should be handled by conversation service only.", print_to_terminal=True)
                 return
             else:
                 self.last_message_type = "system_switch"
         else:
             self.last_message_type = tag
-        
-        # Ensure chat renderer exists
-        if not hasattr(self, 'chat_renderer') or not self.chat_renderer:
-            logger.error("Chat renderer not available for chat display")
+        # Always use conversation service - no fallback needed
+        if not hasattr(self.parent, 'chat_controller') or not hasattr(self.parent.chat_controller, 'conversation_service'):
+            logger.error("[PATCH] Conversation service not available for message creation - this should not happen!")
             return
             
-        # Add message to renderer and sync with streaming handler
-        message_id = self.chat_renderer.add_message(sender, message, is_code, False, tag)
-        self.streaming_handler.append_message(sender, message, is_code, tag)
-        self.chat_renderer.request_render()
-        
+        conversation_service = self.parent.chat_controller.conversation_service
+        # Convert sender format for conversation service
+        role = "user" if sender == "You" else "assistant" if sender == "AI" else "system"
+        conversation_service.add_message(role, message)
+        # Always sync after update
+        self._sync_messages_from_conversation_service()
+    
     def force_update_display(self):
         """Force an immediate update of the chat display"""
         try:
@@ -334,7 +398,7 @@ class ChatDisplay(QObject):
                 # Ensure scroll to bottom
                 if hasattr(self, 'chat_display') and self.chat_display:
                     cursor = self.chat_display.textCursor()
-                    cursor.movePosition(cursor.End)
+                    cursor.movePosition(QTextCursor.MoveOperation.End)
                     self.chat_display.setTextCursor(cursor)
                     
                     # Force update using thread-safe alternative
@@ -343,32 +407,58 @@ class ChatDisplay(QObject):
         except Exception as e:
             logger.error(f"Error in _force_render_display: {e}")
     
-    def append_response_chunk(self, chunk: str, model_name: str = None):
-        """Append a streaming response chunk"""
-        if not hasattr(self, 'is_streaming'):
-            self.is_streaming = False
+    def append_response_chunk(self, chunk: str, model_name: str = None, msg_id: str = None, chunk_index: int = None):
+        """Append a streaming response chunk, now with msg_id and chunk_index support and duplicate guard."""
+        import traceback
+        try:
+            logger.debug(f"[PATCH] append_response_chunk called with chunk: {chunk[:50]}, model_name: {model_name}, msg_id: {msg_id}, chunk_index: {chunk_index}")
             
-        if not self.is_streaming:
-            self.start_streaming()
+            # Validate chunk content
+            if not chunk or not chunk.strip():
+                logger.warning(f"[PATCH] Received empty or whitespace-only chunk in append_response_chunk, skipping")
+                return
             
-        if not hasattr(self, 'current_response'):
-            self.current_response = ""
+            # Validate message ID
+            if not msg_id or msg_id == "None" or msg_id == "msg_id_placeholder":
+                logger.error(f"[PATCH] Invalid message ID received in append_response_chunk: '{msg_id}'")
+                logger.error(f"[PATCH] This will cause the chunk to not be properly associated with a streaming message")
             
-        # For typewriter effect: accumulate for logging but pass individual chunks to renderer
-        self.current_response += chunk  # accumulate here for logging only!
-        ai_name = self.get_ai_name()
-        label = f"{ai_name} ({model_name})" if model_name else ai_name
-        
-        # Ensure chat renderer exists
-        if hasattr(self, 'chat_renderer') and self.chat_renderer:
-            # CRITICAL FIX: Pass the individual chunk for typewriter effect
-            # The renderer will append it to the existing content
-            self.chat_renderer.update_streaming_message(
-                chunk, "ai", None, False, tag="ai", append=True
-            )
-        else:
-            logger.error("Chat renderer not available for response chunk")
-        
+            if not hasattr(self, '_last_chunk_index'):
+                self._last_chunk_index = -1
+            # Guard: Only process if chunk_index is new
+            if chunk_index is not None and chunk_index <= self._last_chunk_index:
+                logger.warning(f"[PATCH] Duplicate or out-of-order chunk_index {chunk_index} (last: {self._last_chunk_index}), ignoring chunk.")
+                return
+            self._last_chunk_index = chunk_index if chunk_index is not None else self._last_chunk_index
+            if not hasattr(self, 'is_streaming'):
+                self.is_streaming = False
+            if not self.is_streaming:
+                self.start_streaming()
+            if not hasattr(self, 'current_response'):
+                self.current_response = ""
+            self.current_response += chunk
+            ai_name = self.get_ai_name()
+            label = f"{ai_name} ({model_name})" if model_name else ai_name
+            # Always use conversation service - no fallback needed
+            if not hasattr(self.parent, 'chat_controller') or not hasattr(self.parent.chat_controller, 'conversation_service'):
+                logger.error("[PATCH] Conversation service not available - this should not happen!")
+                return
+                
+            conversation_service = self.parent.chat_controller.conversation_service
+            logger.debug(f"[CHAT_DISPLAY_DEBUG] About to call conversation_service.update_streaming_message with chunk: {chunk[:50]}, msg_id: {msg_id}, chunk_index: {chunk_index}")
+            success = conversation_service.update_streaming_message(chunk, append=True, msg_id=msg_id, chunk_index=chunk_index)
+            logger.debug(f"[CHAT_DISPLAY_DEBUG] conversation_service.update_streaming_message returned: {success}")
+            
+            if not success:
+                logger.error("[PATCH] conversation_service.update_streaming_message failed!")
+                logger.error(f"[PATCH] Failed to update streaming message with chunk: {chunk[:50]}, msg_id: {msg_id}")
+            
+            # CRITICAL FIX: Don't call _sync_messages_from_conversation_service() here
+            # The conversation service already emits conversation_updated which should trigger UI updates
+            # Calling _sync_messages_from_conversation_service() here creates an infinite loop
+        except Exception as e:
+            logger.error(f"[PATCH] Error in append_response_chunk: {e}")
+            logger.error(traceback.format_exc())
     def start_streaming(self):
         """Start streaming state"""
         if not self.is_streaming:  # Only change state if not already streaming
@@ -376,22 +466,26 @@ class ChatDisplay(QObject):
             self.current_response = ""
             ai_name = self.get_ai_name()
             
-            # Ensure chat renderer exists
-            if hasattr(self, 'chat_renderer') and self.chat_renderer:
-                self.chat_renderer.start_streaming_message(ai_name, tag="ai")
-            else:
-                logger.error("Chat renderer not available for streaming start")
+            # CRITICAL FIX: Don't create a new streaming message here
+            # The streaming message should already be created by the event bus
+            # Just sync the existing messages from conversation service to renderer
+            self._sync_messages_from_conversation_service()
             
     def stop_streaming(self):
         """Stop streaming state"""
         logger.debug("[DEBUG] stop_streaming called. is_streaming: %s", self.is_streaming)
         self.is_streaming = False
         
-        # Ensure chat renderer exists
-        if hasattr(self, 'chat_renderer') and self.chat_renderer:
-            self.chat_renderer.finalize_streaming_message()
-        else:
-            logger.error("Chat renderer not available for streaming stop")
+        # Always use conversation service - no fallback needed
+        if not hasattr(self.parent, 'chat_controller') or not hasattr(self.parent.chat_controller, 'conversation_service'):
+            logger.error("[PATCH] Conversation service not available for streaming stop - this should not happen!")
+            return
+            
+        conversation_service = self.parent.chat_controller.conversation_service
+        conversation_service.finalize_streaming_message()
+        
+        # Sync messages from conversation service to renderer
+        self._sync_messages_from_conversation_service()
         
     def clear_chat(self):
         """Clear the chat display"""

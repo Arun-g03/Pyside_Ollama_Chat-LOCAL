@@ -63,6 +63,8 @@ class ChatRenderer(QObject):
     def add_message(self, sender: str, content: str, is_code: bool = False, 
                    is_streaming: bool = False, tag: str = "ai") -> str:
         """Add a message to the renderer's storage"""
+        import traceback
+        
         message_id = self._get_next_message_id()
         message = {
             'sender': sender,
@@ -157,30 +159,33 @@ class ChatRenderer(QObject):
         try:
             typewriter_enabled = self.config_manager.get("typewriter_enabled", True) if self.config_manager else True
             streaming_msg = self._get_current_streaming_message()
-            if not typewriter_enabled:
-                # Instantly append chunk and render, skip timer
-                if streaming_msg is not None:
-                    if append:
-                        streaming_msg['content'] += content
-                    else:
-                        streaming_msg['content'] = content
-                    streaming_msg['is_code'] = is_code
-                    streaming_msg['tag'] = tag
-                    self.request_render(immediate=True)
-                else:
-                    self.start_streaming_message(sender, tag)
-                    self.update_streaming_message(content, sender, message_id, is_code, tag, append)
-                return
-            # Typewriter effect as before
             if streaming_msg is not None:
-                # Store the chunk for typewriter processing - DON'T update content immediately
-                self._pending_chunk = (content, sender, message_id, is_code, tag, append)
-                if not self._typewriter_timer.isActive():
-                    self._typewriter_timer.start()
+                # Append chunk to existing streaming message
+                if append:
+                    streaming_msg['content'] += content
+                else:
+                    streaming_msg['content'] = content
+                streaming_msg['is_code'] = is_code
+                streaming_msg['tag'] = tag
+                logger.debug(f"[TYPEWRITER] Appended chunk to streaming message: '{content[:50]}'", print_to_terminal=True)
+                self.request_render(immediate=True)
             else:
-                # If no streaming message, start one
-                self.start_streaming_message(sender, tag)
-                self.update_streaming_message(content, sender, message_id, is_code, tag, append)
+                # Only start a new streaming message if this is the first chunk of a new reply
+                if not self.messages or not any(msg.get('is_streaming') for msg in self.messages):
+                    logger.debug(f"[TYPEWRITER] No streaming message found, starting new one for sender: {sender}", print_to_terminal=True)
+                    self.start_streaming_message(sender, tag)
+                    # Now append the chunk to the new streaming message
+                    streaming_msg = self._get_current_streaming_message()
+                    if streaming_msg is not None:
+                        streaming_msg['content'] = content
+                        streaming_msg['is_code'] = is_code
+                        streaming_msg['tag'] = tag
+                        logger.debug(f"[TYPEWRITER] Appended first chunk to new streaming message: '{content[:50]}'", print_to_terminal=True)
+                        self.request_render(immediate=True)
+                    else:
+                        logger.warning("[TYPEWRITER] Failed to create new streaming message for first chunk.", print_to_terminal=True)
+                else:
+                    logger.warning("[TYPEWRITER] No streaming message found, but not starting a new one to avoid duplicates.", print_to_terminal=True)
         except Exception as e:
             logger.error(f"Error updating streaming message: {e}")
             logger.error(traceback.format_exc())
@@ -188,16 +193,14 @@ class ChatRenderer(QObject):
     def finalize_streaming_message(self):
         """Mark the last streaming message as finalized"""
         try:
-            # Find the last streaming message and mark it as not streaming
+            found = False
             for msg in reversed(self.messages):
                 if msg['is_streaming']:
                     msg['is_streaming'] = False
-                    logger.debug(f"[DEBUG] Finalized streaming message: {msg.get('message_id', 'unknown')}")
+                    found = True
                     break
-            
             # Use immediate render for finalization to show completion quickly
             self.request_render(immediate=True)
-            
         except Exception as e:
             logger.error(f"Error finalizing streaming message: {e}")
             logger.error(traceback.format_exc())
@@ -231,8 +234,20 @@ class ChatRenderer(QObject):
         self.messages = handler_messages.copy()
         logger.debug(f"[DEBUG] Synced {len(self.messages)} messages from handler")
     
+    def sync_messages_from_conversation(self, conversation_messages: List[Dict]):
+        """Sync messages from conversation service to renderer (replace, never append)."""
+        # DEBUG: Log what the renderer receives
+        logger.debug(f"[RENDERER_SYNC_DEBUG] Received {len(conversation_messages)} messages from conversation service: " + 
+                    ", ".join([f"{{sender: {msg.get('sender')}, content_len: {len(msg.get('content', ''))}, is_streaming: {msg.get('is_streaming')}, message_id: {msg.get('message_id')}}}" for msg in conversation_messages]), print_to_terminal=True)
+        
+        self.messages = conversation_messages.copy()  # Replace, do not append
+        logger.debug(f"[PATCH] Renderer message list replaced with {len(self.messages)} messages from conversation service", print_to_terminal=True)
+        # Request render to update the display
+        self.request_render(immediate=True)
+    
     def request_render(self, immediate: bool = False):
         """Request a render - unified entry point"""
+        
         try:
             # If already rendering, don't schedule another render
             if self._is_rendering:
@@ -306,7 +321,10 @@ class ChatRenderer(QObject):
     def _render_chat_display(self):
         """Render the chat display with all messages"""
         try:
-
+            # Debug: Print all message IDs, content lengths, and streaming status before rendering
+            logger.debug(f"[RENDER_TRACE] [ChatRenderer] Message list before render: " +
+                         ", ".join([f"{{id: {msg.get('message_id') or msg.get('id')}, sender: {msg['sender']}, content_len: {len(msg['content'])}, is_streaming: {msg.get('is_streaming')}}}" for msg in self.messages]), print_to_terminal=True)
+            
             current_thread = QApplication.instance().thread()
             main_thread = self.chat_display.thread()
             
@@ -369,6 +387,8 @@ class ChatRenderer(QObject):
                                 """
                                 self.chat_display.insertHtml(thoughts_html)
                                 self.chat_display.insertHtml("<br>")
+                                # Add spacing between thoughts and reply
+                                self.chat_display.insertHtml("<div style='margin: 8px 0;'></div>")
                                 # Now render the main answer as the AI bubble
                                 content = main_answer
                         formatted_content = MessageFormatter.detect_and_format_code(content)
@@ -380,6 +400,7 @@ class ChatRenderer(QObject):
                     if tag == 'ai':
                         thoughts, main_answer = MessageFormatter.split_thoughts_and_answer(content)
                         if thoughts:
+                            logger.debug(f"[THOUGHTS_DEBUG] Found thoughts in message: {thoughts[:100]}...")
                             # Render thoughts block first
                             thoughts_html = f"""
                             <table width='100%' cellspacing='0' cellpadding='0'><tr>
@@ -393,8 +414,12 @@ class ChatRenderer(QObject):
                             """
                             self.chat_display.insertHtml(thoughts_html)
                             self.chat_display.insertHtml("<br>")
+                            # Add spacing between thoughts and reply
+                            self.chat_display.insertHtml("<div style='margin: 8px 0;'></div>")
                             # Now render the main answer as the AI bubble
                             content = main_answer
+                        else:
+                            logger.debug(f"[THOUGHTS_DEBUG] No thoughts found in message: {content[:100]}...")
                         formatted_content = MessageFormatter.detect_and_format_code(content)
                         formatted_content = MessageFormatter.format_markdown(formatted_content)
                 

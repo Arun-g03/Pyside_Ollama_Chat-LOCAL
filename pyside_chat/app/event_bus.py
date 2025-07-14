@@ -84,6 +84,11 @@ class EventBus:
             conversation_manager = self.service_manager.get_conversation_manager()
             conversation_manager.metadata_updated.connect(self._on_conversation_metadata_updated)
             
+            # Connect conversation service auto-save signal
+            conversation_service = self.service_manager.get_conversation_service()
+            conversation_service.auto_save_completed.connect(self._on_auto_save_completed)
+            logger.debug("[EVENT_BUS] Connected auto_save_completed signal")
+            
             # Connect menu actions
             self._connect_menu_actions()
             
@@ -177,6 +182,22 @@ class EventBus:
             chat_tab = self.ui_manager.get_chat_tab()
             if chat_tab:
                 logger.debug("[EVENT DEBUG] Connecting chat tab signals...")
+                
+                # CRITICAL FIX: Disconnect any existing connections first to prevent duplicates
+                def safe_disconnect(signal):
+                    try:
+                        signal.disconnect()
+                    except TypeError:
+                        # No existing connection, safe to ignore
+                        pass
+                    except Exception as e:
+                        logger.debug(f"[EVENT DEBUG] Safe disconnect: {e}")
+                safe_disconnect(chat_tab.message_sent)
+                safe_disconnect(chat_tab.message_cancelled)
+                safe_disconnect(chat_tab.conversation_selected)
+                safe_disconnect(chat_tab.conversation_deleted)
+                safe_disconnect(chat_tab.conversation_renamed)
+                safe_disconnect(chat_tab.new_conversation_requested)
                 
                 # Connect signals with proper error handling
                 signals_to_connect = [
@@ -273,9 +294,14 @@ class EventBus:
             model = chat_tab.get_current_model()
             temperature = chat_tab.get_temperature()
             
-            # Process message through controller
+            # Process message through controller (this adds the message to conversation service)
             self.chat_controller.process_user_message(message, model, temperature)
             logger.info(f"[ID:0212] Processed user message: {message}", print_to_terminal=True)
+            
+            # CRITICAL FIX: Sync the chat display with the conversation service to show the user message
+            if chat_tab and hasattr(chat_tab, 'chat_display'):
+                chat_tab.chat_display._sync_messages_from_conversation_service()
+                logger.debug(f"[EVENT DEBUG] Synced chat display after adding user message")
             
             # Send to Ollama for actual processing
             self._send_to_ollama(message, model, temperature)
@@ -293,136 +319,102 @@ class EventBus:
             self._on_error_occurred(f"Failed to process message: {str(e)}")
     
     def _send_to_ollama(self, message, model, temperature):
-        """Send message to Ollama and handle response asynchronously"""
-        chat_tab = self.ui_manager.get_chat_tab()
-        
-        # Check Ollama connection
-        if not self._check_ollama_connection():
-            # Only show error if not already shown recently
-            if not self.lifecycle_manager or not self.lifecycle_manager.get_ollama_error_shown():
-                self._show_ollama_connection_error("message", force_show=True)
-            if chat_tab:
-                chat_tab.append_to_chat("System", "Failed to send: Could not connect to Ollama.\n Please check the Ollama connection and try again.")
-            return
-        
-        # Reset error flag on successful connection
-        if self.lifecycle_manager:
-            self.lifecycle_manager.set_ollama_error_shown(False)
-        # Get conversation service and messages
-        conversation_service = self.service_manager.get_conversation_service()
-        messages = conversation_service.get_messages()
-        # Use STM+LTM context if memory enabled
-        memory_service = self.service_manager.get_memory_service()
-        if self.chat_controller.is_memory_active() and memory_service:
-            context_messages = memory_service.get_context_messages(current_query=message)
-        else:
-            context_messages = messages
-        # Build system prompt and context
-        chat_tab = self.ui_manager.get_chat_tab()
-        selected_personality = None
-        if chat_tab:
-            selected_personality = chat_tab.get_current_personality()
-        personality_tab = self.ui_manager.get_personality_tab()
-        if personality_tab and personality_tab.personality_model and selected_personality:
-            # Set the current personality in the model/service
-            if hasattr(personality_tab.personality_model, 'set_current_personality'):
-                personality_tab.personality_model.set_current_personality(selected_personality)
-            system_prompt = personality_tab.personality_model.build_comprehensive_system_prompt(memory_service)
-            user_context_messages = personality_tab.personality_model.get_user_context_messages(
-                memory_service, self.chat_controller.is_new_conversation
+        """Send message to Ollama and handle streaming response"""
+        try:
+            logger.debug(f"[ID:0194] _send_to_ollama called with model: {model}, temperature: {temperature}")
+            
+            # Removed guard reset for testing
+            # self.chat_controller.reset_ai_response_guard()
+            
+            # Check Ollama connection
+            if not self._check_ollama_connection():
+                # Only show error if not already shown recently
+                if not self.lifecycle_manager or not self.lifecycle_manager.get_ollama_error_shown():
+                    self._show_ollama_connection_error("message", force_show=True)
+                chat_tab = self.ui_manager.get_chat_tab()
+                if chat_tab:
+                    chat_tab.append_to_chat("System", "Failed to send: Could not connect to Ollama.\n Please check the Ollama connection and try again.")
+                return
+            
+            # Reset error flag on successful connection
+            if self.lifecycle_manager:
+                self.lifecycle_manager.set_ollama_error_shown(False)
+            
+            # Get context messages for the request
+            context_messages = self.chat_controller.conversation_service.get_context_messages()
+            
+            # Handle model selection (especially for "Auto" model)
+            chosen_model = self.chat_controller._select_model(model, message, context_messages)
+            logger.debug(f"[ID:MODEL001] Model selection: {model} -> {chosen_model}")
+            
+            # Create streaming message and get its ID
+            streaming_message_id = self.chat_controller.start_streaming_response()
+            logger.debug(f"[ID:STREAM001] Started streaming response with ID: {streaming_message_id}")
+            cleaned_messages = self._clean_messages_for_ollama(context_messages)
+            success = self._start_worker_after_streaming_message(
+                cleaned_messages, chosen_model, temperature, streaming_message_id
             )
-        else:
-            system_prompt = ""
-            user_context_messages = []
-        # Filter out existing system messages
-        filtered_context = [msg for msg in context_messages if msg.get("role") != "system"]
-        # Build final context
-        final_context = []
-        if system_prompt:
-            final_context.append({"role": "system", "content": system_prompt})
-        final_context.extend(user_context_messages)
-        final_context.extend(filtered_context)
-        # Limit the number of messages sent to Ollama to prevent timeouts
-        max_messages = 8  # Limit to 8 messages to prevent overwhelming Ollama
-        if len(final_context) > max_messages:
-            # Keep system messages and recent messages
-            system_messages = [msg for msg in final_context if msg.get("role") == "system"]
-            non_system_messages = [msg for msg in final_context if msg.get("role") != "system"]
-            # Keep the most recent non-system messages
-            recent_messages = non_system_messages[-max_messages + len(system_messages):]
-            final_context = system_messages + recent_messages
-            logger.debug(f"[ID:0214] Limited context messages from {len(filtered_context)} to {len(final_context)} to prevent timeout")
-        
-        # Clean up the message structure before sending to Ollama
-        final_context = self._clean_messages_for_ollama(final_context)
-        
-        context_messages = final_context
-        # Reset new conversation flag
-        if self.chat_controller.is_new_conversation:
-            self.chat_controller.is_new_conversation = False
-        # Get available models and handle auto selection
-        ollama_service = self.service_manager.get_ollama_service()
-        available_models = ollama_service.get_models() or []
-        chosen_model = self.chat_controller._select_model(model, message, context_messages)
-        # Update conversation metadata
-        conversation_manager = self.service_manager.get_conversation_manager()
-        if chosen_model != "Auto":
-            conversation_manager.get_current_metadata().update_model(chosen_model)
-        # Get temperature: use personality default unless user has changed the slider
-        personality_temperature = None
-        if personality_tab and personality_tab.personality_model and selected_personality:
-            if hasattr(personality_tab.personality_model, 'get_temperature'):
-                personality_temperature = personality_tab.personality_model.get_temperature()
-        # If the user has not changed the slider, set it to the personality default
-        if chat_tab and personality_temperature is not None:
-            input_controls = chat_tab.input_controls
-            if abs(input_controls.get_temperature() - personality_temperature) > 0.01:
-                # If the slider is not at the personality default, assume user override
-                temperature_to_use = input_controls.get_temperature()
-            else:
-                # Set the slider to the personality default and use it
-                input_controls.temperature_slider.setValue(int(personality_temperature * 100))
-                temperature_to_use = personality_temperature
-        else:
-            temperature_to_use = temperature
-        # Pass temperature_to_use to _create_worker_thread instead of temperature
-        self._create_worker_thread(context_messages, chosen_model, temperature_to_use)
-    
+            
+            if not success:
+                logger.error("[ID:0195A] Failed to create worker thread for Ollama streaming")
+                self.chat_controller.conversation_service.finalize_streaming_message()
+                
+        except Exception as e:
+            logger.error(f"[ID:0194A] Error in _send_to_ollama: {e}")
+            logger.error(f"[ID:0194B] _send_to_ollama error traceback: {traceback.format_exc()}")
+            self.chat_controller.conversation_service.finalize_streaming_message()
+            self.chat_controller.error_occurred.emit(f"Error sending to Ollama: {str(e)}")
+
     def _clean_messages_for_ollama(self, messages: List[Dict]) -> List[Dict]:
-        """Clean up messages before sending to Ollama to prevent timeouts"""
+        """Clean messages for Ollama API (remove internal fields)"""
         cleaned_messages = []
-        
-        for msg in messages:
-            role = msg.get("role", "")
-            content = msg.get("content", "")
-            
-            # Skip messages with empty content (except system messages)
-            if not content.strip() and role != "system":
-                logger.debug(f"[ID:0215] Skipping message with empty content: {role}")
-                continue
-            
-            # Skip memory messages with empty content
-            if role == "memory" and not content.strip():
-                logger.debug(f"[ID:0216] Skipping empty memory message")
-                continue
-            
-            # Limit system prompt size to prevent timeouts
-            if role == "system" and len(content) > 1000:
-                logger.debug(f"[ID:0217] Truncating large system prompt from {len(content)} to 1000 characters")
-                content = content[:1000] + "..."
-                msg = {"role": role, "content": content}
-            
-            # Skip assistant messages with empty content
-            if role == "assistant" and not content.strip():
-                logger.debug(f"[ID:0218] Skipping empty assistant message")
-                continue
-            
-            cleaned_messages.append(msg)
-        
-        logger.debug(f"[ID:0219] Cleaned messages: {len(messages)} -> {len(cleaned_messages)}")
+        for message in messages:
+            # Only include role and content for Ollama
+            cleaned_message = {
+                "role": message.get("role", "user"),
+                "content": message.get("content", "")
+            }
+            cleaned_messages.append(cleaned_message)
         return cleaned_messages
-    
-    def _create_worker_thread(self, context_messages, chosen_model, temperature):
+
+    def _start_worker_after_streaming_message(self, context_messages, chosen_model, temperature, streaming_message_id):
+        """Start worker thread after streaming message is created to prevent race conditions"""
+        try:
+            logger.debug(f"[ID:0213] Starting worker thread for model: {chosen_model} with streaming_message_id: {streaming_message_id}")
+            
+            # Get threading service with persistent thread pool
+            if hasattr(self, 'threading_service') and self.threading_service:
+                # Start chat streaming using persistent thread pool
+                success = self.threading_service.start_chat_streaming(
+                    context_messages=context_messages,
+                    model=chosen_model,
+                    temperature=temperature,
+                    config_manager=self.service_manager.config_manager,
+                    streaming_message_id=streaming_message_id
+                )
+                
+                if success:
+                    logger.debug(f"[ID:0214] Chat streaming started successfully with persistent thread")
+                    logger.debug("[ID:0195] Successfully created worker thread for Ollama streaming")
+                else:
+                    logger.error("[ID:0195A] Failed to create worker thread for Ollama streaming")
+                    # Clean up streaming message on failure
+                    self.chat_controller.conversation_service.finalize_streaming_message()
+                    
+                return success
+            else:
+                logger.error("[ID:0213A] Threading service not available")
+                # Clean up streaming message on failure
+                self.chat_controller.conversation_service.finalize_streaming_message()
+                return False
+                
+        except Exception as e:
+            logger.error(f"[ID:0213B] Error starting worker thread: {e}")
+            # Clean up streaming message on error
+            self.chat_controller.conversation_service.finalize_streaming_message()
+            return False
+
+    def _create_worker_thread(self, context_messages, chosen_model, temperature, streaming_message_id):
         """Create and start worker thread for Ollama communication using persistent thread pool"""
         try:
             logger.debug(f"[ID:0213] Creating worker thread for model: {chosen_model}")
@@ -434,25 +426,27 @@ class EventBus:
                     context_messages=context_messages,
                     model=chosen_model,
                     temperature=temperature,
-                    config_manager=self.service_manager.config_manager
+                    config_manager=self.service_manager.config_manager,
+                    streaming_message_id=streaming_message_id
                 )
                 
                 if success:
                     logger.debug(f"[ID:0214] Chat streaming started successfully with persistent thread")
                     
-                    # Connect signals from threading service
-                    self.threading_service.chunk_received.connect(
-                        self._handle_chat_chunk, Qt.ConnectionType.QueuedConnection
-                    )
-                    self.threading_service.progress_updated.connect(
-                        self._handle_chat_progress, Qt.ConnectionType.QueuedConnection
-                    )
-                    self.threading_service.finished.connect(
-                        self._handle_chat_finished, Qt.ConnectionType.QueuedConnection
-                    )
-                    self.threading_service.error.connect(
-                        self._handle_chat_error, Qt.ConnectionType.QueuedConnection
-                    )
+                    # NOTE: Signal connections are already made in __init__ for the new threading system
+                    # The old signal connections below are removed to prevent duplicate chunk processing
+                    # self.threading_service.chunk_received.connect(
+                    #     self._handle_chat_chunk, Qt.ConnectionType.QueuedConnection
+                    # )
+                    # self.threading_service.progress_updated.connect(
+                    #     self._handle_chat_progress, Qt.ConnectionType.QueuedConnection
+                    # )
+                    # self.threading_service.finished.connect(
+                    #     self._handle_chat_finished, Qt.ConnectionType.QueuedConnection
+                    # )
+                    # self.threading_service.error.connect(
+                    #     self._handle_chat_error, Qt.ConnectionType.QueuedConnection
+                    # )
                     
                     return True
                 else:
@@ -464,68 +458,104 @@ class EventBus:
                 
         except Exception as e:
             logger.error(f"[ID:0217] Error creating worker thread: {e}")
-            logger.error(traceback.format_exc())
+            logger.error(f"[ID:0218] Worker thread creation error traceback: {traceback.format_exc()}")
             return False
-    
+
     def _handle_chat_chunk(self, chunk: str):
-        """Handle chat chunk from persistent thread."""
+        """Handle streaming chat chunk"""
         try:
-            logger.debug(f"[ID:0218] Received chat chunk: {chunk[:50]}...")
+            logger.debug(f"[ID:CHUNK001] Received chat chunk - Length: {len(chunk)}")
+            logger.debug(f"[ID:CHUNK001A] Chunk content preview: '{chunk[:100]}...'")
             
-            # Update UI with chunk
-            if hasattr(self, 'main_window') and self.main_window:
-                # Find the chat tab and update it
-                chat_tab = self.main_window.findChild(QWidget, "chat_tab")
-                if chat_tab and hasattr(chat_tab, 'update_chat_display'):
-                    chat_tab.update_chat_display(chunk, is_streaming=True)
+            # Check if chunk is empty or whitespace
+            if not chunk or not chunk.strip():
+                logger.warning(f"[ID:CHUNK001B] Received empty or whitespace-only chunk, skipping")
+                return
             
+            # No need to create the streaming message here; it is created before the worker starts
+            logger.debug(f"[ID:CHUNK002] Calling chat_controller.accumulate_assistant_response with chunk length: {len(chunk)}")
+            self.chat_controller.accumulate_assistant_response(chunk)
+            
+            chat_tab = self.ui_manager.get_chat_tab()
+            if chat_tab:
+                if not hasattr(chat_tab, 'is_streaming') or not chat_tab.is_streaming:
+                    logger.debug("[ID:CHUNK003] Starting UI streaming state for first chunk")
+                    chat_tab.start_streaming()
+                else:
+                    logger.debug("[ID:CHUNK004] UI already streaming, continuing")
+                if not hasattr(chat_tab, 'is_streaming'):
+                    chat_tab.is_streaming = True
+                QTimer.singleShot(0, lambda: self._update_chat_display_safe(chunk))
+            else:
+                logger.warning("[ID:CHUNK005] Chat tab not available for chunk processing")
         except Exception as e:
-            logger.error(f"[ID:0219] Error handling chat chunk: {e}")
-    
+            logger.error(f"[ID:CHUNK006] Error handling chat chunk: {e}")
+            logger.error(f"[ID:CHUNK007] Chat chunk error traceback: {traceback.format_exc()}")
+
     def _handle_chat_progress(self, progress: str):
-        """Handle chat progress from persistent thread."""
+        """Handle chat progress updates"""
         try:
-            logger.debug(f"[ID:0220] Chat progress: {progress}")
-            
-            # Update UI with progress
-            if hasattr(self, 'main_window') and self.main_window:
-                # Update status bar or progress indicator
-                pass
-            
+            logger.debug(f"[ID:PROGRESS001] Received chat progress: {progress}")
+            QTimer.singleShot(0, lambda: self._update_progress_safe(progress))
         except Exception as e:
-            logger.error(f"[ID:0221] Error handling chat progress: {e}")
-    
+            logger.error(f"[ID:PROGRESS002] Error handling chat progress: {e}")
+
     def _handle_chat_finished(self):
-        """Handle chat streaming finished from persistent thread."""
+        """Handle chat streaming completion"""
         try:
-            logger.debug("[ID:0222] Chat streaming finished")
+            logger.debug("[ID:FINISH001] Chat streaming finished")
             
-            # Update UI to indicate completion
-            if hasattr(self, 'main_window') and self.main_window:
-                chat_tab = self.main_window.findChild(QWidget, "chat_tab")
-                if chat_tab and hasattr(chat_tab, 'update_chat_display'):
-                    chat_tab.update_chat_display("", is_streaming=False)
+            # Finalize streaming response
+            success = self.chat_controller.finalize_streaming_response()
+            if success:
+                logger.debug("[ID:FINISH002] Successfully finalized streaming response")
+            else:
+                logger.warning("[ID:FINISH003] Failed to finalize streaming response")
+            
+            # NOTE: The following call is redundant and should be removed if no issues arise
+            # self.chat_controller.finalize_streaming_response()
+            
+            # Handle AI response completion
+            self.chat_controller.handle_ai_response()
+            logger.debug("[ID:FINISH004] Called chat_controller.handle_ai_response")
+            
+            # Clean up UI streaming state
+            QTimer.singleShot(0, self._stop_streaming_safe)
             
         except Exception as e:
-            logger.error(f"[ID:0223] Error handling chat finished: {e}")
-    
+            logger.error(f"[ID:FINISH005] Error handling chat finished: {e}")
+            logger.error(f"[ID:FINISH006] Chat finished error traceback: {traceback.format_exc()}")
+
     def _handle_chat_error(self, error_message: str):
-        """Handle chat streaming error from persistent thread."""
+        """Handle chat streaming error"""
         try:
-            logger.error(f"[ID:0224] Chat streaming error: {error_message}")
+            logger.error(f"[ID:ERROR001] Chat streaming error: {error_message}")
             
-            # Show error to user
-            if hasattr(self, 'main_window') and self.main_window:
-                from pyside_chat.ui.utils.message_utils import show_critical_error
-                show_critical_error(
-                    "Chat Error",
-                    "An error occurred during chat",
-                    Exception(error_message),
-                    self.main_window
-                )
+            # Finalize streaming response on error
+            self.chat_controller.finalize_streaming_response()
+            
+            # Update UI with error
+            QTimer.singleShot(0, lambda: self._handle_chat_error_safe(error_message))
             
         except Exception as e:
-            logger.error(f"[ID:0225] Error handling chat error: {e}")
+            logger.error(f"[ID:ERROR002] Error handling chat error: {e}")
+
+    def _handle_chat_error_safe(self, error_message: str):
+        """Safely handle chat error in main thread"""
+        try:
+            chat_tab = self.ui_manager.get_chat_tab()
+            if chat_tab:
+                # Stop UI streaming state
+                if chat_tab.is_streaming:
+                    logger.debug("[ID:ERROR003] Stopping UI streaming state due to error")
+                    chat_tab.stop_streaming()
+                
+                from pyside_chat.core.utils.threading_utils import safe_ui_update
+                safe_ui_update(chat_tab, 'append_to_chat', "System", f"Error: {error_message}")
+                safe_ui_update(chat_tab, 'force_enable_send_button')
+            
+        except Exception as e:
+            logger.error(f"[ID:ERROR004] Error in _handle_chat_error_safe: {e}")
     
     def stop_chat_streaming(self):
         """Stop chat streaming using persistent thread pool."""
@@ -572,42 +602,36 @@ class EventBus:
         logger.debug("[ID:0197] Worker thread finished signal received")
         # No cleanup needed - handled by new threading system
     
-    def _on_worker_chunk(self, chunk):
-        """Handle worker chunk signal"""
-        try:
-            logger.debug(f"[ID:0196] Received worker chunk - Length: {len(chunk)}")
-            logger.debug(f"[ID:0196A] Chunk content: {chunk[:100]}...")
-            self.chat_controller.accumulate_assistant_response(chunk)
-            logger.debug(f"[ID:0196B] Accumulated assistant response")
-            
-            chat_tab = self.ui_manager.get_chat_tab()
-            if chat_tab:
-                # CRITICAL FIX: Only start UI streaming state if not already streaming
-                # This prevents the repeated start_streaming() calls that were causing crashes
-                if not hasattr(chat_tab, 'is_streaming') or not chat_tab.is_streaming:
-                    logger.debug("[ID:0196E] Starting UI streaming state for first chunk")
-                    chat_tab.start_streaming()
-                else:
-                    logger.debug("[ID:0196F] UI already streaming, continuing")
-                
-                # CRITICAL FIX: Ensure streaming state is properly maintained
-                if not hasattr(chat_tab, 'is_streaming'):
-                    chat_tab.is_streaming = True
-                
-                # Use QTimer.singleShot to ensure UI updates happen in main thread
-
-                QTimer.singleShot(0, lambda: self._update_chat_display_safe(chunk))
-                
-        except Exception as e:
-            logger.error(f"[ID:0196C] Error in _on_worker_chunk: {e}")
-            logger.error(f"[ID:0196D] Worker chunk error traceback: {traceback.format_exc()}")
+    def _on_worker_chunk(self, chunk, model_name, msg_id, chunk_index):
+        """Handle a chunk from the worker thread and update the chat display safely with all required info."""
+        logger.debug(f"[EVENT_BUS_DEBUG] _on_worker_chunk received: chunk='{chunk[:20]}...', model_name='{model_name}', msg_id='{msg_id}', chunk_index={chunk_index}")
+        
+        # DEBUG: Check if parameters are valid
+        if msg_id == "msg_id_placeholder":
+            logger.warning(f"[PATCH] Received placeholder msg_id: {msg_id}, this indicates the worker is not getting the real streaming message ID")
+        
+        # Validate chunk content
+        if not chunk or not chunk.strip():
+            logger.warning(f"[EVENT_BUS_DEBUG] Received empty or whitespace-only chunk from worker, skipping")
+            return
+        
+        # Validate message ID
+        if not msg_id or msg_id == "None" or msg_id == "msg_id_placeholder":
+            logger.error(f"[EVENT_BUS_DEBUG] Invalid message ID received: '{msg_id}', this will cause chunk processing to fail")
+            logger.error(f"[EVENT_BUS_DEBUG] Available streaming message ID: {self.chat_controller.conversation_service.get_streaming_message_id()}")
+        
+        QTimer.singleShot(0, lambda: self._update_chat_display_safe(chunk, model_name, msg_id, chunk_index))
     
-    def _update_chat_display_safe(self, chunk):
+    def _update_chat_display_safe(self, chunk, model_name=None, msg_id=None, chunk_index=None):
         """Safely update chat display in main thread"""
         try:
             chat_tab = self.ui_manager.get_chat_tab()
             if chat_tab and hasattr(chat_tab, 'append_response_chunk'):
-                chat_tab.append_response_chunk(chunk)
+                if model_name is None or msg_id is None or chunk_index is None:
+                    logger.warning(f"[PATCH] Skipping append_response_chunk: model_name, msg_id, or chunk_index missing for chunk: {chunk[:50]}")
+                    return
+                logger.debug(f"[PATCH] Calling chat_tab.append_response_chunk with chunk: {chunk[:50]}, model_name: {model_name}, msg_id: {msg_id}, chunk_index: {chunk_index}")
+                chat_tab.append_response_chunk(chunk, model_name, msg_id, chunk_index)
         except Exception as e:
             logger.error(f"[ID:0196G] Error updating chat display: {e}")
     
@@ -637,15 +661,9 @@ class EventBus:
         logger.debug("[ID:0193] Worker finished signal received")
         
         try:
-            # Log worker stats if available
-            # No legacy worker stats to log
+            # CRITICAL FIX: Call _handle_chat_finished to finalize streaming response
+            self._handle_chat_finished()
             
-            # Handle AI response completion
-            self.chat_controller.handle_ai_response()
-            logger.debug("[ID:0193A] Called chat_controller.handle_ai_response")
-            
-            # Update UI streaming state using main thread
-
             # Only clean up if TTS is also finished
             if self._tts_finished:
                 logger.debug("[ID:0191] Both worker and TTS finished, cleaning up")
@@ -900,6 +918,28 @@ class EventBus:
         conversation_manager = self.service_manager.get_conversation_manager()
         metadata = conversation_manager.get_current_metadata()
         self.ui_manager.update_status(metadata.get_display_info())
+        
+        # CRITICAL FIX: Refresh navigation widget when conversation metadata is updated
+        chat_tab = self.ui_manager.get_chat_tab()
+        if chat_tab:
+            chat_tab.refresh_navigation()
+            logger.debug(f"[NAVIGATION] Refreshed navigation after metadata update for: {metadata.current_conversation_file}")
+    
+    def _on_auto_save_completed(self, filepath: str):
+        """Handle auto-save completion"""
+        logger.debug(f"[AUTO_SAVE] Auto-save completed: {filepath}")
+        
+        # Update status to show save completion
+        self.ui_manager.update_status(f"Conversation saved: {os.path.basename(filepath)}")
+        
+        # Force UI refresh to ensure thoughts are displayed
+        chat_tab = self.ui_manager.get_chat_tab()
+        if chat_tab and hasattr(chat_tab, 'chat_display'):
+            # Force sync messages from conversation service to ensure UI shows latest content
+            chat_tab.chat_display.sync_messages_from_conversation_service()
+            logger.debug(f"[AUTO_SAVE] Forced UI refresh after auto-save: {filepath}")
+        else:
+            logger.warning("[AUTO_SAVE] Chat tab or chat display not available for UI refresh")
     
     def _on_new_conversation_requested(self):
         """Handle new conversation request"""
@@ -1159,4 +1199,9 @@ class EventBus:
             
         except Exception as e:
             logger.error(f"[ID:0144] Error during application exit cleanup: {e}")
-            logger.error(f"[ID:0143] Exit cleanup error traceback: {traceback.format_exc()}") 
+            logger.error(f"[ID:0143] Exit cleanup error traceback: {traceback.format_exc()}")
+    
+    def reconnect_chat_tab_signals(self):
+        """Reconnect chat tab signals when chat tab is recreated"""
+        logger.debug("[EVENT DEBUG] Reconnecting chat tab signals after recreation")
+        self._connect_chat_tab_signals() 

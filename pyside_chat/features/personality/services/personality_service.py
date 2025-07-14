@@ -52,8 +52,10 @@ class PersonalityService:
         
         # Set default current personality if available
         if self.personalities:
-            # Prefer assistant personality, otherwise use first available
-            if "assistant" in self.personalities:
+            # Prefer Specialists.assistant personality, otherwise use first available
+            if "Specialists.assistant" in self.personalities:
+                self.current_personality = "Specialists.assistant"
+            elif "assistant" in self.personalities:
                 self.current_personality = "assistant"
             else:
                 self.current_personality = list(self.personalities.keys())[0]
@@ -218,8 +220,10 @@ class PersonalityService:
         """Format a prompt using the current personality's prompt templates"""
         current_personality = self.get_current_personality()
         if not current_personality:
-            # Default to assistant personality if available, otherwise use first available
-            if "assistant" in self.personalities:
+            # Default to Specialists.assistant personality if available, then assistant, otherwise use first available
+            if "Specialists.assistant" in self.personalities:
+                current_personality = self.personalities["Specialists.assistant"]
+            elif "assistant" in self.personalities:
                 current_personality = self.personalities["assistant"]
             elif self.personalities:
                 # Use the first available personality

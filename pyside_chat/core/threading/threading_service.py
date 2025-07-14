@@ -36,7 +36,7 @@ class ThreadingService(QObject):
     """
     
     # Signals for streaming operations
-    chunk_received = Signal(str)  # For streaming chunks
+    chunk_received = Signal(str, str, str, int)  # chunk, model_name, msg_id, chunk_index
     progress_updated = Signal(str)  # For progress updates
     finished = Signal()  # For completion
     error = Signal(str)  # For errors
@@ -176,7 +176,7 @@ class ThreadingService(QObject):
             logger.error(f"[ID:TS004] Error initializing persistent pools: {e}")
             logger.error(traceback.format_exc())
     
-    def start_chat_streaming(self, context_messages: List[Dict], model: str, temperature: float, config_manager) -> bool:
+    def start_chat_streaming(self, context_messages: List[Dict], model: str, temperature: float, config_manager, streaming_message_id: str = None) -> bool:
         """
         Start chat streaming using persistent thread pool.
         
@@ -206,12 +206,14 @@ class ThreadingService(QObject):
             self.current_chat_thread = thread
             worker = thread.worker
             
-            # Configure worker for streaming
+            # Configure worker for streaming with streaming message ID
+            logger.debug(f"[TS_DEBUG] Configuring worker with streaming_message_id: {streaming_message_id}")
             worker.configure_streaming(
                 context_messages=context_messages,
                 model=model,
                 temperature=temperature,
-                config_manager=config_manager
+                config_manager=config_manager,
+                streaming_message_id=streaming_message_id
             )
             
             # Connect signals with QueuedConnection for thread safety
@@ -402,10 +404,12 @@ class ThreadingService(QObject):
             logger.error(traceback.format_exc())
     
     # Signal handlers for persistent threads
-    def _on_chat_chunk_received(self, chunk: str):
+    def _on_chat_chunk_received(self, chunk: str, model_name: str, msg_id: str, chunk_index: int):
         """Handle chat chunk received from persistent thread."""
         try:
-            self.chunk_received.emit(chunk)
+            logger.debug(f"[TS_CHUNK_DEBUG] Emitting chunk_received signal: chunk='{chunk[:20]}...', model_name='{model_name}', msg_id='{msg_id}', chunk_index={chunk_index}")
+            self.chunk_received.emit(chunk, model_name, msg_id, chunk_index)
+            logger.debug(f"[TS_CHUNK_DEBUG] Successfully emitted chunk_received signal")
         except Exception as e:
             logger.error(f"[ID:TS026] Error handling chat chunk: {e}")
     

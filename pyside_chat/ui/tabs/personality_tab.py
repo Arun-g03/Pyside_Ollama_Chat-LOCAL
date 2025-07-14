@@ -706,8 +706,12 @@ class PersonalityTab(QWidget):
         
         # Set default personality
         if personalities:
-            # Try to set assistant personality first, otherwise use first available
-            if "assistant" in personalities:
+            # Try to set Specialists.assistant personality first, then assistant, otherwise use first available
+            if "Specialists.assistant" in personalities:
+                self.personality_combo.setCurrentText("Specialists → assistant")
+                self.personality_model.set_current_personality("Specialists.assistant")
+                self.update_personality_info("Specialists.assistant")
+            elif "assistant" in personalities:
                 self.personality_combo.setCurrentText("assistant")
                 self.personality_model.set_current_personality("assistant")
                 self.update_personality_info("assistant")

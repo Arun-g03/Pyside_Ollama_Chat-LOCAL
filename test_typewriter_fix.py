@@ -61,7 +61,8 @@ class TestWindow(QMainWindow):
             "one ",
             "at ",
             "a ",
-            "time."
+            "time.",
+            
         ]
         
         # Send chunks with small delays

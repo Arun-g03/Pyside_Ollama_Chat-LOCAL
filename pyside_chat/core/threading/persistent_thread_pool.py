@@ -150,6 +150,16 @@ class PersistentThreadPool(QObject):
                 # Check if we have idle threads available
                 if self.idle_threads[thread_type]:
                     thread = self.idle_threads[thread_type].pop(0)
+                    
+                    # Log configuration state of retrieved thread
+                    if hasattr(thread, 'worker') and thread.worker:
+                        if hasattr(thread.worker, '_configuration'):
+                            config_keys = list(thread.worker._configuration.keys())
+                            streaming_id = thread.worker._configuration.get('streaming_message_id', 'None')
+                            logger.debug(f"[ID:PTP007A] Retrieved {thread_type} thread {thread.objectName()} - config keys: {config_keys}, streaming_id: {streaming_id}")
+                        else:
+                            logger.debug(f"[ID:PTP007A] Retrieved {thread_type} thread {thread.objectName()} - no configuration")
+                    
                     self.active_threads[thread.objectName()] = {
                         'type': thread_type,
                         'start_time': time.time(),
@@ -180,6 +190,16 @@ class PersistentThreadPool(QObject):
                     time.sleep(0.1)
                     if self.idle_threads[thread_type]:
                         thread = self.idle_threads[thread_type].pop(0)
+                        
+                        # Log configuration state of retrieved thread after wait
+                        if hasattr(thread, 'worker') and thread.worker:
+                            if hasattr(thread.worker, '_configuration'):
+                                config_keys = list(thread.worker._configuration.keys())
+                                streaming_id = thread.worker._configuration.get('streaming_message_id', 'None')
+                                logger.debug(f"[ID:PTP010A] Retrieved {thread_type} thread {thread.objectName()} after wait - config keys: {config_keys}, streaming_id: {streaming_id}")
+                            else:
+                                logger.debug(f"[ID:PTP010A] Retrieved {thread_type} thread {thread.objectName()} after wait - no configuration")
+                        
                         self.active_threads[thread.objectName()] = {
                             'type': thread_type,
                             'start_time': time.time(),
@@ -213,8 +233,16 @@ class PersistentThreadPool(QObject):
             thread_info = self.active_threads[thread_name]
             thread_type = thread_info['type']
             
-            # Reset thread state
+            # Log configuration state before reset
             if hasattr(thread, 'worker') and thread.worker:
+                if hasattr(thread.worker, '_configuration'):
+                    config_keys = list(thread.worker._configuration.keys())
+                    streaming_id = thread.worker._configuration.get('streaming_message_id', 'None')
+                    logger.debug(f"[ID:PTP013A] Resetting {thread_type} thread {thread_name} - config keys: {config_keys}, streaming_id: {streaming_id}")
+                else:
+                    logger.debug(f"[ID:PTP013A] Resetting {thread_type} thread {thread_name} - no configuration")
+                
+                # Reset thread state
                 thread.worker.reset_state()
             
             # Move to idle pool

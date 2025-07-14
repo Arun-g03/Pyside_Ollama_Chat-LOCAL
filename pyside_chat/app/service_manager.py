@@ -100,6 +100,9 @@ class ServiceManager:
                 self.config_manager.get_history_directory()
             )
             
+            # Connect conversation service with conversation manager for unified saving
+            self.conversation_service.set_conversation_manager(self.conversation_manager)
+            
             # Initialize voice service manager (singleton)
             try:
                 from pyside_chat.features.voice.voice_service_manager import get_voice_service_manager

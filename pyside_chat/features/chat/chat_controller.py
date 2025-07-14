@@ -18,6 +18,7 @@ It handles communication between different services and UI components.
 """
 
 from typing import Dict, Any, Optional, List
+import os
 
 logger = CustomLogger.get_logger(__name__)
 
@@ -75,23 +76,35 @@ class ChatController(QObject):
         return self.memory_service is not None
     
     def process_user_message(self, message: str, model: str, temperature: float) -> None:
-        """Process a user message through the complete pipeline"""
+        """Process a user message and send to Ollama"""
         try:
-            LoggingHelpers.log_message_sent(len(message))
+            # CRITICAL FIX: Prevent empty messages from being processed
+            if not message or not message.strip():
+                logger.warning("[EMPTY_MESSAGE] Attempted to process empty user message - ignoring")
+                return
+            logger.debug(f"[ID:0157] DEBUG: process_user_message called with message: {message}", print_to_terminal=True)
             
-            # Update current settings
-            self.current_model = model
-            self.current_temperature = temperature
             
             # Check if this is the first message in a new conversation
-            messages = self.conversation_service.get_messages()
-            if len(messages) == 0 and not self.is_new_conversation:
+            if not self.conversation_service.get_messages():
                 # This is the first message and we haven't explicitly started a new conversation
                 self.start_new_conversation()
                 LoggingHelpers.log_debug("Auto-started new conversation for first message")
             
             # Add message to conversation
             self.conversation_service.add_message("user", message)
+            
+            # CRITICAL FIX: Auto-save conversation after adding user message
+            messages = self.conversation_service.get_messages()
+            logger.debug(f"[AUTO_SAVE] Auto-saving conversation with {len(messages)} messages after user message")
+            saved_filepath = self.conversation_manager.auto_save_conversation(messages)
+            if saved_filepath:
+                logger.debug(f"[AUTO_SAVE] Conversation saved to: {saved_filepath}")
+                # Trigger name generation for new conversations
+                if self.is_new_conversation:
+                    self._trigger_name_generation(saved_filepath)
+            else:
+                logger.warning("[AUTO_SAVE] Failed to auto-save conversation after user message")
             
             # Reset the new conversation flag after adding the first message
             if self.is_new_conversation:
@@ -248,14 +261,14 @@ class ChatController(QObject):
         # Build the final context
         final_context = self._build_context(context_messages, is_new_conversation)
         
-        # Auto model selection
-        chosen_model = self._select_model(model, message, final_context)
+        # Note: Model selection is now handled by the event bus
+        # to prevent duplicate system messages
         
         # Emit signal for UI to handle the actual Ollama call
         self.message_sent.emit(message)
         
         # Update status
-        self.status_updated.emit(f"Processing with {chosen_model}")
+        self.status_updated.emit(f"Processing with {model}")
     
     def _detect_new_conversation(self, context_messages: List[Dict[str, Any]]) -> bool:
         """Detect if this is a new conversation"""
@@ -299,21 +312,129 @@ class ChatController(QObject):
         return requested_model
     
     def accumulate_assistant_response(self, chunk: str):
-        """Accumulate assistant response chunk."""
-        self._pending_assistant_response += chunk
+        """Accumulate assistant response chunk, handling <think> blocks during streaming."""
+        logger.debug(f"[CHAT_CONTROLLER_DEBUG] accumulate_assistant_response called with chunk length: {len(chunk)}")
+        logger.debug(f"[CHAT_CONTROLLER_DEBUG] Chunk content preview: '{chunk[:50]}...'")
+        
+        # Check if chunk is empty or whitespace
+        if not chunk or not chunk.strip():
+            logger.warning(f"[CHAT_CONTROLLER_DEBUG] Received empty or whitespace-only chunk, skipping accumulation")
+            return
+        
+        # Streaming <think> block handling
+        if not hasattr(self, '_streaming_thoughts_buffer'):
+            self._streaming_thoughts_buffer = ''
+            self._in_think_block = False
+        
+        # Detect start of <think>
+        if '<think>' in chunk.lower():
+            self._in_think_block = True
+            # Everything after <think> goes to thoughts buffer
+            idx = chunk.lower().find('<think>') + 7
+            self._streaming_thoughts_buffer += chunk[idx:]
+            return
+        # Detect end of </think>
+        if self._in_think_block:
+            if '</think>' in chunk.lower():
+                idx = chunk.lower().find('</think>')
+                self._streaming_thoughts_buffer += chunk[:idx]
+                self._in_think_block = False
+                # After </think>, the rest is main message
+                main_chunk = chunk[idx+8:]
+                # Update streaming message with main_chunk
+                streaming_message_id = self.conversation_service.get_streaming_message_id()
+                if streaming_message_id and main_chunk.strip():
+                    logger.debug(f"[CHAT_CONTROLLER_DEBUG] Appending main message after </think> with streaming_message_id: {streaming_message_id}")
+                    self.conversation_service.update_streaming_message(main_chunk, append=True)
+                return
+            else:
+                # Still in <think> block, buffer all
+                self._streaming_thoughts_buffer += chunk
+                return
+        # If not in a <think> block, just append to main message
+        streaming_message_id = self.conversation_service.get_streaming_message_id()
+        if streaming_message_id:
+            logger.debug(f"[CHAT_CONTROLLER_DEBUG] Appending chunk to main message with streaming_message_id: {streaming_message_id}")
+            self.conversation_service.update_streaming_message(chunk, append=True)
+        else:
+            logger.warning(f"[CHAT_CONTROLLER_DEBUG] No streaming message ID available, falling back to old method")
+            self._pending_assistant_response += chunk
 
     def clear_pending_assistant_response(self):
         self._pending_assistant_response = ""
 
+    def start_streaming_response(self) -> str:
+        """Start a new streaming assistant response, resetting streaming state."""
+        # Reset streaming state variables
+        self._in_think_block = False
+        self._streaming_thoughts_buffer = ""
+        self._last_streaming_chunk = ""
+        self._last_streaming_msg_id = None
+        logger.debug("[STREAM_RESET] Reset streaming state for new assistant response")
+        # Start new streaming message
+        return self.conversation_service.start_streaming_message("assistant")
+
+    def finalize_streaming_response(self) -> bool:
+        """Finalize the current streaming response, merging any buffered thoughts if present."""
+        # If we have a buffered thoughts block, prepend it to the message content
+        if (hasattr(self, '_streaming_thoughts_buffer') and self._streaming_thoughts_buffer.strip()) or getattr(self, '_in_think_block', False):
+            streaming_message_id = self.conversation_service.get_streaming_message_id()
+            if streaming_message_id:
+                # Prepend <think>...</think> to the message content
+                thoughts_block = f"<think>{self._streaming_thoughts_buffer}</think>"
+                logger.debug(f"[CHAT_CONTROLLER_DEBUG] Prepending buffered thoughts to streaming message before finalization (forced flush)")
+                self.conversation_service.update_streaming_message(thoughts_block, append=False)
+            # Clear buffer
+            self._streaming_thoughts_buffer = ''
+            self._in_think_block = False
+        # Finalize via conversation service only (do not call super())
+        success = self.conversation_service.finalize_streaming_message()
+        if success:
+            logger.debug("[ID:STREAM002] Successfully finalized streaming response")
+        else:
+            logger.warning("[ID:STREAM003] Failed to finalize streaming response")
+        return success
+
     def handle_ai_response(self) -> None:
         """Handle AI response completion using accumulated response."""
-        response = self._pending_assistant_response
-        logger.debug(f"[ID:0155] DEBUG: handle_ai_response called with response length: {len(response)}")
-        self.conversation_service.add_message("assistant", response)
+        # Try to finalize streaming response first
+        response_content = ""
+        
+        # Find the streaming message with actual content
+        streaming_message_with_content = self.conversation_service.get_streaming_message_with_content()
+        
+        if streaming_message_with_content:
+            # Finalize the message with content
+            message_id = streaming_message_with_content["id"]
+            logger.debug(f"[ID:0156] Found streaming message with content: {message_id}, content length: {len(streaming_message_with_content['content'])}")
+            
+            # Update the streaming message ID to the one with content
+            self.conversation_service._streaming_message_id = message_id
+            
+            # Finalize the streaming response
+            self.finalize_streaming_response()
+            response_content = streaming_message_with_content["content"]
+        else:
+            # Check if there's a current streaming message ID (might be empty)
+            streaming_id = self.conversation_service.get_streaming_message_id()
+            if streaming_id:
+                self.finalize_streaming_response()
+                response_msg = self.conversation_service.get_message_by_id(streaming_id)
+                if response_msg:
+                    response_content = response_msg["content"]
+                else:
+                    response_content = self._pending_assistant_response
+            else:
+                # Add the assistant response to the conversation service
+                response_content = self._pending_assistant_response
+                if response_content.strip():
+                    self.conversation_service.add_message("assistant", response_content)
+
+        logger.debug(f"[ID:0155] DEBUG: handle_ai_response called with response length: {len(response_content)}")
         self.clear_pending_assistant_response()
         if self.is_memory_active():
-            result = self.memory_service.intelligent_add_message({"role": "assistant", "content": response})
-            LoggingHelpers.log_memory_result(response[:50], 1)  # Log with response preview and count
+            result = self.memory_service.intelligent_add_message({"role": "assistant", "content": response_content})
+            LoggingHelpers.log_memory_result(response_content[:50], 1)  # Log with response preview and count
         messages = self.conversation_service.get_messages()
         logger.debug(f"[ID:0154] DEBUG: About to auto-save conversation with {len(messages)} messages")
         logger.debug(f"[ID:0153] DEBUG: Current conversation file: {self.conversation_manager.get_current_metadata().current_conversation_file}")
@@ -323,12 +444,11 @@ class ChatController(QObject):
             self._trigger_name_generation(saved_filepath)
         else:
             logger.debug("[ID:0151] DEBUG: Auto-save returned None - conversation not saved")
-        self.message_received.emit(response)
+        self.message_received.emit(response_content)
         self.conversation_updated.emit()
         self.status_updated.emit("Ready")
-        
         # Trigger TTS for AI response if voice mode is active
-        self._trigger_tts_for_response(response)
+        self._trigger_tts_for_response(response_content)
     
     def _trigger_tts_for_response(self, response: str) -> None:
         """Trigger TTS for AI response if voice mode is active"""
@@ -439,8 +559,12 @@ class ChatController(QObject):
     def load_conversation(self, filepath: str) -> None:
         """Load a conversation from file"""
         try:
+            # CRITICAL FIX: Use conversation service's load_conversation method to properly reset state
+            filename = os.path.basename(filepath)
+            self.conversation_service.load_conversation(filename)
+            
+            # Get metadata from conversation manager
             conversation, metadata = self.conversation_manager.load_conversation(filepath)
-            self.conversation_service.conversation = conversation.copy()
             
             # Update current metadata with loaded metadata
             current_metadata = self.conversation_manager.get_current_metadata()
@@ -452,6 +576,7 @@ class ChatController(QObject):
             current_metadata.current_conversation_file = filepath
             current_metadata.ai_generated_name = metadata.ai_generated_name
             
+            logger.debug(f"[LOAD_FIX] Loaded conversation with {len(self.conversation_service.conversation)} messages")
             self.conversation_updated.emit()
             self.status_updated.emit(f"Loaded conversation: {metadata.get_display_info()}")
         except Exception as e:
@@ -484,3 +609,7 @@ class ChatController(QObject):
         except Exception as e:
             error_msg = PromptFormatter.format_error_message("conversation_rename_failed", error=str(e))
             self.error_occurred.emit(error_msg) 
+
+    def reset_ai_response_guard(self):
+        """Reset the AI response guard for a new streaming session."""
+        self._ai_response_handled = False 

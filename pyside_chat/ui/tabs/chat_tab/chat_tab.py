@@ -2,6 +2,7 @@
 from pyside_chat.core.shared_imports.pyside_imports import *
 from pyside_chat.core.shared_imports.shared_imports import *
 from pyside_chat.ui.Widgets.chat_navigation import ChatNavigationWidget
+from pyside_chat.ui.dialogs.voice_settings_dialog import VoiceSettingsDialog
 
 
 """
@@ -54,6 +55,7 @@ class ChatTab(QWidget):
         self.summarization_service = summarization_service
         self.config_manager = config_manager
         self.current_conversation_file = None
+        self.chat_controller = None  # Will be set by parent
 
         # Initialize components
         self.setup_components()
@@ -282,6 +284,12 @@ class ChatTab(QWidget):
                 self.navigation_widget.conversation_renamed.connect(self.conversation_renamed.emit)
                 self.navigation_widget.new_conversation_requested.connect(self.new_conversation_requested.emit)
             
+            # CRITICAL FIX: Connect to conversation service signals for automatic UI updates
+            if hasattr(self, 'chat_controller') and hasattr(self.chat_controller, 'conversation_service'):
+                conversation_service = self.chat_controller.conversation_service
+                conversation_service.conversation_updated.connect(self._on_conversation_updated)
+                logger.debug("[CHAT_TAB] Connected to conversation service signals")
+            
             # Voice settings button will be connected when voice controls are initialized
             
             logger.debug("[VOICE DEBUG] Signal connections setup completed successfully")
@@ -289,13 +297,43 @@ class ChatTab(QWidget):
         except Exception as e:
             logger.error(f"[VOICE ERROR] Error setting up signal connections: {e}")
             logger.error(f"[VOICE ERROR] Traceback: {traceback.format_exc()}")
-        
+    
+    def _on_conversation_updated(self, conversation):
+        """Handle updates to the conversation and sync streaming state from conversation service."""
+        logger.debug(f"[STATE_SYNC] _on_conversation_updated called. Conversation has {len(conversation)} messages.")
+        for i, msg in enumerate(conversation):
+            logger.debug(f"[STATE_SYNC] Message {i}: id={msg.get('id')}, role={msg.get('role')}, is_streaming={msg.get('is_streaming')}, content_len={len(msg.get('content', ''))}")
+        prev_streaming = getattr(self, 'is_streaming', False)
+        self.is_streaming = any(msg.get('is_streaming') for msg in conversation)
+        logger.debug(f"[STATE_SYNC] Calculated is_streaming: {self.is_streaming} (was {prev_streaming})")
+        # Update UI state based on streaming
+        input_components = self.input_controls.get_ui_components()
+        logger.debug(f"[STATE_SYNC] send_button id: {id(input_components['send_button'])}, cancel_button id: {id(input_components['cancel_button'])}")
+        logger.debug(f"[STATE_SYNC] InputControls send_button id: {id(self.input_controls.send_button)}, cancel_button id: {id(self.input_controls.cancel_button)}")
+        if not self.voice_mode:
+            input_components['send_button'].setEnabled(not self.is_streaming)
+            input_components['cancel_button'].setVisible(self.is_streaming)
+            logger.debug(f"[STATE_SYNC] send_button enabled: {input_components['send_button'].isEnabled()}, cancel_button visible: {input_components['cancel_button'].isVisible()}")
+            # Force repaint and process events
+            input_components['send_button'].repaint()
+            input_components['cancel_button'].repaint()
+            from PySide6.QtWidgets import QApplication
+            QApplication.processEvents()
+        else:
+            logger.debug("[STATE_SYNC] Voice mode: buttons remain hidden")
+        self.update()
+
     def on_message_sent(self, message: str):
         """Handle message sent (text or voice)"""
+        import traceback
         logger.debug(f"[VOICE DEBUG] on_message_sent called with message: '{message}', voice_mode: {self.voice_mode}")
+        logger.debug(f"[DUPLICATE_DEBUG] on_message_sent call stack: {traceback.format_stack()[-3:]}")
         
-        # Add user message to chat immediately
-        self.append_to_chat("You", message)
+        # CRITICAL FIX: Don't add user message to chat here - let the event bus handle it
+        # This prevents duplicate messages in the conversation service
+        # self.append_to_chat("You", message)  # REMOVED - causes duplication
+        
+        # Start streaming state
         self.start_streaming()
         
         # Emit signal for parent
@@ -859,19 +897,17 @@ class ChatTab(QWidget):
         
     def append_to_chat(self, sender: str, message: str, is_code: bool = False):
         """Add a message to the chat display"""
+        import traceback
+        
         # Always append to chat display - never skip this
         # The EQ visualizer is just a visual overlay, it shouldn't prevent chat messages from appearing
         
-        print(f"[DEBUG][ChatDisplay] append_to_chat: sender={sender}, message={message[:50]}")
-        logger.debug(f"append_to_chat called - sender: {sender}, message: '{message[:50]}...', is_code: {is_code}", print_to_terminal=True)
+        logger.debug(f"[DUPLICATE_DEBUG] append_to_chat called with sender: '{sender}', message: '{message[:50]}...'", print_to_terminal=True)
+        logger.debug(f"[DUPLICATE_DEBUG] append_to_chat call stack: {traceback.format_stack()[-3:]}", print_to_terminal=True)
         
-        # Ensure chat display is visible for message display
-        self._ensure_chat_display_visible()
-        
-        print(f"[DEBUG] Calling chat_display.append_to_chat")
         logger.debug("Calling chat_display.append_to_chat", print_to_terminal=True)
         self.chat_display.append_to_chat(sender, message, is_code)
-        print(f"[DEBUG] chat_display.append_to_chat completed")
+        
         logger.debug("chat_display.append_to_chat completed", print_to_terminal=True)
         
         # Force immediate UI update for new messages
@@ -890,7 +926,8 @@ class ChatTab(QWidget):
                     
                     # Ensure scroll to bottom
                     cursor = self.chat_display.chat_display.textCursor()
-                    cursor.movePosition(cursor.End)
+                    from PySide6.QtGui import QTextCursor
+                    cursor.movePosition(QTextCursor.MoveOperation.End)
                     self.chat_display.chat_display.setTextCursor(cursor)
                     
                     # Force layout update
@@ -903,88 +940,34 @@ class ChatTab(QWidget):
         except Exception as e:
             logger.error(f"Error in _force_chat_display_update: {e}")
     
-    def append_response_chunk(self, chunk: str, model_name: str = None):
-        """Append a streaming response chunk"""
-        # Use QTimer.singleShot to ensure this method runs in the main thread
+    def append_response_chunk(self, chunk: str, model_name: str = None, msg_id: str = None, chunk_index: int = None):
+        """Append a streaming response chunk (single call per chunk, all args required)."""
+        logger.debug(f"[CHAT_TAB_DEBUG] append_response_chunk called with chunk: {chunk[:50]}, model_name: {model_name}, msg_id: {msg_id}, chunk_index: {chunk_index}")
+        QTimer.singleShot(0, lambda: self._append_response_chunk_safe(chunk, model_name, msg_id, chunk_index))
 
-        QTimer.singleShot(0, lambda: self._append_response_chunk_safe(chunk, model_name))
-    
-    def _append_response_chunk_safe(self, chunk: str, model_name: str = None):
-        """Append a streaming response chunk safely in the main thread"""
+    def _append_response_chunk_safe(self, chunk: str, model_name: str = None, msg_id: str = None, chunk_index: int = None):
+        """Append a streaming response chunk safely in the main thread, now with msg_id and chunk_index support."""
         try:
-            logger.debug(f"[ID:CT001] _append_response_chunk_safe called - Chunk: {chunk[:50]}...")
-            logger.debug(f"[ID:CT002] Model name: {model_name}")
-            
-            # Always append to chat display - never skip this
-            # The EQ visualizer is just a visual overlay, it shouldn't prevent chat messages from appearing
-            
-            # Ensure chat display is visible for message display
+            logger.debug(f"[CHAT_TAB_DEBUG] _append_response_chunk_safe called with chunk: {chunk[:50]}, model_name: {model_name}, msg_id: {msg_id}, chunk_index: {chunk_index}")
             self._ensure_chat_display_visible()
-                
-            # CRITICAL FIX: Only start streaming if not already streaming
-            # The issue was that is_streaming was being reset to False between chunks
             if not hasattr(self, 'is_streaming') or not self.is_streaming:
-                logger.debug("[ID:CT002A] Starting streaming")
+                logger.debug("[PATCH] Starting streaming")
                 self.start_streaming()
-            else:
-                logger.debug("[ID:CT002C] Already streaming, continuing")
-                
-            # CRITICAL FIX: Ensure streaming state is properly maintained
             if not hasattr(self, 'is_streaming'):
                 self.is_streaming = True
-                
-            # For typewriter effect: accumulate the response for logging but pass individual chunks to UI
-            self.current_response += chunk  # accumulate here for logging only!
-            logger.debug(f"[ID:CT002B] Accumulated response length: {len(self.current_response)}")
-            
-            # Log the full accumulated message every 10 chunks to reduce log size
+            self.current_response += chunk
             if hasattr(self, '_chunk_count'):
                 self._chunk_count += 1
             else:
                 self._chunk_count = 1
-                
-            if self._chunk_count % 10 == 0:
-                logger.debug(f"[DEBUG] Streaming progress - chunks: {self._chunk_count}, full message: {self.current_response[:200]}...")
-            
             ai_name = self.get_ai_name()
             label = f"{ai_name} ({model_name})" if model_name else ai_name
-            streaming_handler = self.chat_display.get_streaming_handler()
-            if streaming_handler:
-                try:
-                    # CRITICAL FIX: Pass the individual chunk for typewriter effect
-                    # The streaming handler will append it to the existing content
-                    streaming_handler.update_streaming_message(
-                        chunk, label, None, False, tag="ai", append=True
-                    )
-                    logger.debug(f"[ID:CT003] Updated streaming message with chunk: {chunk[:20]}...")
-                    
-                    # Force immediate UI update for streaming responses
-                    if hasattr(streaming_handler, 'force_ui_update'):
-                        streaming_handler.force_ui_update()
-                except Exception as e:
-                    logger.error(f"[ID:CT007] Error updating streaming message: {e}")
-                    logger.error(f"[ID:CT008] Streaming update traceback: {traceback.format_exc()}")
-                    # Try to recover by forcing a UI update
-                    try:
-                        self.chat_display.update()
-                        from pyside_chat.core.utils.threading_utils import safe_process_events_alternative
-                        safe_process_events_alternative()
-                    except Exception as e2:
-                        logger.error(f"[ID:CT010] Recovery attempt failed: {e2}")
-            else:
-                logger.warning("[ID:CT004] No streaming handler found")
-                
+            # Only call chat_display.append_response_chunk ONCE per chunk, with all args
+            logger.debug(f"[CHAT_TAB_DEBUG] Calling chat_display.append_response_chunk with chunk: {chunk[:50]}, model_name: {model_name}, msg_id: {msg_id}, chunk_index: {chunk_index}")
+            self.chat_display.append_response_chunk(chunk, model_name, msg_id, chunk_index=chunk_index)
         except Exception as e:
-            logger.error(f"[ID:CT005] Error in _append_response_chunk_safe: {e}")
-            logger.error(f"[ID:CT006] _append_response_chunk_safe traceback: {traceback.format_exc()}")
-            # Try to recover by forcing a UI update
-            try:
-                if hasattr(self, 'chat_display') and self.chat_display:
-                    self.chat_display.update()
-                    from pyside_chat.core.utils.threading_utils import safe_process_events_alternative
-                    safe_process_events_alternative()
-            except Exception as e2:
-                logger.error(f"[ID:CT009] Recovery attempt failed: {e2}")
+            logger.error(f"[PATCH] Error in _append_response_chunk_safe: {e}")
+            logger.error(f"[PATCH] _append_response_chunk_safe traceback: {traceback.format_exc()}")
     
     def _ensure_chat_display_visible(self):
         """Ensure the chat display is visible for message display"""
@@ -1015,118 +998,58 @@ class ChatTab(QWidget):
             logger.error(f"Error ensuring chat display visibility: {e}")
         
     def start_streaming(self):
-        """Start streaming state"""
-        # Use QTimer.singleShot to ensure this method runs in the main thread
+        """Start streaming state (UI only updates, no internal is_streaming flag)."""
+        QTimer.singleShot(0, self._start_streaming_safe)
 
     def _start_streaming_safe(self):
-        """Start streaming state safely in the main thread"""
-        # CRITICAL FIX: Ensure we don't start streaming if already streaming
-        if hasattr(self, 'is_streaming') and self.is_streaming:
-            logger.debug("[ID:ST001] Already streaming, skipping start_streaming")
-            return
-            
-        self.is_streaming = True
-        self.current_response = ""
-        self._chunk_count = 0  # Reset chunk counter for new streaming session
+        """Start streaming state safely in the main thread (UI only)."""
         input_components = self.input_controls.get_ui_components()
-        
-        # Only manage send/cancel buttons in text mode
-        if not self.voice_mode:
-            input_components['send_button'].setEnabled(False)
-            input_components['cancel_button'].setVisible(True)
-            logger.debug("[VOICE DEBUG] Text mode: disabled send button, showed cancel button")
-        else:
-            # In voice mode, buttons should remain hidden
-            logger.debug("[VOICE DEBUG] Voice mode: buttons remain hidden during streaming")
-        
-        ai_name = self.get_ai_name()
-        streaming_handler = self.chat_display.get_streaming_handler()
-        if streaming_handler:
-            streaming_handler.start_streaming_message(ai_name, tag="ai")
-            logger.debug("[ID:ST002] Started streaming message in streaming handler")
-        else:
-            logger.warning("[ID:ST003] No streaming handler found")
-        
-        # Double-check that the button state is correct (only in text mode)
-        if not self.voice_mode and input_components['send_button'].isEnabled():
-            logger.warning("Send button was not disabled in text mode, forcing disable")
-            input_components['send_button'].setEnabled(False)
-            input_components['send_button'].update()
-            from pyside_chat.core.utils.threading_utils import safe_process_events_alternative
-            safe_process_events_alternative()
-    
-    def stop_streaming(self):
-        """Stop streaming state"""
-        # Use QTimer.singleShot to ensure this method runs in the main thread
+        # Button state now handled by _on_conversation_updated
+        self.chat_display._sync_messages_from_conversation_service()
+        self.update()
 
-    def _stop_streaming_safe(self):
-        """Stop streaming state safely in the main thread"""
-        logger.debug("[DEBUG] stop_streaming called. is_streaming: %s, voice_mode: %s", self.is_streaming, self.voice_mode)
-        
-        # CRITICAL FIX: Ensure we properly reset the streaming state
-        if hasattr(self, 'is_streaming'):
-            self.is_streaming = False
+    def stop_streaming(self):
+        """Stop streaming state (UI only updates, no internal is_streaming flag)."""
+        logger.debug("[DEBUG] stop_streaming called (UI only)")
+        # Finalize streaming message in conversation service, then sync to chat display
+        if hasattr(self, 'chat_controller') and hasattr(self.chat_controller, 'conversation_service'):
+            try:
+                conversation_service = self.chat_controller.conversation_service
+                conversation_service.finalize_streaming_message()
+                logger.debug("[ID:STOP001] Finalized streaming message in conversation service")
+                self.chat_display._sync_messages_from_conversation_service()
+            except Exception as e:
+                logger.error(f"[ID:STOP002] Error finalizing streaming in conversation service: {e}")
+                logger.error(f"[ID:STOP003] Stop streaming traceback: {traceback.format_exc()}")
         else:
-            logger.warning("[ID:STOP001] is_streaming attribute not found, creating it")
-            self.is_streaming = False
-            
-        input_components = self.input_controls.get_ui_components()
-        
-        # Only manage send/cancel buttons in text mode
-        if not self.voice_mode:
-            input_components['send_button'].setEnabled(True)
-            input_components['send_button'].setVisible(True)
-            input_components['cancel_button'].setVisible(False)
-            logger.debug("[VOICE DEBUG] Text mode: enabled send button, hid cancel button")
-        else:
-            # In voice mode, buttons should remain hidden
-            logger.debug("[VOICE DEBUG] Voice mode: buttons remain hidden after streaming")
-        
-        logger.debug(f"[DEBUG] stop_streaming: send_button enabled? {input_components['send_button'].isEnabled()} visible? {input_components['send_button'].isVisible()} cancel_button visible? {input_components['cancel_button'].isVisible()}")
-        
-        # Log the final complete message
-        if hasattr(self, '_chunk_count') and self._chunk_count > 0:
-            logger.debug(f"[DEBUG] Streaming completed - total chunks: {self._chunk_count}, final message: {self.current_response}")
-        
-        streaming_handler = self.chat_display.get_streaming_handler()
-        if streaming_handler:
-            streaming_handler.finalize_streaming_message()
-            logger.debug("[ID:STOP002] Finalized streaming message in streaming handler")
-        else:
-            logger.warning("[ID:STOP003] No streaming handler found for finalization")
-            
-        input_components['send_button'].update()
-        input_components['cancel_button'].update()
-        from pyside_chat.core.utils.threading_utils import safe_process_events_alternative
-        safe_process_events_alternative()
-        
-        # Double-check that the button is actually enabled (only in text mode)
-        if not self.voice_mode and not input_components['send_button'].isEnabled():
-            logger.warning("Send button was not enabled in text mode, forcing enable")
-            input_components['send_button'].setEnabled(True)
-            input_components['send_button'].update()
-            safe_process_events_alternative()
+            streaming_handler = self.chat_display.get_streaming_handler()
+            if streaming_handler:
+                streaming_handler.finalize_streaming_message()
+                logger.debug("[ID:STOP001] Finalized streaming message in streaming handler")
+            else:
+                logger.warning("[ID:STOP004] No streaming handler found")
+        # UI state will be updated by _on_conversation_updated
+        self.update()
     
     def force_enable_send_button(self):
         """Force enable the send button and ensure UI is updated"""
         # Use QTimer.singleShot to ensure this method runs in the main thread
+        QTimer.singleShot(0, self._force_enable_send_button_safe)
 
     def _force_enable_send_button_safe(self):
-        """Force enable the send button safely in the main thread"""
+        """Force enable the send button safely in the main thread (emergency UI reset only)"""
         logger.debug("Force enabling send button")
         self.is_streaming = False
         input_components = self.input_controls.get_ui_components()
-        
-        # Only manage send/cancel buttons in text mode
+        # Only manage send/cancel buttons in text mode (emergency UI reset only)
         if not self.voice_mode:
             input_components['send_button'].setEnabled(True)
             input_components['send_button'].setVisible(True)
             input_components['cancel_button'].setVisible(False)
-            logger.debug("[VOICE DEBUG] Text mode: force enabled send button")
+            logger.debug("[VOICE DEBUG] Text mode: force enabled send button (emergency UI reset)")
         else:
             # In voice mode, buttons should remain hidden
             logger.debug("[VOICE DEBUG] Voice mode: buttons remain hidden")
-        
         input_components['send_button'].update()
         input_components['cancel_button'].update()
         from pyside_chat.core.utils.threading_utils import safe_process_events_alternative
@@ -1265,6 +1188,55 @@ class ChatTab(QWidget):
     def load_conversation(self, filepath: str):
         """Load a conversation from file"""
         try:
+            # CRITICAL FIX: Use conversation service to load the conversation
+            if hasattr(self, 'chat_controller') and hasattr(self.chat_controller, 'conversation_service'):
+                # Extract filename from filepath
+                import os
+                filename = os.path.basename(filepath)
+                
+                # Load conversation through conversation service
+                conversation_service = self.chat_controller.conversation_service
+                conversation_service.load_conversation(filename)
+                
+                # Sync messages from conversation service to chat display
+                self.chat_display._sync_messages_from_conversation_service()
+                
+                logger.debug(f"[LOAD_FIX] Loaded conversation {filename} through conversation service")
+            else:
+                # Fallback to old method if conversation service not available
+                logger.warning("[LOAD_FIX] Conversation service not available, using fallback method")
+                self._load_conversation_fallback(filepath)
+            
+            # Set current conversation file
+            self.current_conversation_file = filepath
+            self.set_current_conversation_file(filepath)
+            
+            # Load metadata if available
+            try:
+                from pyside_chat.core.models.conversation_metadata import ConversationMetadata
+                metadata = ConversationMetadata.from_file(filepath)
+
+                # Restore settings from metadata
+                if metadata.temperature is not None:
+                    self.temperature = metadata.temperature
+                    input_components = self.input_controls.get_ui_components()
+                    input_components['temperature_slider'].setValue(int(metadata.temperature * 100))
+
+                if metadata.model and metadata.model in [self.input_controls.model_combo.itemText(i) for i in range(self.input_controls.model_combo.count())]:
+                    self.input_controls.model_combo.setCurrentText(metadata.model)
+
+                if metadata.personality and metadata.personality in [self.input_controls.personality_combo.itemText(i) for i in range(self.input_controls.personality_combo.count())]:
+                    self.input_controls.personality_combo.setCurrentText(metadata.personality)
+
+            except Exception as e:
+                logger.warning(f"Could not load conversation metadata: {e}")
+
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to load conversation: {str(e)}")
+    
+    def _load_conversation_fallback(self, filepath: str):
+        """Fallback method for loading conversation when conversation service is not available"""
+        try:
             with open(filepath, 'r', encoding='utf-8') as f:
                 data = json.load(f)
 
@@ -1305,32 +1277,9 @@ class ChatTab(QWidget):
             if chat_renderer:
                 chat_renderer.request_render(immediate=True)
 
-            # Set current conversation file
-            self.current_conversation_file = filepath
-            self.set_current_conversation_file(filepath)
-
-            # Load metadata if available
-            try:
-                from pyside_chat.core.models.conversation_metadata import ConversationMetadata
-                metadata = ConversationMetadata.from_file(filepath)
-
-                # Restore settings from metadata
-                if metadata.temperature is not None:
-                    self.temperature = metadata.temperature
-                    input_components = self.input_controls.get_ui_components()
-                    input_components['temperature_slider'].setValue(int(metadata.temperature * 100))
-
-                if metadata.model and metadata.model in [self.input_controls.model_combo.itemText(i) for i in range(self.input_controls.model_combo.count())]:
-                    self.input_controls.model_combo.setCurrentText(metadata.model)
-
-                if metadata.personality and metadata.personality in [self.input_controls.personality_combo.itemText(i) for i in range(self.input_controls.personality_combo.count())]:
-                    self.input_controls.personality_combo.setCurrentText(metadata.personality)
-
-            except Exception as e:
-                logger.warning(f"Could not load conversation metadata: {e}")
-
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to load conversation: {str(e)}")
+            logger.error(f"Error in fallback conversation loading: {e}")
+            raise
     
     def refresh_navigation(self):
         """Refresh the navigation widget"""
@@ -1342,6 +1291,27 @@ class ChatTab(QWidget):
         if hasattr(self, 'navigation_widget'):
             self.navigation_widget.set_current_conversation(filepath)
     
+    def set_chat_controller(self, chat_controller):
+        """Set the chat controller reference"""
+        self.chat_controller = chat_controller
+        logger.debug(f"[CHAT_TAB] Chat controller set: {chat_controller}")
+        
+        # CRITICAL FIX: Connect to conversation service signals when chat controller is set
+        if chat_controller and hasattr(chat_controller, 'conversation_service'):
+            conversation_service = chat_controller.conversation_service
+            # Disconnect any existing connection first
+            try:
+                conversation_service.conversation_updated.disconnect()
+            except TypeError:
+                # No existing connection, safe to ignore
+                pass
+            except Exception as e:
+                logger.debug(f"[CHAT_TAB] Safe disconnect: {e}")
+            
+            # Connect to conversation service signals
+            conversation_service.conversation_updated.connect(self._on_conversation_updated)
+            logger.debug("[CHAT_TAB] Connected to conversation service signals after controller set")
+    
     def get_streaming_handler(self):
         """Get the streaming handler for backward compatibility"""
         return self.chat_display.get_streaming_handler()
@@ -1349,7 +1319,7 @@ class ChatTab(QWidget):
     @property
     def streaming_handler(self):
         """Property to access streaming handler for backward compatibility"""
-        return self.chat_display.get_streaming_handler() 
+        return self.chat_display.get_streaming_handler()
 
     def finalize_streaming_and_start_tts(self, tts_text):
         """Finalize chat display after streaming, then start TTS playback"""

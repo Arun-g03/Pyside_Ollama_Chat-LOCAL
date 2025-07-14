@@ -29,7 +29,7 @@ class StreamingWorker(QObject):
     """
     
     # Signals for communication with main thread
-    chunk_received = Signal(str)  # Emitted when new data chunk arrives
+    chunk_received = Signal(str, str, str, int)  # chunk, model_name, msg_id, chunk_index
     progress_updated = Signal(str)  # Emitted for progress updates
     finished = Signal()  # Emitted when task completes
     error = Signal(str)  # Emitted when error occurs
@@ -61,21 +61,42 @@ class StreamingWorker(QObject):
             **kwargs: Configuration parameters for streaming
         """
         try:
+            # Log the streaming_message_id specifically if it's being set
+            if 'streaming_message_id' in kwargs:
+                logger.debug(f"[ID:TH003] StreamingWorker configured with streaming_message_id: {kwargs['streaming_message_id']}")
+            else:
+                logger.debug(f"[ID:TH003] StreamingWorker configured with: {list(kwargs.keys())}")
+            
             self._configuration.update(kwargs)
-            logger.debug(f"[ID:TH003] StreamingWorker configured with: {list(kwargs.keys())}")
+            
+            # Log the final configuration state
+            if 'streaming_message_id' in self._configuration:
+                logger.debug(f"[ID:TH003A] Final configuration has streaming_message_id: {self._configuration['streaming_message_id']}")
+            else:
+                logger.debug(f"[ID:TH003A] Final configuration has no streaming_message_id")
+                
         except Exception as e:
             logger.error(f"[ID:TH004] Error configuring streaming worker: {e}")
     
     def reset_state(self):
         """Reset worker state for reuse in persistent thread pool."""
         try:
+            # Store the streaming_message_id before clearing configuration
+            streaming_message_id = self._configuration.get('streaming_message_id')
+            
             self._running = False
             self._should_stop = False
             self._start_time = None
             self._request_count = 0
-            self._configuration = {}
             
-            logger.debug("[ID:TH005] StreamingWorker state reset")
+            # Clear configuration but preserve streaming_message_id if it exists
+            self._configuration = {}
+            if streaming_message_id:
+                self._configuration['streaming_message_id'] = streaming_message_id
+                logger.debug(f"[ID:TH005] StreamingWorker state reset - preserved streaming_message_id: {streaming_message_id}")
+            else:
+                logger.debug("[ID:TH005] StreamingWorker state reset - no streaming_message_id to preserve")
+                
         except Exception as e:
             logger.error(f"[ID:TH006] Error resetting streaming worker state: {e}")
     
@@ -87,6 +108,13 @@ class StreamingWorker(QObject):
         """Start the streaming operation."""
         try:
             self._log_thread_info("starting streaming")
+            
+            # Log configuration state before starting
+            if 'streaming_message_id' in self._configuration:
+                logger.debug(f"[ID:TH007A] Configuration has streaming_message_id: {self._configuration['streaming_message_id']}")
+            else:
+                logger.warning(f"[ID:TH007A] Configuration missing streaming_message_id! Available keys: {list(self._configuration.keys())}")
+            
             self._running = True
             self._should_stop = False
             self._start_time = time.time()
@@ -129,7 +157,7 @@ class ChatStreamingWorker(StreamingWorker):
     - Reusable configuration for thread pools
     """
     
-    def configure_streaming(self, context_messages: List[Dict], model: str, temperature: float, config_manager):
+    def configure_streaming(self, context_messages: List[Dict], model: str, temperature: float, config_manager, streaming_message_id: str = None):
         """
         Configure the worker for chat streaming.
         
@@ -138,13 +166,15 @@ class ChatStreamingWorker(StreamingWorker):
             model: Model name to use
             temperature: Temperature setting
             config_manager: Configuration manager
+            streaming_message_id: ID of the streaming message for chunk updates
         """
         try:
             super().configure_streaming(
                 context_messages=context_messages,
                 model=model,
                 temperature=temperature,
-                config_manager=config_manager
+                config_manager=config_manager,
+                streaming_message_id=streaming_message_id
             )
             
             # Store configuration for streaming
@@ -152,10 +182,11 @@ class ChatStreamingWorker(StreamingWorker):
                 'context_messages': context_messages,
                 'model': model,
                 'temperature': temperature,
-                'config_manager': config_manager
+                'config_manager': config_manager,
+                'streaming_message_id': streaming_message_id
             })
             
-            logger.debug(f"[ID:TH009] ChatStreamingWorker configured for model: {model}")
+            logger.debug(f"[ID:TH009] ChatStreamingWorker configured for model: {model}, streaming_message_id: {streaming_message_id}")
             
         except Exception as e:
             logger.error(f"[ID:TH010] Error configuring chat streaming worker: {e}")
@@ -211,6 +242,16 @@ class ChatStreamingWorker(StreamingWorker):
             
             # Process streaming response
             chunk_count = 0
+            streaming_message_id = self._configuration.get('streaming_message_id', "msg_id_placeholder")
+            logger.debug(f"[WORKER_DEBUG] Using streaming_message_id: {streaming_message_id}")
+            
+            # Log whether we're using a real ID or placeholder
+            if streaming_message_id == "msg_id_placeholder":
+                logger.warning(f"[WORKER_DEBUG] Using placeholder streaming_message_id - this indicates a configuration issue!")
+                logger.debug(f"[WORKER_DEBUG] Available configuration keys: {list(self._configuration.keys())}")
+            else:
+                logger.debug(f"[WORKER_DEBUG] Using real streaming_message_id: {streaming_message_id}")
+                
             for line in response.iter_lines():
                 if self._should_stop:
                     logger.debug("[ID:TH013] Chat streaming stopped by user")
@@ -225,11 +266,25 @@ class ChatStreamingWorker(StreamingWorker):
                             content = data['message'].get('content', '')
                             if content:
                                 chunk_count += 1
-                                self.chunk_received.emit(content)
+                                logger.debug(f"[WORKER_DEBUG] Emitting chunk {chunk_count}: content='{content[:20]}...', msg_id='{streaming_message_id}'")
+                                
+                                # Validate content before emitting
+                                if not content.strip():
+                                    logger.warning(f"[WORKER_DEBUG] Skipping empty chunk {chunk_count}")
+                                    continue
+                                
+                                # Validate streaming message ID
+                                if not streaming_message_id or streaming_message_id == "msg_id_placeholder":
+                                    logger.error(f"[WORKER_DEBUG] Invalid streaming message ID: '{streaming_message_id}', this will cause chunk processing to fail")
+                                    logger.error(f"[WORKER_DEBUG] Available configuration keys: {list(self._configuration.keys())}")
+                                
+                                self.chunk_received.emit(content, model, streaming_message_id, chunk_count)
                                 
                                 # Update progress periodically
                                 if chunk_count % 10 == 0:
                                     self.progress_updated.emit(f"Received {chunk_count} chunks...")
+                            else:
+                                logger.debug(f"[WORKER_DEBUG] Skipping empty content from Ollama response")
                         
                         # Check for done signal
                         if data.get('done', False):
@@ -346,7 +401,7 @@ class AudioStreamingWorker(StreamingWorker):
                     
                     # Emit simulated audio chunk
                     simulated_chunk = f"audio_chunk_{chunk_count}"
-                    self.chunk_received.emit(simulated_chunk)
+                    self.chunk_received.emit(simulated_chunk, "simulated_model", "simulated_msg_id", chunk_count)
                     
                     # Update progress periodically
                     if chunk_count % 10 == 0:

@@ -258,7 +258,7 @@ class MessageFormatter:
         elif sender == "Assistant's Thoughts":
             # The message is already formatted HTML, so we don't process it further.
             pass
-        else:  # Assistant
+        else:  # AI Assistant (dynamic name from personality)
             if is_code:
                 # For explicit code messages, apply syntax highlighting
                 message = MessageFormatter.syntax_highlight_code(message)
@@ -315,17 +315,25 @@ class MessageFormatter:
     def split_thoughts_and_answer(message: str):
         """
         Splits a message into (thoughts, main_answer) if <think>...</think> is present.
+        If <think> is detected but </think> is missing, treat everything after <think> as thoughts.
         Returns a tuple (thoughts, main_answer). If no <think>, thoughts is None.
         """
         import re
+        # Try to find a complete <think>...</think> block
         match = re.search(r'<think>(.*?)</think>', message, re.DOTALL | re.IGNORECASE)
         if match:
             thoughts = match.group(1).strip()
             # Remove the <think>...</think> part from the message
             main_answer = re.sub(r'<think>.*?</think>', '', message, flags=re.DOTALL | re.IGNORECASE).strip()
             return thoughts, main_answer
-        else:
-            return None, message
+        # If <think> is present but </think> is missing, treat everything after <think> as thoughts
+        start_idx = message.lower().find('<think>')
+        if start_idx != -1:
+            thoughts = message[start_idx+7:].strip()
+            main_answer = message[:start_idx].strip()
+            return thoughts, main_answer
+        # No thoughts block found
+        return None, message
     
     @staticmethod
     def to_plain_text(message: str) -> str:

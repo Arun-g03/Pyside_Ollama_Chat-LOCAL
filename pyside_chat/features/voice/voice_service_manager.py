@@ -1,4 +1,6 @@
 from pyside_chat.core.shared_imports.pyside_imports import *
+from pyside_chat.core.shared_imports.shared_imports import *
+from pyside_chat.features.voice.voice_service import VoiceService
 """
 Voice Service Manager
 
