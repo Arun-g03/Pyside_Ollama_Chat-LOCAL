@@ -210,8 +210,8 @@ class ConversationService(QObject):
         logger.debug(f"[ID:0015] DEBUG: Message roles: {[msg.get('role', 'unknown') for msg in self.conversation]}")
         
         # DEBUG: Log the actual content of each message
-        for i, msg in enumerate(self.conversation):
-            logger.debug(f"[CS_DEBUG] Message {i}: {{role: {msg.get('role')}, content_len: {len(msg.get('content', ''))}, content_preview: '{msg.get('content', '')[:50]}', is_streaming: {msg.get('is_streaming')}, id: {msg.get('id')}}}", print_to_terminal=True)
+        #for i, msg in enumerate(self.conversation):
+        #    logger.debug(f"[CS_DEBUG] Message {i}: {{role: {msg.get('role')}, content_len: {len(msg.get('content', ''))}, content_preview: '{msg.get('content', '')[:50]}', is_streaming: {msg.get('is_streaming')}, id: {msg.get('id')}}}", print_to_terminal=True)
         
         # --- MIGRATION LOGIC: Extract <think>...</think> to 'thought' field if needed (for legacy/finalized messages) ---
         import re
@@ -308,8 +308,8 @@ class ConversationService(QObject):
         logger.debug(f"[ID:0015] DEBUG: Message roles: {[msg.get('role', 'unknown') for msg in self.conversation]}")
         
         # DEBUG: Log the actual content of each message
-        for i, msg in enumerate(self.conversation):
-            logger.debug(f"[CS_DEBUG] Message {i}: {{role: {msg.get('role')}, content_len: {len(msg.get('content', ''))}, content_preview: '{msg.get('content', '')[:50]}', is_streaming: {msg.get('is_streaming')}, id: {msg.get('id')}}}", print_to_terminal=True)
+        #for i, msg in enumerate(self.conversation):
+        #    logger.debug(f"[CS_DEBUG] Message {i}: {{role: {msg.get('role')}, content_len: {len(msg.get('content', ''))}, content_preview: '{msg.get('content', '')[:50]}', is_streaming: {msg.get('is_streaming')}, id: {msg.get('id')}}}", print_to_terminal=True)
         
         # --- MIGRATION LOGIC: Extract <think>...</think> to 'thought' field if needed (for legacy/finalized messages) ---
         import re

@@ -15,6 +15,34 @@ logger = CustomLogger.get_logger(__name__)
 class MessageFormatter:
     """Utility class for formatting messages with code highlighting and HTML processing"""
     
+    # Define colors locally to avoid circular import
+    COLORS = {
+        'user_bubble': '#1a3a5d',
+        'ai_bubble': '#374151', 
+        'system_bubble': '#1a1a1a',
+        'thinking_bubble': '#23272e',
+        'thought_bubble': '#1a1a1a',
+        'user_text': '#ffffff',
+        'ai_text': '#e2e8f0',
+        'system_text': '#666666',
+        'thinking_text': '#aaaaaa',
+        'thought_text': '#ffffff',
+        'cursor': '#888888',
+        'border': '#444444',
+        'border_light': '#555555',
+        'border_dark': '#333333',
+        'code_background': '#2d2d2d',
+        'code_text': '#dcdcdc',
+        'code_border': '#444444',
+        'inline_code_bg': '#2d2d2d',
+        'inline_code_text': '#dcdcaa',
+        'header_primary': '#ffffff',
+        'header_secondary': '#4a9eff',
+        'bold_text': '#ffd700',
+        'italic_text': '#cccccc',
+        'link_color': '#4a9eff',
+    }
+    
     @staticmethod
     def detect_code_in_message(message: str) -> bool:
         """
@@ -111,13 +139,17 @@ class MessageFormatter:
             # Apply syntax highlighting
             highlighted_code = MessageFormatter.syntax_highlight_code(code_content, language)
             
-            # Create language label if specified
+            # Create code block HTML directly
             language_label = ""
             if language:
                 language_label = f'<div style="background-color: #1e1e1e; color: #dcdcdc; padding: 5px 10px; border-bottom: 1px solid #444; font-family: monospace; font-size: 11px; text-transform: uppercase;">{language}</div>'
             
-            # Return formatted code block with language label
-            return f'<div style="background-color: #2d2d2d; border-radius: 5px; overflow: hidden; margin: 10px 0; border: 1px solid #444;">{language_label}<div style="padding: 10px; color: #dcdcdc; font-family: \'Consolas\', \'Monaco\', \'Courier New\', monospace; font-size: 13px; line-height: 1.4; overflow-x: auto;">{highlighted_code}</div></div>'
+            return (
+                f'<div style="background-color: #2d2d2d; border-radius: 5px; overflow: hidden; margin: 10px 0; border: 1px solid #444;">'
+                f'{language_label}'
+                f'<div style="padding: 10px; color: #dcdcdc; font-family: \'Consolas\', \'Monaco\', \'Courier New\', monospace; font-size: 13px; line-height: 1.4; overflow-x: auto;">{highlighted_code}</div>'
+                '</div>'
+            )
 
         # Replace block code with formatted HTML
         formatted_message = re.sub(block_code_pattern, format_block_code, formatted_message)
@@ -125,7 +157,7 @@ class MessageFormatter:
         # Format inline code (single backticks) - but avoid formatting if it's inside a code block
         # Use a simpler approach to avoid double-formatting
         inline_code_pattern = re.compile(r'`([^`]+)`')
-        formatted_message = re.sub(inline_code_pattern, r'<code style="background-color: #2d2d2d; color: #dcdcaa; padding: 2px 4px; border-radius: 3px; font-family: \'Consolas\', \'Monaco\', \'Courier New\', monospace; font-size: 12px;">\1</code>', formatted_message)
+        formatted_message = re.sub(inline_code_pattern, lambda m: f'<code style="background-color: #2d2d2d; color: #dcdcaa; padding: 2px 4px; border-radius: 3px; font-family: \'Consolas\', \'Monaco\', \'Courier New\', monospace; font-size: 12px;">{m.group(1)}</code>', formatted_message)
 
         return formatted_message
     
@@ -158,16 +190,16 @@ class MessageFormatter:
         protected_message = re.sub(r'---\s*---\s*---', '---', protected_message)
         protected_message = re.sub(r'---\s*###', '###', protected_message)
         
-        # Format headers with consistent styling
-        protected_message = re.sub(r'^###\s+(.+)$', r'<h3 style="font-size: 18px; font-weight: bold; color: #4a9eff; margin: 20px 0 10px 0; padding: 8px 0; border-bottom: 1px solid #444;">\1</h3>', protected_message, flags=re.MULTILINE)
-        protected_message = re.sub(r'^##\s+(.+)$', r'<h2 style="font-size: 20px; font-weight: bold; color: #ffffff; margin: 25px 0 15px 0; padding: 10px 0; border-bottom: 2px solid #555;">\1</h2>', protected_message, flags=re.MULTILINE)
-        protected_message = re.sub(r'^#\s+(.+)$', r'<h1 style="font-size: 24px; font-weight: bold; color: #ffffff; margin: 30px 0 20px 0; padding: 12px 0; border-bottom: 3px solid #666;">\1</h1>', protected_message, flags=re.MULTILINE)
+        # Format headers with consistent styling using local colors
+        protected_message = re.sub(r'^###\s+(.+)$', f'<h3 style="font-size: 18px; font-weight: bold; color: {MessageFormatter.COLORS["header_secondary"]}; margin: 20px 0 10px 0; padding: 8px 0; border-bottom: 1px solid {MessageFormatter.COLORS["border"]};">\\1</h3>', protected_message, flags=re.MULTILINE)
+        protected_message = re.sub(r'^##\s+(.+)$', f'<h2 style="font-size: 20px; font-weight: bold; color: {MessageFormatter.COLORS["header_primary"]}; margin: 25px 0 15px 0; padding: 10px 0; border-bottom: 2px solid {MessageFormatter.COLORS["border_light"]};">\\1</h2>', protected_message, flags=re.MULTILINE)
+        protected_message = re.sub(r'^#\s+(.+)$', f'<h1 style="font-size: 24px; font-weight: bold; color: {MessageFormatter.COLORS["header_primary"]}; margin: 30px 0 20px 0; padding: 12px 0; border-bottom: 3px solid {MessageFormatter.COLORS["border_dark"]};">\\1</h1>', protected_message, flags=re.MULTILINE)
         
         # Format horizontal rules
-        protected_message = re.sub(r'^---$', '<hr style="border: none; border-top: 1px solid #444; margin: 20px 0;">', protected_message, flags=re.MULTILINE)
+        protected_message = re.sub(r'^---$', f'<hr style="border: none; border-top: 1px solid {MessageFormatter.COLORS["border"]}; margin: 20px 0;">', protected_message, flags=re.MULTILINE)
         
         # Format unordered lists with better styling
-        protected_message = re.sub(r'^\s*[-*•]\s+(.+)$', r'<li style="margin: 8px 0; padding-left: 5px; color: #e0e0e0;">\1</li>', protected_message, flags=re.MULTILINE)
+        protected_message = re.sub(r'^\s*[-*•]\s+(.+)$', f'<li style="margin: 8px 0; padding-left: 5px; color: {MessageFormatter.COLORS["ai_text"]};">\\1</li>', protected_message, flags=re.MULTILINE)
         
         # Group consecutive list items into proper lists
         lines = protected_message.split('\n')
@@ -184,7 +216,7 @@ class MessageFormatter:
             else:
                 if in_list and list_items:
                     # Close the previous list
-                    formatted_lines.append('<ul style="list-style-type: none; padding-left: 20px; margin: 15px 0; border-left: 2px solid #444;">')
+                    formatted_lines.append(f'<ul style="list-style-type: none; padding-left: 20px; margin: 15px 0; border-left: 2px solid {MessageFormatter.COLORS["border"]};">')
                     formatted_lines.extend(list_items)
                     formatted_lines.append('</ul>')
                     list_items = []
@@ -193,20 +225,20 @@ class MessageFormatter:
         
         # Handle any remaining list items
         if in_list and list_items:
-            formatted_lines.append('<ul style="list-style-type: none; padding-left: 20px; margin: 15px 0; border-left: 2px solid #444;">')
+            formatted_lines.append(f'<ul style="list-style-type: none; padding-left: 20px; margin: 15px 0; border-left: 2px solid {MessageFormatter.COLORS["border"]};">')
             formatted_lines.extend(list_items)
             formatted_lines.append('</ul>')
         
         protected_message = '\n'.join(formatted_lines)
         
         # Format bold text (reduce excessive bold usage)
-        protected_message = re.sub(r'\*\*(.+?)\*\*', r'<strong style="color: #ffd700; font-weight: 600;">\1</strong>', protected_message)
+        protected_message = re.sub(r'\*\*(.+?)\*\*', f'<strong style="color: {MessageFormatter.COLORS["bold_text"]}; font-weight: 600;">\\1</strong>', protected_message)
         
         # Format italic text
-        protected_message = re.sub(r'\*(.+?)\*', r'<em style="color: #cccccc; font-style: italic;">\1</em>', protected_message)
+        protected_message = re.sub(r'\*(.+?)\*', f'<em style="color: {MessageFormatter.COLORS["italic_text"]}; font-style: italic;">\\1</em>', protected_message)
         
-        # Format inline code
-        protected_message = re.sub(r'`([^`]+)`', r'<code style="background-color: #2d2d2d; color: #dcdcaa; padding: 2px 6px; border-radius: 3px; font-family: monospace; font-size: 12px; border: 1px solid #444;">\1</code>', protected_message)
+        # Format inline code using local styling
+        protected_message = re.sub(r'`([^`]+)`', lambda m: f'<code style="background-color: {MessageFormatter.COLORS["inline_code_bg"]}; color: {MessageFormatter.COLORS["inline_code_text"]}; padding: 2px 4px; border-radius: 3px; font-family: \'Consolas\', \'Monaco\', \'Courier New\', monospace; font-size: 12px;">{m.group(1)}</code>', protected_message)
         
         # Add paragraph spacing for better readability
         protected_message = re.sub(r'\n\n+', '</p><p style="margin: 12px 0; line-height: 1.6;">', protected_message)
@@ -226,16 +258,16 @@ class MessageFormatter:
         # First, identify and protect code blocks (they may contain HTML tags that should be displayed, not interpreted)
         protected_message, code_blocks = MessageFormatter._protect_code_blocks(message)
         
-        # Handle formatting tags we want to preserve with better styling
-        protected_message = re.sub(r'<ul>(.*?)</ul>', r'<ul style="list-style-type: disc; padding-left: 20px; margin: 10px 0;">\1</ul>', protected_message, flags=re.DOTALL)
-        protected_message = re.sub(r'<ol>(.*?)</ol>', r'<ol style="padding-left: 20px; margin: 10px 0;">\1</ol>', protected_message, flags=re.DOTALL)
-        protected_message = re.sub(r'<li>(.*?)</li>', r'<li style="margin: 5px 0;">\1</li>', protected_message)
-        protected_message = re.sub(r'<b>(.*?)</b>', r'<b style="font-weight: bold; color: #ffffff;">\1</b>', protected_message)
-        protected_message = re.sub(r'<i>(.*?)</i>', r'<i style="font-style: italic; color: #cccccc;">\1</i>', protected_message)
-        protected_message = re.sub(r'<h1>(.*?)</h1>', r'<h1 style="font-size: 24px; font-weight: bold; color: #ffffff; margin: 15px 0 10px 0; border-bottom: 2px solid #555; padding-bottom: 5px;">\1</h1>', protected_message)
-        protected_message = re.sub(r'<h2>(.*?)</h2>', r'<h2 style="font-size: 20px; font-weight: bold; color: #ffffff; margin: 12px 0 8px 0;">\1</h2>', protected_message)
-        protected_message = re.sub(r'<h3>(.*?)</h3>', r'<h3 style="font-size: 16px; font-weight: bold; color: #ffffff; margin: 10px 0 6px 0;">\1</h3>', protected_message)
-        protected_message = re.sub(r'<p>(.*?)</p>', r'<p style="margin: 8px 0;">\1</p>', protected_message)
+        # Handle formatting tags we want to preserve with better styling using local colors
+        protected_message = re.sub(r'<ul>(.*?)</ul>', f'<ul style="list-style-type: disc; padding-left: 20px; margin: 10px 0;">\\1</ul>', protected_message, flags=re.DOTALL)
+        protected_message = re.sub(r'<ol>(.*?)</ol>', f'<ol style="padding-left: 20px; margin: 10px 0;">\\1</ol>', protected_message, flags=re.DOTALL)
+        protected_message = re.sub(r'<li>(.*?)</li>', f'<li style="margin: 5px 0;">\\1</li>', protected_message, flags=re.DOTALL)
+        protected_message = re.sub(r'<b>(.*?)</b>', f'<b style="font-weight: bold; color: {MessageFormatter.COLORS["header_primary"]};">\\1</b>', protected_message, flags=re.DOTALL)
+        protected_message = re.sub(r'<i>(.*?)</i>', f'<i style="font-style: italic; color: {MessageFormatter.COLORS["italic_text"]};">\\1</i>', protected_message, flags=re.DOTALL)
+        protected_message = re.sub(r'<h1>(.*?)</h1>', f'<h1 style="font-size: 24px; font-weight: bold; color: {MessageFormatter.COLORS["header_primary"]}; margin: 15px 0 10px 0; border-bottom: 2px solid {MessageFormatter.COLORS["border_light"]}; padding-bottom: 5px;">\\1</h1>', protected_message, flags=re.DOTALL)
+        protected_message = re.sub(r'<h2>(.*?)</h2>', f'<h2 style="font-size: 20px; font-weight: bold; color: {MessageFormatter.COLORS["header_primary"]}; margin: 12px 0 8px 0;">\\1</h2>', protected_message, flags=re.DOTALL)
+        protected_message = re.sub(r'<h3>(.*?)</h3>', f'<h3 style="font-size: 16px; font-weight: bold; color: {MessageFormatter.COLORS["header_primary"]}; margin: 10px 0 6px 0;">\\1</h3>', protected_message, flags=re.DOTALL)
+        protected_message = re.sub(r'<p>(.*?)</p>', f'<p style="margin: 8px 0;">\\1</p>', protected_message, flags=re.DOTALL)
         
         # Escape HTML tags outside of code blocks
         escaped_message = escape(protected_message)
@@ -254,7 +286,7 @@ class MessageFormatter:
             # Auto-detect and format code in the message
             message = MessageFormatter.detect_and_format_code(message)
         elif sender == "System":
-            message = f"<i style='color: #aaa;'>{message}</i>"
+            message = f"<i style='color: {MessageFormatter.COLORS['system_text']};'>{message}</i>"
         elif sender == "Assistant's Thoughts":
             # The message is already formatted HTML, so we don't process it further.
             pass
@@ -269,8 +301,8 @@ class MessageFormatter:
                 message = MessageFormatter.format_markdown(message)
                 # Then detect and format code blocks
                 message = MessageFormatter.detect_and_format_code(message)
-                # Finally handle any remaining HTML tags
-                message = MessageFormatter.handle_html_tags(message)
+                # Don't escape HTML tags for AI messages - we want to render them
+                # The HTML we create should be preserved, not escaped
 
         return message
     
@@ -280,32 +312,32 @@ class MessageFormatter:
         # Clean the message before formatting
         cleaned_message = MessageFormatter.cleanup_message(sender, message, is_code)
         
-        # Apply different styles for different message types
+        # Apply different styles for different message types using local colors
         if sender == "System":
             formatted_message = f"""
-                <div style="background-color: #1e1e1e; padding: 8px 10px; border-radius: 5px; margin-bottom: 10px; border-left: 3px solid #666;">
-                    <b style="color: #888;">{sender}:</b> {cleaned_message}
+                <div style="background-color: {MessageFormatter.COLORS['system_bubble']}; padding: 8px 10px; border-radius: 5px; margin-bottom: 10px; border-left: 3px solid {MessageFormatter.COLORS['border_dark']};">
+                    <b style="color: {MessageFormatter.COLORS['system_text']};">{sender}:</b> {cleaned_message}
                 </div>
             """
         elif sender == "Assistant's Thoughts":
             formatted_message = f"""
-                <div style="background-color: #1a1a1a; padding: 8px 10px; border-radius: 5px; margin-bottom: 10px; border-left: 3px solid #555;">
-                    <b style="color: #aaa;">{sender}:</b> {cleaned_message}
+                <div style="background-color: {MessageFormatter.COLORS['thought_bubble']}; padding: 8px 10px; border-radius: 5px; margin-bottom: 10px; border-left: 3px solid {MessageFormatter.COLORS['border']};">
+                    <b style="color: {MessageFormatter.COLORS['thought_text']};">{sender}:</b> {cleaned_message}
                 </div>
             """
         elif is_code:
             # For code messages, use a distinct dark background and a monospace font for better readability
             formatted_message = f"""
-                <div style="background-color: #2d2d2d; padding: 10px; border-radius: 5px; margin-bottom: 10px; border: 1px solid #444;">
-                    <b style="color: #ffffff; margin-bottom: 5px; display: block;">{sender}:</b>
+                <div style="background-color: {MessageFormatter.COLORS['code_background']}; padding: 10px; border-radius: 5px; margin-bottom: 10px; border: 1px solid {MessageFormatter.COLORS['code_border']};">
+                    <b style="color: {MessageFormatter.COLORS['header_primary']}; margin-bottom: 5px; display: block;">{sender}:</b>
                     {cleaned_message}
                 </div>
             """
         else:
             # For regular messages, apply a lighter background with soft contrast
             formatted_message = f"""
-                <div style="background-color: #2e2e2e; padding: 10px; border-radius: 5px; margin-bottom: 10px; border: 1px solid #444;">
-                    <b style="color: #ffffff;">{sender}:</b> {cleaned_message}
+                <div style="background-color: {MessageFormatter.COLORS['ai_bubble']}; padding: 10px; border-radius: 5px; margin-bottom: 10px; border: 1px solid {MessageFormatter.COLORS['border']};">
+                    <b style="color: {MessageFormatter.COLORS['header_primary']};">{sender}:</b> {cleaned_message}
                 </div>
             """
 

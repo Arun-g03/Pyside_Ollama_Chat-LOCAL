@@ -5,8 +5,8 @@
   "auto_save_enabled": true,
   "spellcheck_enabled": true,
   "window_size": {
-    "width": 1123,
-    "height": 720
+    "width": 1447,
+    "height": 911
   },
   "chat_settings": {
     "max_tokens": 2048,
@@ -39,5 +39,5 @@
   "theme": "Dark",
   "memory_enabled": true,
   "logging_enabled": true,
-  "typewriter_enabled": true
+  "typewriter_enabled": false
 }

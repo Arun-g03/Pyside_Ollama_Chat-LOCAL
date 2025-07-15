@@ -832,11 +832,23 @@ class EventBus:
     
     def _on_conversation_selected(self, filepath: str):
         """Handle conversation selection from navigation"""
-        self.chat_controller.load_conversation(filepath)
-        
-        chat_tab = self.ui_manager.get_chat_tab()
-        if chat_tab:
-            chat_tab.load_conversation(filepath)
+        try:
+            # Load conversation in chat tab
+            chat_tab = self.ui_manager.get_chat_tab()
+            if chat_tab:
+                chat_tab.load_conversation(filepath)
+                
+                # CRITICAL FIX: Use ChatDisplay's set_conversation_service method
+                if hasattr(chat_tab, 'chat_controller') and hasattr(chat_tab.chat_controller, 'conversation_service'):
+                    conversation_service = chat_tab.chat_controller.conversation_service
+                    if hasattr(chat_tab, 'chat_display') and hasattr(chat_tab.chat_display, 'set_conversation_service'):
+                        chat_tab.chat_display.set_conversation_service(conversation_service)
+                        logger.debug("[EVENT_BUS] Set conversation service in chat display after loading conversation")
+            
+        except Exception as e:
+            logger.error(f"Error loading conversation {filepath}: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
     
     def _on_conversation_deleted(self, filepath: str):
         """Handle conversation deletion from navigation"""
@@ -948,21 +960,38 @@ class EventBus:
         self._on_new_conversation()
     
     def _on_new_conversation(self):
-        """Start a new conversation"""
-        from pyside_chat.core.logging.helpers import LoggingHelpers
-        LoggingHelpers.log_debug("=== NEW CONVERSATION START ===")
-        
-        self.chat_controller.start_new_conversation()
-        
-        chat_tab = self.ui_manager.get_chat_tab()
-        if chat_tab:
-            chat_tab.clear_chat()
-            chat_tab.refresh_navigation()
+        """Handle new conversation request"""
+        try:
+            # Use chat controller's start_new_conversation method to properly clear everything
+            if hasattr(self, 'chat_controller') and self.chat_controller:
+                self.chat_controller.start_new_conversation()
+                logger.debug("[EVENT_BUS] Called chat controller's start_new_conversation method")
+            else:
+                # Fallback: Clear the conversation service directly
+                conversation_service = self.service_manager.get_conversation_service()
+                conversation_service.clear_conversation()
+                logger.debug("[EVENT_BUS] Used fallback conversation clearing")
             
-            # Set the current conversation file to the one from the controller
-            conversation_manager = self.service_manager.get_conversation_manager()
-            current_file = conversation_manager.get_current_metadata().current_conversation_file
-            chat_tab.set_current_conversation_file(current_file)
+            # Update UI
+            chat_tab = self.ui_manager.get_chat_tab()
+            if chat_tab:
+                chat_tab.clear_chat()
+                
+                # CRITICAL FIX: Use ChatDisplay's set_conversation_service method
+                if hasattr(chat_tab, 'chat_display') and hasattr(chat_tab.chat_display, 'set_conversation_service'):
+                    conversation_service = self.service_manager.get_conversation_service()
+                    chat_tab.chat_display.set_conversation_service(conversation_service)
+                    logger.debug("[EVENT_BUS] Set conversation service in chat display after new conversation")
+            
+            # Update status
+            from pyside_chat.core.utils.prompts import PromptFormatter
+            status_msg = PromptFormatter.format_status_message("new_conversation")
+            self.ui_manager.update_status(status_msg)
+            
+        except Exception as e:
+            logger.error(f"Error creating new conversation: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
     
     def _on_clear_chat(self):
         """Clear the chat display"""

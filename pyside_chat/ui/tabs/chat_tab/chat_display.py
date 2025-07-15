@@ -1,113 +1,247 @@
 from pyside_chat.core.shared_imports.pyside_imports import *
 from pyside_chat.core.shared_imports.shared_imports import *
-
-from pyside_chat.ui.tabs.chat_tab.chat_renderer import ChatRenderer
+from pyside_chat.ui.themes.chat_styles import ChatStyles, ChatBubbleWidget
+from pyside_chat.ui.themes.system_message_manager import SystemMessageManager
+from PySide6.QtWidgets import QSpacerItem, QSizePolicy
 
 """
-Chat Display Component - Message display and editing functionality
+Chat Display - Widget-based chat display with custom bubble widgets
 """
 
-
+import logging
+import traceback
+import time
+from typing import List, Dict, Optional
 
 logger = CustomLogger.get_logger(__name__)
 
-class ChatDisplay(QObject):
-    """Chat Display component for message display and editing"""
-    
-    # Signals
-    message_edited = Signal(int, str)  # Emitted when a message is edited
+class ChatDisplay(QWidget):
+    """Widget-based chat display using custom bubble widgets"""
     
     def __init__(self, parent=None, config_manager=None):
         super().__init__(parent)
         self.parent = parent
         self.config_manager = config_manager
         
-        # Setup UI components
-        self.setup_ui_components()
+        # State variables
+        self.conversation_service = None
+        self.personality_name = "Assistant"
         
-        # Setup chat renderer
-        self.setup_chat_renderer()
+        # Setup UI
+        self.setup_ui()
         
-        # Initialize hover state
-        self.hover_message_index = None
-        self.edit_button_widget = None
+        # Setup connections
+        self.setup_connections()
         
-    def setup_ui_components(self):
-        """Setup UI components for chat display"""
-        # Chat display widget
-        self.chat_display = QTextEdit()
-        self.chat_display.setReadOnly(True)
-        self.chat_display.setLineWrapMode(QTextEdit.LineWrapMode.WidgetWidth)
-        self.chat_display.setMouseTracking(True)  # Enable mouse tracking for hover events
-        self.chat_display.mouseMoveEvent = self.chat_display_mouse_move_event
-        self.chat_display.setStyleSheet("""
-            QTextEdit {
+        logger.debug("[CHAT_DISPLAY] Chat display initialized")
+    
+    def setup_ui(self):
+        """Setup the UI components"""
+        # Main layout
+        self.main_layout = QVBoxLayout(self)
+        self.main_layout.setContentsMargins(10, 10, 10, 10)
+        self.main_layout.setSpacing(8)
+        
+        # Scroll area for messages
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        
+        # Widget to hold messages
+        self.messages_widget = QWidget()
+        self.messages_layout = QVBoxLayout(self.messages_widget)
+        self.messages_layout.setContentsMargins(0, 0, 0, 0)
+        self.messages_layout.setSpacing(8)
+        
+        # Add spacer to push messages to top
+        self.spacer = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
+        self.messages_layout.addItem(self.spacer)
+        
+        self.scroll_area.setWidget(self.messages_widget)
+        self.main_layout.addWidget(self.scroll_area)
+        
+        # Set background color
+        self.setStyleSheet("""
+            QWidget {
                 background-color: #1e1e1e;
                 color: #ffffff;
-                border: 1px solid #444;
-                border-radius: 5px;
-                padding: 10px;
-                font-family: 'Segoe UI', Arial, sans-serif;
-                font-size: 14px;
-                line-height: 1.4;
+            }
+            QScrollArea {
+                border: none;
+                background-color: #1e1e1e;
             }
         """)
-
-        # Scroll area for chat display
-        self.scroll_area = QScrollArea()
-        self.scroll_area.setWidget(self.chat_display)
-        self.scroll_area.setWidgetResizable(True)
-        self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+    
+    def setup_connections(self):
+        """Setup signal connections"""
+        pass  # Will be connected by chat tab
+    
+    def get_ai_name(self) -> str:
+        """Get the current AI name from personality service"""
+        try:
+            if hasattr(self.parent, 'get_service_manager'):
+                service_manager = self.parent.get_service_manager()
+                if hasattr(service_manager, 'get_personality_service'):
+                    personality_service = service_manager.get_personality_service()
+                    if personality_service:
+                        return personality_service.get_current_personality_name()
+        except Exception as e:
+            logger.debug(f"Error getting AI name: {e}")
         
-    def setup_chat_renderer(self):
-        """Setup the chat renderer for chat display"""
-        if hasattr(self, 'chat_display'):
-            ai_name = self.get_ai_name()
-            self.chat_renderer = ChatRenderer(self.chat_display, ai_name, config_manager=self.config_manager)
-            self.chat_renderer.render_completed.connect(self.on_render_completed)
-            self.chat_renderer.render_error.connect(self.on_render_error)
-            
-            # Setup streaming handler for business logic only (no render callback)
-            from pyside_chat.core.utils.streaming_handler import StreamingHandler
-            self.streaming_handler = StreamingHandler(render_callback=None, ai_name=ai_name)
-            self.streaming_handler.message_edited.connect(self.on_message_edited)
-            
-            # Conversation service will be set later when chat controller is available
-            logger.debug("[CHAT_DISPLAY] Chat renderer setup complete, waiting for conversation service")
+        return self.personality_name
+    
+    def update_personality_name(self, personality_name: str):
+        """Update the personality name"""
+        self.personality_name = personality_name
+        logger.debug(f"[CHAT_DISPLAY] Updated personality name to: {personality_name}")
     
     def set_conversation_service(self, conversation_service):
-        """Set the conversation service reference in the renderer"""
+        """Set the conversation service reference"""
         logger.debug(f"[CHAT_DISPLAY] Setting conversation service: {conversation_service}")
-        if hasattr(self, 'chat_renderer') and self.chat_renderer:
-            self.chat_renderer.set_conversation_service(conversation_service)
-            logger.debug("[CHAT_DISPLAY] Set conversation service reference in renderer")
-            
-            # Connect to conversation service updates
+        self.conversation_service = conversation_service
+        
+        # Connect to conversation service updates
+        if conversation_service:
             conversation_service.conversation_updated.connect(self._on_conversation_updated)
             logger.debug("[CHAT_DISPLAY] Connected to conversation service updates")
             
             # Test: Get messages immediately to verify connection
-            messages = conversation_service.get_messages()
-            logger.debug(f"[CHAT_DISPLAY] Test: Conversation service has {len(messages)} messages")
-        else:
-            logger.error("[CHAT_DISPLAY] No chat renderer available to set conversation service")
+            try:
+                messages = conversation_service.get_messages()
+                if messages:
+                    self.render_conversation(messages)
+                    logger.debug(f"[CHAT_DISPLAY] Rendered {len(messages)} initial messages")
+            except Exception as e:
+                logger.debug(f"[CHAT_DISPLAY] Error getting initial messages: {e}")
     
-    def _on_conversation_updated(self, conversation_data):
-        """Handle conversation updates from conversation service"""
-        logger.debug(f"[CHAT_DISPLAY] Conversation updated with {len(conversation_data)} messages")
-        
-        # Only trigger render if there are messages or if this is a clear operation
-        if conversation_data or (hasattr(self, 'chat_renderer') and self.chat_renderer and hasattr(self.chat_renderer, 'conversation_service') and self.chat_renderer.conversation_service):
-            if hasattr(self, 'chat_renderer') and self.chat_renderer:
-                self.chat_renderer.request_render(immediate=True)
-        else:
-            logger.debug("[CHAT_DISPLAY] No messages in conversation, skipping render")
+    def _on_conversation_updated(self, messages):
+        """Handle conversation updates"""
+        try:
+            logger.debug(f"[CHAT_DISPLAY] Conversation updated with {len(messages)} messages")
+            self.render_conversation(messages)
+        except Exception as e:
+            logger.error(f"Error handling conversation update: {e}")
+            logger.debug(f"Traceback: {traceback.format_exc()}")
     
-    def get_ai_name(self) -> str:
-        """Get the AI name - this should be overridden by parent"""
-        return "AI"
+    def render_conversation(self, conversation: List[Dict], scroll_to_bottom: bool = True):
+        """Render the entire conversation using custom bubble widgets"""
+        try:
+            logger.debug(f"[CHAT_DISPLAY] Rendering conversation with {len(conversation)} messages")
+            
+            # Clear existing messages
+            self._clear_messages()
+            
+            # Add messages
+            for i, message in enumerate(conversation):
+                self._add_message_widget(message, i)
+            
+            logger.debug(f"[CHAT_DISPLAY] Finished rendering conversation")
+            
+            # Scroll to bottom if requested
+            if scroll_to_bottom:
+                self._scroll_to_bottom()
+                
+        except Exception as e:
+            logger.error(f"Error rendering conversation: {e}")
+            logger.debug(f"Traceback: {traceback.format_exc()}")
     
+    def _clear_messages(self):
+        """Clear all message widgets"""
+        # Remove all widgets except the spacer
+        while self.messages_layout.count() > 1:
+            child = self.messages_layout.takeAt(0)
+            if child.widget():
+                child.widget().deleteLater()
+    
+    def _add_message_widget(self, message: Dict, index: int):
+        """Add a single message widget"""
+        try:
+            role = message.get('role', 'unknown')
+            content = message.get('content', '')
+            thought = message.get('thought', '')
+            
+            logger.debug(f"[CHAT_DISPLAY] Adding message widget: role={role}, content={content[:50]}..., thought={bool(thought)}")
+            
+            # Handle thoughts first
+            if role == 'assistant' and thought:
+                # Add thought bubble
+                thought_sender = f"{self.personality_name}'s Thoughts"
+                thought_widget = ChatBubbleWidget(thought_sender, thought, False, 'thought')
+                self.messages_layout.insertWidget(index, thought_widget)
+                
+                # Add main message
+                message_widget = ChatBubbleWidget(self.personality_name, content, False, 'message')
+                self.messages_layout.insertWidget(index + 1, message_widget)
+            else:
+                # Handle regular messages
+                if role == 'user':
+                    message_widget = ChatBubbleWidget("You", content, True, 'message')
+                elif role == 'system':
+                    message_widget = ChatBubbleWidget("System", content, False, 'system')
+                elif role == 'assistant':
+                    message_widget = ChatBubbleWidget(self.personality_name, content, False, 'message')
+                else:
+                    # Fallback
+                    message_widget = ChatBubbleWidget(role.title(), content, False, 'message')
+                
+                self.messages_layout.insertWidget(index, message_widget)
+                
+            logger.debug(f"[CHAT_DISPLAY] Successfully added message widget for role: {role}")
+                
+        except Exception as e:
+            logger.error(f"Error adding message widget: {e}")
+            logger.debug(f"Traceback: {traceback.format_exc()}")
+    
+    def _scroll_to_bottom(self):
+        """Scroll to the bottom of the chat"""
+        try:
+            # Use QTimer to ensure scrolling happens after layout update
+            QTimer.singleShot(100, lambda: self.scroll_area.verticalScrollBar().setValue(
+                self.scroll_area.verticalScrollBar().maximum()
+            ))
+        except Exception as e:
+            logger.debug(f"Error scrolling to bottom: {e}")
+    
+    def add_message(self, sender: str, content: str, message_idx: int = None):
+        """Add a single message to the display"""
+        try:
+            # Create message widget
+            if sender == "You":
+                message_widget = ChatBubbleWidget(sender, content, True, 'message')
+            elif sender == "System":
+                message_widget = ChatBubbleWidget(sender, content, False, 'system')
+            else:
+                message_widget = ChatBubbleWidget(sender, content, False, 'message')
+            
+            # Add to layout
+            self.messages_layout.insertWidget(self.messages_layout.count() - 1, message_widget)
+            
+            # Scroll to bottom
+            self._scroll_to_bottom()
+            
+        except Exception as e:
+            logger.error(f"Error adding message: {e}")
+    
+    def clear_display(self):
+        """Clear the chat display"""
+        self._clear_messages()
+    
+    def emergency_reset(self):
+        """Emergency reset of the chat display"""
+        try:
+            self.clear_display()
+            logger.debug("[CHAT_DISPLAY] Emergency reset completed")
+        except Exception as e:
+            logger.error(f"Error during emergency reset: {e}")
+    
+    def get_ui_components(self):
+        """Get UI components for integration with chat tab"""
+        return {
+            'scroll_area': self.scroll_area,
+            'widget': self
+        }
+
 
         
     def chat_display_mouse_move_event(self, event):
@@ -123,10 +257,11 @@ class ChatDisplay(QObject):
         # Check if this block contains a user message by looking for "You:" at the start
         if block_text.strip().startswith("You:"):
             # Find the corresponding message index by counting user messages
-            if hasattr(self, 'chat_renderer'):
+            if hasattr(self, 'conversation_service') and self.conversation_service:
+                messages = self.conversation_service.get_messages()
                 user_message_count = 0
-                for message in self.chat_renderer.get_messages():
-                    if message.get('sender') == 'You':
+                for message in messages:
+                    if message.get('role') == 'user':
                         user_message_count += 1
                         if block_text.strip() == f"You: {message.get('content', '')}".strip():
                             # Show edit button for this message
@@ -145,18 +280,7 @@ class ChatDisplay(QObject):
         # Create edit button
         self.edit_button_widget = QPushButton("✏️", self.chat_display)
         self.edit_button_widget.setFixedSize(24, 24)
-        self.edit_button_widget.setStyleSheet("""
-            QPushButton {
-                background-color: #0078d4;
-                color: white;
-                border: none;
-                border-radius: 12px;
-                font-size: 12px;
-            }
-            QPushButton:hover {
-                background-color: #106ebe;
-            }
-        """)
+        self.edit_button_widget.setStyleSheet(ChatStyles.get_edit_button_stylesheet())
         
         # Position the button near the mouse cursor
         button_pos = self.chat_display.mapFromGlobal(self.chat_display.mapToGlobal(pos))
@@ -180,9 +304,9 @@ class ChatDisplay(QObject):
         
     def edit_message_at_index(self, message_index):
         """Edit message at specific index"""
-        if hasattr(self, 'chat_renderer'):
-            messages = self.chat_renderer.get_messages()
-            user_messages = [msg for msg in messages if msg.get('sender') == 'You']
+        if hasattr(self, 'conversation_service') and self.conversation_service:
+            messages = self.conversation_service.get_messages()
+            user_messages = [msg for msg in messages if msg.get('role') == 'user']
             
             if 0 <= message_index < len(user_messages):
                 message = user_messages[message_index]
@@ -222,59 +346,9 @@ class ChatDisplay(QObject):
         
         layout.addLayout(button_layout)
         
-        # Style the dialog
-        dialog.setStyleSheet("""
-            QDialog {
-                background-color: #2d2d2d;
-                color: #ffffff;
-            }
-            QLabel {
-                color: #ffffff;
-                font-size: 14px;
-            }
-            QTextEdit {
-                background-color: #1e1e1e;
-                color: #ffffff;
-                border: 1px solid #555;
-                border-radius: 5px;
-                padding: 8px;
-                font-family: 'Segoe UI', Arial, sans-serif;
-                font-size: 14px;
-            }
-            QPushButton {
-                background-color: #0078d4;
-                color: #ffffff;
-                border: none;
-                border-radius: 4px;
-                padding: 8px 16px;
-                font-size: 12px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #106ebe;
-            }
-            QPushButton:pressed {
-                background-color: #005a9e;
-            }
-        """)
-        
-        cancel_button.setStyleSheet("""
-            QPushButton {
-                background-color: #555;
-                color: #ffffff;
-                border: none;
-                border-radius: 4px;
-                padding: 8px 16px;
-                font-size: 12px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #666;
-            }
-            QPushButton:pressed {
-                background-color: #444;
-            }
-        """)
+        # Style the dialog using unified styling
+        dialog.setStyleSheet(ChatStyles.get_edit_dialog_stylesheet())
+        cancel_button.setStyleSheet(ChatStyles.get_cancel_button_stylesheet())
         
         dialog.exec()
         
@@ -438,7 +512,7 @@ class ChatDisplay(QObject):
     def get_ui_components(self) -> dict:
         """Get UI components for integration with parent"""
         return {
-            'chat_display': self.chat_display,
+            'chat_display': self.scroll_area,  # For backward compatibility
             'scroll_area': self.scroll_area
         }
     

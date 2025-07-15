@@ -866,6 +866,11 @@ class ChatController(QObject):
             # Clear the current conversation
             self.conversation_service.clear_conversation()
             
+            # Clear memory references to old messages
+            if self.is_memory_active():
+                logger.debug("[MEMORY_CLEAR] Clearing short-term memory for new conversation")
+                self.memory_service.clear_memory("short_term")
+            
             # Reset new conversation flag
             self.is_new_conversation = True
             
@@ -894,6 +899,11 @@ class ChatController(QObject):
             
             # Clear the conversation
             self.conversation_service.clear_conversation()
+            
+            # Clear memory references to old messages
+            if self.is_memory_active():
+                logger.debug("[MEMORY_CLEAR] Clearing short-term memory for conversation clear")
+                self.memory_service.clear_memory("short_term")
             
             # Reset new conversation flag
             self.is_new_conversation = True

@@ -35,6 +35,9 @@ class InputControls(QObject):
         # Setup connections
         self.setup_connections()
         
+        # Initialize personality list from service
+        self.initialize_personality_list()
+        
     def setup_ui_components(self):
         """Setup UI components for input controls"""
         # Input area
@@ -254,8 +257,15 @@ class InputControls(QObject):
     def on_personality_combo_changed(self, personality_name: str):
         """Handle personality combo box change"""
         if personality_name:
-            logger.debug(f"Personality changed to: {personality_name}")
-            self.personality_changed.emit(personality_name)
+            # Get the actual personality name from the combo box data
+            current_index = self.personality_combo.currentIndex()
+            if current_index >= 0:
+                actual_personality_name = self.personality_combo.itemData(current_index)
+                logger.debug(f"Personality changed to: {actual_personality_name} (display: {personality_name.replace(' → ', ' -> ')})")
+                self.personality_changed.emit(actual_personality_name)
+            else:
+                logger.debug(f"Personality changed to: {personality_name}")
+                self.personality_changed.emit(personality_name)
             
     def on_model_changed(self, model_name: str):
         """Handle model combo box change"""
@@ -371,11 +381,34 @@ class InputControls(QObject):
         """Update the personality combo box with available personalities"""
         current_personality = self.personality_combo.currentText()
         self.personality_combo.clear()
-        self.personality_combo.addItems(personalities)
+        
+        # Sort personalities to group by folder structure
+        sorted_personalities = sorted(personalities, key=lambda x: (x.count('.'), x))
+        
+        # Add personalities with folder structure display
+        for personality in sorted_personalities:
+            if '.' in personality:
+                # Show folder structure in display
+                parts = personality.split('.')
+                display_name = f"{' → '.join(parts[:-1])} → {parts[-1]}"
+                self.personality_combo.addItem(display_name, personality)  # Store original name as data
+            else:
+                # Simple personality name
+                self.personality_combo.addItem(personality, personality)
+        
         # Try to restore the previously selected personality
-        if current_personality and current_personality in personalities:
-            self.personality_combo.setCurrentText(current_personality)
-        elif personalities:
+        if current_personality:
+            # Find the item with the current personality name
+            for i in range(self.personality_combo.count()):
+                item_data = self.personality_combo.itemData(i)
+                if item_data == current_personality:
+                    self.personality_combo.setCurrentIndex(i)
+                    break
+            else:
+                # If not found, try to set to first available
+                if self.personality_combo.count() > 0:
+                    self.personality_combo.setCurrentIndex(0)
+        elif self.personality_combo.count() > 0:
             self.personality_combo.setCurrentIndex(0)
     
     def get_current_model(self) -> str:
@@ -392,7 +425,46 @@ class InputControls(QObject):
         
     def get_current_personality(self) -> str:
         """Get the currently selected personality"""
-        return self.personality_combo.currentText()
+        # Return the actual personality name (data) instead of display text
+        current_index = self.personality_combo.currentIndex()
+        if current_index >= 0:
+            return self.personality_combo.itemData(current_index)
+        return self.personality_combo.currentText()  # Fallback
+    
+    def initialize_personality_list(self):
+        """Initialize the personality list from the personality service"""
+        try:
+            # Try to get personality service from parent
+            if hasattr(self.parent, 'get_service_manager'):
+                service_manager = self.parent.get_service_manager()
+                if hasattr(service_manager, 'get_personality_service'):
+                    personality_service = service_manager.get_personality_service()
+                    if personality_service:
+                        personalities = personality_service.get_available_personalities()
+                        if personalities:
+                            self.update_personality_list(personalities)
+                            logger.debug(f"[INPUT_CONTROLS] Initialized personality list with {len(personalities)} personalities")
+                            return
+            
+            # Fallback: try to get from personality tab
+            if hasattr(self.parent, 'get_ui_manager'):
+                ui_manager = self.parent.get_ui_manager()
+                personality_tab = ui_manager.get_personality_tab()
+                if personality_tab and hasattr(personality_tab, 'personality_model'):
+                    personalities = personality_tab.personality_model.get_available_personalities()
+                    if personalities:
+                        self.update_personality_list(personalities)
+                        logger.debug(f"[INPUT_CONTROLS] Initialized personality list from personality tab with {len(personalities)} personalities")
+                        return
+            
+            # Final fallback: use default personality
+            logger.debug("[INPUT_CONTROLS] Using default personality list")
+            self.update_personality_list(["Specialists.assistant"])
+            
+        except Exception as e:
+            logger.error(f"[INPUT_CONTROLS] Error initializing personality list: {e}")
+            # Use default personality list as fallback
+            self.update_personality_list(["Specialists.assistant"])
     
     def get_ui_components(self) -> dict:
         """Get UI components for integration with parent"""

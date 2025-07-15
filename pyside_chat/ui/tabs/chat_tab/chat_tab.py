@@ -349,7 +349,7 @@ class ChatTab(QWidget):
             self.voice_controls_widget.hide()
             
             self.voice_mode = False
-            self.eq_visualizer.switch_to_chat_display(self.chat_display.chat_display)
+            self.eq_visualizer.switch_to_chat_display(self.chat_display.scroll_area)
             logger.debug("[VOICE DEBUG] Switched to Chat mode")
     
     def on_message_cancelled(self):
@@ -478,7 +478,7 @@ class ChatTab(QWidget):
             self.voice_controls_widget.hide()
             
             self.voice_mode = False
-            self.eq_visualizer.switch_to_chat_display(self.chat_display.chat_display)
+            self.eq_visualizer.switch_to_chat_display(self.chat_display.scroll_area)
             logger.debug("[VOICE DEBUG] Switched to Chat mode")
             
         elif mode == "Voice":
@@ -519,7 +519,7 @@ class ChatTab(QWidget):
                 # Switch to EQ visualizer if enabled
                 eq_mode = self.voice_controls.get_voice_settings().get("eq_visualizer", "None")
                 if eq_mode != "None":
-                    self.eq_visualizer.switch_to_eq_visualizer(self.chat_display.chat_display, self.voice_mode)
+                    self.eq_visualizer.switch_to_eq_visualizer(self.chat_display.scroll_area, self.voice_mode)
                     logger.debug(f"[VOICE DEBUG] Switched to Voice mode with EQ: {eq_mode}")
                 else:
                     logger.debug("[VOICE DEBUG] Switched to Voice mode without EQ")
@@ -537,7 +537,26 @@ class ChatTab(QWidget):
     def on_personality_changed(self, personality_name: str):
         """Handle personality change"""
         logger.debug(f"Personality changed to: {personality_name}")
-        # Handle personality change logic here
+        
+        # Set the personality in the personality service
+        try:
+            if hasattr(self.parent, 'get_service_manager'):
+                service_manager = self.parent.get_service_manager()
+                if hasattr(service_manager, 'get_personality_service'):
+                    personality_service = service_manager.get_personality_service()
+                    if personality_service:
+                        success = personality_service.set_current_personality(personality_name)
+                        if success:
+                            logger.debug(f"Successfully set personality service to: {personality_name}")
+                        else:
+                            logger.warning(f"Failed to set personality service to: {personality_name}")
+        except Exception as e:
+            logger.error(f"Error setting personality in service: {e}")
+        
+        # Update AI name in chat display
+        self.chat_display.get_ai_name = self.get_ai_name
+        # Update personality name in chat renderer
+        self.chat_display.update_personality_name(self.get_ai_name())
         
     def on_model_changed(self, model_name: str):
         """Handle model change"""
@@ -680,7 +699,7 @@ class ChatTab(QWidget):
         try:
             # Show EQ visualizer if in voice mode and EQ is enabled
             if self.voice_mode and self.eq_visualizer.get_eq_mode() != "None":
-                self.eq_visualizer.switch_to_eq_visualizer(self.chat_display.chat_display, self.voice_mode)
+                self.eq_visualizer.switch_to_eq_visualizer(self.chat_display.scroll_area, self.voice_mode)
             # Don't hide chat display - let messages continue to appear
             # The EQ visualizer will overlay on top of the chat display
         except Exception as e:
@@ -707,15 +726,15 @@ class ChatTab(QWidget):
                 self.eq_visualizer.current_eq_widget and 
                 self.eq_visualizer.current_eq_widget.isVisible()):
             try:
-                self.eq_visualizer.switch_to_chat_display(self.chat_display.chat_display)
+                self.eq_visualizer.switch_to_chat_display(self.chat_display.scroll_area)
                 logger.debug("Successfully restored chat display after TTS finished")
             except Exception as e:
                 logger.error(f"Error switching to chat display: {e}")
                 # Force show chat display even if EQ visualizer fails
                 try:
-                    self.chat_display.chat_display.show()
-                    self.chat_display.chat_display.setVisible(True)
-                    self.chat_display.chat_display.setEnabled(True)
+                    self.chat_display.scroll_area.show()
+                    self.chat_display.scroll_area.setVisible(True)
+                    self.chat_display.scroll_area.setEnabled(True)
                     logger.debug("Forced chat display to be visible after TTS finished")
                 except Exception as e2:
                     logger.error(f"Failed to force show chat display: {e2}")
@@ -809,7 +828,7 @@ class ChatTab(QWidget):
                     # Ensure EQ visualizer is properly initialized for voice mode
                     if not self.eq_visualizer.current_eq_widget:
                         logger.debug(f"[EQ DEBUG] EQ widget not initialized, switching to EQ visualizer")
-                        self.eq_visualizer.switch_to_eq_visualizer(self.chat_display.chat_display, self.voice_mode)
+                        self.eq_visualizer.switch_to_eq_visualizer(self.chat_display.scroll_area, self.voice_mode)
                     
                     logger.debug(f"[EQ DEBUG] TTS playing: {tts_playing}, audio_level: {audio_level:.4f}")
                     self.eq_visualizer.update_eq_visualizer(audio_level, tts_playing)
@@ -893,15 +912,7 @@ class ChatTab(QWidget):
         return self.input_controls.get_current_response()
         
     def append_to_chat(self, sender: str, message: str, is_code: bool = False):
-        """Add a message to the chat display"""
-        import traceback
-        
-        # Always append to chat display - never skip this
-        # The EQ visualizer is just a visual overlay, it shouldn't prevent chat messages from appearing
-        
-        logger.debug(f"[DUPLICATE_DEBUG] append_to_chat called with sender: '{sender}', message: '{message[:50]}...'", print_to_terminal=True)
-        logger.debug(f"[DUPLICATE_DEBUG] append_to_chat call stack: {traceback.format_stack()[-3:]}", print_to_terminal=True)
-        
+        """Append a message to the chat display"""
         logger.debug("Calling chat_display.append_to_chat", print_to_terminal=True)
         self.chat_display.append_to_chat(sender, message, is_code)
         
@@ -918,17 +929,17 @@ class ChatTab(QWidget):
             # Ensure chat display is visible and updated
             if hasattr(self, 'chat_display') and self.chat_display:
                 # Force update of the chat display widget
-                if hasattr(self.chat_display, 'chat_display') and self.chat_display.chat_display:
-                    self.chat_display.chat_display.update()
+                if hasattr(self.chat_display, 'chat_display') and self.chat_display.scroll_area:
+                    self.chat_display.scroll_area.update()
                     
                     # Ensure scroll to bottom
-                    cursor = self.chat_display.chat_display.textCursor()
+                    cursor = self.chat_display.scroll_area.textCursor()
                     from PySide6.QtGui import QTextCursor
                     cursor.movePosition(QTextCursor.MoveOperation.End)
-                    self.chat_display.chat_display.setTextCursor(cursor)
+                    self.chat_display.scroll_area.setTextCursor(cursor)
                     
                     # Force layout update
-                    self.chat_display.chat_display.updateGeometry()
+                    self.chat_display.scroll_area.updateGeometry()
                     
                 # Force update of the scroll area
                 if hasattr(self.chat_display, 'scroll_area') and self.chat_display.scroll_area:
@@ -978,16 +989,16 @@ class ChatTab(QWidget):
                 return
             
             # Check if chat display is hidden and force it to be visible
-            if hasattr(self, 'chat_display') and self.chat_display.chat_display:
-                if not self.chat_display.chat_display.isVisible():
+            if hasattr(self, 'chat_display') and self.chat_display.scroll_area:
+                if not self.chat_display.scroll_area.isVisible():
                     logger.debug("Chat display was hidden, forcing it to be visible")
-                    self.chat_display.chat_display.show()
-                    self.chat_display.chat_display.setVisible(True)
-                    self.chat_display.chat_display.setEnabled(True)
+                    self.chat_display.scroll_area.show()
+                    self.chat_display.scroll_area.setVisible(True)
+                    self.chat_display.scroll_area.setEnabled(True)
                     
                     # Force layout update
-                    self.chat_display.chat_display.updateGeometry()
-                    self.chat_display.chat_display.update()
+                    self.chat_display.scroll_area.updateGeometry()
+                    self.chat_display.scroll_area.update()
                     from pyside_chat.core.utils.threading_utils import safe_process_events_alternative
                     safe_process_events_alternative()
                     logger.debug("Successfully made chat display visible")
@@ -1052,8 +1063,20 @@ class ChatTab(QWidget):
         logger.debug(f"Send button enabled: {input_components['send_button'].isEnabled()}, visible: {input_components['send_button'].isVisible()}")
     
     def clear_chat(self):
-        """Clear the chat display"""
-        self.chat_display.clear_chat()
+        """Clear the chat display and reset all references"""
+        try:
+            logger.debug("[CHAT_TAB] Clearing chat display and resetting references")
+            
+            # Clear the chat display
+            self.chat_display.clear_chat()
+            
+            # Reset current conversation file
+            self.current_conversation_file = None
+            
+            logger.debug("[CHAT_TAB] Chat display cleared and references reset successfully")
+            
+        except Exception as e:
+            logger.error(f"[CHAT_TAB] Error clearing chat: {e}")
         
     def update_model_list(self, models: list):
         """Update the model combo box with available models"""
@@ -1145,11 +1168,11 @@ class ChatTab(QWidget):
             
             # If in voice mode, switch to the new EQ visualizer immediately
             if self.voice_mode and eq_mode != "None":
-                self.eq_visualizer.switch_to_eq_visualizer(self.chat_display.chat_display, self.voice_mode)
+                self.eq_visualizer.switch_to_eq_visualizer(self.chat_display.scroll_area, self.voice_mode)
                 logger.debug(f"[EQ DEBUG] Switched to EQ visualizer: {eq_mode}")
             elif self.voice_mode and eq_mode == "None":
                 # Switch back to chat display if EQ is disabled
-                self.eq_visualizer.switch_to_chat_display(self.chat_display.chat_display)
+                self.eq_visualizer.switch_to_chat_display(self.chat_display.scroll_area)
                 logger.debug("[EQ DEBUG] Switched back to chat display")
     
     def on_eq_visualizer_changed_from_voice_controls(self, eq_mode: str):
@@ -1162,11 +1185,11 @@ class ChatTab(QWidget):
             
             # If in voice mode, switch to the new EQ visualizer immediately
             if self.voice_mode and eq_mode != "None":
-                self.eq_visualizer.switch_to_eq_visualizer(self.chat_display.chat_display, self.voice_mode)
+                self.eq_visualizer.switch_to_eq_visualizer(self.chat_display.scroll_area, self.voice_mode)
                 logger.debug(f"[EQ DEBUG] Switched to EQ visualizer from voice controls: {eq_mode}")
             elif self.voice_mode and eq_mode == "None":
                 # Switch back to chat display if EQ is disabled
-                self.eq_visualizer.switch_to_chat_display(self.chat_display.chat_display)
+                self.eq_visualizer.switch_to_chat_display(self.chat_display.scroll_area)
                 logger.debug("[EQ DEBUG] Switched back to chat display from voice controls")
     
     def on_voice_settings_changed(self, settings: dict):
@@ -1191,8 +1214,8 @@ class ChatTab(QWidget):
                 filename = os.path.basename(filepath)
                 
                 # Load conversation through conversation service
-                conversation_service = self.chat_controller.conversation_service
                 logger.debug(f"[LOAD_DEBUG] Loading conversation {filename} through conversation service")
+                conversation_service = self.chat_controller.conversation_service
                 conversation_service.load_conversation(filename)
                 
                 # No need to sync manually - the conversation service will emit signals
@@ -1245,34 +1268,25 @@ class ChatTab(QWidget):
             else:
                 conversation = []
 
-            # Clear current chat and renderer
+            # Clear current chat
             self.clear_chat()
-            chat_renderer = getattr(self.chat_display, 'chat_renderer', None)
-            if chat_renderer:
-                chat_renderer.clear_messages()
 
-            # Load messages using the renderer for proper formatting
+            # Load messages using the chat display
             for message in conversation:
                 if isinstance(message, dict):
                     sender_raw = message.get('sender') or message.get('role', 'Unknown')
                     sender = sender_raw[:1].upper() + sender_raw[1:] if sender_raw else "Unknown"
                     content = message.get('content', '')
                     is_code = message.get('is_code', False)
-                    tag = message.get('tag', 'user' if sender == 'You' else 'ai')
                 elif isinstance(message, str):
                     sender = 'Unknown'
                     content = message
                     is_code = False
-                    tag = 'user'
                 else:
                     continue  # skip unrecognized message types
 
-                if chat_renderer:
-                    chat_renderer.add_message(sender, content, is_code, False, tag)
-
-            # Trigger a render after loading all messages
-            if chat_renderer:
-                chat_renderer.request_render(immediate=True)
+                # Add message to chat display
+                self.chat_display.append_to_chat(sender, content, is_code)
 
         except Exception as e:
             logger.error(f"Error in fallback conversation loading: {e}")
