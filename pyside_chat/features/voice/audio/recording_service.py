@@ -7,7 +7,7 @@ from typing import Optional
 from pyside_chat.core.shared_imports.shared_imports import *
 
 from pyside_chat.core.shared_imports.audio_imports import *
-
+from pyside_chat.core.utils import log_thread_info
 logger = CustomLogger.get_logger(__name__)
 
 class RecordingService(QObject):

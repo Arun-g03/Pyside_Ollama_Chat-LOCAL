@@ -3,6 +3,12 @@ from pyside_chat.core.shared_imports.pyside_imports import *
 from pyside_chat.core.shared_imports.shared_imports import *
 
 from pyside_chat.core.shared_imports.audio_imports import *
+from pyside_chat.features.voice.tts.streaming_audio_player import StreamingAudioPlayer
+
+from pyside_chat.features.voice.tts.streaming_audio_worker import StreamingAudioWorker
+from pyside_chat.core.utils import log_thread_info
+
+logger = CustomLogger.get_logger(__name__)
 
 """
 Coqui TTS Service Module
@@ -417,7 +423,7 @@ class CoquiTTSService(QObject):
             self.streaming_player.player_started.connect(self._on_player_started)
             
             # Use QueuedConnection for thread safety - connect to our signal, not directly to emit
-
+            self.streaming_player.audio_level_changed.connect(
                 lambda level: self.audio_level_changed.emit(level), 
                 Qt.ConnectionType.QueuedConnection
             )

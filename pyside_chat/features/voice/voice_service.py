@@ -1168,6 +1168,7 @@ class VoiceService(QObject):
         
         try:
             logger.info("Initializing TTS service...", print_to_terminal=True)
+            from pyside_chat.features.voice.tts.tts_service import TTSService
             self.tts_service = TTSService.get_instance()
             logger.info("TTS service initialized successfully", print_to_terminal=True)
         except Exception as e:

@@ -83,6 +83,27 @@ class ConversationMetadata:
             ai_generated_name=data.get("ai_generated_name")
         )
     
+    @classmethod
+    def from_file(cls, filepath: str) -> 'ConversationMetadata':
+        """Create metadata from file"""
+        try:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            
+            # Handle both old format (just conversation) and new format (with metadata)
+            if isinstance(data, list):
+                # Old format - just conversation array, create default metadata
+                return cls()
+            else:
+                # New format - with metadata
+                metadata_dict = data.get("metadata", {})
+                return cls.from_dict(metadata_dict)
+                
+        except Exception as e:
+            logger.error(f"Failed to load metadata from file {filepath}: {e}")
+            # Return default metadata on error
+            return cls()
+    
     def reset(self) -> None:
         """Reset metadata to initial state"""
         self.created = datetime.now().isoformat()

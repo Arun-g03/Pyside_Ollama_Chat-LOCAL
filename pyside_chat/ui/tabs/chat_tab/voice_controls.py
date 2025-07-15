@@ -1051,7 +1051,7 @@ class VoiceControls(QObject):
             # The voice service will handle stopping during processing and restarting during TTS
             logger.debug("[VOICE DEBUG] Non-interruptive mode: voice input will be managed by voice service")
             
-            # Forward to parent for processing
+            # Forward to parent for processing - this goes to ChatTab.process_voice_input()
             print(f"[DEBUG] Emitting voice_input_received signal with text: '{text}'")
             logger.debug(f"Emitting voice_input_received signal with text: '{text}'", print_to_terminal=True)
             logger.debug(f"[EMIT] voice_controls.py: voice_input_received.emit({text!r}) from id={id(self)}")
@@ -1416,22 +1416,65 @@ class VoiceControls(QObject):
     
     def speak_ai_response(self, text: str):
         """Speak AI response using TTS"""
-        voice_service = self.get_voice_service()
-        if not voice_service:
-            logger.error("Voice service not available for TTS")
-            return
-            
         try:
-            # Check if we can handle new TTS requests
-            if hasattr(voice_service, 'can_handle_new_request') and not voice_service.can_handle_new_request():
-                logger.warning("Cannot handle new TTS request - queue full")
+            logger.debug(f"speak_ai_response called with text length: {len(text)}")
+            logger.debug(f"Text preview: {text[:100]}...")
+            
+            # Validate text before TTS
+            if not text or not text.strip():
+                logger.warning("Empty text provided to speak_ai_response, skipping")
+                return
+            
+            # Clean the text for TTS (remove markdown, extra whitespace, etc.)
+            cleaned_text = text.strip()
+            
+            # Remove common markdown and formatting that shouldn't be spoken
+            import re
+            # Remove markdown code blocks
+            cleaned_text = re.sub(r'```.*?```', '', cleaned_text, flags=re.DOTALL)
+            # Remove inline code
+            cleaned_text = re.sub(r'`.*?`', '', cleaned_text)
+            # Remove markdown links but keep the text
+            cleaned_text = re.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', cleaned_text)
+            # Remove markdown formatting
+            cleaned_text = re.sub(r'\*\*(.*?)\*\*', r'\1', cleaned_text)  # Bold
+            cleaned_text = re.sub(r'\*(.*?)\*', r'\1', cleaned_text)      # Italic
+            cleaned_text = re.sub(r'__(.*?)__', r'\1', cleaned_text)      # Bold
+            cleaned_text = re.sub(r'_(.*?)_', r'\1', cleaned_text)        # Italic
+            # Remove extra whitespace
+            cleaned_text = re.sub(r'\s+', ' ', cleaned_text).strip()
+            
+            if not cleaned_text:
+                logger.warning("Text was empty after cleaning, skipping TTS")
+                return
+            
+            logger.debug(f"Cleaned text for TTS (length: {len(cleaned_text)}): {cleaned_text[:100]}...")
+            
+            voice_service = self.get_voice_service()
+            if not voice_service:
+                logger.error("Voice service not available for TTS")
                 return
                 
-            voice_service.speak_text(text)
-            logger.debug(f"TTS request sent for text: {text[:50]}...")
+            try:
+                # Check if we can handle new TTS requests
+                if hasattr(voice_service, 'can_handle_new_request') and not voice_service.can_handle_new_request():
+                    logger.warning("Cannot handle new TTS request - queue full")
+                    return
+                    
+                # Use the voice service's speak_text method
+                voice_service.speak_text(cleaned_text)
+                logger.debug(f"TTS request sent for text: {cleaned_text[:50]}...")
+                
+            except Exception as e:
+                logger.error(f"Failed to speak AI response: {e}")
+                import traceback
+                logger.error(f"TTS error traceback: {traceback.format_exc()}")
+                
         except Exception as e:
-            logger.error(f"Failed to speak AI response: {e}")
-    
+            logger.error(f"Error in speak_ai_response: {e}")
+            import traceback
+            logger.error(f"speak_ai_response error traceback: {traceback.format_exc()}")
+
     def update_voice_settings(self, settings: dict):
         """Update voice settings"""
         try:

@@ -5,9 +5,9 @@ Consolidates all chat styling logic in one place for consistency and maintainabi
 
 from typing import Dict, Any
 from html import escape
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QTextEdit, QSizePolicy
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QTextEdit, QSizePolicy, QMenu, QApplication
 from PySide6.QtCore import Qt, QRect, QPoint, QSize
-from PySide6.QtGui import QPainter, QPen, QBrush, QColor, QFont, QPainterPath
+from PySide6.QtGui import QPainter, QPen, QBrush, QColor, QFont, QPainterPath, QAction
 import logging
 
 logger = logging.getLogger(__name__)
@@ -31,6 +31,13 @@ class ChatBubbleWidget(QWidget):
         
         # Set size policy
         self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Minimum)
+        
+        # Enable context menu
+        self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.customContextMenuRequested.connect(self._show_context_menu)
+        
+        # Handle resize events to update bubble layout
+        self.resizeEvent = self._handle_resize
         
     def _get_colors(self):
         """Get colors based on bubble type"""
@@ -72,22 +79,18 @@ class ChatBubbleWidget(QWidget):
         self.content_label.setWordWrap(True)
         self.content_label.setTextFormat(Qt.TextFormat.RichText)
         
-        # Format content based on bubble type
+        # Format content with two-line layout: sender name on first line, content on second line
         if self.bubble_type == 'system':
-            formatted_content = f"<b>System:</b> {escape(self.content)}"
+            formatted_content = f"<b>System:</b><br>{escape(self.content)}"
         elif self.bubble_type in ['thought', 'thinking']:
-            formatted_content = f"<b>{self.sender}:</b> {self.content}"
+            formatted_content = f"<b>{self.sender}:</b><br>{self.content}"
         else:
-            formatted_content = f"<b>{self.sender}:</b> {self.content}"
+            formatted_content = f"<b>{self.sender}:</b><br>{self.content}"
         
         self.content_label.setText(formatted_content)
         
         # Set text color and make background transparent
         self.content_label.setStyleSheet(f"color: {self.colors['text'].name()}; background: transparent; border: none;")
-        
-        # Set maximum width for the content label (like messaging apps)
-        max_width = 400  # Maximum bubble width
-        self.content_label.setMaximumWidth(max_width)
         
         # No layout needed since we position manually in paintEvent
     
@@ -99,10 +102,52 @@ class ChatBubbleWidget(QWidget):
         # Get content label size and position
         content_size = self.content_label.sizeHint()
         
-        # Calculate bubble dimensions based on content
+        # Calculate dynamic bubble width based on parent container
         padding = 16  # Padding around content
-        bubble_width = min(content_size.width() + padding, 400)  # Max width like messaging apps
-        bubble_height = content_size.height() + padding
+        available_width = self.width() - 16  # Available width minus margins
+        
+        # Calculate maximum bubble width based on content and available space
+        if self.is_user:
+            # User messages: use 60% of available width, max 800px, min 200px
+            max_bubble_width = max(min(available_width * 0.6, 800), 200)
+        elif self.bubble_type == 'system':
+            # System messages: use 85% of available width, min 250px
+            max_bubble_width = max(available_width * 0.85, 250)
+        elif self.bubble_type in ['thought', 'thinking']:
+            # Thought bubbles: use 90% of available width for better readability, min 300px
+            max_bubble_width = max(available_width * 0.9, 300)
+        else:
+            # AI messages: use 85% of available width, max 800px, min 250px
+            max_bubble_width = max(min(available_width * 0.85, 800), 250)
+        
+        # Calculate bubble dimensions based on content and available space
+        content_width = content_size.width()
+        # Smart width calculation: use full width for longer content, content-based for shorter
+        content_length = len(self.content)
+        is_long_content = content_length > 100  # Threshold for "long" content
+        
+        if self.bubble_type == 'system':
+            # System messages: always content-based since they're usually short
+            bubble_width = max(min(content_width + padding, available_width * 0.7), 200)
+        elif self.bubble_type in ['thought', 'thinking']:
+            # Thought bubbles: use full width for long thoughts, content-based for short ones
+            if is_long_content:
+                bubble_width = max(available_width * 0.9, 300)
+            else:
+                bubble_width = max(min(content_width + padding, available_width * 0.85), 250)
+        else:
+            if is_long_content:
+                bubble_width = max_bubble_width
+            else:
+                bubble_width = max(min(content_width + padding, max_bubble_width), 150)
+        
+        # Reduce vertical padding for more compact bubbles
+        # Use minimal padding for long content, slightly more for short content
+        if content_length > 100:
+            vertical_padding = 0  # No padding for very long content
+        else:
+            vertical_padding = 8  # Slightly more padding for short content
+        bubble_height = content_size.height() + vertical_padding
         
         # Calculate bubble position based on alignment
         if self.is_user:
@@ -117,10 +162,16 @@ class ChatBubbleWidget(QWidget):
         
         bubble_y = 4  # Small top margin
         
-        # Position content label within bubble
-        content_x = bubble_x + padding // 2
-        content_y = bubble_y + padding // 2
-        self.content_label.setGeometry(content_x, content_y, content_size.width(), content_size.height())
+        # Update content label width to use full bubble width
+        content_width = bubble_width - padding
+        # Position content at the top of the bubble with minimal padding
+        # Use even less padding for long content
+        if content_length > 100:
+            content_y = bubble_y + 1  # Minimal top padding for long content
+        else:
+            content_y = bubble_y + 4  # Small top padding for short content
+        self.content_label.setGeometry(bubble_x + padding // 2, content_y, 
+                                     content_width, content_size.height())
         
         # Create rounded rectangle path for the bubble
         path = QPainterPath()
@@ -147,10 +198,109 @@ class ChatBubbleWidget(QWidget):
         """Provide size hint for the widget"""
         content_size = self.content_label.sizeHint()
         padding = 16
-        bubble_width = min(content_size.width() + padding, 400)
-        bubble_height = content_size.height() + padding
+        
+        # Calculate dynamic width based on parent container
+        if self.parent():
+            available_width = self.parent().width() - 16
+            if self.is_user:
+                max_bubble_width = max(min(available_width * 0.6, 800), 200)
+            elif self.bubble_type == 'system':
+                max_bubble_width = max(available_width * 0.85, 250)
+            elif self.bubble_type in ['thought', 'thinking']:
+                max_bubble_width = max(available_width * 0.9, 300)
+            else:
+                max_bubble_width = max(min(available_width * 0.85, 800), 250)
+        else:
+            # Fallback to fixed width if no parent
+            max_bubble_width = 500
+        
+        # Smart width calculation for sizeHint
+        content_width = content_size.width()
+        content_length = len(self.content)
+        is_long_content = content_length > 100  # Same threshold as paintEvent
+        
+        if self.bubble_type == 'system':
+            bubble_width = max(min(content_width + padding, max_bubble_width * 0.7), 200)
+        elif self.bubble_type in ['thought', 'thinking']:
+            if is_long_content:
+                bubble_width = max(max_bubble_width * 0.9, 300)
+            else:
+                bubble_width = max(min(content_width + padding, max_bubble_width * 0.85), 250)
+        else:
+            if is_long_content:
+                bubble_width = max_bubble_width
+            else:
+                bubble_width = max(min(content_width + padding, max_bubble_width), 150)
+        
+        # Use reduced vertical padding for consistent sizing
+        # Use minimal padding for long content, slightly more for short content
+        if content_length > 100:
+            vertical_padding = 0  # No padding for very long content
+        else:
+            vertical_padding = 8  # Slightly more padding for short content
+        bubble_height = content_size.height() + vertical_padding
         
         return QSize(bubble_width + 16, bubble_height + 8)  # Add margins
+    
+    def _show_context_menu(self, position):
+        """Show context menu for the bubble widget"""
+        try:
+            context_menu = QMenu(self)
+            
+            # Add Copy Message action
+            copy_action = QAction("Copy Message", self)
+            copy_action.triggered.connect(self._copy_message)
+            context_menu.addAction(copy_action)
+            
+            # Add Copy Sender action
+            copy_sender_action = QAction("Copy Sender", self)
+            copy_sender_action.triggered.connect(self._copy_sender)
+            context_menu.addAction(copy_sender_action)
+            
+            # Add separator
+            context_menu.addSeparator()
+            
+            # Add Copy Content Only action
+            copy_content_action = QAction("Copy Content Only", self)
+            copy_content_action.triggered.connect(self._copy_content_only)
+            context_menu.addAction(copy_content_action)
+            
+            # Show the context menu
+            context_menu.exec(self.mapToGlobal(position))
+            
+        except Exception as e:
+            logger.error(f"Error showing bubble context menu: {e}")
+    
+    def _copy_message(self):
+        """Copy the full message (sender + content)"""
+        try:
+            clipboard = QApplication.clipboard()
+            message_text = f"{self.sender}: {self.content}"
+            clipboard.setText(message_text)
+        except Exception as e:
+            logger.error(f"Error copying message: {e}")
+    
+    def _handle_resize(self, event):
+        """Handle resize events to update bubble layout"""
+        super().resizeEvent(event)
+        # Force a repaint to update the bubble layout
+        self.update()
+    
+    def _copy_sender(self):
+        """Copy just the sender name"""
+        try:
+            clipboard = QApplication.clipboard()
+            clipboard.setText(self.sender)
+        except Exception as e:
+            logger.error(f"Error copying sender: {e}")
+    
+    def _copy_content_only(self):
+        """Copy just the message content"""
+        try:
+            clipboard = QApplication.clipboard()
+            clipboard.setText(self.content)
+        except Exception as e:
+            logger.error(f"Error copying content: {e}")
 
 class ChatStyles:
     """Centralized chat styling system"""
@@ -200,7 +350,7 @@ class ChatStyles:
             f"word-break: break-word; line-height: 1.5; box-shadow: 0 2px 5px rgba(0,0,0,0.3); "
             f"border: 2px solid {cls.COLORS['user_bubble']}; border-radius: 20px;'>"
             f"<span style='display:none' data-msg-idx='{message_idx}'></span>"
-            f"<p style='margin: 0;'><b>{escape(sender)}:</b> {escape(content)}</p>"
+            f"<p style='margin: 0;'><b>{escape(sender)}:</b><br>{escape(content)}</p>"
             f"</div>"
             f"</td>"
             f"</tr></table>"
@@ -218,7 +368,7 @@ class ChatStyles:
             f"word-break: break-word; line-height: 1.5; box-shadow: 0 2px 5px rgba(0,0,0,0.3); "
             f"border: 2px solid {cls.COLORS['ai_bubble']}; border-radius: 20px;'>"
             f"<span style='display:none' data-msg-idx='{message_idx}'></span>"
-            f"<p style='margin: 0;'><b>{escape(sender)}:</b> {content}</p>"
+            f"<p style='margin: 0;'><b>{escape(sender)}:</b><br>{content}</p>"
             f"</div>"
             f"</td>"
             f"<td align='left' width='30%'></td>"

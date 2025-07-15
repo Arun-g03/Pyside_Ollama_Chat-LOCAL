@@ -19,6 +19,7 @@ It handles communication between different services and UI components.
 
 from typing import Dict, Any, Optional, List
 import os
+import re
 
 logger = CustomLogger.get_logger(__name__)
 
@@ -84,6 +85,9 @@ class ChatController(QObject):
         # Chat tab reference for TTS functionality
         self.chat_tab_reference = None
         
+        # EventBus reference for preventing duplicate message processing
+        self.event_bus = None
+        
         logger.debug("[ID:0156] ChatController initialized successfully")
     
     def is_memory_active(self) -> bool:
@@ -107,7 +111,10 @@ class ChatController(QObject):
                 LoggingHelpers.log_debug("Auto-started new conversation for first message")
             
             # Add message to conversation
-            self.conversation_service.add_message("user", message)
+            current_personality = None
+            if hasattr(self, 'personality_service') and self.personality_service:
+                current_personality = self.personality_service.get_selected_model()
+            self.conversation_service.add_message("user", message, personality=current_personality)
             
             # CRITICAL FIX: Auto-save conversation after adding user message
             messages = self.conversation_service.get_messages()
@@ -130,8 +137,13 @@ class ChatController(QObject):
             if self.is_memory_active():
                 self._handle_memory_operations(message)
             
-            # Send to Ollama
-            self._send_to_ollama(message, model, temperature)
+            # Send to Ollama through EventBus (this prevents duplicate processing)
+            # The EventBus will handle the actual Ollama communication
+            if hasattr(self, 'event_bus'):
+                self.event_bus._send_to_ollama(message, model, temperature)
+            else:
+                # Fallback: use the old method if event_bus is not available
+                self._send_to_ollama(message, model, temperature)
             
             LoggingHelpers.log_message_sent_end(len(message), 0)  # Message length, response length (will be updated later)
             
@@ -279,11 +291,10 @@ class ChatController(QObject):
         # Note: Model selection is now handled by the event bus
         # to prevent duplicate system messages
         
-        # Emit signal for UI to handle the actual Ollama call
-        self.message_sent.emit(message)
-        
         # Update status
         self.status_updated.emit(f"Processing with {model}")
+        
+        # The actual Ollama call is handled by the EventBus when process_user_message is called
     
     def _detect_new_conversation(self, context_messages: List[Dict[str, Any]]) -> bool:
         """Detect if this is a new conversation"""
@@ -605,17 +616,20 @@ class ChatController(QObject):
                 thoughts, answer = MessageFormatter.split_thoughts_and_answer(complete_response)
                 
                 # Add the complete message to conversation service
+                current_personality = None
+                if hasattr(self, 'personality_service') and self.personality_service:
+                    current_personality = self.personality_service.get_selected_model()
                 if thoughts and answer:
                     # Add message with thoughts
-                    self.conversation_service.add_message("assistant", answer, thought=thoughts)
+                    self.conversation_service.add_message("assistant", answer, thought=thoughts, personality=current_personality)
                     logger.debug(f"[CHAT_CONTROLLER_DEBUG] Added complete message with thoughts: '{answer[:50]}...'")
                 elif answer:
                     # Add message without thoughts
-                    self.conversation_service.add_message("assistant", answer)
+                    self.conversation_service.add_message("assistant", answer, personality=current_personality)
                     logger.debug(f"[CHAT_CONTROLLER_DEBUG] Added complete message: '{answer[:50]}...'")
                 else:
                     # Fallback: add the complete response as-is
-                    self.conversation_service.add_message("assistant", complete_response)
+                    self.conversation_service.add_message("assistant", complete_response, personality=current_personality)
                     logger.debug(f"[CHAT_CONTROLLER_DEBUG] Added complete response as fallback: '{complete_response[:50]}...'")
                 
                 # Clear the buffer
@@ -650,17 +664,20 @@ class ChatController(QObject):
                     logger.debug(f"[CHAT_CONTROLLER_DEBUG] Completed thought: '{thoughts[:50]}...'")
                     
                     # Add the answer to the main message
+                    current_personality = None
+                    if hasattr(self, 'personality_service') and self.personality_service:
+                        current_personality = self.personality_service.get_selected_model()
                     if answer:
-                        self.conversation_service.update_streaming_message_content(answer)
+                        self.conversation_service.update_streaming_message_content(answer, personality=current_personality)
                         logger.debug(f"[CHAT_CONTROLLER_DEBUG] Final answer: '{answer[:50]}...'")
                     else:
                         # If no answer found, use a default response
-                        self.conversation_service.update_streaming_message_content("I'm here to help! How can I assist you today?")
+                        self.conversation_service.update_streaming_message_content("I'm here to help! How can I assist you today?", personality=current_personality)
                         logger.debug(f"[CHAT_CONTROLLER_DEBUG] No answer found, using default response")
                 else:
                     # Fallback: treat entire buffer as thought and use default response
                     self.conversation_service.update_streaming_message_thought(full_buffer)
-                    self.conversation_service.update_streaming_message_content("I'm here to help! How can I assist you today?")
+                    self.conversation_service.update_streaming_message_content("I'm here to help! How can I assist you today?", personality=current_personality)
                     logger.debug(f"[CHAT_CONTROLLER_DEBUG] No <think> tags found, using fallback")
                 
                 # Reset the thought buffer and state after processing
@@ -716,19 +733,22 @@ class ChatController(QObject):
             thoughts, answer = MessageFormatter.split_thoughts_and_answer(complete_response)
             
             # Add the complete message to conversation service
+            current_personality = None
+            if hasattr(self, 'personality_service') and self.personality_service:
+                current_personality = self.personality_service.get_selected_model()
             if thoughts and answer:
                 # Add message with thoughts
-                self.conversation_service.add_message("assistant", answer, thought=thoughts)
+                self.conversation_service.add_message("assistant", answer, thought=thoughts, personality=current_personality)
                 response_content = answer
                 logger.debug(f"[HANDLE_AI_RESPONSE] Added complete message with thoughts: '{answer[:50]}...'")
             elif answer:
                 # Add message without thoughts
-                self.conversation_service.add_message("assistant", answer)
+                self.conversation_service.add_message("assistant", answer, personality=current_personality)
                 response_content = answer
                 logger.debug(f"[HANDLE_AI_RESPONSE] Added complete message: '{answer[:50]}...'")
             else:
                 # Fallback: add the complete response as-is
-                self.conversation_service.add_message("assistant", complete_response)
+                self.conversation_service.add_message("assistant", complete_response, personality=current_personality)
                 response_content = complete_response
                 logger.debug(f"[HANDLE_AI_RESPONSE] Added complete response as fallback: '{complete_response[:50]}...'")
             
@@ -766,7 +786,10 @@ class ChatController(QObject):
                     # Add the assistant response to the conversation service
                     response_content = self._pending_assistant_response
                     if response_content.strip():
-                        self.conversation_service.add_message("assistant", response_content)
+                        current_personality = None
+                        if hasattr(self, 'personality_service') and self.personality_service:
+                            current_personality = self.personality_service.get_selected_model()
+                        self.conversation_service.add_message("assistant", response_content, personality=current_personality)
 
         logger.debug(f"[ID:0155] DEBUG: handle_ai_response called with response length: {len(response_content)}")
         self.clear_pending_assistant_response()
@@ -791,6 +814,9 @@ class ChatController(QObject):
         else:
             logger.debug("[ID:0151] DEBUG: Voice mode not active, skipping TTS")
             logger.debug(f"[ID:0151A] Voice mode value: {voice_mode if voice_mode is not None else 'Not set (no _chat_tab_reference or no voice_mode attribute)'}")
+    
+    
+    
     def _trigger_tts_for_response(self, response: str) -> None:
         """Trigger TTS for AI response if voice mode is active"""
         try:
@@ -803,12 +829,41 @@ class ChatController(QObject):
                 # Check if voice mode is active in the chat tab
                 if hasattr(self._chat_tab_reference, 'voice_mode') and self._chat_tab_reference.voice_mode:
                     logger.debug("[ID:0148D] Voice mode is active, proceeding with TTS")
+                    
+                    # Clean the response text for TTS
+                    import re
                     # Remove all <think>...</think> blocks
                     spoken_text = re.sub(r'<think>.*?</think>', '', response, flags=re.DOTALL).strip()
                     # Remove emojis
                     spoken_text = remove_emojis(spoken_text)
+                    
+                    # Additional cleaning for TTS
+                    # Remove markdown code blocks
+                    spoken_text = re.sub(r'```.*?```', '', spoken_text, flags=re.DOTALL)
+                    # Remove inline code
+                    spoken_text = re.sub(r'`.*?`', '', spoken_text)
+                    # Remove markdown links but keep the text
+                    spoken_text = re.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', spoken_text)
+                    # Remove markdown formatting
+                    spoken_text = re.sub(r'\*\*(.*?)\*\*', r'\1', spoken_text)  # Bold
+                    spoken_text = re.sub(r'\*(.*?)\*', r'\1', spoken_text)      # Italic
+                    spoken_text = re.sub(r'__(.*?)__', r'\1', spoken_text)      # Bold
+                    spoken_text = re.sub(r'_(.*?)_', r'\1', spoken_text)        # Italic
+                    # Remove extra whitespace
+                    spoken_text = re.sub(r'\s+', ' ', spoken_text).strip()
+                    
+                    if not spoken_text:
+                        logger.debug("[ID:0148E] Text was empty after cleaning, skipping TTS")
+                        return
+                    
                     logger.debug(f"[ID:0148E] Calling speak_ai_response with text length: {len(spoken_text)}")
                     logger.debug(f"[ID:0148F] Spoken text preview: {spoken_text[:100]}...")
+                    
+                    # Ensure voice controls are initialized
+                    if hasattr(self._chat_tab_reference, 'voice_controls_initialized') and not self._chat_tab_reference.voice_controls_initialized:
+                        logger.debug("[ID:0148G] Voice controls not initialized, initializing now")
+                        self._chat_tab_reference._ensure_voice_controls_initialized()
+                    
                     self._chat_tab_reference.speak_ai_response(spoken_text)
                     logger.debug(f"[ID:0150] TTS triggered for AI response (length: {len(spoken_text)})")
                 else:
@@ -819,14 +874,19 @@ class ChatController(QObject):
                 logger.debug(f"[ID:0149C] Has _chat_tab_reference: {hasattr(self, '_chat_tab_reference')}")
                 if hasattr(self, '_chat_tab_reference'):
                     logger.debug(f"[ID:0149D] _chat_tab_reference value: {self._chat_tab_reference}")
+                    
         except Exception as e:
-            logger.error(f"[ID:0148] Error triggering TTS for AI response: {e}")
+            logger.error(f"[ID:0149E] Error in _trigger_tts_for_response: {e}")
             import traceback
-            logger.error(f"[ID:0148E] TTS error traceback: {traceback.format_exc()}")
+            logger.error(f"[ID:0149F] TTS trigger error traceback: {traceback.format_exc()}")
     
     def set_chat_tab_reference(self, chat_tab):
         """Set reference to chat tab for TTS functionality"""
         self._chat_tab_reference = chat_tab
+    
+    def set_event_bus_reference(self, event_bus):
+        """Set the EventBus reference to prevent duplicate message processing"""
+        self.event_bus = event_bus
     
     def get_ai_name(self) -> str:
         """Get the AI name from the current personality"""
@@ -917,12 +977,19 @@ class ChatController(QObject):
     def load_conversation(self, filepath: str) -> None:
         """Load a conversation from file"""
         try:
+            logger.debug(f"[CHAT_CONTROLLER_LOAD] Loading conversation from filepath: {filepath}")
+            
             # CRITICAL FIX: Use conversation service's load_conversation method to properly reset state
             filename = os.path.basename(filepath)
-            self.conversation_service.load_conversation(filename)
+            logger.debug(f"[CHAT_CONTROLLER_LOAD] Extracted filename: {filename}")
+            
+            # Load conversation through conversation service
+            loaded_messages = self.conversation_service.load_conversation(filename)
+            logger.debug(f"[CHAT_CONTROLLER_LOAD] Conversation service loaded {len(loaded_messages)} messages")
             
             # Get metadata from conversation manager
             conversation, metadata = self.conversation_manager.load_conversation(filepath)
+            logger.debug(f"[CHAT_CONTROLLER_LOAD] Conversation manager loaded {len(conversation)} messages")
             
             # Update current metadata with loaded metadata
             current_metadata = self.conversation_manager.get_current_metadata()
@@ -938,6 +1005,9 @@ class ChatController(QObject):
             self.conversation_updated.emit()
             self.status_updated.emit(f"Loaded conversation: {metadata.get_display_info()}")
         except Exception as e:
+            logger.error(f"[CHAT_CONTROLLER_LOAD] Error loading conversation: {e}")
+            import traceback
+            logger.error(f"[CHAT_CONTROLLER_LOAD] Traceback: {traceback.format_exc()}")
             error_msg = PromptFormatter.format_error_message("conversation_load_failed", error=str(e))
             self.error_occurred.emit(error_msg)
     

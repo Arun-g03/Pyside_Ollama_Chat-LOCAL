@@ -657,10 +657,18 @@ class ChatTab(QWidget):
             print(f"[DEBUG] Processing voice input: '{text}'")
             logger.debug(f"Processing voice input: '{text}'", print_to_terminal=True)
             
+            # Validate text before processing
+            if not text or not text.strip():
+                logger.warning("Empty voice input received, skipping")
+                return
+            
+            # Clean the text (remove extra whitespace, etc.)
+            cleaned_text = text.strip()
+            
             # Add user message to chat immediately for voice input
-            print(f"[DEBUG] Adding voice input to chat display: '{text}'")
-            logger.debug(f"Adding voice input to chat display: '{text}'", print_to_terminal=True)
-            self.append_to_chat("You", text)
+            print(f"[DEBUG] Adding voice input to chat display: '{cleaned_text}'")
+            logger.debug(f"Adding voice input to chat display: '{cleaned_text}'", print_to_terminal=True)
+            self.append_to_chat("You", cleaned_text)
             
             # Start streaming for AI response
             print(f"[DEBUG] Starting streaming for voice input")
@@ -668,9 +676,10 @@ class ChatTab(QWidget):
             self.start_streaming()
             
             # Emit message_sent signal to go through the same event bus system as text input
+            # This ensures the message goes through the proper chat controller and conversation service
             print(f"[DEBUG] Emitting message_sent signal for voice input")
             logger.debug("Emitting message_sent signal for voice input", print_to_terminal=True)
-            self.message_sent.emit(text)
+            self.message_sent.emit(cleaned_text)
             
             # Add additional debug info
             print(f"[DEBUG] Voice mode: {self.voice_mode}")
@@ -1206,9 +1215,13 @@ class ChatTab(QWidget):
     def load_conversation(self, filepath: str):
         """Load a conversation from file"""
         logger.debug(f"[LOAD_DEBUG] Attempting to load conversation: {filepath}")
+        
+        # Verify chat controller connection first
+        self.verify_chat_controller_connection()
+        
         try:
             # CRITICAL FIX: Use conversation service to load the conversation
-            if hasattr(self, 'chat_controller') and hasattr(self.chat_controller, 'conversation_service'):
+            if hasattr(self, 'chat_controller') and self.chat_controller and hasattr(self.chat_controller, 'conversation_service'):
                 # Extract filename from filepath
                 import os
                 filename = os.path.basename(filepath)
@@ -1216,7 +1229,16 @@ class ChatTab(QWidget):
                 # Load conversation through conversation service
                 logger.debug(f"[LOAD_DEBUG] Loading conversation {filename} through conversation service")
                 conversation_service = self.chat_controller.conversation_service
-                conversation_service.load_conversation(filename)
+                logger.debug(f"[LOAD_DEBUG] Conversation service: {conversation_service}")
+                
+                # Load the conversation
+                loaded_messages = conversation_service.load_conversation(filename)
+                logger.debug(f"[LOAD_DEBUG] Loaded {len(loaded_messages)} messages from conversation service")
+                
+                # Ensure chat display is connected to conversation service
+                if hasattr(self, 'chat_display'):
+                    self.chat_display.set_conversation_service(conversation_service)
+                    logger.debug("[LOAD_DEBUG] Set conversation service in chat display")
                 
                 # No need to sync manually - the conversation service will emit signals
                 # and the chat display will update automatically through the signal connection
@@ -1225,6 +1247,7 @@ class ChatTab(QWidget):
             else:
                 # Fallback to old method if conversation service not available
                 logger.warning("[LOAD_FIX] Conversation service not available, using fallback method")
+                logger.debug(f"[LOAD_DEBUG] Chat controller: {getattr(self, 'chat_controller', None)}")
                 self._load_conversation_fallback(filepath)
             
             # Set current conversation file
@@ -1252,6 +1275,9 @@ class ChatTab(QWidget):
                 logger.warning(f"Could not load conversation metadata: {e}")
 
         except Exception as e:
+            logger.error(f"Failed to load conversation: {str(e)}")
+            import traceback
+            logger.error(f"Load conversation traceback: {traceback.format_exc()}")
             QMessageBox.critical(self, "Error", f"Failed to load conversation: {str(e)}")
     
     def _load_conversation_fallback(self, filepath: str):
@@ -1310,10 +1336,18 @@ class ChatTab(QWidget):
         # CRITICAL FIX: Connect to conversation service signals when chat controller is set
         if chat_controller and hasattr(chat_controller, 'conversation_service'):
             conversation_service = chat_controller.conversation_service
+            logger.debug(f"[CHAT_TAB] Conversation service from controller: {conversation_service}")
             
             # Disconnect any existing connections to prevent signal loops
             try:
-                conversation_service.conversation_updated.disconnect()
+                if conversation_service and hasattr(conversation_service, 'conversation_updated'):
+                    signal = conversation_service.conversation_updated
+                    if signal and hasattr(signal, 'disconnect'):
+                        # Check if signal has any connections before disconnecting
+                        if hasattr(signal, 'receivers') and signal.receivers() > 0:
+                            signal.disconnect()
+                        else:
+                            logger.debug("[CHAT_TAB] Signal has no receivers, skipping disconnect")
             except TypeError:
                 # No existing connection, safe to ignore
                 pass
@@ -1332,6 +1366,22 @@ class ChatTab(QWidget):
             if hasattr(self, 'chat_display'):
                 self.chat_display.set_conversation_service(conversation_service)
                 logger.debug("[CHAT_TAB] Set conversation service in chat display")
+        else:
+            logger.warning(f"[CHAT_TAB] Chat controller or conversation service not available: controller={chat_controller}")
+    
+    def verify_chat_controller_connection(self):
+        """Verify that chat controller is properly connected"""
+        if hasattr(self, 'chat_controller') and self.chat_controller:
+            logger.debug(f"[CHAT_TAB] Chat controller is set: {self.chat_controller}")
+            if hasattr(self.chat_controller, 'conversation_service'):
+                logger.debug(f"[CHAT_TAB] Conversation service is available: {self.chat_controller.conversation_service}")
+                return True
+            else:
+                logger.warning("[CHAT_TAB] Chat controller has no conversation service")
+                return False
+        else:
+            logger.warning("[CHAT_TAB] Chat controller is not set")
+            return False
     
     def get_streaming_handler(self):
         """Get the streaming handler for backward compatibility"""

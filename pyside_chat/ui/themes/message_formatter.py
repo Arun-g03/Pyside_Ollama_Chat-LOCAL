@@ -127,6 +127,14 @@ class MessageFormatter:
         Detects code and applies formatting. Highlights syntax using Pygments.
         It handles inline and block code wrapped in backticks (```) and applies syntax highlighting.
         """
+        # Convert literal \n characters to actual newlines for proper line breaks in code
+        # Handle both single and double escaped newlines
+        message = message.replace('\\\\n', '\\n')  # Handle double escaped
+        message = message.replace('\\n', '\n')     # Handle single escaped
+        
+        # Convert actual newlines to HTML line breaks for proper display
+        message = message.replace('\n', '<br>')
+        
         # Format block code (triple backticks) with optional language identifier
         # This regex captures: ```language\ncode``` or ```\ncode```
         block_code_pattern = re.compile(r'```(\w+)?\n?(.*?)```', re.DOTALL)
@@ -185,6 +193,14 @@ class MessageFormatter:
         """
         # First, identify and protect code blocks
         protected_message, code_blocks = MessageFormatter._protect_code_blocks(message)
+        
+        # Convert literal \n characters to actual newlines for proper line breaks
+        # Handle both single and double escaped newlines
+        protected_message = protected_message.replace('\\\\n', '\\n')  # Handle double escaped
+        protected_message = protected_message.replace('\\n', '\n')     # Handle single escaped
+        
+        # Convert actual newlines to HTML line breaks for proper display
+        protected_message = protected_message.replace('\n', '<br>')
         
         # Clean up excessive horizontal rules and separators
         protected_message = re.sub(r'---\s*---\s*---', '---', protected_message)

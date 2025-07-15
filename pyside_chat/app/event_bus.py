@@ -20,6 +20,9 @@ class EventBus:
         self.chat_controller = chat_controller
         self.lifecycle_manager = lifecycle_manager
         
+        # Set EventBus reference in ChatController to prevent duplicate message processing
+        self.chat_controller.set_event_bus_reference(self)
+        
         # Initialize threading service for new architecture
         self.threading_service = get_global_threading_service()
         
@@ -47,6 +50,9 @@ class EventBus:
         self._chat_tab_retry_timer.setSingleShot(True)
         self._chat_tab_retry_timer.timeout.connect(self._retry_chat_tab_connection)
         
+        # Flag to prevent duplicate signal connections
+        self._chat_tab_signals_connected = False
+        
         # Note: setup_connections() is now called explicitly after UI setup
     
     def setup_connections(self):
@@ -58,6 +64,7 @@ class EventBus:
             self.chat_controller.conversation_updated.connect(self._on_conversation_updated)
             self.chat_controller.name_generation_requested.connect(self._on_name_generation_requested)
             self.chat_controller.message_received.connect(self._on_message_received)
+            # NOTE: Removed chat_controller.message_sent connection to prevent duplicate message processing
             
             # Connect Ollama service signals
             ollama_service = self.service_manager.get_ollama_service()
@@ -116,15 +123,16 @@ class EventBus:
     def _retry_chat_tab_connection(self):
         """Attempt to connect to chat tab after delay."""
         try:
+            # Check if signals are already connected
+            if self._chat_tab_signals_connected:
+                logger.debug("[EVENT DEBUG] Chat tab signals already connected, skipping retry")
+                return
+                
             chat_tab = self.ui_manager.get_chat_tab()
             if chat_tab:
                 logger.debug("[EVENT DEBUG] Chat tab is now available, connecting signals.")
-                chat_tab.message_sent.connect(self._on_message_sent)
-                chat_tab.message_cancelled.connect(self._on_message_cancelled)
-                chat_tab.conversation_selected.connect(self._on_conversation_selected)
-                chat_tab.conversation_deleted.connect(self._on_conversation_deleted)
-                chat_tab.conversation_renamed.connect(self._on_conversation_renamed)
-                chat_tab.new_conversation_requested.connect(self._on_new_conversation_requested)
+                # Use the same connection method to ensure consistency and avoid duplicates
+                self._connect_chat_tab_signals()
                 logger.debug("[EVENT DEBUG] All chat tab signals connected successfully after retry.")
             else:
                 logger.debug(f"[EVENT DEBUG] Chat tab still not available (attempt {self._chat_tab_retry_count}/{self._max_chat_tab_retries}), will retry again.")
@@ -179,6 +187,11 @@ class EventBus:
     def _connect_chat_tab_signals(self):
         """Connect chat tab signals with proper error handling"""
         try:
+            # Check if signals are already connected to prevent duplicates
+            if self._chat_tab_signals_connected:
+                logger.debug("[EVENT DEBUG] Chat tab signals already connected, skipping")
+                return
+                
             chat_tab = self.ui_manager.get_chat_tab()
             if chat_tab:
                 logger.debug("[EVENT DEBUG] Connecting chat tab signals...")
@@ -186,18 +199,31 @@ class EventBus:
                 # CRITICAL FIX: Disconnect any existing connections first to prevent duplicates
                 def safe_disconnect(signal):
                     try:
-                        signal.disconnect()
+                        if signal and hasattr(signal, 'disconnect'):
+                            # Check if signal has any connections before disconnecting
+                            if hasattr(signal, 'receivers') and signal.receivers() > 0:
+                                signal.disconnect()
+                            else:
+                                logger.debug("[EVENT DEBUG] Signal has no receivers, skipping disconnect")
                     except TypeError:
                         # No existing connection, safe to ignore
                         pass
                     except Exception as e:
                         logger.debug(f"[EVENT DEBUG] Safe disconnect: {e}")
-                safe_disconnect(chat_tab.message_sent)
-                safe_disconnect(chat_tab.message_cancelled)
-                safe_disconnect(chat_tab.conversation_selected)
-                safe_disconnect(chat_tab.conversation_deleted)
-                safe_disconnect(chat_tab.conversation_renamed)
-                safe_disconnect(chat_tab.new_conversation_requested)
+                
+                # Only disconnect if signals exist
+                if hasattr(chat_tab, 'message_sent') and chat_tab.message_sent:
+                    safe_disconnect(chat_tab.message_sent)
+                if hasattr(chat_tab, 'message_cancelled') and chat_tab.message_cancelled:
+                    safe_disconnect(chat_tab.message_cancelled)
+                if hasattr(chat_tab, 'conversation_selected') and chat_tab.conversation_selected:
+                    safe_disconnect(chat_tab.conversation_selected)
+                if hasattr(chat_tab, 'conversation_deleted') and chat_tab.conversation_deleted:
+                    safe_disconnect(chat_tab.conversation_deleted)
+                if hasattr(chat_tab, 'conversation_renamed') and chat_tab.conversation_renamed:
+                    safe_disconnect(chat_tab.conversation_renamed)
+                if hasattr(chat_tab, 'new_conversation_requested') and chat_tab.new_conversation_requested:
+                    safe_disconnect(chat_tab.new_conversation_requested)
                 
                 # Connect signals with proper error handling
                 signals_to_connect = [
@@ -211,12 +237,17 @@ class EventBus:
                 
                 for signal, slot, signal_name in signals_to_connect:
                     try:
+                        # Check if signal already has connections
+                        if hasattr(signal, 'receivers') and signal.receivers() > 0:
+                            logger.warning(f"[EVENT DEBUG] Signal {signal_name} already has {signal.receivers()} receivers before connecting")
+                        
                         signal.connect(slot, Qt.ConnectionType.QueuedConnection)
-                        logger.debug(f"[EVENT DEBUG] Connected {signal_name} signal")
+                        logger.debug(f"[EVENT DEBUG] Connected {signal_name} signal (now has {signal.receivers()} receivers)")
                     except Exception as e:
                         logger.error(f"[EVENT ERROR] Failed to connect {signal_name} signal: {e}")
                 
                 logger.debug("[EVENT DEBUG] All chat tab signals connected successfully")
+                self._chat_tab_signals_connected = True
             else:
                 logger.warning("[EVENT WARNING] Chat tab not available for signal connection - will retry")
                 # Set up a retry mechanism to connect when chat tab becomes available
@@ -283,7 +314,9 @@ class EventBus:
     def _on_message_sent(self, message):
         """Handle new message sent from chat tab"""
         try:
+            import traceback
             logger.debug(f"[EVENT DEBUG] _on_message_sent called with message: '{message}'")
+            logger.debug(f"[DUPLICATE_DEBUG] _on_message_sent call stack: {traceback.format_stack()[-3:]}")
             
             # Get current model and temperature from chat tab
             chat_tab = self.ui_manager.get_chat_tab()
@@ -294,15 +327,15 @@ class EventBus:
             model = chat_tab.get_current_model()
             temperature = chat_tab.get_temperature()
             
-            # Process message through controller (this adds the message to conversation service)
+            # Process message through controller (this adds the message to conversation service and sends to Ollama)
+            logger.debug(f"[DUPLICATE_DEBUG] About to call process_user_message for: '{message}'")
             self.chat_controller.process_user_message(message, model, temperature)
             logger.info(f"[ID:0212] Processed user message: {message}", print_to_terminal=True)
             
             # UI will be updated by conversation service signals
             logger.debug(f"[EVENT DEBUG] User message added to conversation service")
             
-            # Send to Ollama for actual processing
-            self._send_to_ollama(message, model, temperature)
+            # NOTE: _send_to_ollama is already called by process_user_message, so we don't need to call it again
             
         except Exception as e:
             logger.error(f"[EVENT ERROR] Error in _on_message_sent: {e}")

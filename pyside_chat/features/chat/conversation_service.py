@@ -43,7 +43,7 @@ class ConversationService(QObject):
         self._message_counter += 1
         return f"msg_{self._message_counter}"
     
-    def add_message(self, role: str, content: str, message_id: Optional[str] = None, thought: str = ""):
+    def add_message(self, role: str, content: str, message_id: Optional[str] = None, thought: str = "", personality: Optional[str] = None):
         """Add a message to the conversation"""
         # CRITICAL FIX: Prevent empty messages from being added
         if not content or not content.strip():
@@ -58,7 +58,8 @@ class ConversationService(QObject):
             "role": role, 
             "content": content,
             "id": message_id,
-            "is_streaming": False
+            "is_streaming": False,
+            "personality": personality
         }
         # Add thought field for assistant messages
         if role == "assistant":
@@ -77,7 +78,7 @@ class ConversationService(QObject):
         
         return message_id
     
-    def start_streaming_message(self, role: str = "assistant") -> str:
+    def start_streaming_message(self, role: str = "assistant", personality: Optional[str] = None) -> str:
         """Start a new streaming message, finalizing any previous one first and resetting streaming state."""
         # Finalize any previous streaming message (with or without content)
         if self._streaming_message_id:
@@ -90,7 +91,8 @@ class ConversationService(QObject):
             "role": role,
             "content": "",
             "id": message_id,
-            "is_streaming": True
+            "is_streaming": True,
+            "personality": personality
         }
         # Add thought field for assistant messages
         if role == "assistant":
@@ -331,10 +333,12 @@ class ConversationService(QObject):
     
     def load_conversation(self, filename: str) -> List[Dict]:
         """Load a conversation from a file"""
-        if self.conversation_manager:
-            # Use conversation manager to load the conversation
-            filepath = os.path.join(self.history_dir, filename)
-            try:
+        try:
+            if self.conversation_manager:
+                # Use conversation manager to load the conversation
+                filepath = os.path.join(self.history_dir, filename)
+                logger.debug(f"[LOAD_DEBUG] Loading conversation from filepath: {filepath}")
+                
                 conversation, metadata = self.conversation_manager.load_conversation(filepath)
                 self.conversation = conversation
                 self.metadata = metadata.to_dict() if hasattr(metadata, 'to_dict') else {}
@@ -373,55 +377,59 @@ class ConversationService(QObject):
                 self.conversation_updated.emit(self.conversation)
                 return self.conversation
                 
-            except Exception as e:
-                logger.error(f"[LOAD_ERROR] Failed to load conversation: {e}")
-                return []
-        else:
-            # Fallback to direct file loading if conversation manager is not available
-            filepath = os.path.join(self.history_dir, filename)
-            with open(filepath, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-                
-            # Handle both old format (just conversation list) and new format (with metadata)
-            if isinstance(data, list):
-                self.conversation = data
-                self.metadata = {}
             else:
-                self.conversation = data.get("conversation", [])
-                self.metadata = data.get("metadata", {})
-            
-            # Set conversation ID for memory tracking
-            self.current_conversation_id = filename.replace(".json", "")
-            
-            # CRITICAL FIX: Clear any existing streaming state when loading a conversation
-            self._streaming_message_id = None
-            
-            # Ensure all messages have IDs (for backward compatibility)
-            for message in self.conversation:
-                if "id" not in message:
-                    message["id"] = self._get_next_message_id()
-            
-            # CRITICAL FIX: Finalize any streaming messages in the loaded conversation
-            for message in self.conversation:
-                if message.get("is_streaming", False):
-                    logger.debug(f"[LOAD_FIX] Finalizing streaming message {message.get('id')} from loaded conversation")
-                    message["is_streaming"] = False
-            
-            # Update message counter to avoid ID conflicts
-            max_id = 0
-            if self.conversation:
+                # Fallback to direct file loading if conversation manager is not available
+                logger.warning("[LOAD_DEBUG] Conversation manager not available, using fallback loading")
+                filepath = os.path.join(self.history_dir, filename)
+                with open(filepath, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    
+                # Handle both old format (just conversation list) and new format (with metadata)
+                if isinstance(data, list):
+                    self.conversation = data
+                    self.metadata = {}
+                else:
+                    self.conversation = data.get("conversation", [])
+                    self.metadata = data.get("metadata", {})
+                
+                # Set conversation ID for memory tracking
+                self.current_conversation_id = filename.replace(".json", "")
+                
+                # CRITICAL FIX: Clear any existing streaming state when loading a conversation
+                self._streaming_message_id = None
+                
+                # Ensure all messages have IDs (for backward compatibility)
                 for message in self.conversation:
-                    if "id" in message and message["id"].startswith("msg_"):
-                        try:
-                            msg_num = int(message["id"].split("_")[1])
-                            max_id = max(max_id, msg_num)
-                        except (ValueError, IndexError):
-                            pass
-                self._message_counter = max_id
-            
-            logger.debug(f"[LOAD_FIX] Loaded conversation with {len(self.conversation)} messages, max_id: {max_id}")
-            self.conversation_updated.emit(self.conversation)
-            return self.conversation
+                    if "id" not in message:
+                        message["id"] = self._get_next_message_id()
+                
+                # CRITICAL FIX: Finalize any streaming messages in the loaded conversation
+                for message in self.conversation:
+                    if message.get("is_streaming", False):
+                        logger.debug(f"[LOAD_FIX] Finalizing streaming message {message.get('id')} from loaded conversation")
+                        message["is_streaming"] = False
+                
+                # Update message counter to avoid ID conflicts
+                max_id = 0
+                if self.conversation:
+                    for message in self.conversation:
+                        if "id" in message and message["id"].startswith("msg_"):
+                            try:
+                                msg_num = int(message["id"].split("_")[1])
+                                max_id = max(max_id, msg_num)
+                            except (ValueError, IndexError):
+                                pass
+                    self._message_counter = max_id
+                
+                logger.debug(f"[LOAD_FIX] Loaded conversation with {len(self.conversation)} messages, max_id: {max_id}")
+                self.conversation_updated.emit(self.conversation)
+                return self.conversation
+                
+        except Exception as e:
+            logger.error(f"[LOAD_ERROR] Failed to load conversation {filename}: {e}")
+            import traceback
+            logger.error(f"[LOAD_ERROR] Traceback: {traceback.format_exc()}")
+            return []
     
     def clear_conversation(self):
         """Clear the current conversation"""
