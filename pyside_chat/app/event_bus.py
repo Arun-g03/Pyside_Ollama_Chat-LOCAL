@@ -298,10 +298,8 @@ class EventBus:
             self.chat_controller.process_user_message(message, model, temperature)
             logger.info(f"[ID:0212] Processed user message: {message}", print_to_terminal=True)
             
-            # CRITICAL FIX: Sync the chat display with the conversation service to show the user message
-            if chat_tab and hasattr(chat_tab, 'chat_display'):
-                chat_tab.chat_display._sync_messages_from_conversation_service()
-                logger.debug(f"[EVENT DEBUG] Synced chat display after adding user message")
+            # UI will be updated by conversation service signals
+            logger.debug(f"[EVENT DEBUG] User message added to conversation service")
             
             # Send to Ollama for actual processing
             self._send_to_ollama(message, model, temperature)
@@ -1013,7 +1011,7 @@ class EventBus:
             else:
                 self.service_manager.reinitialize_services()
                 self.chat_controller = self._create_chat_controller()
-                self._setup_connections()
+                self.setup_connections()
                 self._on_refresh_models()
     
     def _create_chat_controller(self):
@@ -1025,14 +1023,15 @@ class EventBus:
             conversation_service=self.service_manager.get_conversation_service(),
             enhancement_service=self.service_manager.get_enhancement_service(),
             memory_service=self.service_manager.get_memory_service(),
-            conversation_manager=self.service_manager.get_conversation_manager()
+            conversation_manager=self.service_manager.get_conversation_manager(),
+            config_manager=self.service_manager.get_config_manager()
         )
     
     def _setup_ui_with_new_services(self):
         """Setup UI with new services after configuration change"""
         # This would need to be implemented based on your UI structure
         # For now, we'll just re-setup connections
-        self._setup_connections()
+        self.setup_connections()
     
     def _on_refresh_models(self):
         """Refresh the list of available models"""

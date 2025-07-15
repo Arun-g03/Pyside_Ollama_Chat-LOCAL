@@ -55,7 +55,8 @@ class ChatController(QObject):
                  enhancement_service: EnhancementService,
                  memory_service: Optional[MemoryService],
                  conversation_manager: ConversationManager,
-                 personality_service=None):
+                 personality_service=None,
+                 config_manager=None):
         super().__init__()
         
         # Store service references
@@ -65,6 +66,7 @@ class ChatController(QObject):
         self.memory_service = memory_service
         self.conversation_manager = conversation_manager
         self.personality_service = personality_service
+        self.config_manager = config_manager
         
         # Initialize streaming state variables
         self._streaming_thoughts_buffer = ''
@@ -336,6 +338,16 @@ class ChatController(QObject):
                 logger.warning(f"[CHAT_CONTROLLER_DEBUG] Received empty or whitespace-only chunk, skipping accumulation")
                 return
             
+            # Check typewriter setting - if disabled, accumulate in separate buffer
+            typewriter_enabled = self.config_manager.get("typewriter_enabled", False) if self.config_manager else False
+            if not typewriter_enabled:
+                # Accumulate in separate buffer for typewriter-disabled mode
+                if not hasattr(self, '_typewriter_disabled_buffer'):
+                    self._typewriter_disabled_buffer = ""
+                self._typewriter_disabled_buffer += chunk
+                logger.debug(f"[CHAT_CONTROLLER_DEBUG] Typewriter disabled, accumulated in buffer: '{chunk[:50]}...'")
+                return
+            
             # Check for malformed output (repeating patterns that suggest AI malfunction)
             if len(chunk) > 10:
                 # Check for repeating patterns like "wordword" or "phrase phrase"
@@ -397,33 +409,41 @@ class ChatController(QObject):
                 
                 # Check if we have a complete </think> tag in the accumulated buffer (for other models)
                 elif '</think>' in self._streaming_thoughts_buffer:
-                    # Split the buffer at </think>
-                    parts = self._streaming_thoughts_buffer.split('</think>', 1)
+                    # Use MessageFormatter to properly split the accumulated buffer
+                    from pyside_chat.ui.themes.message_formatter import MessageFormatter
+                    full_buffer = self._streaming_thoughts_buffer
+                    thoughts, answer = MessageFormatter.split_thoughts_and_answer(full_buffer)
                     
-                    # The first part is the thought content (without </think>)
-                    thought_content = parts[0].strip()
-                    
-                    # The second part (if any) is content that came after </think>
-                    content_after_think = parts[1].strip() if len(parts) > 1 else ""
-                    
-                    # Store the thought
-                    self.conversation_service.update_streaming_message_thought(thought_content)
-                    logger.debug(f"[CHAT_CONTROLLER_DEBUG] Completed thought: '{thought_content[:50]}...'")
-                    
-                    # Reset think block state
-                    self._in_think_block = False
-                    self._think_completed = True
-                    self._streaming_thoughts_buffer = ""
-                    
-                    # If there's content after </think>, check if it's the same as what's in the thought
-                    if content_after_think:
-                        # Check if the content after </think> is already in the thought
-                        if content_after_think in thought_content:
-                            logger.debug(f"[CHAT_CONTROLLER_DEBUG] Skipping duplicate content after </think>: '{content_after_think[:50]}...'")
-                        else:
-                            # Start accumulating the response after </think> in the main message
+                    if thoughts is not None:
+                        # Store the thoughts
+                        self.conversation_service.update_streaming_message_thought(thoughts)
+                        logger.debug(f"[CHAT_CONTROLLER_DEBUG] Completed thought: '{thoughts[:50]}...'")
+                        
+                        # Reset think block state
+                        self._in_think_block = False
+                        self._think_completed = True
+                        self._streaming_thoughts_buffer = ""
+                        
+                        # Add the answer to the main message
+                        if answer:
+                            self.conversation_service.update_streaming_message_content(answer)
+                            logger.debug(f"[CHAT_CONTROLLER_DEBUG] Started main message after </think>: '{answer[:50]}...'")
+                    else:
+                        # Fallback to old logic if MessageFormatter doesn't find <think> tags
+                        parts = self._streaming_thoughts_buffer.split('</think>', 1)
+                        thought_content = parts[0].strip()
+                        content_after_think = parts[1].strip() if len(parts) > 1 else ""
+                        
+                        self.conversation_service.update_streaming_message_thought(thought_content)
+                        logger.debug(f"[CHAT_CONTROLLER_DEBUG] Completed thought (fallback): '{thought_content[:50]}...'")
+                        
+                        self._in_think_block = False
+                        self._think_completed = True
+                        self._streaming_thoughts_buffer = ""
+                        
+                        if content_after_think:
                             self.conversation_service.update_streaming_message_content(content_after_think)
-                            logger.debug(f"[CHAT_CONTROLLER_DEBUG] Started main message after </think>: '{content_after_think[:50]}...'")
+                            logger.debug(f"[CHAT_CONTROLLER_DEBUG] Started main message after </think> (fallback): '{content_after_think[:50]}...'")
                     
                     return
                 
@@ -511,18 +531,26 @@ class ChatController(QObject):
                 
                 # Regular content, add to main message
                 else:
-                    # Check if this looks like it might be a thought (starts with thinking words)
-                    thinking_starters = ['Okay,', 'Well,', 'I think', 'I need to', 'I should', 'Let me', 'I believe']
-                    chunk_starts_with_thinking = any(chunk.strip().startswith(starter) for starter in thinking_starters)
+                    # Use the MessageFormatter to check if this chunk contains <think> tags
+                    from pyside_chat.ui.themes.message_formatter import MessageFormatter
+                    thoughts, answer = MessageFormatter.split_thoughts_and_answer(chunk)
                     
-                    if chunk_starts_with_thinking:
-                        logger.debug(f"[CHAT_CONTROLLER_DEBUG] Chunk starts with thinking pattern, treating as thought: '{chunk[:50]}...'")
-                        # This might be a thought without explicit markers, treat it as such
-                        self._in_think_block = True
-                        self._think_completed = False
-                        self._streaming_thoughts_buffer = chunk
+                    if thoughts is not None:
+                        # This chunk contains <think> tags, process it properly
+                        logger.debug(f"[CHAT_CONTROLLER_DEBUG] Found <think> tags in chunk, thoughts: '{thoughts[:50]}...', answer: '{answer[:50]}...'")
+                        
+                        # Store the thoughts
+                        self.conversation_service.update_streaming_message_thought(thoughts)
+                        
+                        # Add the answer to the main message
+                        if answer:
+                            self.conversation_service.update_streaming_message_content(answer)
+                        
+                        # Mark think as completed
+                        self._think_completed = True
                         return
                     else:
+                        # No <think> tags, add to main message
                         self.conversation_service.update_streaming_message_content(chunk)
                         logger.debug(f"[CHAT_CONTROLLER_DEBUG] Added to main message: '{chunk[:20]}...'")
                         return
@@ -537,19 +565,67 @@ class ChatController(QObject):
 
     def start_streaming_response(self) -> str:
         """Start a new streaming assistant response, resetting streaming state."""
+        # Check typewriter setting
+        typewriter_enabled = self.config_manager.get("typewriter_enabled", False) if self.config_manager else False
+        
         # Reset streaming state variables
         self._in_think_block = False
         self._think_completed = False
         self._streaming_thoughts_buffer = ""
         self._last_streaming_chunk = ""
         self._last_streaming_msg_id = None
-        logger.debug("[STREAM_RESET] Reset streaming state for new assistant response")
-        # Start new streaming message
-        return self.conversation_service.start_streaming_message("assistant")
+        
+        # Clear typewriter disabled buffer if it exists
+        if hasattr(self, '_typewriter_disabled_buffer'):
+            self._typewriter_disabled_buffer = ""
+        
+        logger.debug(f"[STREAM_RESET] Reset streaming state for new assistant response (typewriter: {typewriter_enabled})")
+        
+        if typewriter_enabled:
+            # Start new streaming message only when typewriter is enabled
+            return self.conversation_service.start_streaming_message("assistant")
+        else:
+            # Don't create streaming message when typewriter is disabled
+            logger.debug("[STREAM_RESET] Typewriter disabled, skipping streaming message creation")
+            return None
 
     def finalize_streaming_response(self) -> bool:
         """Finalize the current streaming response, merging any buffered thoughts if present."""
         try:
+            # Check typewriter setting
+            typewriter_enabled = self.config_manager.get("typewriter_enabled", False) if self.config_manager else False
+            
+            if not typewriter_enabled and hasattr(self, '_typewriter_disabled_buffer') and self._typewriter_disabled_buffer:
+                # Typewriter disabled: process the complete accumulated response
+                complete_response = self._typewriter_disabled_buffer
+                logger.debug(f"[CHAT_CONTROLLER_DEBUG] Typewriter disabled, processing complete response: '{complete_response[:100]}...'")
+                
+                # Use MessageFormatter to properly split thoughts and answer
+                from pyside_chat.ui.themes.message_formatter import MessageFormatter
+                thoughts, answer = MessageFormatter.split_thoughts_and_answer(complete_response)
+                
+                # Add the complete message to conversation service
+                if thoughts and answer:
+                    # Add message with thoughts
+                    self.conversation_service.add_message("assistant", answer, thought=thoughts)
+                    logger.debug(f"[CHAT_CONTROLLER_DEBUG] Added complete message with thoughts: '{answer[:50]}...'")
+                elif answer:
+                    # Add message without thoughts
+                    self.conversation_service.add_message("assistant", answer)
+                    logger.debug(f"[CHAT_CONTROLLER_DEBUG] Added complete message: '{answer[:50]}...'")
+                else:
+                    # Fallback: add the complete response as-is
+                    self.conversation_service.add_message("assistant", complete_response)
+                    logger.debug(f"[CHAT_CONTROLLER_DEBUG] Added complete response as fallback: '{complete_response[:50]}...'")
+                
+                # Clear the buffer
+                self._typewriter_disabled_buffer = ""
+                return True
+            elif not typewriter_enabled:
+                # Typewriter disabled but no buffer content - nothing to do
+                logger.debug("[CHAT_CONTROLLER_DEBUG] Typewriter disabled but no buffer content")
+                return True
+            
             streaming_message_id = self.conversation_service.get_streaming_message_id()
             current_msg = self.conversation_service.get_message_by_id(streaming_message_id) if streaming_message_id else None
             
@@ -563,152 +639,29 @@ class ChatController(QObject):
             
             # Handle case where entire response was in think block
             if current_msg is not None and self._in_think_block and self._streaming_thoughts_buffer.strip():
-                # Extract the actual response from within the thought
-                thought_content = self._streaming_thoughts_buffer.strip()
+                # Use MessageFormatter to properly split the accumulated buffer
+                from pyside_chat.ui.themes.message_formatter import MessageFormatter
+                full_buffer = self._streaming_thoughts_buffer.strip()
+                thoughts, answer = MessageFormatter.split_thoughts_and_answer(full_buffer)
                 
-                # Check for malformed thought content (repeating patterns)
-                import re
-                # More comprehensive pattern detection for thought content
-                repeating_pattern = re.search(r'(\w+)\1{2,}', thought_content)
-                double_word_pattern = re.search(r'(\w+)\s+\1', thought_content)
-                if repeating_pattern or double_word_pattern:
-                    logger.warning(f"[CHAT_CONTROLLER_DEBUG] Detected malformed thought content with repeating patterns")
-                    logger.warning(f"[CHAT_CONTROLLER_DEBUG] Thought content preview: '{thought_content[:100]}...'")
-                    logger.warning(f"[CHAT_CONTROLLER_DEBUG] Pattern type: repeating={repeating_pattern}, double_word={double_word_pattern}")
-                    # Instead of using a placeholder, try to extract the actual response from the thought
-                    # Look for the last sentence that looks like a response
-                    sentences = re.split(r'[.!?]+', thought_content)
-                    response_candidates = []
-                    for sentence in sentences:
-                        sentence = sentence.strip()
-                        if sentence and len(sentence) > 5:  # Only consider substantial sentences
-                            # Check if it looks like a response (not just thinking)
-                            thinking_words = ['I need to', 'I should', 'Let me', 'I think', 'I believe', 'I want to', 'I will', 'Okay,', 'Well,']
-                            is_thinking = any(word in sentence for word in thinking_words)
-                            if not is_thinking and not sentence.startswith('They') and not sentence.startswith('The user'):
-                                response_candidates.append(sentence)
+                if thoughts is not None:
+                    # Store the thoughts
+                    self.conversation_service.update_streaming_message_thought(thoughts)
+                    logger.debug(f"[CHAT_CONTROLLER_DEBUG] Completed thought: '{thoughts[:50]}...'")
                     
-                    if response_candidates:
-                        actual_response = response_candidates[-1].strip()
-                        logger.debug(f"[CHAT_CONTROLLER_DEBUG] Extracted response from thought despite repeating patterns: '{actual_response[:50]}...'")
+                    # Add the answer to the main message
+                    if answer:
+                        self.conversation_service.update_streaming_message_content(answer)
+                        logger.debug(f"[CHAT_CONTROLLER_DEBUG] Final answer: '{answer[:50]}...'")
                     else:
-                        # Only use placeholder if we can't extract anything meaningful
-                        actual_response = "I apologize, but I'm experiencing some technical difficulties. How can I help you?"
+                        # If no answer found, use a default response
+                        self.conversation_service.update_streaming_message_content("I'm here to help! How can I assist you today?")
+                        logger.debug(f"[CHAT_CONTROLLER_DEBUG] No answer found, using default response")
                 else:
-                    # Look for patterns that indicate the actual response within the thought
-                    # Common patterns: "I should say:", "My response:", "Let me respond:", etc.
-                    response_indicators = [
-                        "I should say:", "My response:", "Let me respond:", 
-                        "I'll respond:", "I should respond:", "My answer:",
-                        "Here's my response:", "I'll say:", "I should tell them:"
-                    ]
-                    
-                    actual_response = ""
-                    for indicator in response_indicators:
-                        if indicator in thought_content:
-                            # Extract everything after the indicator
-                            parts = thought_content.split(indicator, 1)
-                            if len(parts) > 1:
-                                actual_response = parts[1].strip()
-                                # Remove any remaining quotes or formatting
-                                actual_response = actual_response.strip('"').strip("'").strip()
-                                logger.debug(f"[CHAT_CONTROLLER_DEBUG] Found response using indicator '{indicator}': '{actual_response[:50]}...'")
-                                break
-                    
-                    # If no indicator found, try to extract the last quoted text as the response
-                    if not actual_response:
-                        quotes = re.findall(r'"([^"]*)"', thought_content)
-                        if quotes:
-                            actual_response = quotes[-1]  # Use the last quoted text
-                            logger.debug(f"[CHAT_CONTROLLER_DEBUG] Found response in quotes: '{actual_response[:50]}...'")
-                    
-                    # If still no response found, try to extract the last sentence or paragraph as the response
-                    if not actual_response:
-                        # Look for the last sentence that seems like a response (not just thinking)
-                        sentences = re.split(r'[.!?]+', thought_content)
-                        # Filter out sentences that are clearly thinking (contain words like "I need to", "I should", "Let me")
-                        thinking_words = ['I need to', 'I should', 'Let me', 'I think', 'I believe', 'I want to', 'I will', 'okay,', 'maybe', 'perhaps']
-                        response_sentences = []
-                        for sentence in sentences:
-                            sentence = sentence.strip()
-                            if sentence and len(sentence) > 5:  # Lower threshold for sentence length
-                                is_thinking = any(word in sentence.lower() for word in thinking_words)
-                                if not is_thinking and not sentence.startswith('They') and not sentence.startswith('The user'):
-                                    response_sentences.append(sentence)
-                        
-                        if response_sentences:
-                            # Use the last non-thinking sentence as the response
-                            actual_response = response_sentences[-1].strip()
-                            logger.debug(f"[CHAT_CONTROLLER_DEBUG] Found response in last non-thinking sentence: '{actual_response[:50]}...'")
-                        else:
-                            # If no clear response found, try to extract the last part that looks like a response
-                            # Look for patterns that indicate the start of the actual response
-                            response_start_patterns = [
-                                r'Hello!.*?(?=\s*$)',  # Hello followed by anything to the end
-                                r'Hi!.*?(?=\s*$)',     # Hi followed by anything to the end
-                                r'Hey!.*?(?=\s*$)',    # Hey followed by anything to the end
-                                r'That\'s interesting!.*?(?=\s*$)',  # "That's interesting!" followed by anything to the end
-                                r'[A-Z][^.!?]*[.!?]\s*$',  # Sentence starting with capital letter at the end
-                            ]
-                            
-                            for pattern in response_start_patterns:
-                                match = re.search(pattern, thought_content, re.DOTALL)
-                                if match:
-                                    actual_response = match.group(0).strip()
-                                    logger.debug(f"[CHAT_CONTROLLER_DEBUG] Found response using pattern '{pattern}': '{actual_response[:50]}...'")
-                                    break
-                            
-                            # If still no response found, try to find the last quoted text or greeting
-                            if not actual_response:
-                                # Look for the last quoted text
-                                quotes = re.findall(r'"([^"]*)"', thought_content)
-                                if quotes:
-                                    actual_response = quotes[-1].strip()
-                                    logger.debug(f"[CHAT_CONTROLLER_DEBUG] Found response in quotes: '{actual_response[:50]}...'")
-                                else:
-                                    # Look for the last sentence that starts with a greeting or response
-                                    last_sentences = thought_content.split('.')
-                                    for sentence in reversed(last_sentences):
-                                        sentence = sentence.strip()
-                                        if sentence and (sentence.startswith('Hello') or sentence.startswith('Hi') or 
-                                                       sentence.startswith('That\'s') or sentence.startswith('How') or
-                                                       sentence.startswith('What') or sentence.startswith('I\'m')):
-                                            actual_response = sentence
-                                            logger.debug(f"[CHAT_CONTROLLER_DEBUG] Found response in last greeting sentence: '{actual_response[:50]}...'")
-                                            break
-                            
-                            # If still no response found, use the entire thought as response
-                            if not actual_response:
-                                actual_response = thought_content
-                                logger.debug(f"[CHAT_CONTROLLER_DEBUG] Using entire thought as response: '{actual_response[:50]}...'")
-                
-                # Store the thought and set the actual response as content
-                self.conversation_service.update_streaming_message_thought(thought_content)
-                
-                # Ensure the response is not empty or just punctuation
-                if not actual_response or actual_response.strip() in ['!', '.', ',', ';', ':']:
-                    logger.warning(f"[CHAT_CONTROLLER_DEBUG] Response is empty or just punctuation: '{actual_response}'")
-                    # Instead of using a placeholder, try to extract a meaningful response from the thought
-                    # Look for the last sentence that looks like a response
-                    sentences = re.split(r'[.!?]+', thought_content)
-                    response_candidates = []
-                    for sentence in sentences:
-                        sentence = sentence.strip()
-                        if sentence and len(sentence) > 5:  # Only consider substantial sentences
-                            # Check if it looks like a response (not just thinking)
-                            thinking_words = ['I need to', 'I should', 'Let me', 'I think', 'I believe', 'I want to', 'I will', 'Okay,', 'Well,']
-                            is_thinking = any(word in sentence for word in thinking_words)
-                            if not is_thinking and not sentence.startswith('They') and not sentence.startswith('The user'):
-                                response_candidates.append(sentence)
-                    
-                    if response_candidates:
-                        actual_response = response_candidates[-1].strip()
-                        logger.debug(f"[CHAT_CONTROLLER_DEBUG] Extracted response from thought: '{actual_response[:50]}...'")
-                    else:
-                        actual_response = "I'm here to help! How can I assist you today?"
-                
-                self.conversation_service.update_streaming_message_content(actual_response)
-                logger.debug(f"[CHAT_CONTROLLER_DEBUG] Final extracted response: '{actual_response[:50]}...'")
+                    # Fallback: treat entire buffer as thought and use default response
+                    self.conversation_service.update_streaming_message_thought(full_buffer)
+                    self.conversation_service.update_streaming_message_content("I'm here to help! How can I assist you today?")
+                    logger.debug(f"[CHAT_CONTROLLER_DEBUG] No <think> tags found, using fallback")
                 
                 # Reset the thought buffer and state after processing
                 self._streaming_thoughts_buffer = ''
@@ -750,38 +703,70 @@ class ChatController(QObject):
 
     def handle_ai_response(self) -> None:
         """Handle AI response completion using accumulated response."""
-        # Try to finalize streaming response first
-        response_content = ""
+        # Check typewriter setting
+        typewriter_enabled = self.config_manager.get("typewriter_enabled", False) if self.config_manager else False
         
-        # Find the streaming message with actual content
-        streaming_message_with_content = self.conversation_service.get_streaming_message_with_content()
-        
-        if streaming_message_with_content:
-            # Finalize the message with content
-            message_id = streaming_message_with_content["id"]
-            logger.debug(f"[ID:0156] Found streaming message with content: {message_id}, content length: {len(streaming_message_with_content['content'])}")
+        if not typewriter_enabled and hasattr(self, '_typewriter_disabled_buffer') and self._typewriter_disabled_buffer:
+            # Typewriter disabled: process the complete accumulated response
+            complete_response = self._typewriter_disabled_buffer
+            logger.debug(f"[HANDLE_AI_RESPONSE] Typewriter disabled, processing complete response: '{complete_response[:100]}...'")
             
-            # Update the streaming message ID to the one with content
-            self.conversation_service._streaming_message_id = message_id
+            # Use MessageFormatter to properly split thoughts and answer
+            from pyside_chat.ui.themes.message_formatter import MessageFormatter
+            thoughts, answer = MessageFormatter.split_thoughts_and_answer(complete_response)
             
-            # Finalize the streaming response
-            self.finalize_streaming_response()
-            response_content = streaming_message_with_content["content"]
-        else:
-            # Check if there's a current streaming message ID (might be empty)
-            streaming_id = self.conversation_service.get_streaming_message_id()
-            if streaming_id:
-                self.finalize_streaming_response()
-                response_msg = self.conversation_service.get_message_by_id(streaming_id)
-                if response_msg:
-                    response_content = response_msg["content"]
-                else:
-                    response_content = self._pending_assistant_response
+            # Add the complete message to conversation service
+            if thoughts and answer:
+                # Add message with thoughts
+                self.conversation_service.add_message("assistant", answer, thought=thoughts)
+                response_content = answer
+                logger.debug(f"[HANDLE_AI_RESPONSE] Added complete message with thoughts: '{answer[:50]}...'")
+            elif answer:
+                # Add message without thoughts
+                self.conversation_service.add_message("assistant", answer)
+                response_content = answer
+                logger.debug(f"[HANDLE_AI_RESPONSE] Added complete message: '{answer[:50]}...'")
             else:
-                # Add the assistant response to the conversation service
-                response_content = self._pending_assistant_response
-                if response_content.strip():
-                    self.conversation_service.add_message("assistant", response_content)
+                # Fallback: add the complete response as-is
+                self.conversation_service.add_message("assistant", complete_response)
+                response_content = complete_response
+                logger.debug(f"[HANDLE_AI_RESPONSE] Added complete response as fallback: '{complete_response[:50]}...'")
+            
+            # Clear the buffer
+            self._typewriter_disabled_buffer = ""
+        else:
+            # Typewriter enabled: handle normal streaming response
+            response_content = ""
+            
+            # Find the streaming message with actual content
+            streaming_message_with_content = self.conversation_service.get_streaming_message_with_content()
+            
+            if streaming_message_with_content:
+                # Finalize the message with content
+                message_id = streaming_message_with_content["id"]
+                logger.debug(f"[ID:0156] Found streaming message with content: {message_id}, content length: {len(streaming_message_with_content['content'])}")
+                
+                # Update the streaming message ID to the one with content
+                self.conversation_service._streaming_message_id = message_id
+                
+                # Finalize the streaming response
+                self.finalize_streaming_response()
+                response_content = streaming_message_with_content["content"]
+            else:
+                # Check if there's a current streaming message ID (might be empty)
+                streaming_id = self.conversation_service.get_streaming_message_id()
+                if streaming_id:
+                    self.finalize_streaming_response()
+                    response_msg = self.conversation_service.get_message_by_id(streaming_id)
+                    if response_msg:
+                        response_content = response_msg["content"]
+                    else:
+                        response_content = self._pending_assistant_response
+                else:
+                    # Add the assistant response to the conversation service
+                    response_content = self._pending_assistant_response
+                    if response_content.strip():
+                        self.conversation_service.add_message("assistant", response_content)
 
         logger.debug(f"[ID:0155] DEBUG: handle_ai_response called with response length: {len(response_content)}")
         self.clear_pending_assistant_response()
@@ -866,6 +851,8 @@ class ChatController(QObject):
         self._last_streaming_chunk = ""
         self._last_streaming_msg_id = None
         self._pending_assistant_response = ""
+        if hasattr(self, '_typewriter_disabled_buffer'):
+            self._typewriter_disabled_buffer = ""
         logger.debug("[STREAM_RESET] Reset all streaming state variables")
 
     def start_new_conversation(self) -> None:

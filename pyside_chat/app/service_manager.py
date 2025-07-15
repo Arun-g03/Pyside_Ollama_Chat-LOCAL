@@ -176,6 +176,10 @@ class ServiceManager:
         """Check if memory is enabled"""
         return self.memory_enabled
 
+    def get_config_manager(self) -> ConfigManager:
+        """Get the config manager"""
+        return self.config_manager
+    
     def get_session_variables(self) -> dict:
         """Get session variables"""
         return self.session_variables.copy()

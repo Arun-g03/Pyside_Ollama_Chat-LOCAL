@@ -8,6 +8,7 @@ Chat Renderer - Localized rendering system for chat display
 
 import logging
 import traceback
+import time
 from typing import List, Dict, Optional
 
 logger = CustomLogger.get_logger(__name__)
@@ -33,297 +34,139 @@ class ChatRenderer(QObject):
         
         # Emergency reset timer
         self._emergency_reset_timer = QTimer()
-        self._emergency_reset_timer.setInterval(500)  # 500ms emergency reset (reduced from 1000ms)
+        self._emergency_reset_timer.setInterval(500)  # 500ms emergency reset
         self._emergency_reset_timer.setSingleShot(True)
         self._emergency_reset_timer.timeout.connect(self._emergency_reset)
         
-        # Typewriter effect timer - adds small delay between chunks
-        self._typewriter_timer = QTimer()
-        self._typewriter_timer.setInterval(10)  # 10ms delay for smoother typewriter effect
-        self._typewriter_timer.setSingleShot(True)
-        self._typewriter_timer.timeout.connect(self._process_typewriter_chunk)
-        self._pending_chunk = None
-        
         # Render counter to detect excessive renders
         self._render_counter = 0
-        self._max_renders_per_second = 60  # Increased limit for smoother UI
+        self._max_renders_per_second = 60
         self._last_render_time = 0
-        
-        # Message storage (moved from StreamingHandler)
-        self.messages: List[Dict] = []
-        self._message_counter = 0
         
         self.config_manager = config_manager
         
-    def _get_next_message_id(self) -> str:
-        """Generate a unique message ID"""
-        self._message_counter += 1
-        return f"msg_{self._message_counter}"
-    
-    def add_message(self, sender: str, content: str, is_code: bool = False, 
-                   is_streaming: bool = False, tag: str = "ai") -> str:
-        """Add a message to the renderer's storage"""
-        import traceback
+        # Reference to conversation service (single source of truth)
+        self.conversation_service = None
         
-        message_id = self._get_next_message_id()
-        message = {
-            'sender': sender,
-            'content': content,
-            'is_code': is_code,
-            'is_streaming': is_streaming,
-            'tag': tag,
-            'message_id': message_id
-        }
-        self.messages.append(message)
-        logger.debug(f"[DEBUG] Added message from {sender}: '{content[:50]}...'")
-        return message_id
+    def set_conversation_service(self, conversation_service):
+        """Set the conversation service reference for single source of truth"""
+        logger.debug(f"[RENDERER] Setting conversation service: {conversation_service}")
+        self.conversation_service = conversation_service
+        logger.debug("[RENDERER] Set conversation service reference")
+        
+        # Test: Get messages immediately to verify connection
+        if conversation_service:
+            messages = conversation_service.get_messages()
+            logger.debug(f"[RENDERER] Test: Conversation service has {len(messages)} messages")
+        else:
+            logger.warning("[RENDERER] Conversation service is None")
     
-    def append_message(self, sender: str, content: str, is_code: bool = False, tag: str = "ai"):
-        """Append a new message and request render"""
-        message_id = self.add_message(sender, content, is_code, False, tag)
-        # Use immediate render for new messages to ensure they appear quickly
-        self.request_render(immediate=True)
-        return message_id
+    def get_messages(self) -> List[Dict]:
+        """Get messages from conversation service (single source of truth)"""
+        if not self.conversation_service:
+            logger.warning("[RENDERER] No conversation service available, returning empty list")
+            return []
+        
+        messages = self.conversation_service.get_messages()
+        logger.debug(f"[RENDERER] Retrieved {len(messages)} messages from conversation service")
+        
+        # Debug: Print each message
+        for i, msg in enumerate(messages):
+            logger.debug(f"[RENDERER] Message {i}: role={msg.get('role')}, content_len={len(msg.get('content', ''))}, id={msg.get('id')}")
+        
+        return messages
     
-    def edit_message(self, message_index: int, new_content: str) -> bool:
-        """Edit a specific message by index"""
-        if 0 <= message_index < len(self.messages):
-            old_content = self.messages[message_index]['content']
-            self.messages[message_index]['content'] = new_content
-            logger.debug(f"[DEBUG][edit_message] Edited message {message_index}: '{old_content}' -> '{new_content}'")
-            
-            # Use immediate render for edits to show changes quickly
-            self.request_render(immediate=True)
-            return True
-        return False
-    
-    def update_last_system_switch(self, message: str):
-        """Update the last system message with new content"""
-        try:
-            # Find the last system message
-            for msg in reversed(self.messages):
-                if msg['sender'] == 'System':
-                    msg['content'] = message
-                    break
-            
-            # Use immediate render for system updates to show changes quickly
-            self.request_render(immediate=True)
-            
-        except Exception as e:
-            logger.error(f"Error updating last system message: {e}")
-            logger.error(traceback.format_exc())
-    
-    def _get_current_streaming_message(self):
-        """Return the current (last) streaming message, or None if not found."""
-        for msg in reversed(self.messages):
-            if msg.get('is_streaming'):
-                return msg
-        return None
-
-    def start_streaming_message(self, sender: str, tag: str = "ai") -> str:
-        logger.debug(f"[DEBUG] Starting streaming message from {sender} with tag {tag}")
-        """Start a streaming message and finalize any previous one."""
-        # Finalize any previous streaming message
-        for msg in reversed(self.messages):
-            if msg.get('is_streaming'):
-                msg['is_streaming'] = False
-        message_id = self.add_message(sender, "", False, True, tag)
-        self.request_render(immediate=True)
-        return message_id
-    
-    def _process_typewriter_chunk(self):
-        logger.debug(f"[DEBUG] Processing typewriter chunk")
-        """Process a chunk with typewriter effect delay"""
-        if self._pending_chunk:
-            chunk, sender, message_id, is_code, tag, append = self._pending_chunk
-            self._pending_chunk = None
-            streaming_msg = self._get_current_streaming_message()
-            if streaming_msg is not None:
-                logger.debug(f"[TYPEWRITER] Appending chunk: '{chunk}' to streaming message. Current content: '{streaming_msg['content']}'")
-            # Find the last streaming message
-            for msg in reversed(self.messages):
-                if msg['is_streaming']:
-                    if append:
-                        msg['content'] += chunk
-                    else:
-                        msg['content'] = chunk
-                    msg['is_code'] = is_code
-                    msg['tag'] = tag
-                    break
-            # Force immediate render for streaming messages to ensure real-time updates
-            self.request_render(immediate=True)
-    
-    def update_streaming_message(self, content: str, sender: str, message_id: str = None, 
-                               is_code: bool = False, tag: str = "ai", append: bool = True):
-        """Update the content of the current streaming message with typewriter effect, or instantly if disabled."""
-        try:
-            typewriter_enabled = self.config_manager.get("typewriter_enabled", True) if self.config_manager else True
-            streaming_msg = self._get_current_streaming_message()
-            if streaming_msg is not None:
-                # Append chunk to existing streaming message
-                if append:
-                    streaming_msg['content'] += content
-                else:
-                    streaming_msg['content'] = content
-                streaming_msg['is_code'] = is_code
-                streaming_msg['tag'] = tag
-                logger.debug(f"[TYPEWRITER] Appended chunk to streaming message: '{content[:50]}'", print_to_terminal=True)
-                self.request_render(immediate=True)
+    def get_renderable_messages(self) -> List[Dict]:
+        """Get messages formatted for rendering (converts role to sender names)"""
+        if not self.conversation_service:
+            return []
+        
+        conversation_messages = self.conversation_service.get_messages()
+        renderable_messages = []
+        
+        for msg in conversation_messages:
+            # Convert role to sender name
+            role = msg.get('role', 'unknown')
+            if role == 'assistant':
+                sender = self.ai_name
+            elif role == 'user':
+                sender = 'You'
+            elif role == 'system':
+                sender = 'System'
             else:
-                # Only start a new streaming message if this is the first chunk of a new reply
-                if not self.messages or not any(msg.get('is_streaming') for msg in self.messages):
-                    logger.debug(f"[TYPEWRITER] No streaming message found, starting new one for sender: {sender}", print_to_terminal=True)
-                    self.start_streaming_message(sender, tag)
-                    # Now append the chunk to the new streaming message
-                    streaming_msg = self._get_current_streaming_message()
-                    if streaming_msg is not None:
-                        streaming_msg['content'] = content
-                        streaming_msg['is_code'] = is_code
-                        streaming_msg['tag'] = tag
-                        logger.debug(f"[TYPEWRITER] Appended first chunk to new streaming message: '{content[:50]}'", print_to_terminal=True)
-                        self.request_render(immediate=True)
-                    else:
-                        logger.warning("[TYPEWRITER] Failed to create new streaming message for first chunk.", print_to_terminal=True)
-                else:
-                    logger.warning("[TYPEWRITER] No streaming message found, but not starting a new one to avoid duplicates.", print_to_terminal=True)
-        except Exception as e:
-            logger.error(f"Error updating streaming message: {e}")
-            logger.error(traceback.format_exc())
-    
-    def finalize_streaming_message(self):
-        """Mark the last streaming message as finalized"""
-        try:
-            found = False
-            for msg in reversed(self.messages):
-                if msg['is_streaming']:
-                    msg['is_streaming'] = False
-                    found = True
-                    break
-            # Use immediate render for finalization to show completion quickly
-            self.request_render(immediate=True)
-        except Exception as e:
-            logger.error(f"Error finalizing streaming message: {e}")
-            logger.error(traceback.format_exc())
+                sender = role
+            
+            renderable_msg = {
+                'sender': sender,
+                'content': msg.get('content', ''),
+                'is_code': msg.get('is_code', False),
+                'is_streaming': msg.get('is_streaming', False),
+                'tag': 'ai' if role == 'assistant' else 'user',
+                'message_id': msg.get('id', ''),
+                'thought': msg.get('thought', '')
+            }
+            renderable_messages.append(renderable_msg)
+        
+        logger.debug(f"[RENDERER] Converted {len(renderable_messages)} messages for rendering")
+        return renderable_messages
     
     def clear_chat(self):
         """Clear all messages and render"""
-        self.clear_messages()
-        # Use immediate render for clearing to show empty state quickly
-        self.request_render(immediate=True)
-    
-    def update_message(self, message_id: str, content: str, is_code: bool = False, tag: str = "ai"):
-        """Update an existing message"""
-        for msg in self.messages:
-            if msg.get('message_id') == message_id:
-                msg['content'] = content
-                msg['is_code'] = is_code
-                msg['tag'] = tag
-                break
-    
-    def get_messages(self) -> List[Dict]:
-        """Get all messages"""
-        return self.messages.copy()
-    
-    def clear_messages(self):
-        """Clear all messages"""
-        self.messages.clear()
-        self._message_counter = 0
-    
-    def sync_messages_from_handler(self, handler_messages: List[Dict]):
-        """Sync messages from the streaming handler"""
-        self.messages = handler_messages.copy()
-        logger.debug(f"[DEBUG] Synced {len(self.messages)} messages from handler")
-    
-    def sync_messages_from_conversation(self, conversation_messages: List[Dict]):
-        """Sync messages from conversation service to renderer (replace, never append)."""
-        # DEBUG: Log what the renderer receives
-        logger.debug(f"[RENDERER_SYNC_DEBUG] Received {len(conversation_messages)} messages from conversation service: " + 
-                    ", ".join([f"{{sender: {msg.get('sender')}, content_len: {len(msg.get('content', ''))}, is_streaming: {msg.get('is_streaming')}, message_id: {msg.get('message_id')}}}" for msg in conversation_messages]), print_to_terminal=True)
-        
-        self.messages = conversation_messages.copy()  # Replace, do not append
-        logger.debug(f"[PATCH] Renderer message list replaced with {len(self.messages)} messages from conversation service", print_to_terminal=True)
-        # Request render to update the display
+        if self.conversation_service:
+            self.conversation_service.clear_conversation()
         self.request_render(immediate=True)
     
     def request_render(self, immediate: bool = False):
-        """Request a render - unified entry point"""
-        
-        try:
-            # If already rendering, don't schedule another render
-            if self._is_rendering:
-                logger.debug("[DEBUG] Already rendering, skipping request")
-                return
-            
-            # If immediate render requested, execute now
-            if immediate:
-                logger.debug("[DEBUG] Executing immediate render")
-                self._is_rendering = True
-                self._render_chat_display()
-                self._is_rendering = False
-            else:
-                # Otherwise, schedule with debouncing
-                logger.debug("[DEBUG] Scheduling debounced render")
-                if not self._render_timer.isActive():
-                    self._render_timer.start()
-                    
-        except Exception as e:
-            logger.error(f"[ERROR] Error in request_render: {e}")
-            logger.error(traceback.format_exc())
-            self._is_rendering = False
+        """Request a render of the current conversation"""
+        if immediate:
+            self._execute_render()
+        else:
+            self._render_timer.start()
     
     def _execute_render(self):
-        """Execute the actual render - simplified and unified"""
-        try:
-            # Prevent excessive renders
+        """Execute the actual rendering"""
+        if self._is_rendering:
+            logger.debug("[RENDERER] Render already in progress, skipping")
+            return
+        
+        # Emergency stop if too many renders in a short time
+        current_time = time.time()
+        if current_time - self._last_render_time < 0.1:  # Less than 100ms between renders
             self._render_counter += 1
-            if self._render_counter > self._max_renders_per_second:
-                logger.warning(f"[WARNING] Excessive renders detected: {self._render_counter}. Triggering emergency reset.")
-                self._emergency_reset()
+            if self._render_counter > 10:  # More than 10 rapid renders
+                logger.warning("[RENDERER] Too many rapid renders detected, stopping render loop")
+                self._emergency_reset_timer.start()
                 return
-                
-            # Set rendering flag and start emergency reset timer
-            self._is_rendering = True
-            self._emergency_reset_timer.start()
-            
-            # Execute the render
+        else:
+            self._render_counter = 0
+        
+        self._last_render_time = current_time
+        self._is_rendering = True
+        
+        try:
             self._render_chat_display()
-            
+            self.render_completed.emit()
         except Exception as e:
-            logger.error(f"[ERROR] Error in _execute_render: {e}")
-            logger.error(traceback.format_exc())
+            logger.error(f"Error during render: {e}")
             self.render_error.emit(str(e))
         finally:
-            # Reset rendering flag
             self._is_rendering = False
-            
-            # Stop emergency reset timer
-            if self._emergency_reset_timer.isActive():
-                self._emergency_reset_timer.stop()
-            
-            # Emit completion signal
-            self.render_completed.emit()
     
     def _emergency_reset(self):
-        """Emergency reset if render gets stuck"""
-        logger.debug("[DEBUG] Emergency reset triggered")
+        """Emergency reset if rendering gets stuck"""
+        logger.warning("[RENDERER] Emergency reset triggered")
         self._is_rendering = False
-        self._render_counter = 0
-        self._last_render_time = 0
-        if self._render_timer.isActive():
-            self._render_timer.stop()
-        
-        # Reset render counter periodically
-
-    def _reset_render_counter(self):
-        """Reset the render counter periodically"""
-        self._render_counter = 0
+        self._render_timer.stop()
     
     def _render_chat_display(self):
-        """Render the chat display with all messages"""
+        """Render the chat display with all messages from conversation service"""
         try:
+            # Get messages from conversation service (single source of truth)
+            messages = self.get_renderable_messages()
+            
             # Debug: Print all message IDs, content lengths, and streaming status before rendering
             logger.debug(f"[RENDER_TRACE] [ChatRenderer] Message list before render: " +
-                         ", ".join([f"{{id: {msg.get('message_id') or msg.get('id')}, sender: {msg['sender']}, content_len: {len(msg['content'])}, is_streaming: {msg.get('is_streaming')}}}" for msg in self.messages]), print_to_terminal=True)
+                         ", ".join([f"{{id: {msg.get('message_id') or msg.get('id')}, sender: {msg['sender']}, content_len: {len(msg['content'])}, is_streaming: {msg.get('is_streaming')}}}" for msg in messages]), print_to_terminal=True)
             
             current_thread = QApplication.instance().thread()
             main_thread = self.chat_display.thread()
@@ -336,7 +179,7 @@ class ChatRenderer(QObject):
             self.chat_display.clear()
             prev_was_thinking = False
             
-            for msg in self.messages:
+            for msg in messages:
                 sender = msg['sender']
                 content = msg['content']
                 is_code = msg['is_code']
@@ -371,58 +214,27 @@ class ChatRenderer(QObject):
                         prev_was_thinking = True
                         continue
                     else:
-                        # Format streaming AI messages just like finalized ones
-                        if tag == 'ai':
-                            # Use the thought field if present
-                            if thought:
-                                thoughts_html = f"""
-                                <table width='100%' cellspacing='0' cellpadding='0'><tr>
-                                  <td align='left'>
-                                    <div style='background-color: #23272e; color: #aaa; border-radius: 8px; padding: 10px 16px; margin: 8px 0 4px 0; max-width: 500px; min-width: 60px; display: inline-block; word-break: break-word; border: 2px dashed #888; font-style: italic;'>
-                                      <b style='color: #aaa;'>{self.ai_name} Thoughts💭:</b><br> {MessageFormatter.format_markdown(thought)}
-                                    </div>
-                                  </td>
-                                  <td></td>
-                                </tr></table>
-                                """
-                                self.chat_display.insertHtml(thoughts_html)
-                                self.chat_display.insertHtml("<br>")
-                                # Add spacing between thoughts and reply
-                                self.chat_display.insertHtml("<div style='margin: 8px 0;'></div>")
-                            formatted_content = MessageFormatter.detect_and_format_code(content)
-                            formatted_content = MessageFormatter.format_markdown(formatted_content)
-                        elif is_code:
-                            formatted_content = MessageFormatter.syntax_highlight_code(content)
-                        else:
-                            formatted_content = MessageFormatter.format_markdown(content)
-                elif is_code:
-                    formatted_content = MessageFormatter.syntax_highlight_code(content)
+                        # Show streaming content with cursor
+                        formatted_content = f"{content}<span style='color: #888;'>|</span>"
                 else:
-                    # Check for <think>...</think> in AI messages
-                    if tag == 'ai':
-                        if thought:
-                            logger.debug(f"[THOUGHTS_DEBUG] Found thoughts in message: {thought[:100]}...")
-                            # Render thoughts block first
-                            thoughts_html = f"""
-                            <table width='100%' cellspacing='0' cellpadding='0'><tr>
-                              <td align='left'>
-                                <div style='background-color: #23272e; color: #aaa; border-radius: 8px; padding: 10px 16px; margin: 8px 0 4px 0; max-width: 500px; min-width: 60px; display: inline-block; word-break: break-word; border: 2px dashed #888; font-style: italic;'>
-                                  <b style='color: #aaa;'>{self.ai_name} Thoughts💭:</b><br> {MessageFormatter.format_markdown(thought)}
-                                </div>
-                              </td>
-                              <td></td>
-                            </tr></table>
-                            """
-                            self.chat_display.insertHtml(thoughts_html)
-                            self.chat_display.insertHtml("<br>")
-                            # Add spacing between thoughts and reply
-                            self.chat_display.insertHtml("<div style='margin: 8px 0;'></div>")
-                        formatted_content = MessageFormatter.detect_and_format_code(content)
-                        formatted_content = MessageFormatter.format_markdown(formatted_content)
+                    # Non-streaming content
+                    if is_code:
+                        formatted_content = f"<pre><code>{content}</code></pre>"
                     else:
-                        logger.debug(f"[THOUGHTS_DEBUG] No thoughts found in message: {content[:100]}...")
-                        formatted_content = MessageFormatter.detect_and_format_code(content)
-                        formatted_content = MessageFormatter.format_markdown(formatted_content)
+                        # Handle thoughts if present
+                        if thought and tag == 'ai':
+                            # Show thought in a subtle way
+                            thought_html = f"""
+                            <div style='background-color: #1a1a1a; color: #666; border-radius: 4px; padding: 8px 12px; margin: 4px 0; font-size: 12px; font-style: italic; border-left: 3px solid #444;'>
+                                💭 {thought}
+                            </div>
+                            """
+                            self.chat_display.insertHtml(thought_html)
+                        
+                        # Format regular content
+                        from html import escape
+                        formatted_content = escape(content)
+
                 # Fallback: if still not set, just escape the content
                 if not formatted_content:
                     from html import escape
@@ -442,7 +254,7 @@ class ChatRenderer(QObject):
                       <td></td>
                       <td align='right'>
                         <div style='background-color: #1a3a5d; color: #fff; border-radius: 8px; padding: 10px 16px; margin: 8px 0; {bubble_style}'>
-                          <span style='display:none' data-msg-idx='{self.messages.index(msg)}'></span>
+                          <span style='display:none' data-msg-idx='{messages.index(msg)}'></span>
                           <b>{sender}:</b> {formatted_content}
                         </div>
                       </td>
@@ -453,7 +265,7 @@ class ChatRenderer(QObject):
                     <table width='100%' cellspacing='0' cellpadding='0'><tr>
                       <td align='left'>
                         <div style='background-color: #2d3748; color: #e2e8f0; border-radius: 8px; padding: 10px 16px; margin: 8px 0; {bubble_style} {extra_top_margin}'>
-                          <span style='display:none' data-msg-idx='{self.messages.index(msg)}'></span>
+                          <span style='display:none' data-msg-idx='{messages.index(msg)}'></span>
                           <b>{sender}:</b> {formatted_content}
                         </div>
                       </td>
@@ -463,27 +275,19 @@ class ChatRenderer(QObject):
                 
                 self.chat_display.insertHtml(html)
                 self.chat_display.insertHtml("<br>")
-                prev_was_thinking = False
+                
+                # Update thinking state
+                if is_streaming and not content:
+                    prev_was_thinking = True
+                else:
+                    prev_was_thinking = False
             
             # Scroll to bottom
-            cursor = self.chat_display.textCursor()
-            cursor.movePosition(QTextCursor.End)
-            self.chat_display.setTextCursor(cursor)
+            self.chat_display.verticalScrollBar().setValue(
+                self.chat_display.verticalScrollBar().maximum()
+            )
             
         except Exception as e:
             logger.error(f"Error in _render_chat_display: {e}")
             logger.error(traceback.format_exc())
-            raise
-    
-    def cleanup(self):
-        """Clean up resources"""
-        try:
-            if self._render_timer.isActive():
-                self._render_timer.stop()
-            if self._emergency_reset_timer.isActive():
-                self._emergency_reset_timer.stop()
-            self._is_rendering = False
-            logger.debug("[DEBUG] Chat renderer cleanup completed")
-        except Exception as e:
-            logger.error(f"[ERROR] Error during cleanup: {e}")
-            logger.error(traceback.format_exc()) 
+            self.render_error.emit(str(e)) 

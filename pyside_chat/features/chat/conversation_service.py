@@ -43,7 +43,7 @@ class ConversationService(QObject):
         self._message_counter += 1
         return f"msg_{self._message_counter}"
     
-    def add_message(self, role: str, content: str, message_id: Optional[str] = None):
+    def add_message(self, role: str, content: str, message_id: Optional[str] = None, thought: str = ""):
         """Add a message to the conversation"""
         # CRITICAL FIX: Prevent empty messages from being added
         if not content or not content.strip():
@@ -62,13 +62,14 @@ class ConversationService(QObject):
         }
         # Add thought field for assistant messages
         if role == "assistant":
-            message["thought"] = ""
+            message["thought"] = thought
         self.conversation.append(message)
         
         # Add to memory if it's a user message or assistant response
         if self.memory_service and role in ["user", "assistant"]:
             self._add_to_memory(role, content)
         
+        logger.debug(f"[ADD_MSG] Emitting conversation_updated signal with {len(self.conversation)} messages")
         self.conversation_updated.emit(self.conversation)
         logger.debug(f"[ID:0019] DEBUG: Added message to conversation: {message}", print_to_terminal=True)
         logger.debug(f"[ID:0018] DEBUG: Total conversation length: {len(self.conversation)}")
@@ -203,6 +204,69 @@ class ConversationService(QObject):
             return True
         return False
 
+    def get_messages(self) -> List[Dict]:
+        """Get the current conversation messages"""
+        logger.debug(f"[ID:0016] DEBUG: get_messages called, returning {len(self.conversation)} messages")
+        logger.debug(f"[ID:0015] DEBUG: Message roles: {[msg.get('role', 'unknown') for msg in self.conversation]}")
+        
+        # DEBUG: Log the actual content of each message
+        for i, msg in enumerate(self.conversation):
+            logger.debug(f"[CS_DEBUG] Message {i}: {{role: {msg.get('role')}, content_len: {len(msg.get('content', ''))}, content_preview: '{msg.get('content', '')[:50]}', is_streaming: {msg.get('is_streaming')}, id: {msg.get('id')}}}", print_to_terminal=True)
+        
+        # --- MIGRATION LOGIC: Extract <think>...</think> to 'thought' field if needed (for legacy/finalized messages) ---
+        import re
+        for msg in self.conversation:
+            if msg.get("role") == "assistant" and 'thought' in msg and not msg['thought'] and '<think>' in msg['content'] and '</think>' in msg['content']:
+                match = re.search(r'<think>(.*?)</think>', msg['content'], re.DOTALL)
+                if match:
+                    msg['thought'] = match.group(1).strip()
+                    msg['content'] = re.sub(r'<think>.*?</think>', '', msg['content'], flags=re.DOTALL).lstrip('\n')
+        # --- END MIGRATION LOGIC ---
+        return self.conversation.copy()
+    
+    def get_context_messages(self) -> List[Dict]:
+        """Get messages for context window, including relevant memories"""
+        if self.memory_service:
+            return self.memory_service.get_context_messages()
+        else:
+            return self.conversation.copy()
+    
+    def clear_conversation(self):
+        """Clear the conversation and reset state"""
+        logger.debug("[CONVERSATION_SERVICE] Clearing conversation")
+        self.conversation.clear()
+        self._streaming_message_id = None
+        self._message_counter = 0
+        self.conversation_updated.emit(self.conversation)
+        logger.debug("[CONVERSATION_SERVICE] Conversation cleared and state reset")
+    
+    def get_streaming_message_id(self) -> Optional[str]:
+        """Get the current streaming message ID"""
+        return self._streaming_message_id
+    
+    def get_streaming_message_with_content(self) -> Optional[Dict]:
+        """Get the streaming message that has actual content"""
+        for message in reversed(self.conversation):
+            if message.get("is_streaming", False) and message.get("content", "").strip():
+                return message
+        return None
+    
+    def get_message_by_id(self, message_id: str) -> Optional[Dict]:
+        """Get a message by its ID"""
+        for message in self.conversation:
+            if message.get("id") == message_id:
+                return message
+        return None
+    
+    def update_message_by_id(self, message_id: str, content: str) -> bool:
+        """Update a message's content by ID"""
+        message = self.get_message_by_id(message_id)
+        if message:
+            message["content"] = content
+            self.conversation_updated.emit(self.conversation)
+            return True
+        return False
+
     def _add_to_memory(self, role: str, content: str):
         """Add message to memory service"""
         if not self.current_conversation_id:
@@ -305,6 +369,7 @@ class ConversationService(QObject):
                     self._message_counter = max_id
                 
                 logger.debug(f"[LOAD_FIX] Loaded conversation with {len(self.conversation)} messages, max_id: {max_id}")
+                logger.debug(f"[LOAD_FIX] Emitting conversation_updated signal with {len(self.conversation)} messages")
                 self.conversation_updated.emit(self.conversation)
                 return self.conversation
                 

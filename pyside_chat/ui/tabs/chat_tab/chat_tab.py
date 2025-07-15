@@ -284,11 +284,8 @@ class ChatTab(QWidget):
                 self.navigation_widget.conversation_renamed.connect(self.conversation_renamed.emit)
                 self.navigation_widget.new_conversation_requested.connect(self.new_conversation_requested.emit)
             
-            # CRITICAL FIX: Connect to conversation service signals for automatic UI updates
-            if hasattr(self, 'chat_controller') and hasattr(self.chat_controller, 'conversation_service'):
-                conversation_service = self.chat_controller.conversation_service
-                conversation_service.conversation_updated.connect(self._on_conversation_updated)
-                logger.debug("[CHAT_TAB] Connected to conversation service signals")
+            # CRITICAL FIX: Connection to conversation service signals will be handled in set_chat_controller()
+            # to avoid duplicate connections and signal loops
             
             # Voice settings button will be connected when voice controls are initialized
             
@@ -1004,20 +1001,18 @@ class ChatTab(QWidget):
     def _start_streaming_safe(self):
         """Start streaming state safely in the main thread (UI only)."""
         input_components = self.input_controls.get_ui_components()
-        # Button state now handled by _on_conversation_updated
-        self.chat_display._sync_messages_from_conversation_service()
+        # Button state now handled by conversation service signals
         self.update()
 
     def stop_streaming(self):
         """Stop streaming state (UI only updates, no internal is_streaming flag)."""
         logger.debug("[DEBUG] stop_streaming called (UI only)")
-        # Finalize streaming message in conversation service, then sync to chat display
+        # Finalize streaming message in conversation service
         if hasattr(self, 'chat_controller') and hasattr(self.chat_controller, 'conversation_service'):
             try:
                 conversation_service = self.chat_controller.conversation_service
                 conversation_service.finalize_streaming_message()
                 logger.debug("[ID:STOP001] Finalized streaming message in conversation service")
-                self.chat_display._sync_messages_from_conversation_service()
             except Exception as e:
                 logger.error(f"[ID:STOP002] Error finalizing streaming in conversation service: {e}")
                 logger.error(f"[ID:STOP003] Stop streaming traceback: {traceback.format_exc()}")
@@ -1028,7 +1023,7 @@ class ChatTab(QWidget):
                 logger.debug("[ID:STOP001] Finalized streaming message in streaming handler")
             else:
                 logger.warning("[ID:STOP004] No streaming handler found")
-        # UI state will be updated by _on_conversation_updated
+        # UI state will be updated by conversation service signals
         self.update()
     
     def force_enable_send_button(self):
@@ -1187,6 +1182,7 @@ class ChatTab(QWidget):
     
     def load_conversation(self, filepath: str):
         """Load a conversation from file"""
+        logger.debug(f"[LOAD_DEBUG] Attempting to load conversation: {filepath}")
         try:
             # CRITICAL FIX: Use conversation service to load the conversation
             if hasattr(self, 'chat_controller') and hasattr(self.chat_controller, 'conversation_service'):
@@ -1196,10 +1192,11 @@ class ChatTab(QWidget):
                 
                 # Load conversation through conversation service
                 conversation_service = self.chat_controller.conversation_service
+                logger.debug(f"[LOAD_DEBUG] Loading conversation {filename} through conversation service")
                 conversation_service.load_conversation(filename)
                 
-                # Sync messages from conversation service to chat display
-                self.chat_display._sync_messages_from_conversation_service()
+                # No need to sync manually - the conversation service will emit signals
+                # and the chat display will update automatically through the signal connection
                 
                 logger.debug(f"[LOAD_FIX] Loaded conversation {filename} through conversation service")
             else:
@@ -1299,7 +1296,8 @@ class ChatTab(QWidget):
         # CRITICAL FIX: Connect to conversation service signals when chat controller is set
         if chat_controller and hasattr(chat_controller, 'conversation_service'):
             conversation_service = chat_controller.conversation_service
-            # Disconnect any existing connection first
+            
+            # Disconnect any existing connections to prevent signal loops
             try:
                 conversation_service.conversation_updated.disconnect()
             except TypeError:
@@ -1308,9 +1306,18 @@ class ChatTab(QWidget):
             except Exception as e:
                 logger.debug(f"[CHAT_TAB] Safe disconnect: {e}")
             
-            # Connect to conversation service signals
-            conversation_service.conversation_updated.connect(self._on_conversation_updated)
-            logger.debug("[CHAT_TAB] Connected to conversation service signals after controller set")
+            # Connect to conversation service signals with a flag to prevent multiple connections
+            if not hasattr(self, '_conversation_service_connected'):
+                conversation_service.conversation_updated.connect(self._on_conversation_updated)
+                self._conversation_service_connected = True
+                logger.debug("[CHAT_TAB] Connected to conversation service signals after controller set")
+            else:
+                logger.debug("[CHAT_TAB] Conversation service already connected, skipping duplicate connection")
+            
+            # Set conversation service in chat display renderer
+            if hasattr(self, 'chat_display'):
+                self.chat_display.set_conversation_service(conversation_service)
+                logger.debug("[CHAT_TAB] Set conversation service in chat display")
     
     def get_streaming_handler(self):
         """Get the streaming handler for backward compatibility"""

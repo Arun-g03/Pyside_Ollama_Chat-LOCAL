@@ -5,7 +5,7 @@
   "auto_save_enabled": true,
   "spellcheck_enabled": true,
   "window_size": {
-    "width": 720,
+    "width": 1123,
     "height": 720
   },
   "chat_settings": {
@@ -39,5 +39,5 @@
   "theme": "Dark",
   "memory_enabled": true,
   "logging_enabled": true,
-  "typewriter_enabled": false
+  "typewriter_enabled": true
 }
