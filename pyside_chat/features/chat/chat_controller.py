@@ -437,8 +437,52 @@ class ChatController(QObject):
                     logger.debug(f"[CHAT_CONTROLLER_DEBUG] Appended to main message (post-think): '{chunk[:20]}...'")
                     return
                 
-                # Still in think block, continue accumulating
-                return
+                # Still in think block, check if this chunk contains the transition to response
+                else:
+                    # Check if this chunk contains a transition from thinking to responding
+                    # Look for patterns that indicate the start of the actual response
+                    response_start_patterns = [
+                        r'Hello!', r'Hi!', r'Hey!', r'Hello,', r'Hi,', r'Hey,',
+                        r'That\'s interesting!', r'That\'s great!', r'That\'s cool!',
+                        r'How\'s your day', r'How are you', r'What can I help',
+                        r'[A-Z][a-z]+!',  # Words starting with capital letter followed by !
+                        r'[A-Z][a-z]+,'   # Words starting with capital letter followed by ,
+                    ]
+                    
+                    for pattern in response_start_patterns:
+                        match = re.search(pattern, chunk)
+                        if match:
+                            # Found a response start, split the chunk
+                            response_start = match.start()
+                            thought_part = chunk[:response_start].strip()
+                            response_part = chunk[response_start:].strip()
+                            
+                            # Add the thought part to the thought buffer
+                            if thought_part:
+                                self._streaming_thoughts_buffer += thought_part
+                                logger.debug(f"[CHAT_CONTROLLER_DEBUG] Added final thought part: '{thought_part[:20]}...'")
+                            
+                            # Store the completed thought
+                            thought_content = self._streaming_thoughts_buffer.strip()
+                            self.conversation_service.update_streaming_message_thought(thought_content)
+                            logger.debug(f"[CHAT_CONTROLLER_DEBUG] Completed thought: '{thought_content[:50]}...'")
+                            
+                            # Reset think block state
+                            self._in_think_block = False
+                            self._think_completed = True
+                            self._streaming_thoughts_buffer = ""
+                            
+                            # Add the response part to the main message
+                            if response_part:
+                                self.conversation_service.update_streaming_message_content(response_part)
+                                logger.debug(f"[CHAT_CONTROLLER_DEBUG] Started response: '{response_part[:50]}...'")
+                            
+                            return
+                    
+                    # No response transition found, continue accumulating in thought buffer
+                    self._streaming_thoughts_buffer += chunk
+                    logger.debug(f"[CHAT_CONTROLLER_DEBUG] Added to thought buffer: '{chunk[:20]}...'")
+                    return
             
             # If we're not in a think block, check if this chunk starts a new think block
             if not self._in_think_block:
@@ -467,9 +511,21 @@ class ChatController(QObject):
                 
                 # Regular content, add to main message
                 else:
-                    self.conversation_service.update_streaming_message_content(chunk)
-                    logger.debug(f"[CHAT_CONTROLLER_DEBUG] Added to main message: '{chunk[:20]}...'")
-                    return
+                    # Check if this looks like it might be a thought (starts with thinking words)
+                    thinking_starters = ['Okay,', 'Well,', 'I think', 'I need to', 'I should', 'Let me', 'I believe']
+                    chunk_starts_with_thinking = any(chunk.strip().startswith(starter) for starter in thinking_starters)
+                    
+                    if chunk_starts_with_thinking:
+                        logger.debug(f"[CHAT_CONTROLLER_DEBUG] Chunk starts with thinking pattern, treating as thought: '{chunk[:50]}...'")
+                        # This might be a thought without explicit markers, treat it as such
+                        self._in_think_block = True
+                        self._think_completed = False
+                        self._streaming_thoughts_buffer = chunk
+                        return
+                    else:
+                        self.conversation_service.update_streaming_message_content(chunk)
+                        logger.debug(f"[CHAT_CONTROLLER_DEBUG] Added to main message: '{chunk[:20]}...'")
+                        return
             
         except Exception as e:
             logger.error(f"[CHAT_CONTROLLER_ERROR] Error in accumulate_assistant_response: {str(e)}")
@@ -497,6 +553,14 @@ class ChatController(QObject):
             streaming_message_id = self.conversation_service.get_streaming_message_id()
             current_msg = self.conversation_service.get_message_by_id(streaming_message_id) if streaming_message_id else None
             
+            # Debug logging
+            logger.debug(f"[CHAT_CONTROLLER_DEBUG] finalize_streaming_response called")
+            logger.debug(f"[CHAT_CONTROLLER_DEBUG] _in_think_block: {getattr(self, '_in_think_block', False)}")
+            logger.debug(f"[CHAT_CONTROLLER_DEBUG] _think_completed: {getattr(self, '_think_completed', False)}")
+            logger.debug(f"[CHAT_CONTROLLER_DEBUG] _streaming_thoughts_buffer length: {len(getattr(self, '_streaming_thoughts_buffer', ''))}")
+            if hasattr(self, '_streaming_thoughts_buffer') and self._streaming_thoughts_buffer:
+                logger.debug(f"[CHAT_CONTROLLER_DEBUG] _streaming_thoughts_buffer preview: '{self._streaming_thoughts_buffer[:100]}...'")
+            
             # Handle case where entire response was in think block
             if current_msg is not None and self._in_think_block and self._streaming_thoughts_buffer.strip():
                 # Extract the actual response from within the thought
@@ -511,8 +575,25 @@ class ChatController(QObject):
                     logger.warning(f"[CHAT_CONTROLLER_DEBUG] Detected malformed thought content with repeating patterns")
                     logger.warning(f"[CHAT_CONTROLLER_DEBUG] Thought content preview: '{thought_content[:100]}...'")
                     logger.warning(f"[CHAT_CONTROLLER_DEBUG] Pattern type: repeating={repeating_pattern}, double_word={double_word_pattern}")
-                    # Use a simple fallback response
-                    actual_response = "I apologize, but I'm experiencing some technical difficulties. How can I help you?"
+                    # Instead of using a placeholder, try to extract the actual response from the thought
+                    # Look for the last sentence that looks like a response
+                    sentences = re.split(r'[.!?]+', thought_content)
+                    response_candidates = []
+                    for sentence in sentences:
+                        sentence = sentence.strip()
+                        if sentence and len(sentence) > 5:  # Only consider substantial sentences
+                            # Check if it looks like a response (not just thinking)
+                            thinking_words = ['I need to', 'I should', 'Let me', 'I think', 'I believe', 'I want to', 'I will', 'Okay,', 'Well,']
+                            is_thinking = any(word in sentence for word in thinking_words)
+                            if not is_thinking and not sentence.startswith('They') and not sentence.startswith('The user'):
+                                response_candidates.append(sentence)
+                    
+                    if response_candidates:
+                        actual_response = response_candidates[-1].strip()
+                        logger.debug(f"[CHAT_CONTROLLER_DEBUG] Extracted response from thought despite repeating patterns: '{actual_response[:50]}...'")
+                    else:
+                        # Only use placeholder if we can't extract anything meaningful
+                        actual_response = "I apologize, but I'm experiencing some technical difficulties. How can I help you?"
                 else:
                     # Look for patterns that indicate the actual response within the thought
                     # Common patterns: "I should say:", "My response:", "Let me respond:", etc.
@@ -541,10 +622,65 @@ class ChatController(QObject):
                             actual_response = quotes[-1]  # Use the last quoted text
                             logger.debug(f"[CHAT_CONTROLLER_DEBUG] Found response in quotes: '{actual_response[:50]}...'")
                     
-                    # If still no response found, use the entire thought as response
+                    # If still no response found, try to extract the last sentence or paragraph as the response
                     if not actual_response:
-                        actual_response = thought_content
-                        logger.debug(f"[CHAT_CONTROLLER_DEBUG] Using entire thought as response: '{actual_response[:50]}...'")
+                        # Look for the last sentence that seems like a response (not just thinking)
+                        sentences = re.split(r'[.!?]+', thought_content)
+                        # Filter out sentences that are clearly thinking (contain words like "I need to", "I should", "Let me")
+                        thinking_words = ['I need to', 'I should', 'Let me', 'I think', 'I believe', 'I want to', 'I will', 'okay,', 'maybe', 'perhaps']
+                        response_sentences = []
+                        for sentence in sentences:
+                            sentence = sentence.strip()
+                            if sentence and len(sentence) > 5:  # Lower threshold for sentence length
+                                is_thinking = any(word in sentence.lower() for word in thinking_words)
+                                if not is_thinking and not sentence.startswith('They') and not sentence.startswith('The user'):
+                                    response_sentences.append(sentence)
+                        
+                        if response_sentences:
+                            # Use the last non-thinking sentence as the response
+                            actual_response = response_sentences[-1].strip()
+                            logger.debug(f"[CHAT_CONTROLLER_DEBUG] Found response in last non-thinking sentence: '{actual_response[:50]}...'")
+                        else:
+                            # If no clear response found, try to extract the last part that looks like a response
+                            # Look for patterns that indicate the start of the actual response
+                            response_start_patterns = [
+                                r'Hello!.*?(?=\s*$)',  # Hello followed by anything to the end
+                                r'Hi!.*?(?=\s*$)',     # Hi followed by anything to the end
+                                r'Hey!.*?(?=\s*$)',    # Hey followed by anything to the end
+                                r'That\'s interesting!.*?(?=\s*$)',  # "That's interesting!" followed by anything to the end
+                                r'[A-Z][^.!?]*[.!?]\s*$',  # Sentence starting with capital letter at the end
+                            ]
+                            
+                            for pattern in response_start_patterns:
+                                match = re.search(pattern, thought_content, re.DOTALL)
+                                if match:
+                                    actual_response = match.group(0).strip()
+                                    logger.debug(f"[CHAT_CONTROLLER_DEBUG] Found response using pattern '{pattern}': '{actual_response[:50]}...'")
+                                    break
+                            
+                            # If still no response found, try to find the last quoted text or greeting
+                            if not actual_response:
+                                # Look for the last quoted text
+                                quotes = re.findall(r'"([^"]*)"', thought_content)
+                                if quotes:
+                                    actual_response = quotes[-1].strip()
+                                    logger.debug(f"[CHAT_CONTROLLER_DEBUG] Found response in quotes: '{actual_response[:50]}...'")
+                                else:
+                                    # Look for the last sentence that starts with a greeting or response
+                                    last_sentences = thought_content.split('.')
+                                    for sentence in reversed(last_sentences):
+                                        sentence = sentence.strip()
+                                        if sentence and (sentence.startswith('Hello') or sentence.startswith('Hi') or 
+                                                       sentence.startswith('That\'s') or sentence.startswith('How') or
+                                                       sentence.startswith('What') or sentence.startswith('I\'m')):
+                                            actual_response = sentence
+                                            logger.debug(f"[CHAT_CONTROLLER_DEBUG] Found response in last greeting sentence: '{actual_response[:50]}...'")
+                                            break
+                            
+                            # If still no response found, use the entire thought as response
+                            if not actual_response:
+                                actual_response = thought_content
+                                logger.debug(f"[CHAT_CONTROLLER_DEBUG] Using entire thought as response: '{actual_response[:50]}...'")
                 
                 # Store the thought and set the actual response as content
                 self.conversation_service.update_streaming_message_thought(thought_content)
@@ -552,7 +688,24 @@ class ChatController(QObject):
                 # Ensure the response is not empty or just punctuation
                 if not actual_response or actual_response.strip() in ['!', '.', ',', ';', ':']:
                     logger.warning(f"[CHAT_CONTROLLER_DEBUG] Response is empty or just punctuation: '{actual_response}'")
-                    actual_response = "I'm here to help! How can I assist you today?"
+                    # Instead of using a placeholder, try to extract a meaningful response from the thought
+                    # Look for the last sentence that looks like a response
+                    sentences = re.split(r'[.!?]+', thought_content)
+                    response_candidates = []
+                    for sentence in sentences:
+                        sentence = sentence.strip()
+                        if sentence and len(sentence) > 5:  # Only consider substantial sentences
+                            # Check if it looks like a response (not just thinking)
+                            thinking_words = ['I need to', 'I should', 'Let me', 'I think', 'I believe', 'I want to', 'I will', 'Okay,', 'Well,']
+                            is_thinking = any(word in sentence for word in thinking_words)
+                            if not is_thinking and not sentence.startswith('They') and not sentence.startswith('The user'):
+                                response_candidates.append(sentence)
+                    
+                    if response_candidates:
+                        actual_response = response_candidates[-1].strip()
+                        logger.debug(f"[CHAT_CONTROLLER_DEBUG] Extracted response from thought: '{actual_response[:50]}...'")
+                    else:
+                        actual_response = "I'm here to help! How can I assist you today?"
                 
                 self.conversation_service.update_streaming_message_content(actual_response)
                 logger.debug(f"[CHAT_CONTROLLER_DEBUG] Final extracted response: '{actual_response[:50]}...'")
@@ -647,9 +800,12 @@ class ChatController(QObject):
         self.message_received.emit(response_content)
         self.conversation_updated.emit()
         self.status_updated.emit("Ready")
-        # Trigger TTS for AI response if voice mode is active
-        self._trigger_tts_for_response(response_content)
-    
+        voice_mode = getattr(getattr(self, '_chat_tab_reference', None), 'voice_mode', None)
+        if voice_mode:
+            self._trigger_tts_for_response(response_content)
+        else:
+            logger.debug("[ID:0151] DEBUG: Voice mode not active, skipping TTS")
+            logger.debug(f"[ID:0151A] Voice mode value: {voice_mode if voice_mode is not None else 'Not set (no _chat_tab_reference or no voice_mode attribute)'}")
     def _trigger_tts_for_response(self, response: str) -> None:
         """Trigger TTS for AI response if voice mode is active"""
         try:
