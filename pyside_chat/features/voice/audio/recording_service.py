@@ -10,6 +10,7 @@ from pyside_chat.core.shared_imports.audio_imports import *
 from pyside_chat.core.utils import log_thread_info
 logger = CustomLogger.get_logger(__name__)
 
+
 class RecordingService(QObject):
     """Audio recording service for capturing voice input"""
     # Signals
@@ -17,7 +18,8 @@ class RecordingService(QObject):
     recording_stopped = Signal()
     recording_error = Signal(str)
     audio_level_changed = Signal(float)  # Emitted when audio level changes
-    recording_auto_stopped = Signal()    # Emitted when recording stops due to silence detection
+    # Emitted when recording stops due to silence detection
+    recording_auto_stopped = Signal()
     eq_bars_changed = Signal(list)  # NEW: Emit EQ bar array for visualization
 
     def __init__(self):
@@ -33,15 +35,18 @@ class RecordingService(QObject):
         self.silence_duration = 3.0  # Increased from 2.0 to 3.0 seconds
         self.silence_timer = None
         self.last_audio_level = 0.0
-        
+
         # Improved speech detection parameters
-        self.speech_detection_threshold = 0.001  # Lower threshold for initial speech detection
-        self.min_speech_duration = 0.5  # Minimum speech duration before considering it valid
+        # Lower threshold for initial speech detection
+        self.speech_detection_threshold = 0.001
+        # Minimum speech duration before considering it valid
+        self.min_speech_duration = 0.5
         self.speech_start_time = None
         self.last_speech_time = None
         self.consecutive_silence_frames = 0
-        self.max_consecutive_silence_frames = 50  # Allow more silence frames before stopping
-        
+        # Allow more silence frames before stopping
+        self.max_consecutive_silence_frames = 50
+
         try:
             self.audio = pyaudio.PyAudio()
             self.available = self._check_availability()
@@ -72,7 +77,7 @@ class RecordingService(QObject):
 
     def is_available(self) -> bool:
         return self.available
-    
+
     def is_initialized(self) -> bool:
         """Check if Recording service is properly initialized"""
         return self.available and self.audio is not None
@@ -86,7 +91,8 @@ class RecordingService(QObject):
             self.is_recording = True
             self.frames = []
             self.speech_detected = False  # Reset at start
-            self.recording_thread = threading.Thread(target=self._record_audio, name="RecordingThread")
+            self.recording_thread = threading.Thread(
+                target=self._record_audio, name="RecordingThread")
             # Check if thread is already running (safety check)
             if not self.recording_thread.is_alive():
                 self.recording_thread.start()
@@ -108,11 +114,11 @@ class RecordingService(QObject):
                 frames_per_buffer=1024
             )
             logger.debug("Recording audio with improved speech detection...")
-            
+
             speech_started = False
             silence_start_time = None
             frame_count = 0
-            
+
             while self.is_recording:
                 try:
                     data = self.stream.read(1024, exception_on_overflow=False)
@@ -120,11 +126,12 @@ class RecordingService(QObject):
                     audio_level = self._calculate_audio_level(data)
                     self.last_audio_level = audio_level
                     frame_count += 1
-                    
+
                     # --- FFT-based EQ bar calculation ---
                     def calculate_eq_bars_pcm(audio_bytes, num_bars=24, sample_rate=16000):
                         import struct
-                        samples = np.array(struct.unpack(f'{len(audio_bytes)//2}h', audio_bytes), dtype=np.float32)
+                        samples = np.array(struct.unpack(
+                            f'{len(audio_bytes)//2}h', audio_bytes), dtype=np.float32)
                         if len(samples) < 256:
                             return [0.0]*num_bars
                         # Normalize
@@ -132,19 +139,23 @@ class RecordingService(QObject):
                         fft = np.fft.rfft(samples, n=2048)
                         mag = np.abs(fft)
                         freqs = np.fft.rfftfreq(2048, 1/sample_rate)
-                        band_edges = np.logspace(np.log10(20), np.log10(sample_rate/2), num_bars+1)
+                        band_edges = np.logspace(
+                            np.log10(20), np.log10(sample_rate/2), num_bars+1)
                         bar_vals = []
                         for i in range(num_bars):
-                            idx = np.where((freqs >= band_edges[i]) & (freqs < band_edges[i+1]))[0]
+                            idx = np.where((freqs >= band_edges[i]) & (
+                                freqs < band_edges[i+1]))[0]
                             if len(idx) > 0:
                                 energy = float(np.sqrt(np.mean(mag[idx]**2)))
                                 bar_vals.append(energy)
                             else:
                                 bar_vals.append(0.0)
                         max_val = max(bar_vals) or 1.0
-                        bar_vals = [0.1 + 0.9 * (v / max_val) for v in bar_vals]
+                        bar_vals = [0.1 + 0.9 * (v / max_val)
+                                    for v in bar_vals]
                         return bar_vals
-                    eq_bars = calculate_eq_bars_pcm(data, num_bars=24, sample_rate=16000)
+                    eq_bars = calculate_eq_bars_pcm(
+                        data, num_bars=24, sample_rate=16000)
                     try:
                         self.eq_bars_changed.emit(eq_bars)
                     except Exception:
@@ -154,7 +165,7 @@ class RecordingService(QObject):
                         self.audio_level_changed.emit(audio_level)
                     except Exception:
                         pass
-                    
+
                     # Improved speech detection logic
                     if not speech_started:
                         # Wait for initial speech detection
@@ -176,35 +187,36 @@ class RecordingService(QObject):
                         else:
                             # Potential silence
                             self.consecutive_silence_frames += 1
-                            
+
                             if silence_start_time is None:
                                 silence_start_time = time.time()
-                            
+
                             # Check if we should stop recording
                             silence_duration = time.time() - silence_start_time
                             speech_duration = time.time() - self.speech_start_time
-                            
+
                             # Only stop if:
                             # 1. We have enough speech (minimum duration)
                             # 2. Silence has been continuous for the required duration
                             # 3. We haven't had recent speech activity
-                            if (speech_duration >= self.min_speech_duration and 
+                            if (speech_duration >= self.min_speech_duration and
                                 silence_duration >= self.silence_duration and
-                                self.consecutive_silence_frames >= 30):  # At least 30 frames of silence
-                                
-                                logger.debug(f"Stopping recording: speech={speech_duration:.1f}s, silence={silence_duration:.1f}s")
+                                    self.consecutive_silence_frames >= 30):  # At least 30 frames of silence
+
+                                logger.debug(
+                                    f"Stopping recording: speech={speech_duration:.1f}s, silence={silence_duration:.1f}s")
                                 try:
                                     self.recording_auto_stopped.emit()
                                 except Exception:
                                     pass
                                 break
-                            
+
                             # Reset silence counter if we detect any speech activity
                             if audio_level > self.speech_detection_threshold:
                                 silence_start_time = None
                                 self.consecutive_silence_frames = 0
                                 self.last_speech_time = time.time()
-                                
+
                 except Exception as e:
                     logger.error(f"Error reading audio data: {e}")
                     break
@@ -222,7 +234,8 @@ class RecordingService(QObject):
             import math
             samples = struct.unpack(f'{len(audio_data)//2}h', audio_data)
             if samples:
-                rms = math.sqrt(sum(sample * sample for sample in samples) / len(samples))
+                rms = math.sqrt(
+                    sum(sample * sample for sample in samples) / len(samples))
                 normalized_rms = rms / 32768.0
                 return normalized_rms
             return 0.0
@@ -250,17 +263,19 @@ class RecordingService(QObject):
         else:
             self.silence_threshold = 0.0
         logger.debug(f"Audio gate {'enabled' if enabled else 'disabled'}")
-    
-    def set_speech_detection_parameters(self, silence_duration: float = 3.0, 
-                                      silence_threshold: float = 0.005,
-                                      min_speech_duration: float = 0.5):
+
+    def set_speech_detection_parameters(self, silence_duration: float = 3.0,
+                                        silence_threshold: float = 0.005,
+                                        min_speech_duration: float = 0.5):
         """Configure speech detection parameters for better user experience"""
         self.silence_duration = max(1.0, silence_duration)  # Minimum 1 second
-        self.silence_threshold = max(0.001, silence_threshold)  # Minimum threshold
-        self.min_speech_duration = max(0.2, min_speech_duration)  # Minimum 0.2 seconds
+        self.silence_threshold = max(
+            0.001, silence_threshold)  # Minimum threshold
+        self.min_speech_duration = max(
+            0.2, min_speech_duration)  # Minimum 0.2 seconds
         logger.debug(f"Speech detection parameters updated: silence_duration={self.silence_duration}s, "
-                    f"silence_threshold={self.silence_threshold}, min_speech_duration={self.min_speech_duration}s")
-    
+                     f"silence_threshold={self.silence_threshold}, min_speech_duration={self.min_speech_duration}s")
+
     def get_speech_detection_parameters(self) -> dict:
         """Get current speech detection parameters"""
         return {

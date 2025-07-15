@@ -17,12 +17,13 @@ from pyside_chat.core.logging.logger import CustomLogger
 
 logger = CustomLogger.get_logger(__name__)
 
+
 class ServiceManager:
     """Manages all application services and their initialization"""
-    
+
     _instance = None
     _lock = threading.Lock()
-    
+
     def __new__(cls, *args, **kwargs):
         """Singleton pattern implementation"""
         if cls._instance is None:
@@ -30,18 +31,18 @@ class ServiceManager:
                 if cls._instance is None:
                     cls._instance = super().__new__(cls)
         return cls._instance
-    
+
     def __init__(self, config_manager: ConfigManager = None):
         """Initialize the service manager (singleton)"""
         if hasattr(self, '_initialized'):
             return
-            
+
         self._initialized = True
-        
+
         if config_manager is None:
             logger.warning("ServiceManager initialized without config_manager")
             return
-            
+
         self.config_manager = config_manager
         self.ollama_service: Optional[OllamaService] = None
         self.conversation_service: Optional[ConversationService] = None
@@ -52,66 +53,76 @@ class ServiceManager:
         self.conversation_manager: Optional[ConversationManager] = None
         self.memory_enabled: bool = False
         self.session_variables: dict = {}
-        
+
         # Voice service manager (singleton)
         self.voice_service_manager = None
-        
+
         self._initialize_services()
 
     @classmethod
     def get_instance(cls) -> 'ServiceManager':
         """Get the global service manager instance"""
         if cls._instance is None:
-            raise RuntimeError("ServiceManager not initialized. Call ServiceManager(config_manager) first.")
+            raise RuntimeError(
+                "ServiceManager not initialized. Call ServiceManager(config_manager) first.")
         return cls._instance
 
     def _initialize_services(self):
         """Initialize all application services"""
         try:
             # Initialize core services
-            self.ollama_service = OllamaService(self.config_manager.get_ollama_url())
+            self.ollama_service = OllamaService(
+                self.config_manager.get_ollama_url())
             self.conversation_service = ConversationService(
                 self.config_manager.get_history_directory()
             )
             self.enhancement_service = EnhancementService(self.ollama_service)
-            self.summarization_service = SummarizationService(self.ollama_service)
-            
+            self.summarization_service = SummarizationService(
+                self.ollama_service)
+
             # Initialize memory service based on configuration
-            self.memory_enabled = self.config_manager.get("memory_enabled", True)
+            self.memory_enabled = self.config_manager.get(
+                "memory_enabled", True)
             if self.memory_enabled:
                 self.memory_service = MemoryService(
                     max_context_messages=self.config_manager.get_max_context_messages()
                 )
-                self.conversation_service.set_memory_service(self.memory_service)
+                self.conversation_service.set_memory_service(
+                    self.memory_service)
             else:
                 self.memory_service = None
                 self.conversation_service.set_memory_service(None)
-            
+
             # Initialize personality service with error handling
             try:
                 self.personality_service = PersonalityModel()
-                logger.info("[ID:0095] Personality service initialized successfully")
+                logger.info(
+                    "[ID:0095] Personality service initialized successfully")
             except Exception as e:
-                logger.error(f"[ID:0096] Error initializing personality service: {e}")
+                logger.error(
+                    f"[ID:0096] Error initializing personality service: {e}")
                 self.personality_service = None
-            
+
             # Initialize conversation manager
             self.conversation_manager = ConversationManager(
                 self.config_manager.get_history_directory()
             )
-            
+
             # Connect conversation service with conversation manager for unified saving
-            self.conversation_service.set_conversation_manager(self.conversation_manager)
-            
+            self.conversation_service.set_conversation_manager(
+                self.conversation_manager)
+
             # Initialize voice service manager (singleton)
             try:
                 from pyside_chat.features.voice.voice_service_manager import get_voice_service_manager
                 self.voice_service_manager = get_voice_service_manager()
-                logger.info("[ID:0097] Voice service manager initialized successfully")
+                logger.info(
+                    "[ID:0097] Voice service manager initialized successfully")
             except Exception as e:
-                logger.error(f"[ID:0098] Error initializing voice service manager: {e}")
+                logger.error(
+                    f"[ID:0098] Error initializing voice service manager: {e}")
                 self.voice_service_manager = None
-            
+
             # Initialize session variables
             self.session_variables = {
                 'history': self.config_manager.is_history_enabled(),
@@ -120,9 +131,9 @@ class ServiceManager:
                 'verbose': self.config_manager.is_verbose_enabled(),
                 'think': self.config_manager.is_think_enabled()
             }
-            
+
             logger.info("[ID:0094] All services initialized successfully")
-            
+
         except Exception as e:
             logger.error(f"[ID:0093] Error initializing services: {e}")
             raise
@@ -179,7 +190,7 @@ class ServiceManager:
     def get_config_manager(self) -> ConfigManager:
         """Get the config manager"""
         return self.config_manager
-    
+
     def get_session_variables(self) -> dict:
         """Get session variables"""
         return self.session_variables.copy()
@@ -199,9 +210,11 @@ class ServiceManager:
             if self.voice_service_manager:
                 try:
                     self.voice_service_manager.cleanup()
-                    logger.info("[ID:0091A] Voice service manager cleaned up successfully")
+                    logger.info(
+                        "[ID:0091A] Voice service manager cleaned up successfully")
                 except Exception as e:
-                    logger.error(f"[ID:0091B] Error cleaning up voice service manager: {e}")
+                    logger.error(
+                        f"[ID:0091B] Error cleaning up voice service manager: {e}")
 
             logger.info("[ID:0091] Services cleaned up successfully")
 
@@ -210,5 +223,6 @@ class ServiceManager:
 
     def _initialize_voice_service(self):
         """Initialize voice service only when needed (deprecated - use manager)"""
-        logger.warning("[ID:0102] _initialize_voice_service is deprecated, use voice service manager")
+        logger.warning(
+            "[ID:0102] _initialize_voice_service is deprecated, use voice service manager")
         return self.get_voice_service()

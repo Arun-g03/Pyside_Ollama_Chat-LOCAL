@@ -41,7 +41,8 @@ class VoiceSettingsDialog(QDialog):
 
     # Signals
     settings_changed = Signal(dict)  # Emitted when settings are changed
-    eq_visualizer_changed = Signal(str)  # Emitted when EQ visualizer setting changes
+    # Emitted when EQ visualizer setting changes
+    eq_visualizer_changed = Signal(str)
 
     def __init__(self, parent=None, config_manager=None):
         try:
@@ -559,7 +560,8 @@ class VoiceSettingsDialog(QDialog):
 
         # Add Calibrate button
         self.calibrate_button = QPushButton("Calibrate")
-        self.calibrate_button.setToolTip("Automatically calibrate silence threshold using your microphone")
+        self.calibrate_button.setToolTip(
+            "Automatically calibrate silence threshold using your microphone")
         silence_threshold_layout.addWidget(self.calibrate_button)
         silence_threshold_layout.addStretch()
 
@@ -717,7 +719,8 @@ class VoiceSettingsDialog(QDialog):
                 self.coqui_service = CoquiTTSService.get_instance()  # Singleton enforced in class
 
             # Disconnect previous signal to avoid duplicates
-            safe_disconnect(self.coqui_service.voices_loaded, self._on_voices_loaded)
+            safe_disconnect(self.coqui_service.voices_loaded,
+                            self._on_voices_loaded)
 
             # Always refresh model list from backend
             if hasattr(self.coqui_service, 'get_available_models'):
@@ -726,7 +729,8 @@ class VoiceSettingsDialog(QDialog):
                 self.available_models = ["tts_models/en/vctk/vits"]
             self.model_combo.clear()
             for model in self.available_models:
-                is_downloaded = hasattr(self.coqui_service, 'is_model_downloaded') and self.coqui_service.is_model_downloaded(model)
+                is_downloaded = hasattr(
+                    self.coqui_service, 'is_model_downloaded') and self.coqui_service.is_model_downloaded(model)
                 size = "Unknown"
                 if hasattr(self.coqui_service, 'get_model_download_size'):
                     size = self.coqui_service.get_model_download_size(model)
@@ -742,9 +746,11 @@ class VoiceSettingsDialog(QDialog):
                 self.speaker_combo.clear()
                 self.speaker_combo.addItem("No speakers available")
                 self.speaker_combo.setEnabled(False)
-            logger.info(f"[refresh_coqui_ui] Loaded {len(self.available_models)} Coqui TTS models")
+            logger.info(
+                f"[refresh_coqui_ui] Loaded {len(self.available_models)} Coqui TTS models")
         except Exception as e:
-            logger.error(f"[refresh_coqui_ui] Failed to refresh Coqui TTS UI: {e}")
+            logger.error(
+                f"[refresh_coqui_ui] Failed to refresh Coqui TTS UI: {e}")
             self.model_info_label.setText(f"Failed to load models: {str(e)}")
             self.speaker_combo.clear()
             self.speaker_combo.addItem("No speakers available")
@@ -756,12 +762,14 @@ class VoiceSettingsDialog(QDialog):
         if speakers:
             for speaker in speakers:
                 clean_speaker = speaker.strip()
-                speaker_info = self.get_speaker_info(clean_speaker, getattr(self, 'selected_coqui_model', ''))
+                speaker_info = self.get_speaker_info(
+                    clean_speaker, getattr(self, 'selected_coqui_model', ''))
                 display_name = speaker_info.get('display_name', clean_speaker)
                 self.speaker_combo.addItem(display_name, clean_speaker)
             self.speaker_combo.setCurrentIndex(0)
             self.speaker_combo.setEnabled(True)
-            self.speaker_info_label.setText(f"✅ Model loaded with {len(speakers)} speakers.")
+            self.speaker_info_label.setText(
+                f"✅ Model loaded with {len(speakers)} speakers.")
             self.speaker_filter_widget.setVisible(True)
             self.preview_speaker_button.setEnabled(True)
             # Restore speaker selection if needed
@@ -774,7 +782,8 @@ class VoiceSettingsDialog(QDialog):
             # Fallback: add a default speaker if TTS works
             self.speaker_combo.addItem("Default")
             self.speaker_combo.setEnabled(True)
-            self.speaker_info_label.setText("No named speakers found, using default voice.")
+            self.speaker_info_label.setText(
+                "No named speakers found, using default voice.")
             self.speaker_filter_widget.setVisible(False)
             self.preview_speaker_button.setEnabled(True)
 
@@ -1081,7 +1090,8 @@ class VoiceSettingsDialog(QDialog):
                 if success:
                     self.model_info_label.setText(
                         f"✅ Model '{model_name}' downloaded successfully.")
-                    self.refresh_coqui_ui(force_refresh_service=False)  # Refresh models and speakers
+                    # Refresh models and speakers
+                    self.refresh_coqui_ui(force_refresh_service=False)
                 else:
                     self.model_info_label.setText(
                         f"❌ Failed to download model '{model_name}'")
@@ -1393,6 +1403,8 @@ class VoiceSettingsDialog(QDialog):
                 self.silence_threshold_spinbox.setValue(new_threshold)
 
 # --- Calibration Dialog ---
+
+
 class CalibrateSilenceThresholdDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -1401,7 +1413,8 @@ class CalibrateSilenceThresholdDialog(QDialog):
         self.setMinimumWidth(400)
         self.result = None
         self.layout = QVBoxLayout(self)
-        self.instructions = QLabel("Step 1: Please stay silent. Measuring background noise...")
+        self.instructions = QLabel(
+            "Step 1: Please stay silent. Measuring background noise...")
         self.layout.addWidget(self.instructions)
         self.progress = QProgressBar()
         # Thread-safe UI update
@@ -1427,9 +1440,11 @@ class CalibrateSilenceThresholdDialog(QDialog):
         from pyside_chat.core.utils.threading_utils import safe_ui_update
         safe_ui_update(self.progress, 'setValue', 0)
         if step == 0:
-            safe_ui_update(self.instructions, 'setText', "Step 1: Please stay silent. Measuring background noise...")
+            safe_ui_update(self.instructions, 'setText',
+                           "Step 1: Please stay silent. Measuring background noise...")
         else:
-            safe_ui_update(self.instructions, 'setText', "Step 2: Please speak at a normal volume. Measuring speech level...")
+            safe_ui_update(self.instructions, 'setText',
+                           "Step 2: Please speak at a normal volume. Measuring speech level...")
         self._start_recording()
         self.timer.start(50)
         self.start_time = None
@@ -1437,7 +1452,8 @@ class CalibrateSilenceThresholdDialog(QDialog):
     def _start_recording(self):
         import pyaudio
         self.audio = pyaudio.PyAudio()
-        self.stream = self.audio.open(format=pyaudio.paInt16, channels=1, rate=16000, input=True, frames_per_buffer=1024)
+        self.stream = self.audio.open(
+            format=pyaudio.paInt16, channels=1, rate=16000, input=True, frames_per_buffer=1024)
         self.start_time = None
 
     def _on_timer(self):
@@ -1448,18 +1464,21 @@ class CalibrateSilenceThresholdDialog(QDialog):
         elapsed = (time.time() - self.start_time) * 1000
         # Thread-safe UI update
         from pyside_chat.core.utils.threading_utils import safe_ui_update
-        safe_ui_update(self.progress, 'setValue', int(min(100, 100 * elapsed / self.duration_ms)))
+        safe_ui_update(self.progress, 'setValue', int(
+            min(100, 100 * elapsed / self.duration_ms)))
         data = self.stream.read(1024, exception_on_overflow=False)
         samples = struct.unpack(f'{len(data)//2}h', data)
         if samples:
-            rms = (sum(sample * sample for sample in samples) / len(samples)) ** 0.5
+            rms = (sum(sample * sample for sample in samples) /
+                   len(samples)) ** 0.5
             normalized_rms = rms / 32768.0
             self.samples.append(normalized_rms)
         if elapsed >= self.duration_ms:
             self.timer.stop()
             self.stream.close()
             self.audio.terminate()
-            avg_level = sum(self.samples) / len(self.samples) if self.samples else 0.0
+            avg_level = sum(self.samples) / \
+                len(self.samples) if self.samples else 0.0
             if self.step == 0:
                 self.silence_level = avg_level
                 self._start_step(1)
@@ -1475,13 +1494,15 @@ class CalibrateSilenceThresholdDialog(QDialog):
             self.result = max(0.001, min(0.1, threshold))
             # Thread-safe UI updates
             from pyside_chat.core.utils.threading_utils import safe_ui_update
-            safe_ui_update(self.instructions, 'setText', f"Calibration complete!\nSilence: {self.silence_level:.4f}, Speech: {self.speech_level:.4f}\nNew threshold: {self.result:.4f}\n(Setting automatically...)")
+            safe_ui_update(self.instructions, 'setText',
+                           f"Calibration complete!\nSilence: {self.silence_level:.4f}, Speech: {self.speech_level:.4f}\nNew threshold: {self.result:.4f}\n(Setting automatically...)")
             safe_ui_update(self.progress, 'setValue', 100)
             safe_ui_update(self.cancel_button, 'setVisible', False)
             # Auto-close after 1 second
             QTimer.singleShot(1000, self.accept)
         else:
-            safe_ui_update(self.instructions, 'setText', "Calibration failed. Please try again.")
+            safe_ui_update(self.instructions, 'setText',
+                           "Calibration failed. Please try again.")
             safe_ui_update(self.progress, 'setValue', 0)
             safe_ui_update(self.cancel_button, 'setText', "Close")
             safe_ui_update(self.cancel_button, 'setVisible', True)

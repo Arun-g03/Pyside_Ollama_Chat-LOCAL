@@ -18,7 +18,7 @@ def is_main_thread() -> bool:
 def safe_ui_update(target: QObject, method: str, *args, **kwargs):
     """
     Safely update UI from any thread.
-    
+
     Args:
         target: The QObject to call the method on
         method: The method name to call
@@ -32,8 +32,8 @@ def safe_ui_update(target: QObject, method: str, *args, **kwargs):
         else:
             # We're in a worker thread, use QueuedConnection
             QMetaObject.invokeMethod(
-                target, 
-                method, 
+                target,
+                method,
                 Qt.ConnectionType.QueuedConnection,
                 *[Q_ARG(type(arg), arg) for arg in args]
             )
@@ -44,7 +44,7 @@ def safe_ui_update(target: QObject, method: str, *args, **kwargs):
 def safe_ui_update_with_callback(target: QObject, method: str, callback: Optional[Callable] = None, *args, **kwargs):
     """
     Safely update UI from any thread with optional callback.
-    
+
     Args:
         target: The QObject to call the method on
         method: The method name to call
@@ -69,7 +69,7 @@ def safe_ui_update_with_callback(target: QObject, method: str, callback: Optiona
                     return result
                 except Exception as e:
                     logger.error(f"Error in UI update callback: {e}")
-            
+
             QTimer.singleShot(0, ui_update_with_callback)
     except Exception as e:
         logger.error(f"Error in safe_ui_update_with_callback: {e}")
@@ -78,7 +78,7 @@ def safe_ui_update_with_callback(target: QObject, method: str, callback: Optiona
 def safe_button_update(button: QObject, enabled: bool = None, visible: bool = None, text: str = None):
     """
     Safely update button properties from any thread.
-    
+
     Args:
         button: The button to update
         enabled: Optional enabled state
@@ -108,7 +108,7 @@ def safe_button_update(button: QObject, enabled: bool = None, visible: bool = No
                     button.update()
                 except Exception as e:
                     logger.error(f"Error updating button: {e}")
-            
+
             QTimer.singleShot(0, update_button)
     except Exception as e:
         logger.error(f"Error in safe_button_update: {e}")
@@ -117,7 +117,7 @@ def safe_button_update(button: QObject, enabled: bool = None, visible: bool = No
 def safe_widget_update(widget: QObject, method: str, *args, **kwargs):
     """
     Safely update any widget from any thread.
-    
+
     Args:
         widget: The widget to update
         method: The method name to call
@@ -135,7 +135,7 @@ def safe_widget_update(widget: QObject, method: str, *args, **kwargs):
                     getattr(widget, method)(*args, **kwargs)
                 except Exception as e:
                     logger.error(f"Error updating widget: {e}")
-            
+
             QTimer.singleShot(0, update_widget)
     except Exception as e:
         logger.error(f"Error in safe_widget_update: {e}")
@@ -160,7 +160,7 @@ def safe_process_events_alternative():
 def safe_force_update(widget: QObject):
     """
     Safely force a widget update without using processEvents.
-    
+
     Args:
         widget: The widget to update
     """
@@ -177,7 +177,7 @@ def safe_force_update(widget: QObject):
                     widget.repaint()
                 except Exception as e:
                     logger.error(f"Error forcing widget update: {e}")
-            
+
             QTimer.singleShot(0, force_update)
     except Exception as e:
         logger.error(f"Error in safe_force_update: {e}")
@@ -186,7 +186,7 @@ def safe_force_update(widget: QObject):
 def safe_connect_signal(signal, slot, connection_type=Qt.ConnectionType.QueuedConnection):
     """
     Safely connect a signal to a slot with proper connection type.
-    
+
     Args:
         signal: The signal to connect
         slot: The slot to connect to
@@ -201,7 +201,7 @@ def safe_connect_signal(signal, slot, connection_type=Qt.ConnectionType.QueuedCo
 def safe_signal_connect(signal, slot, connection_type=Qt.ConnectionType.QueuedConnection):
     """
     Alias for safe_connect_signal for backward compatibility.
-    
+
     Args:
         signal: The signal to connect
         slot: The slot to connect to
@@ -213,7 +213,7 @@ def safe_signal_connect(signal, slot, connection_type=Qt.ConnectionType.QueuedCo
 def safe_signal_disconnect(signal, slot=None):
     """
     Alias for safe_disconnect for backward compatibility.
-    
+
     Args:
         signal: The signal to disconnect
         slot: The slot to disconnect from (optional)
@@ -224,7 +224,7 @@ def safe_signal_disconnect(signal, slot=None):
 def safe_disconnect_signal(signal, slot):
     """
     Safely disconnect a signal from a slot.
-    
+
     Args:
         signal: The signal to disconnect
         slot: The slot to disconnect from
@@ -238,12 +238,12 @@ def safe_disconnect_signal(signal, slot):
 def create_thread_safe_callback(callback: Callable, *args, **kwargs):
     """
     Create a thread-safe callback that ensures execution in the main thread.
-    
+
     Args:
         callback: The callback function to execute
         *args: Arguments to pass to the callback
         **kwargs: Keyword arguments to pass to the callback
-    
+
     Returns:
         A thread-safe callback function
     """
@@ -255,7 +255,7 @@ def create_thread_safe_callback(callback: Callable, *args, **kwargs):
                 QTimer.singleShot(0, lambda: callback(*args, **kwargs))
         except Exception as e:
             logger.error(f"Error in thread-safe callback: {e}")
-    
+
     return thread_safe_callback
 
 
@@ -263,19 +263,20 @@ class ThreadSafeCallback:
     """
     A thread-safe callback wrapper that ensures callbacks are executed in the main thread.
     """
-    
+
     def __init__(self, callback: Callable, *args, **kwargs):
         self.callback = callback
         self.args = args
         self.kwargs = kwargs
-    
+
     def __call__(self):
         """Execute the callback in a thread-safe manner."""
         try:
             if is_main_thread():
                 self.callback(*self.args, **self.kwargs)
             else:
-                QTimer.singleShot(0, lambda: self.callback(*self.args, **self.kwargs))
+                QTimer.singleShot(0, lambda: self.callback(
+                    *self.args, **self.kwargs))
         except Exception as e:
             logger.error(f"Error in ThreadSafeCallback: {e}")
 
@@ -283,10 +284,10 @@ class ThreadSafeCallback:
 def ensure_main_thread(func: Callable) -> Callable:
     """
     Decorator to ensure a function runs in the main thread.
-    
+
     Args:
         func: The function to wrap
-    
+
     Returns:
         A thread-safe version of the function
     """
@@ -296,14 +297,14 @@ def ensure_main_thread(func: Callable) -> Callable:
         else:
             # Schedule for main thread
             QTimer.singleShot(0, lambda: func(*args, **kwargs))
-    
+
     return wrapper
 
 
 def log_thread_info(operation: str, logger_instance=None):
     """
     Log thread information for debugging.
-    
+
     Args:
         operation: Description of the operation being performed
         logger_instance: Optional logger instance to use
@@ -312,9 +313,10 @@ def log_thread_info(operation: str, logger_instance=None):
         current_thread = QThread.currentThread()
         thread_name = current_thread.objectName() or "Unknown"
         is_main = is_main_thread()
-        
+
         log_func = logger_instance or logger
-        log_func.debug(f"[THREAD] {operation} - Thread: {thread_name}, Main: {is_main}")
+        log_func.debug(
+            f"[THREAD] {operation} - Thread: {thread_name}, Main: {is_main}")
     except Exception as e:
         (logger_instance or logger).error(f"Error logging thread info: {e}")
 
@@ -322,17 +324,19 @@ def log_thread_info(operation: str, logger_instance=None):
 def safe_log_thread_info(operation: str):
     """
     Safely log thread information for debugging.
-    
+
     Args:
         operation: Description of the operation being performed
     """
     try:
         current_thread = QThread.currentThread()
         main_thread = QApplication.instance().thread() if QApplication.instance() else None
-        
+
         logger.debug(f"Thread info for {operation}:")
-        logger.debug(f"  Current thread: {current_thread.objectName() or 'unnamed'}")
-        logger.debug(f"  Main thread: {main_thread.objectName() if main_thread else 'None'}")
+        logger.debug(
+            f"  Current thread: {current_thread.objectName() or 'unnamed'}")
+        logger.debug(
+            f"  Main thread: {main_thread.objectName() if main_thread else 'None'}")
         logger.debug(f"  Is main thread: {is_main_thread()}")
     except Exception as e:
         logger.error(f"Error logging thread info: {e}")
@@ -341,7 +345,7 @@ def safe_log_thread_info(operation: str):
 def safe_disconnect(signal, slot=None):
     """
     Safely disconnect a signal from a slot.
-    
+
     Args:
         signal: The signal to disconnect
         slot: The slot to disconnect from (optional)
@@ -358,7 +362,7 @@ def safe_disconnect(signal, slot=None):
 def safe_emit_signal(signal, *args):
     """
     Safely emit a signal from any thread.
-    
+
     Args:
         signal: The signal to emit
         *args: Arguments to pass to the signal
@@ -377,7 +381,7 @@ def safe_emit_signal(signal, *args):
 def safe_set_property(widget: QObject, property_name: str, value: Any):
     """
     Safely set a widget property from any thread.
-    
+
     Args:
         widget: The widget to update
         property_name: The property name to set
@@ -393,8 +397,9 @@ def safe_set_property(widget: QObject, property_name: str, value: Any):
                 try:
                     widget.setProperty(property_name, value)
                 except Exception as e:
-                    logger.error(f"Error setting property {property_name}: {e}")
-            
+                    logger.error(
+                        f"Error setting property {property_name}: {e}")
+
             QTimer.singleShot(0, set_property)
     except Exception as e:
         logger.error(f"Error in safe_set_property: {e}")
@@ -403,7 +408,7 @@ def safe_set_property(widget: QObject, property_name: str, value: Any):
 def safe_call_method(widget: QObject, method_name: str, *args, **kwargs):
     """
     Safely call a widget method from any thread.
-    
+
     Args:
         widget: The widget to call the method on
         method_name: The method name to call
@@ -423,7 +428,7 @@ def safe_call_method(widget: QObject, method_name: str, *args, **kwargs):
                     return method(*args, **kwargs)
                 except Exception as e:
                     logger.error(f"Error calling method {method_name}: {e}")
-            
+
             QTimer.singleShot(0, call_method)
     except Exception as e:
         logger.error(f"Error in safe_call_method: {e}")
@@ -432,7 +437,7 @@ def safe_call_method(widget: QObject, method_name: str, *args, **kwargs):
 def safe_show_widget(widget: QObject):
     """
     Safely show a widget from any thread.
-    
+
     Args:
         widget: The widget to show
     """
@@ -442,7 +447,7 @@ def safe_show_widget(widget: QObject):
 def safe_hide_widget(widget: QObject):
     """
     Safely hide a widget from any thread.
-    
+
     Args:
         widget: The widget to hide
     """
@@ -452,7 +457,7 @@ def safe_hide_widget(widget: QObject):
 def safe_enable_widget(widget: QObject, enabled: bool = True):
     """
     Safely enable/disable a widget from any thread.
-    
+
     Args:
         widget: The widget to enable/disable
         enabled: Whether to enable the widget
@@ -463,7 +468,7 @@ def safe_enable_widget(widget: QObject, enabled: bool = True):
 def safe_set_text(widget: QObject, text: str):
     """
     Safely set text on a widget from any thread.
-    
+
     Args:
         widget: The widget to update
         text: The text to set
@@ -474,9 +479,9 @@ def safe_set_text(widget: QObject, text: str):
 def safe_set_style(widget: QObject, style: str):
     """
     Safely set style sheet on a widget from any thread.
-    
+
     Args:
         widget: The widget to update
         style: The style sheet to set
     """
-    safe_widget_update(widget, "setStyleSheet", style) 
+    safe_widget_update(widget, "setStyleSheet", style)

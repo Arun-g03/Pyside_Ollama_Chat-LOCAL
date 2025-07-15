@@ -3,12 +3,13 @@ import subprocess
 # Shared imports
 from pyside_chat.core.shared_imports.shared_imports import *
 
+
 def install_python_requirements(requirements_path=None):
     # If no path provided, look in the same directory as this script
     if requirements_path is None:
         script_dir = os.path.dirname(os.path.abspath(__file__))
         requirements_path = os.path.join(script_dir, "requirements.txt")
-    
+
     if not os.path.exists(requirements_path):
         print(f"ERROR: requirements file not found: {requirements_path}")
         sys.exit(1)
@@ -25,4 +26,4 @@ def install_python_requirements(requirements_path=None):
         print("All Python dependencies installed successfully.")
     except Exception as e:
         print(f"ERROR: Exception during pip install: {e}")
-        sys.exit(1) 
+        sys.exit(1)

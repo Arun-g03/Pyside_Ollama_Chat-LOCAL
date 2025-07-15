@@ -8,7 +8,7 @@ Moving styles here makes theming and maintenance easier.
 
 class TabStyles:
     """Centralized tab styling for the application"""
-    
+
     TAB_WIDGET_STYLE = """
         QTabWidget::pane {
             border: 1px solid #444;
@@ -35,8 +35,8 @@ class TabStyles:
             color: #ffffff;
         }
     """
-    
+
     @staticmethod
     def get_tab_style() -> str:
         """Get the tab widget style"""
-        return TabStyles.TAB_WIDGET_STYLE 
+        return TabStyles.TAB_WIDGET_STYLE

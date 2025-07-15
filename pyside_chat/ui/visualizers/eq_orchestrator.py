@@ -43,9 +43,9 @@ BAR_EQ_MULTIPLIER = 1
 # Frequency band mapping for proper EQ visualization
 FREQ_BANDS = {
     'bass': (20, 250),      # Bass: 20-250 Hz
-    'low_mid': (250, 500),   # Low Mid: 250-500 Hz  
+    'low_mid': (250, 500),   # Low Mid: 250-500 Hz
     'mid': (500, 2000),      # Mid: 500-2000 Hz
-    'high_mid': (2000, 4000), # High Mid: 2000-4000 Hz
+    'high_mid': (2000, 4000),  # High Mid: 2000-4000 Hz
     'treble': (4000, 20000)  # Treble: 4000-20000 Hz
 }
 
@@ -61,18 +61,18 @@ BAR_DISTRIBUTION = {
 def map_frequency_to_bars(fft_magnitude, sample_rate, num_bars=48):
     """
     Map FFT frequency bins to bar ranges based on frequency bands.
-    
+
     Args:
         fft_magnitude: FFT magnitude array
         sample_rate: Audio sample rate
         num_bars: Number of bars to generate
-        
+
     Returns:
         list: Bar values mapped to frequency bands
     """
     # Calculate frequency resolution
     freq_resolution = sample_rate / (2 * len(fft_magnitude))
-    
+
     # Calculate bar distribution
     bars_per_band = {}
     current_bar = 0
@@ -80,50 +80,51 @@ def map_frequency_to_bars(fft_magnitude, sample_rate, num_bars=48):
         bars_in_band = int(num_bars * ratio)
         bars_per_band[band] = (current_bar, current_bar + bars_in_band)
         current_bar += bars_in_band
-    
+
     # Ensure we use all bars
     if current_bar < num_bars:
         bars_per_band['treble'] = (bars_per_band['treble'][0], num_bars)
-    
+
     # Map frequency bins to bars
     bar_values = [0.1] * num_bars  # Start with minimum values
-    
+
     for band, (low_freq, high_freq) in FREQ_BANDS.items():
         if band not in bars_per_band:
             continue
-            
+
         start_bar, end_bar = bars_per_band[band]
         bars_in_band = end_bar - start_bar
-        
+
         # Find frequency bin range for this band
         low_bin = int(low_freq / freq_resolution)
         high_bin = int(high_freq / freq_resolution)
         high_bin = min(high_bin, len(fft_magnitude) - 1)
-        
+
         if low_bin >= high_bin:
             continue
-            
+
         # Get magnitude values for this frequency band
         band_magnitude = fft_magnitude[low_bin:high_bin + 1]
-        
+
         if len(band_magnitude) == 0:
             continue
-            
+
         # Split band magnitude into bars
         if bars_in_band > 0:
             bins_per_bar = max(1, len(band_magnitude) // bars_in_band)
-            
+
             for i in range(bars_in_band):
                 start_idx = i * bins_per_bar
                 end_idx = min(start_idx + bins_per_bar, len(band_magnitude))
-                
+
                 if start_idx < len(band_magnitude):
                     # Calculate RMS energy for this bar's frequency range
                     bar_bins = band_magnitude[start_idx:end_idx]
                     if len(bar_bins) > 0:
-                        energy = float(np.sqrt(np.mean(bar_bins**2))) * BAR_EQ_MULTIPLIER
+                        energy = float(
+                            np.sqrt(np.mean(bar_bins**2))) * BAR_EQ_MULTIPLIER
                         bar_values[start_bar + i] = energy
-    
+
     return bar_values
 
 def band_energy(mag, sr, n_points, f_lo, f_hi):
@@ -155,19 +156,20 @@ def band_energy(mag, sr, n_points, f_lo, f_hi):
 class MainWindow(QMainWindow):
     # Signal to update bar values from audio thread
     bar_values_updated = Signal(list)
-    
+
     def __init__(self):
         super().__init__()
         self.setWindowTitle("EQ Visualizer - Mode Switcher")
         main_widget = QWidget(self)
         vbox = QVBoxLayout(main_widget)
-        
+
         # Mode switcher
         self.mode_combo = QComboBox()
-        self.mode_combo.addItems(["Circle EQ", "Bar EQ", "Waveform EQ", "Waveform Gradient", "Waveform Blue Gradient"])
+        self.mode_combo.addItems(
+            ["Circle EQ", "Bar EQ", "Waveform EQ", "Waveform Gradient", "Waveform Blue Gradient"])
         self.mode_combo.currentIndexChanged.connect(self.switch_mode)
         vbox.addWidget(self.mode_combo)
-        
+
         # Audio controls
         hbox = QHBoxLayout()
         self.audio_path_label = QLabel("No audio file selected", self)
@@ -180,19 +182,20 @@ class MainWindow(QMainWindow):
         self.mute_btn.setCheckable(True)
         self.mute_btn.clicked.connect(self.toggle_mute)
         self.system_audio_checkbox = QCheckBox("Use Microphone Input", self)
-        self.system_audio_checkbox.stateChanged.connect(self.toggle_system_audio)
-        
+        self.system_audio_checkbox.stateChanged.connect(
+            self.toggle_system_audio)
+
         # Device dropdown
         self.device_combo = QComboBox(self)
         self.device_combo.setMinimumWidth(220)
         self.device_combo.addItem("Select microphone device...")
         self.device_combo.currentIndexChanged.connect(self.on_device_selected)
         self.system_audio_device_index = None
-        
+
         # Refresh button for devices
         self.refresh_devices_btn = QPushButton("Refresh Devices", self)
         self.refresh_devices_btn.clicked.connect(self.refresh_device_list)
-        
+
         hbox.addWidget(self.select_btn)
         hbox.addWidget(self.audio_path_label)
         hbox.addWidget(self.play_btn)
@@ -201,33 +204,34 @@ class MainWindow(QMainWindow):
         hbox.addWidget(self.device_combo)
         hbox.addWidget(self.refresh_devices_btn)
         vbox.addLayout(hbox)
-        
+
         # Audio presets
         preset_label = QLabel("Audio Presets:", self)
         vbox.addWidget(preset_label)
-        
+
         # Create preset buttons in a grid layout
         preset_layout = QHBoxLayout()
         self.preset_buttons = {}
-        
+
         for preset_name, preset_path in AUDIO_PRESETS.items():
             btn = QPushButton(preset_name, self)
             btn.setMaximumWidth(120)
-            btn.clicked.connect(lambda checked, path=preset_path, name=preset_name: self.load_audio_preset(path, name))
+            btn.clicked.connect(lambda checked, path=preset_path,
+                                name=preset_name: self.load_audio_preset(path, name))
             preset_layout.addWidget(btn)
             self.preset_buttons[preset_name] = btn
-        
+
         vbox.addLayout(preset_layout)
-        
+
         # Visualizer area
         self.visualizer_stack = QWidget()
         self.visualizer_layout = QVBoxLayout(self.visualizer_stack)
         self.visualizer_layout.setContentsMargins(0, 0, 0, 0)
-        
+
         # Initialize EQ widgets
         self.circle_widget = CircleEQWidget(self)
         self.bar_widget = BarEQWidget(self)
-        
+
         # Three overlapping nets for bass, mid, treble
         self.waveform_net_container = QWidget(self)
         self.waveform_net_container.setAttribute(Qt.WA_TranslucentBackground)
@@ -237,41 +241,44 @@ class MainWindow(QMainWindow):
         from pyside_chat.core.utils.threading_utils import safe_ui_update
         safe_ui_update(self.waveform_bg, 'setStyleSheet', 'background: black;')
         self.waveform_bg.lower()
-        self.waveform_bass = CircularNetEQWidget(self.waveform_net_container, num_points=64, color=(80,180,255))
-        self.waveform_mid = CircularNetEQWidget(self.waveform_net_container, num_points=64, color=(255,80,180))
-        self.waveform_treble = CircularNetEQWidget(self.waveform_net_container, num_points=64, color=(220,255,120))
-        
+        self.waveform_bass = CircularNetEQWidget(self.waveform_net_container, num_points=64, color=(80, 180,255))
+        self.waveform_mid = CircularNetEQWidget(self.waveform_net_container, num_points=64, color=(255, 80,180))
+        self.waveform_treble = CircularNetEQWidget(self.waveform_net_container, num_points=64, color=(220, 255,120))
+
         # Three overlapping gradient widgets for bass, mid, treble
         self.waveform_grad_container = QWidget(self)
         self.waveform_grad_container.setAttribute(Qt.WA_TranslucentBackground)
         self.waveform_grad_container.setLayout(None)
         self.waveform_grad_bg = QWidget(self.waveform_grad_container)
         # Thread-safe UI update
-        safe_ui_update(self.waveform_grad_bg, 'setStyleSheet', 'background: black;')
+        safe_ui_update(self.waveform_grad_bg,
+                       'setStyleSheet', 'background: black;')
         self.waveform_grad_bg.lower()
-        self.waveform_grad_bass = CircularGradientEQWidget(self.waveform_grad_container, num_points=64, color=(80,180,255))
-        self.waveform_grad_mid = CircularGradientEQWidget(self.waveform_grad_container, num_points=64, color=(255,80,180))
-        self.waveform_grad_treble = CircularGradientEQWidget(self.waveform_grad_container, num_points=64, color=(220,255,120))
-        
+        self.waveform_grad_bass = CircularGradientEQWidget(self.waveform_grad_container, num_points=64, color=(80, 180,255))
+        self.waveform_grad_mid = CircularGradientEQWidget(self.waveform_grad_container, num_points=64, color=(255, 80,180))
+        self.waveform_grad_treble = CircularGradientEQWidget(self.waveform_grad_container, num_points=64, color=(220, 255,120))
+
         # Three overlapping blue gradient widgets for bass, mid, treble
         self.waveform_bluegrad_container = QWidget(self)
-        self.waveform_bluegrad_container.setAttribute(Qt.WA_TranslucentBackground)
+        self.waveform_bluegrad_container.setAttribute(
+            Qt.WA_TranslucentBackground)
         self.waveform_bluegrad_container.setLayout(None)
         self.waveform_bluegrad_bg = QWidget(self.waveform_bluegrad_container)
         # Thread-safe UI update
-        safe_ui_update(self.waveform_bluegrad_bg, 'setStyleSheet', 'background: black;')
+        safe_ui_update(self.waveform_bluegrad_bg,
+                       'setStyleSheet', 'background: black;')
         self.waveform_bluegrad_bg.lower()
-        self.waveform_blue_bass = CircularGradientEQWidget(self.waveform_bluegrad_container, num_points=64, color=(80,180,255), alpha=255, radius_scale=1.0, radius_ratio=0.30, energy_mult=1.5)
-        self.waveform_blue_mid = CircularGradientEQWidget(self.waveform_bluegrad_container, num_points=64, color=(100,140,255), alpha=255, radius_scale=0.9, radius_ratio=0.30, energy_mult=1.5)
-        self.waveform_blue_treble = CircularGradientEQWidget(self.waveform_bluegrad_container, num_points=64, color=(120,220,255), alpha=255, radius_scale=0.81, radius_ratio=0.30, energy_mult=1.5)
-        
+        self.waveform_blue_bass = CircularGradientEQWidget(self.waveform_bluegrad_container, num_points=64, color=(80, 180,255), alpha=255, radius_scale=1.0, radius_ratio=0.30, energy_mult=1.5)
+        self.waveform_blue_mid = CircularGradientEQWidget(self.waveform_bluegrad_container, num_points=64, color=(100, 140,255), alpha=255, radius_scale=0.9, radius_ratio=0.30, energy_mult=1.5)
+        self.waveform_blue_treble = CircularGradientEQWidget(self.waveform_bluegrad_container, num_points=64, color=(120, 220,255), alpha=255, radius_scale=0.81, radius_ratio=0.30, energy_mult=1.5)
+
         # Add widgets to layout
         self.visualizer_layout.addWidget(self.circle_widget)
         self.visualizer_layout.addWidget(self.bar_widget)
         self.visualizer_layout.addWidget(self.waveform_net_container)
         self.visualizer_layout.addWidget(self.waveform_grad_container)
         self.visualizer_layout.addWidget(self.waveform_bluegrad_container)
-        
+
         # Hide all widgets initially
         self.bar_widget.hide()
         self.waveform_net_container.hide()
@@ -286,14 +293,14 @@ class MainWindow(QMainWindow):
         self.waveform_blue_bass.hide()
         self.waveform_blue_mid.hide()
         self.waveform_blue_treble.hide()
-        
+
         # Connect signal to update bar values
         self.bar_values_updated.connect(self.bar_widget.set_eq_bars)
-        
+
         vbox.addWidget(self.visualizer_stack, stretch=1)
         self.setCentralWidget(main_widget)
         self.resize(900, 600)
-        
+
         # Audio state
         if HARDCODED_AUDIO_PATH:
             self.selected_audio_path = HARDCODED_AUDIO_PATH
@@ -301,7 +308,8 @@ class MainWindow(QMainWindow):
             # Highlight the default preset button if it exists
             for preset_name, preset_path in AUDIO_PRESETS.items():
                 if preset_path == HARDCODED_AUDIO_PATH:
-                    self.preset_buttons[preset_name].setStyleSheet("QPushButton { background-color: #4CAF50; color: white; font-weight: bold; }")
+                    self.preset_buttons[preset_name].setStyleSheet(
+                        "QPushButton { background-color: #4CAF50; color: white; font-weight: bold; }")
                     break
         else:
             self.selected_audio_path = None
@@ -309,7 +317,7 @@ class MainWindow(QMainWindow):
         self.is_muted = False
         self.play_thread = None
         self.use_system_audio = False
-        
+
         # Auto-select first microphone if available
         QTimer.singleShot(100, self.auto_select_microphone)
 
@@ -317,7 +325,7 @@ class MainWindow(QMainWindow):
         was_playing = self.is_playing
         if was_playing:
             self.stop_audio()
-        
+
         # Hide all widgets first
         self.circle_widget.hide()
         self.circle_widget.stop_animation()
@@ -335,7 +343,7 @@ class MainWindow(QMainWindow):
         self.waveform_blue_bass.hide()
         self.waveform_blue_mid.hide()
         self.waveform_blue_treble.hide()
-        
+
         # Show and start appropriate widgets based on mode
         if idx == 0:  # Circle EQ
             self.circle_widget.show()
@@ -367,12 +375,13 @@ class MainWindow(QMainWindow):
             self.waveform_blue_mid.start_animation()
             self.waveform_blue_treble.show()
             self.waveform_blue_treble.start_animation()
-        
+
         if was_playing:
             self.play_audio()
 
     def select_audio_file(self):
-        file_path, _ = QFileDialog.getOpenFileName(self, "Select Audio File", "", "Audio Files (*.wav *.mp3 *.flac *.ogg);;All Files (*)")
+        file_path, _ = QFileDialog.getOpenFileName(
+            self, "Select Audio File", "", "Audio Files (*.wav *.mp3 *.flac *.ogg);;All Files (*)")
         if file_path:
             self.selected_audio_path = file_path
             self.audio_path_label.setText(f"Selected: {file_path}")
@@ -385,16 +394,18 @@ class MainWindow(QMainWindow):
             self.selected_audio_path = file_path
             self.audio_path_label.setText(f"Selected: {preset_name}")
             print(f"Loaded preset: {preset_name} - {file_path}")
-            
+
             # Highlight the selected preset button
             for name, btn in self.preset_buttons.items():
                 if name == preset_name:
-                    btn.setStyleSheet("QPushButton { background-color: #4CAF50; color: white; font-weight: bold; }")
+                    btn.setStyleSheet(
+                        "QPushButton { background-color: #4CAF50; color: white; font-weight: bold; }")
                 else:
                     btn.setStyleSheet("")
         else:
             print(f"Audio file not found: {file_path}")
-            self.audio_path_label.setText(f"Error: File not found - {preset_name}")
+            self.audio_path_label.setText(
+                f"Error: File not found - {preset_name}")
 
     def play_audio(self):
         if not self.use_system_audio and not self.selected_audio_path:
@@ -402,7 +413,8 @@ class MainWindow(QMainWindow):
         if not self.is_playing:
             self.is_playing = True
             self.play_btn.setText("Stop")
-            self.play_thread = threading.Thread(target=self._play_audio_thread, daemon=True)
+            self.play_thread = threading.Thread(
+                target=self._play_audio_thread, daemon=True)
             self.play_thread.start()
         else:
             self.stop_audio()
@@ -410,7 +422,8 @@ class MainWindow(QMainWindow):
     def stop_audio(self):
         self.is_playing = False
         self.play_btn.setText("Play")
-        self.circle_widget.set_eq_sections([0.1] * self.circle_widget.num_sections)
+        self.circle_widget.set_eq_sections(
+            [0.1] * self.circle_widget.num_sections)
         self.bar_widget.set_idle()
         self.waveform_bass.set_idle()
         self.waveform_mid.set_idle()
@@ -435,10 +448,12 @@ class MainWindow(QMainWindow):
                 device_name = self.device_combo.currentText()
                 self.audio_path_label.setText(f"Microphone: {device_name}")
             else:
-                self.audio_path_label.setText("Microphone input will be visualized. (Select a device)")
+                self.audio_path_label.setText(
+                    "Microphone input will be visualized. (Select a device)")
         else:
             if self.selected_audio_path:
-                self.audio_path_label.setText(f"Selected: {self.selected_audio_path}")
+                self.audio_path_label.setText(
+                    f"Selected: {self.selected_audio_path}")
             else:
                 self.audio_path_label.setText("No audio file selected")
 
@@ -451,7 +466,8 @@ class MainWindow(QMainWindow):
         else:
             self.system_audio_device_index = None
             if self.use_system_audio:
-                self.audio_path_label.setText("Microphone input will be visualized.")
+                self.audio_path_label.setText(
+                    "Microphone input will be visualized.")
 
     def _play_audio_thread(self):
         if self.use_system_audio:
@@ -467,19 +483,19 @@ class MainWindow(QMainWindow):
             self.is_playing = False
             safe_ui_update(self.play_btn, "setText", "Play")
             return
-        
+
         print(f"[MIC] Using device index {device_index} for microphone input.")
         try:
             samplerate = 44100
             channels = 1
             blocksize = 2048
             with sd.InputStream(
-                device=device_index,
-                channels=channels,
-                samplerate=samplerate,
-                dtype='float32',
-                blocksize=blocksize,
-                latency='low'
+                device = device_index,
+                channels = channels,
+                samplerate = samplerate,
+                dtype = 'float32',
+                blocksize = blocksize,
+                latency = 'low'
             ) as stream:
                 audio_counter = 0
                 while self.is_playing:

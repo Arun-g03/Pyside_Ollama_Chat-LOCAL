@@ -2,6 +2,7 @@ from pyside_chat.core.shared_imports.pyside_imports import *
 import math
 import random
 
+
 class CircularGradientEQWidget(QWidget):
     """
     Like CircularNetEQWidget, but fills the area defined by the animated points with a soft, faded gradient (no lines or dots).
@@ -19,7 +20,8 @@ class CircularGradientEQWidget(QWidget):
         self._base_radius = self.DEFAULT_IDLE_VALUE
         self._point_radii = [self.DEFAULT_IDLE_VALUE] * self.num_points
         self._target_radii = [self.DEFAULT_IDLE_VALUE] * self.num_points
-        self._noise_offsets = [random.uniform(0, 1000) for _ in range(self.num_points)]
+        self._noise_offsets = [random.uniform(
+            0, 1000) for _ in range(self.num_points)]
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._animate)
         self._timer.start(self.DEFAULT_ANIMATION_INTERVAL)
@@ -47,9 +49,11 @@ class CircularGradientEQWidget(QWidget):
     def _animate(self):
         self._t += 0.015
         for i in range(self.num_points):
-            noise = math.sin(self._t + self._noise_offsets[i]) * 0.18 + math.sin(self._t * 0.7 + self._noise_offsets[i] * 0.5) * 0.08
+            noise = math.sin(self._t + self._noise_offsets[i]) * 0.18 + math.sin(
+                self._t * 0.7 + self._noise_offsets[i] * 0.5) * 0.08
             target = self._target_radii[i] + noise
-            self._point_radii[i] += (target - self._point_radii[i]) * self.ANIMATION_SMOOTHING_FACTOR
+            self._point_radii[i] += (target - self._point_radii[i]) * \
+                self.ANIMATION_SMOOTHING_FACTOR
         self.update()
 
     @Slot(list)
@@ -68,7 +72,8 @@ class CircularGradientEQWidget(QWidget):
             if len(validated) > self.num_points:
                 validated = validated[:self.num_points]
             else:
-                validated.extend([self.DEFAULT_IDLE_VALUE] * (self.num_points - len(validated)))
+                validated.extend([self.DEFAULT_IDLE_VALUE] *
+                                 (self.num_points - len(validated)))
         self._target_radii = validated
         self._is_idle = False
 
@@ -80,7 +85,7 @@ class CircularGradientEQWidget(QWidget):
 
     def start_animation(self):
         self._timer.start(self.DEFAULT_ANIMATION_INTERVAL)
-        
+
     def stop_animation(self):
         self._timer.stop()
 
@@ -137,4 +142,5 @@ class CircularGradientEQWidget(QWidget):
         grad.setColorAt(1.0, c2)
         painter.setBrush(QBrush(grad))
         painter.setPen(Qt.NoPen)
-        painter.drawEllipse(cx - base_radius, cy - base_radius, base_radius * 2, base_radius * 2) 
+        painter.drawEllipse(cx - base_radius, cy - base_radius,
+                            base_radius * 2, base_radius * 2)

@@ -2,6 +2,7 @@ from pyside_chat.core.shared_imports.pyside_imports import *
 import math
 import random
 
+
 class CircularNetEQWidget(QWidget):
     """
     A Vanta.js-inspired circular net visualizer: points around a circle, connected by glowing lines, with organic motion and optional audio reactivity.
@@ -22,7 +23,8 @@ class CircularNetEQWidget(QWidget):
         self._base_radius = self.DEFAULT_IDLE_VALUE
         self._point_radii = [self.DEFAULT_IDLE_VALUE] * self.num_points
         self._target_radii = [self.DEFAULT_IDLE_VALUE] * self.num_points
-        self._noise_offsets = [random.uniform(0, 1000) for _ in range(self.num_points)]
+        self._noise_offsets = [random.uniform(
+            0, 1000) for _ in range(self.num_points)]
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._animate)
         self._timer.start(self.DEFAULT_ANIMATION_INTERVAL)
@@ -40,9 +42,11 @@ class CircularNetEQWidget(QWidget):
         self._t += 0.015
         for i in range(self.num_points):
             # Organic motion: combine target radius (audio) and smooth noise
-            noise = math.sin(self._t + self._noise_offsets[i]) * 0.18 + math.sin(self._t * 0.7 + self._noise_offsets[i] * 0.5) * 0.08
+            noise = math.sin(self._t + self._noise_offsets[i]) * 0.18 + math.sin(
+                self._t * 0.7 + self._noise_offsets[i] * 0.5) * 0.08
             target = self._target_radii[i] + noise
-            self._point_radii[i] += (target - self._point_radii[i]) * self.ANIMATION_SMOOTHING_FACTOR
+            self._point_radii[i] += (target - self._point_radii[i]) * \
+                self.ANIMATION_SMOOTHING_FACTOR
         self.update()
 
     @Slot(list)
@@ -61,7 +65,8 @@ class CircularNetEQWidget(QWidget):
             if len(validated) > self.num_points:
                 validated = validated[:self.num_points]
             else:
-                validated.extend([self.DEFAULT_IDLE_VALUE] * (self.num_points - len(validated)))
+                validated.extend([self.DEFAULT_IDLE_VALUE] *
+                                 (self.num_points - len(validated)))
         self._target_radii = validated
         self._is_idle = False
 
@@ -71,7 +76,7 @@ class CircularNetEQWidget(QWidget):
 
     def start_animation(self):
         self._timer.start(self.DEFAULT_ANIMATION_INTERVAL)
-        
+
     def stop_animation(self):
         self._timer.stop()
 
@@ -124,4 +129,4 @@ class CircularNetEQWidget(QWidget):
         for i, (x, y) in enumerate(points):
             painter.setBrush(dot_color)
             painter.setPen(Qt.NoPen)
-            painter.drawEllipse(int(x) - 3, int(y) - 3, 7, 7) 
+            painter.drawEllipse(int(x) - 3, int(y) - 3, 7, 7)

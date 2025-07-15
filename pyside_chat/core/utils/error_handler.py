@@ -21,20 +21,20 @@ logger = CustomLogger.get_logger(__name__)
 
 class ErrorHandler:
     """Centralized error handling utilities"""
-    
+
     @staticmethod
-    def safe_execute(func: Callable, *args, default_return: Any = None, 
-                    error_msg: str = "Operation failed", **kwargs) -> Any:
+    def safe_execute(func: Callable, *args, default_return: Any = None,
+                     error_msg: str = "Operation failed", **kwargs) -> Any:
         """
         Safely execute a function with comprehensive error handling
-        
+
         Args:
             func: Function to execute
             *args: Function arguments
             default_return: Value to return on error
             error_msg: Custom error message
             **kwargs: Function keyword arguments
-            
+
         Returns:
             Function result or default_return on error
         """
@@ -42,61 +42,62 @@ class ErrorHandler:
             return func(*args, **kwargs)
         except Exception as e:
             LoggingHelpers.log_exception_with_context(
-                error_msg, e, 
+                error_msg, e,
                 {"function": func.__name__, "args": args, "kwargs": kwargs}
             )
             return default_return
-    
+
     @staticmethod
-    def retry_on_failure(func: Callable, max_attempts: int = 3, 
-                        delay_seconds: float = 1.0, 
-                        exceptions: tuple = (Exception,)) -> Callable:
+    def retry_on_failure(func: Callable, max_attempts: int = 3,
+                         delay_seconds: float = 1.0,
+                         exceptions: tuple = (Exception,)) -> Callable:
         """
         Decorator to retry a function on failure
-        
+
         Args:
             func: Function to retry
             max_attempts: Maximum number of retry attempts
             delay_seconds: Delay between retries
             exceptions: Tuple of exceptions to catch
-            
+
         Returns:
             Decorated function
         """
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             last_exception = None
-            
+
             for attempt in range(max_attempts):
                 try:
                     return func(*args, **kwargs)
                 except exceptions as e:
                     last_exception = e
                     LoggingHelpers.log_warning_with_context(
-                        f"Attempt {attempt + 1} failed", 
-                        {"function": func.__name__, "attempt": attempt + 1, "error": str(e)}
+                        f"Attempt {attempt + 1} failed",
+                        {"function": func.__name__,
+                            "attempt": attempt + 1, "error": str(e)}
                     )
-                    
+
                     if attempt < max_attempts - 1:
                         time.sleep(delay_seconds)
-            
+
             # All attempts failed
             LoggingHelpers.log_exception_with_context(
                 f"All {max_attempts} attempts failed", last_exception,
                 {"function": func.__name__, "max_attempts": max_attempts}
             )
             raise last_exception
-        
+
         return wrapper
-    
+
     @staticmethod
     def handle_network_errors(func: Callable) -> Callable:
         """
         Decorator to handle network-related errors specifically
-        
+
         Args:
             func: Function to decorate
-            
+
         Returns:
             Decorated function
         """
@@ -120,17 +121,17 @@ class ErrorHandler:
                     {"function": func.__name__, "args": args, "kwargs": kwargs}
                 )
                 raise
-        
+
         return wrapper
-    
+
     @staticmethod
     def handle_file_operations(func: Callable) -> Callable:
         """
         Decorator to handle file operation errors
-        
+
         Args:
             func: Function to decorate
-            
+
         Returns:
             Decorated function
         """
@@ -154,17 +155,17 @@ class ErrorHandler:
                     {"function": func.__name__, "args": args, "kwargs": kwargs}
                 )
                 raise
-        
+
         return wrapper
-    
+
     @staticmethod
     def handle_audio_operations(func: Callable) -> Callable:
         """
         Decorator to handle audio operation errors
-        
+
         Args:
             func: Function to decorate
-            
+
         Returns:
             Decorated function
         """
@@ -177,17 +178,17 @@ class ErrorHandler:
                     func.__name__, False, e
                 )
                 raise
-        
+
         return wrapper
-    
+
     @staticmethod
     def handle_memory_operations(func: Callable) -> Callable:
         """
         Decorator to handle memory operation errors
-        
+
         Args:
             func: Function to decorate
-            
+
         Returns:
             Decorated function
         """
@@ -200,17 +201,17 @@ class ErrorHandler:
                     func.__name__, "unknown", False, e
                 )
                 raise
-        
+
         return wrapper
-    
+
     @staticmethod
     def handle_ui_operations(func: Callable) -> Callable:
         """
         Decorator to handle UI operation errors
-        
+
         Args:
             func: Function to decorate
-            
+
         Returns:
             Decorated function
         """
@@ -223,7 +224,7 @@ class ErrorHandler:
                     "unknown", func.__name__, False, e
                 )
                 raise
-        
+
         return wrapper
 
 
@@ -231,22 +232,24 @@ class ErrorHandler:
 def error_context(operation: str, context: Optional[Dict[str, Any]] = None):
     """
     Context manager for error handling with automatic logging
-    
+
     Args:
         operation: Name of the operation being performed
         context: Additional context information
     """
     context = context or {}
     start_time = time.time()
-    
+
     try:
         yield
         duration = (time.time() - start_time) * 1000
-        LoggingHelpers.log_performance_metric(operation, duration, str(context))
+        LoggingHelpers.log_performance_metric(
+            operation, duration, str(context))
     except Exception as e:
         duration = (time.time() - start_time) * 1000
         LoggingHelpers.log_exception_with_context(operation, e, context)
-        LoggingHelpers.log_performance_metric(f"{operation}_failed", duration, str(context))
+        LoggingHelpers.log_performance_metric(
+            f"{operation}_failed", duration, str(context))
         raise
 
 
@@ -254,7 +257,7 @@ def error_context(operation: str, context: Optional[Dict[str, Any]] = None):
 def network_error_context(url: str, method: str):
     """
     Context manager for network operations with error handling
-    
+
     Args:
         url: URL being accessed
         method: HTTP method being used
@@ -271,7 +274,7 @@ def network_error_context(url: str, method: str):
 def file_operation_context(operation: str, filepath: str):
     """
     Context manager for file operations with error handling
-    
+
     Args:
         operation: File operation being performed
         filepath: Path to the file
@@ -288,7 +291,7 @@ def file_operation_context(operation: str, filepath: str):
 def audio_operation_context(operation: str):
     """
     Context manager for audio operations with error handling
-    
+
     Args:
         operation: Audio operation being performed
     """
@@ -304,7 +307,7 @@ def audio_operation_context(operation: str):
 def memory_operation_context(operation: str, memory_type: str):
     """
     Context manager for memory operations with error handling
-    
+
     Args:
         operation: Memory operation being performed
         memory_type: Type of memory being operated on
@@ -321,7 +324,7 @@ def memory_operation_context(operation: str, memory_type: str):
 def ui_operation_context(component: str, operation: str):
     """
     Context manager for UI operations with error handling
-    
+
     Args:
         component: UI component being operated on
         operation: UI operation being performed
@@ -337,11 +340,11 @@ def ui_operation_context(component: str, operation: str):
 def safe_json_parse(json_str: str, default: Any = None) -> Any:
     """
     Safely parse JSON string with error handling
-    
+
     Args:
         json_str: JSON string to parse
         default: Default value to return on error
-        
+
     Returns:
         Parsed JSON object or default value
     """
@@ -351,19 +354,20 @@ def safe_json_parse(json_str: str, default: Any = None) -> Any:
         LoggingHelpers.log_json_parsing_error(e, json_str)
         return default
     except Exception as e:
-        LoggingHelpers.log_exception_with_context("json_parse", e, {"json_str": json_str})
+        LoggingHelpers.log_exception_with_context(
+            "json_parse", e, {"json_str": json_str})
         return default
 
 
 def safe_file_read(filepath: str, encoding: str = 'utf-8', default: Any = None) -> Any:
     """
     Safely read a file with error handling
-    
+
     Args:
         filepath: Path to the file
         encoding: File encoding
         default: Default value to return on error
-        
+
     Returns:
         File contents or default value
     """
@@ -378,12 +382,12 @@ def safe_file_read(filepath: str, encoding: str = 'utf-8', default: Any = None) 
 def safe_file_write(filepath: str, content: str, encoding: str = 'utf-8') -> bool:
     """
     Safely write to a file with error handling
-    
+
     Args:
         filepath: Path to the file
         content: Content to write
         encoding: File encoding
-        
+
     Returns:
         True if successful, False otherwise
     """
@@ -402,12 +406,12 @@ def safe_file_write(filepath: str, content: str, encoding: str = 'utf-8') -> boo
 def safe_network_request(url: str, method: str = "GET", **kwargs) -> Optional[Any]:
     """
     Safely make a network request with error handling
-    
+
     Args:
         url: URL to request
         method: HTTP method
         **kwargs: Additional request parameters
-        
+
     Returns:
         Response object or None on error
     """
@@ -424,32 +428,34 @@ def safe_network_request(url: str, method: str = "GET", **kwargs) -> Optional[An
 def validate_input(data: Any, expected_type: Type, field_name: str = "input") -> bool:
     """
     Validate input data with error handling
-    
+
     Args:
         data: Data to validate
         expected_type: Expected type
         field_name: Name of the field for error messages
-        
+
     Returns:
         True if valid, False otherwise
     """
     try:
         if not isinstance(data, expected_type):
             LoggingHelpers.log_warning_with_context(
-                f"Invalid {field_name} type", 
-                {"expected": expected_type, "actual": type(data), "value": data}
+                f"Invalid {field_name} type",
+                {"expected": expected_type,
+                    "actual": type(data), "value": data}
             )
             return False
         return True
     except Exception as e:
-        LoggingHelpers.log_exception_with_context("input_validation", e, {"field_name": field_name})
+        LoggingHelpers.log_exception_with_context(
+            "input_validation", e, {"field_name": field_name})
         return False
 
 
 def cleanup_resources(resources: list) -> None:
     """
     Safely cleanup a list of resources
-    
+
     Args:
         resources: List of resources to cleanup
     """
@@ -462,19 +468,20 @@ def cleanup_resources(resources: list) -> None:
             elif hasattr(resource, '__del__'):
                 del resource
         except Exception as e:
-            LoggingHelpers.log_exception_with_context("resource_cleanup", e, {"resource": str(resource)})
+            LoggingHelpers.log_exception_with_context(
+                "resource_cleanup", e, {"resource": str(resource)})
 
 
 def handle_critical_error(error: Exception, component: str, recovery_action: str) -> None:
     """
     Handle critical errors that may require application restart
-    
+
     Args:
         error: The critical error
         component: Component where the error occurred
         recovery_action: Action to take for recovery
     """
     LoggingHelpers.log_critical_error(component, error, recovery_action)
-    
+
     # Additional critical error handling could go here
-    # For example, saving state, notifying user, etc. 
+    # For example, saving state, notifying user, etc.

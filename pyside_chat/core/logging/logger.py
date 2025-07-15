@@ -11,15 +11,18 @@ LOG_FORMAT = "%(asctime)s [%(levelname)s] [%(name)s]: %(message)s"
 LOG_LEVEL = logging.DEBUG
 
 # Ensure the Logs directory exists at the project root
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
+PROJECT_ROOT = os.path.abspath(os.path.join(
+    os.path.dirname(__file__), '../../..'))
 LOGS_DIR = os.path.join(PROJECT_ROOT, "Logs")
 os.makedirs(LOGS_DIR, exist_ok=True)
 CENTRAL_LOG_FILE = os.path.join(LOGS_DIR, "pychat.log")
 
 _warned_about_default = False
 
+
 def _sanitize_filename(name):
     return "".join(c if c.isalnum() or c in ('-', '_') else '_' for c in name)
+
 
 def strip_emojis(text):
     # Remove all emoji characters from the text
@@ -36,68 +39,76 @@ def strip_emojis(text):
     )
     return emoji_pattern.sub(r'', text)
 
+
 class PrintOnLogMixin:
     def _print(self, msg):
-       print(strip_emojis(msg))
+        print(strip_emojis(msg))
+
     def info(self, msg, *args, print_to_terminal=False, **kwargs):
         clean_msg = strip_emojis(msg % args if args else msg)
         super().info(clean_msg, **kwargs)
         if print_to_terminal:
             self._print(clean_msg)
+
     def debug(self, msg, *args, print_to_terminal=False, **kwargs):
         clean_msg = strip_emojis(msg % args if args else msg)
         super().debug(clean_msg, **kwargs)
         if print_to_terminal:
             self._print(clean_msg)
+
     def warning(self, msg, *args, print_to_terminal=False, **kwargs):
         clean_msg = strip_emojis(msg % args if args else msg)
         super().warning(clean_msg, **kwargs)
         if print_to_terminal:
             self._print(clean_msg)
+
     def error(self, msg, *args, print_to_terminal=False, **kwargs):
         clean_msg = strip_emojis(msg % args if args else msg)
         super().error(clean_msg, **kwargs)
         if print_to_terminal:
             self._print(clean_msg)
+
     def critical(self, msg, *args, print_to_terminal=False, **kwargs):
         clean_msg = strip_emojis(msg % args if args else msg)
         super().critical(clean_msg, **kwargs)
         if print_to_terminal:
             self._print(clean_msg)
 
+
 class ThreadInfoFormatter(logging.Formatter):
     """Custom formatter that includes thread information in log messages"""
-    
+
     def format(self, record):
         # Get thread information
         current_thread = threading.current_thread()
         thread_name = current_thread.name
         thread_id = current_thread.ident
-        
+
         # Check if we're in a QThread
         qt_thread = QThread.currentThread()
         qt_thread_name = qt_thread.objectName() if qt_thread else "MainThread"
-        
+
         # Add thread info to the record
         record.thread_name = thread_name
         record.thread_id = thread_id
         record.qt_thread_name = qt_thread_name
-        
+
         # Format the message with thread info
         formatted = super().format(record)
-        
+
         # Add thread info to the beginning of the message
         thread_info = f"[{thread_name}({thread_id})/{qt_thread_name}]"
         return f"{thread_info} {formatted}"
 
+
 class CustomLogger(logging.Logger):
     """
     Custom Logging class for the PyChat project.
-    
+
     This class provides enhanced logging functionality with file output and
     optional terminal printing. For complete setup and usage instructions,
     refer to: DOCUMENTATION/Logging Commands.md
-    
+
     Args:
         name (str): The name of the logger.
         level (int): The level of the logger.
@@ -112,7 +123,8 @@ class CustomLogger(logging.Logger):
     def _check_config_for_logging(cls):
         if cls._config_checked:
             return
-        config_path = os.path.join(os.path.dirname(__file__), '../../../config.json')
+        config_path = os.path.join(os.path.dirname(
+            __file__), '../../../config.json')
         try:
             with open(config_path, 'r') as f:
                 config = json.load(f)
@@ -169,7 +181,8 @@ class CustomLogger(logging.Logger):
                 file_handler.setFormatter(formatter)
                 logger.addHandler(file_handler)
             else:
-                module_log_file = os.path.join(LOGS_DIR, f"{_sanitize_filename(name)}.log")
+                module_log_file = os.path.join(
+                    LOGS_DIR, f"{_sanitize_filename(name)}.log")
                 cls._clear_log_file(module_log_file)
                 file_handler = logging.FileHandler(module_log_file)
                 file_handler.setFormatter(formatter)
@@ -177,6 +190,7 @@ class CustomLogger(logging.Logger):
         logger.setLevel(LOG_LEVEL)
         logger.propagate = False
         # Wrap logger with print-on-log mixin for per-message print_to_terminal support
+
         class PrintLogger(PrintOnLogMixin, type(logger)):
             pass
         logger.__class__ = PrintLogger
@@ -188,20 +202,24 @@ class CustomLogger(logging.Logger):
             return
         clean_msg = self._filter_non_ascii(str(msg))
         super().info(clean_msg, *args, **kwargs)
+
     def debug(self, msg, *args, **kwargs):
         if not self.logging_enabled:
             return
         clean_msg = self._filter_non_ascii(str(msg))
         super().debug(clean_msg, *args, **kwargs)
+
     def warning(self, msg, *args, **kwargs):
         if not self.logging_enabled:
             return
         clean_msg = self._filter_non_ascii(str(msg))
         super().warning(clean_msg, *args, **kwargs)
+
     def error(self, msg, *args, **kwargs):
         if not self.logging_enabled:
             return
         clean_msg = self._filter_non_ascii(str(msg))
         super().error(clean_msg, *args, **kwargs)
+
     def _filter_non_ascii(self, s):
         return re.sub(r'[^\x00-\x7F]+', '', s)

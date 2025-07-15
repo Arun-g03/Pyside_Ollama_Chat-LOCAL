@@ -38,6 +38,7 @@ from .thread_calculator import (
 _global_threading_service = None
 _global_persistent_thread_pool = None
 
+
 def shutdown_global_threading_service():
     """Shutdown the global threading service."""
     global _global_threading_service
@@ -50,6 +51,7 @@ def shutdown_global_threading_service():
             logger = CustomLogger.get_logger(__name__)
             logger.error(f"Error shutting down global threading service: {e}")
 
+
 def shutdown_global_persistent_thread_pool():
     """Shutdown the global persistent thread pool."""
     global _global_persistent_thread_pool
@@ -60,27 +62,29 @@ def shutdown_global_persistent_thread_pool():
         except Exception as e:
             from pyside_chat.core.logging.logger import CustomLogger
             logger = CustomLogger.get_logger(__name__)
-            logger.error(f"Error shutting down global persistent thread pool: {e}")
+            logger.error(
+                f"Error shutting down global persistent thread pool: {e}")
+
 
 __all__ = [
     # QThread Workers
     'StreamingWorker',
-    'ChatStreamingWorker', 
+    'ChatStreamingWorker',
     'AudioStreamingWorker',
     'MonitoringWorker',
-    
+
     # QRunnable Tasks
     'MessageProcessingTask',
     'FileProcessingTask',
     'DataProcessingTask',
     'CalculationTask',
-    
+
     # Managers
     'ThreadPoolManager',
     'ThreadMonitor',
     'ThreadingService',
     'PersistentThreadPool',
-    
+
     # Thread Calculator
     'ThreadCalculator',
     'ThreadRecommendations',
@@ -88,14 +92,14 @@ __all__ = [
     'get_thread_recommendations',
     'get_pool_thread_count',
     'analyze_system',
-    
+
     # Global instances
     'get_global_thread_pool_manager',
     'get_global_thread_monitor',
     'get_global_threading_service',
     'get_global_persistent_thread_pool',
-    
+
     # Shutdown functions
     'shutdown_global_threading_service',
     'shutdown_global_persistent_thread_pool'
-] 
+]

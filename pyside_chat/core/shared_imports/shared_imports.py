@@ -9,7 +9,7 @@ Usage:
 """
 import os
 
-#Logging
+# Logging
 from pyside_chat.core.logging.logger import CustomLogger
 from pyside_chat.core.logging.helpers import LoggingHelpers
 
@@ -167,7 +167,7 @@ except ImportError:
 
 # Threading service imports
 try:
-    from pyside_chat.core.threading.threading_service import  get_global_threading_service
+    from pyside_chat.core.threading.threading_service import get_global_threading_service
     from pyside_chat.core.threading.persistent_thread_pool import get_global_persistent_thread_pool
     from pyside_chat.core.threading.qrunnable_tasks import DataProcessingTask
 except ImportError:
@@ -175,4 +175,4 @@ except ImportError:
     get_global_persistent_thread_pool = None
     DataProcessingTask = None
 
-# Note: PySide6 and pyside_chat imports are intentionally excluded from this file. 
+# Note: PySide6 and pyside_chat imports are intentionally excluded from this file.

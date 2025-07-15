@@ -62,7 +62,7 @@ class PersonalityMetadata:
     author: str = ""
     category: str = "general"
     tags: List[str] = None
-    
+
     def __post_init__(self):
         if self.tags is None:
             self.tags = []
@@ -75,4 +75,4 @@ class PersonalityPrompt:
     user_prompt_template: str
     context_prompt: str
     examples: List[str]
-    constraints: List[str] 
+    constraints: List[str]

@@ -9,9 +9,10 @@ from typing import Dict, Optional
 
 logger = CustomLogger.get_logger(__name__)
 
+
 class InputControls(QObject):
     """Input Controls component for message input and settings"""
-    
+
     # Signals
     message_sent = Signal(str)  # Emitted when user sends a message
     message_cancelled = Signal()  # Emitted when user cancels a message
@@ -19,25 +20,25 @@ class InputControls(QObject):
     temperature_changed = Signal(float)  # Emitted when temperature changes
     personality_changed = Signal(str)  # Emitted when personality changes
     model_changed = Signal(str)  # Emitted when model changes
-    
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.parent = parent
-        
+
         # State variables
         self.is_streaming = False
         self.current_response = ""
         self.temperature = 0.7
-        
+
         # Setup UI components
         self.setup_ui_components()
-        
+
         # Setup connections
         self.setup_connections()
-        
+
         # Initialize personality list from service
         self.initialize_personality_list()
-        
+
     def setup_ui_components(self):
         """Setup UI components for input controls"""
         # Input area
@@ -209,109 +210,117 @@ class InputControls(QObject):
         # Set initial mode
         self.set_input_mode("Chat")
         self.mode_combo.setCurrentText("Chat")
-        
+
     def setup_connections(self):
         """Setup signal connections"""
         # Connect buttons
         self.send_button.clicked.connect(self.send_message)
         self.cancel_button.clicked.connect(self.cancel_message)
-        
+
         # Connect temperature slider
-        self.temperature_slider.valueChanged.connect(self.on_temperature_changed)
-        
+        self.temperature_slider.valueChanged.connect(
+            self.on_temperature_changed)
+
         # Connect personality combo
-        self.personality_combo.currentTextChanged.connect(self.on_personality_combo_changed)
-        
+        self.personality_combo.currentTextChanged.connect(
+            self.on_personality_combo_changed)
+
         # Connect model combo
         self.model_combo.currentTextChanged.connect(self.on_model_changed)
-        
+
         # Connect mode combo
         self.mode_combo.currentTextChanged.connect(self.set_input_mode)
-        
+
     def set_input_mode(self, mode):
         """Set the input mode (Chat or Voice)"""
         logger.debug(f"Setting input mode to: {mode}")
-        
+
         if mode == "Chat":
             # Show text input controls
             self.message_input.show()
             self.send_button.show()
             self.cancel_button.hide()  # Hide cancel button in chat mode initially
-            logger.debug("[VOICE DEBUG] Chat mode: showed message input and send button")
+            logger.debug(
+                "[VOICE DEBUG] Chat mode: showed message input and send button")
         elif mode == "Voice":
             # Hide text input controls completely in voice mode
             self.message_input.hide()
             self.send_button.hide()
             self.cancel_button.hide()
-            logger.debug("[VOICE DEBUG] Voice mode: hid message input, send button, and cancel button")
-        
+            logger.debug(
+                "[VOICE DEBUG] Voice mode: hid message input, send button, and cancel button")
+
         self.input_mode_changed.emit(mode)
-    
+
     def on_temperature_changed(self, value):
         """Handle temperature slider value change"""
         self.temperature = value / 100.0  # Convert from 0-100 to 0.0-1.0
         self.temperature_label.setText(f"{self.temperature:.1f}")
         logger.debug(f"Temperature changed to: {self.temperature}")
         self.temperature_changed.emit(self.temperature)
-    
+
     def on_personality_combo_changed(self, personality_name: str):
         """Handle personality combo box change"""
         if personality_name:
             # Get the actual personality name from the combo box data
             current_index = self.personality_combo.currentIndex()
             if current_index >= 0:
-                actual_personality_name = self.personality_combo.itemData(current_index)
-                logger.debug(f"Personality changed to: {actual_personality_name} (display: {personality_name.replace(' → ', ' -> ')})")
+                actual_personality_name = self.personality_combo.itemData(
+                    current_index)
+                logger.debug(
+                    f"Personality changed to: {actual_personality_name} (display: {personality_name.replace(' → ', ' -> ')})")
                 self.personality_changed.emit(actual_personality_name)
             else:
                 logger.debug(f"Personality changed to: {personality_name}")
                 self.personality_changed.emit(personality_name)
-            
+
     def on_model_changed(self, model_name: str):
         """Handle model combo box change"""
         logger.debug(f"Model changed to: {model_name}")
         self.model_changed.emit(model_name)
-    
+
     def send_message(self):
         """Send the current message"""
         try:
             message = self.message_input.toPlainText().strip()
             if not message:
                 return
-                
+
             # Clear input
             self.message_input.clear()
-            
+
             # Start streaming state
             self.start_streaming()
-            
+
             # Emit signal
             self.message_sent.emit(message)
-            
+
         except Exception as e:
             logger.error(f"Error sending message: {str(e)}")
             # Ensure we're not left in a bad state
             self.stop_streaming()
-        
+
     def cancel_message(self):
         """Cancel the current message"""
         self.stop_streaming()
         self.message_cancelled.emit()
-    
+
     def start_streaming(self):
         """Start streaming state"""
         if not self.is_streaming:  # Only change state if not already streaming
             self.is_streaming = True
             self.current_response = ""
-            
+
             # Only manage send/cancel buttons if we're in chat mode
             # (Button state now handled by ChatTab._on_conversation_updated)
             if self.mode_combo.currentText() == "Chat":
                 self.cancel_button.setVisible(True)
-                logger.debug("[VOICE DEBUG] Chat mode streaming: showed cancel button")
+                logger.debug(
+                    "[VOICE DEBUG] Chat mode streaming: showed cancel button")
             else:
-                logger.debug("[VOICE DEBUG] Voice mode streaming: buttons remain hidden")
-            
+                logger.debug(
+                    "[VOICE DEBUG] Voice mode streaming: buttons remain hidden")
+
             # Double-check that the button is actually disabled (handled by ChatTab)
             # if self.mode_combo.currentText() == "Chat" and self.send_button.isEnabled():
             #     logger.warning("Send button was not disabled, forcing disable")
@@ -319,52 +328,56 @@ class InputControls(QObject):
             #     self.send_button.update()
             #     from pyside_chat.core.utils.threading_utils import safe_process_events_alternative
             #     safe_process_events_alternative()
-    
+
     def stop_streaming(self):
         """Stop streaming state"""
-        logger.debug("[DEBUG] stop_streaming called. is_streaming: %s", self.is_streaming)
+        logger.debug(
+            "[DEBUG] stop_streaming called. is_streaming: %s", self.is_streaming)
         self.is_streaming = False
-        
+
         # Only manage send/cancel buttons if we're in chat mode
         # (Button state now handled by ChatTab._on_conversation_updated)
         if self.mode_combo.currentText() == "Chat":
             self.cancel_button.setVisible(False)
-            logger.debug(f"[DEBUG] stop_streaming: cancel_button visible? {self.cancel_button.isVisible()}")
+            logger.debug(
+                f"[DEBUG] stop_streaming: cancel_button visible? {self.cancel_button.isVisible()}")
         else:
             # In voice mode, buttons should remain hidden
-            logger.debug("[VOICE DEBUG] Voice mode streaming stopped: buttons remain hidden")
-        
+            logger.debug(
+                "[VOICE DEBUG] Voice mode streaming stopped: buttons remain hidden")
+
         self.cancel_button.update()
         from pyside_chat.core.utils.threading_utils import safe_process_events_alternative
         safe_process_events_alternative()
-        
+
         # Double-check that the button is actually enabled (handled by ChatTab)
         # if self.mode_combo.currentText() == "Chat" and not self.send_button.isEnabled():
         #     logger.warning("Send button was not enabled, forcing enable")
         #     self.send_button.setEnabled(True)
         #     self.send_button.update()
         #     safe_process_events_alternative()
-    
+
     def force_enable_send_button(self):
         """Force enable the send button and ensure UI is updated (emergency UI reset only)"""
         logger.debug("Force enabling send button")
         self.is_streaming = False
-        
+
         # Only manage send/cancel buttons if we're in chat mode
         if self.mode_combo.currentText() == "Chat":
             self.send_button.setEnabled(True)
             self.cancel_button.setVisible(False)
-            logger.debug("[VOICE DEBUG] Chat mode: enabled send button, hid cancel button (emergency UI reset)")
+            logger.debug(
+                "[VOICE DEBUG] Chat mode: enabled send button, hid cancel button (emergency UI reset)")
         else:
             # In voice mode, buttons should remain hidden
             logger.debug("[VOICE DEBUG] Voice mode: buttons remain hidden")
-        
+
         self.send_button.update()
         self.cancel_button.update()
         from pyside_chat.core.utils.threading_utils import safe_process_events_alternative
         safe_process_events_alternative()
         logger.debug(f"Send button enabled: {self.send_button.isEnabled()}")
-    
+
     def update_model_list(self, models: list):
         """Update the model combo box with available models, always including 'Auto' as the first option"""
         current_model = self.model_combo.currentText()
@@ -376,26 +389,28 @@ class InputControls(QObject):
             self.model_combo.setCurrentText(current_model)
         elif all_models:
             self.model_combo.setCurrentIndex(0)
-    
+
     def update_personality_list(self, personalities: list):
         """Update the personality combo box with available personalities"""
         current_personality = self.personality_combo.currentText()
         self.personality_combo.clear()
-        
+
         # Sort personalities to group by folder structure
-        sorted_personalities = sorted(personalities, key=lambda x: (x.count('.'), x))
-        
+        sorted_personalities = sorted(
+            personalities, key=lambda x: (x.count('.'), x))
+
         # Add personalities with folder structure display
         for personality in sorted_personalities:
             if '.' in personality:
                 # Show folder structure in display
                 parts = personality.split('.')
                 display_name = f"{' → '.join(parts[:-1])} → {parts[-1]}"
-                self.personality_combo.addItem(display_name, personality)  # Store original name as data
+                # Store original name as data
+                self.personality_combo.addItem(display_name, personality)
             else:
                 # Simple personality name
                 self.personality_combo.addItem(personality, personality)
-        
+
         # Try to restore the previously selected personality
         if current_personality:
             # Find the item with the current personality name
@@ -410,19 +425,19 @@ class InputControls(QObject):
                     self.personality_combo.setCurrentIndex(0)
         elif self.personality_combo.count() > 0:
             self.personality_combo.setCurrentIndex(0)
-    
+
     def get_current_model(self) -> str:
         """Get the currently selected model"""
         return self.model_combo.currentText()
-        
+
     def get_temperature(self) -> float:
         """Get the current temperature setting"""
         return self.temperature
-        
+
     def get_current_response(self) -> str:
         """Get the current streaming response"""
         return self.current_response
-        
+
     def get_current_personality(self) -> str:
         """Get the currently selected personality"""
         # Return the actual personality name (data) instead of display text
@@ -430,7 +445,7 @@ class InputControls(QObject):
         if current_index >= 0:
             return self.personality_combo.itemData(current_index)
         return self.personality_combo.currentText()  # Fallback
-    
+
     def initialize_personality_list(self):
         """Initialize the personality list from the personality service"""
         try:
@@ -443,9 +458,10 @@ class InputControls(QObject):
                         personalities = personality_service.get_available_personalities()
                         if personalities:
                             self.update_personality_list(personalities)
-                            logger.debug(f"[INPUT_CONTROLS] Initialized personality list with {len(personalities)} personalities")
+                            logger.debug(
+                                f"[INPUT_CONTROLS] Initialized personality list with {len(personalities)} personalities")
                             return
-            
+
             # Fallback: try to get from personality tab
             if hasattr(self.parent, 'get_ui_manager'):
                 ui_manager = self.parent.get_ui_manager()
@@ -454,18 +470,20 @@ class InputControls(QObject):
                     personalities = personality_tab.personality_model.get_available_personalities()
                     if personalities:
                         self.update_personality_list(personalities)
-                        logger.debug(f"[INPUT_CONTROLS] Initialized personality list from personality tab with {len(personalities)} personalities")
+                        logger.debug(
+                            f"[INPUT_CONTROLS] Initialized personality list from personality tab with {len(personalities)} personalities")
                         return
-            
+
             # Final fallback: use default personality
             logger.debug("[INPUT_CONTROLS] Using default personality list")
             self.update_personality_list(["Specialists.assistant"])
-            
+
         except Exception as e:
-            logger.error(f"[INPUT_CONTROLS] Error initializing personality list: {e}")
+            logger.error(
+                f"[INPUT_CONTROLS] Error initializing personality list: {e}")
             # Use default personality list as fallback
             self.update_personality_list(["Specialists.assistant"])
-    
+
     def get_ui_components(self) -> dict:
         """Get UI components for integration with parent"""
         return {
@@ -479,7 +497,7 @@ class InputControls(QObject):
             'personality_combo': self.personality_combo,
             'temperature_slider': self.temperature_slider
         }
-    
+
     def eventFilter(self, obj, event):
         """Handle key events in message input"""
         if obj == self.message_input and event.type() == QEvent.Type.KeyPress:
@@ -492,4 +510,4 @@ class InputControls(QObject):
                 cursor = self.message_input.textCursor()
                 cursor.insertText("\n")
                 return True
-        return super().eventFilter(obj, event) 
+        return super().eventFilter(obj, event)

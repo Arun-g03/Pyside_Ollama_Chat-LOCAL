@@ -19,31 +19,31 @@ Usage:
 from PySide6.QtCore import (
     # Core objects
     QObject, QThread, QTimer, QEvent, QUrl,
-    
+
     # Signals and slots
     Signal, Slot, QMetaObject, Q_ARG,
-    
+
     # Threading and synchronization
     QMutex, QMutexLocker, QWaitCondition, QRunnable, QThreadPool,
-    
+
     # Application and threading
     Qt, QCoreApplication,
-    
+
     # Data handling
     QByteArray, QDataStream, QIODevice,
-    
+
     # Geometry and positioning
     QPoint, QPointF, QRect, QRectF, QSize, QSizeF,
-    
+
     # Time and date
     QDate, QTime, QDateTime,
-    
+
     # File system
     QFile, QFileInfo, QDir,
-    
+
     # Settings
     QSettings,
-    
+
     # Process management
     QProcess
 )
@@ -52,10 +52,10 @@ from PySide6.QtCore import (
 from PySide6.QtWidgets import (
     # Main application windows
     QApplication, QMainWindow, QDialog, QWidget,
-    
+
     # Layout managers
     QVBoxLayout, QHBoxLayout, QGridLayout, QFormLayout, QSplitter,
-    
+
     # Basic widgets
     QLabel, QPushButton, QLineEdit, QTextEdit, QPlainTextEdit,
     QListWidget, QListWidgetItem, QComboBox, QCheckBox, QRadioButton,
@@ -63,21 +63,21 @@ from PySide6.QtWidgets import (
     QTabWidget, QTabBar, QGroupBox, QFrame, QMenu, QMenuBar,
     QStatusBar, QToolBar, QToolButton, QMessageBox, QInputDialog,
     QFileDialog, QColorDialog, QFontDialog,
-    
+
     # Advanced widgets
     QTableWidget, QTableWidgetItem, QTreeWidget, QTreeWidgetItem,
     QTextBrowser, QCalendarWidget, QDateEdit, QTimeEdit, QDateTimeEdit,
     QSlider, QDial, QLCDNumber, QProgressBar, QScrollBar, QHeaderView,
-    
+
     # Container widgets
     QStackedWidget, QSplitter, QScrollArea, QMdiArea, QMdiSubWindow,
-    
+
     # Dialog widgets
     QDialogButtonBox, QWizard, QWizardPage, QProgressDialog,
-    
+
     # Graphics and visualization
     QGraphicsView, QGraphicsScene, QGraphicsItem, QGraphicsPixmapItem,
-    
+
     # System integration
     QSystemTrayIcon, QApplication
 )
@@ -87,29 +87,29 @@ from PySide6.QtGui import (
     # Painting and drawing
     QPainter, QPainterPath, QPen, QBrush, QColor, QPalette,
     QFont, QFontMetrics, QFontInfo, QTextCursor, QTextCharFormat,
-    
+
     # Gradients and effects
     QLinearGradient, QRadialGradient, QConicalGradient,
-    
+
     # Transformations
     QTransform,
-    
+
     # Images and pixmaps
     QPixmap, QImage, QIcon, QBitmap,
-    
+
     # Input handling
     QKeyEvent, QMouseEvent, QWheelEvent, QDragEnterEvent, QDropEvent,
     QContextMenuEvent, QFocusEvent, QResizeEvent, QMoveEvent,
-    
+
     # Text handling
     QTextDocument, QTextBlock, QTextFragment, QTextLayout,
-    
+
     # Cursor and selection
     QCursor, QDrag,
-    
+
     # System integration
     QClipboard, QAction, QActionGroup, QShortcut,
-    
+
     # Accessibility
     QAccessible, QAccessibleInterface
 )
@@ -118,16 +118,16 @@ from PySide6.QtGui import (
 from PySide6.QtMultimedia import (
     # Audio playback
     QMediaPlayer, QAudioOutput, QAudioInput, QAudioDevice,
-    
+
     # Video playback
-    #QVideoWidget, QMediaPlaylist,
-    
+    # QVideoWidget, QMediaPlaylist,
+
     # Audio formats
     QAudioFormat, QAudioBuffer, QAudioDecoder,
-    
+
     # Camera
     QCamera, QCameraDevice, QImageCapture, QMediaRecorder,
-    
+
     # Sound effects
     QSoundEffect
 )
@@ -141,16 +141,16 @@ try:
     from PySide6.QtNetwork import (
         # HTTP and network requests
         QNetworkAccessManager, QNetworkRequest, QNetworkReply,
-        
+
         # WebSocket support
         QWebSocket, QWebSocketServer,
-        
+
         # SSL/TLS
         QSslSocket, QSslConfiguration, QSslCertificate,
-        
+
         # Network information
         QNetworkInterface, QNetworkAddressEntry, QHostAddress,
-        
+
         # DNS
         QHostInfo, QDnsLookup
     )
@@ -163,10 +163,10 @@ try:
     from PySide6.QtSql import (
         # Database connections
         QSqlDatabase, QSqlQuery, QSqlRecord, QSqlField,
-        
+
         # Database models
         QSqlTableModel, QSqlQueryModel, QSqlRelationalTableModel,
-        
+
         # Database drivers
         QSqlDriver, QSqlDriverCreator, QSqlDriverCreatorBase
     )
@@ -179,7 +179,7 @@ try:
     from PySide6.QtXml import (
         # XML DOM
         QDomDocument, QDomElement, QDomNode, QDomNodeList,
-        
+
         # XML parsing
         QXmlStreamReader, QXmlStreamWriter
     )
@@ -208,17 +208,19 @@ Qt_MouseButtons = Qt.MouseButtons
 # UTILITY FUNCTIONS FOR QT
 # =============================================================================
 
+
 def is_main_thread() -> bool:
     """Check if current thread is the main (GUI) thread."""
     from PySide6.QtWidgets import QApplication
     from PySide6.QtCore import QThread
     return QThread.currentThread() == QApplication.instance().thread()
 
+
 def safe_ui_update(func, *args, **kwargs):
     """Safely execute UI update function in the main thread."""
     from PySide6.QtCore import QMetaObject, Q_ARG, Qt
     from PySide6.QtWidgets import QApplication
-    
+
     if is_main_thread():
         return func(*args, **kwargs)
     else:
@@ -229,22 +231,27 @@ def safe_ui_update(func, *args, **kwargs):
             Qt.ConnectionType.QueuedConnection
         )
 
+
 def safe_signal_connect(signal, slot, logger=None):
     """Safely connect a signal to a slot with error handling."""
     try:
         if signal is not None and hasattr(signal, 'connect'):
             signal.connect(slot)
             if logger:
-                logger.debug(f"Successfully connected signal {signal} to slot {slot}")
+                logger.debug(
+                    f"Successfully connected signal {signal} to slot {slot}")
             return True
         else:
             if logger:
-                logger.warning(f"Signal {signal} is None or has no connect method")
+                logger.warning(
+                    f"Signal {signal} is None or has no connect method")
             return False
     except Exception as e:
         if logger:
-            logger.error(f"Error connecting signal {signal} to slot {slot}: {e}")
+            logger.error(
+                f"Error connecting signal {signal} to slot {slot}: {e}")
         return False
+
 
 def safe_signal_disconnect(signal, slot=None, logger=None):
     """Safely disconnect a signal from a slot with error handling."""
@@ -259,12 +266,14 @@ def safe_signal_disconnect(signal, slot=None, logger=None):
             return True
         else:
             if logger:
-                logger.warning(f"Signal {signal} is None or has no disconnect method")
+                logger.warning(
+                    f"Signal {signal} is None or has no disconnect method")
             return False
     except Exception as e:
         if logger:
             logger.error(f"Error disconnecting signal {signal}: {e}")
         return False
+
 
 def create_timer(interval: int = 1000, single_shot: bool = False):
     """Create and configure a QTimer with common settings."""
@@ -273,8 +282,9 @@ def create_timer(interval: int = 1000, single_shot: bool = False):
     timer.setSingleShot(single_shot)
     return timer
 
-def create_message_box(title: str, text: str, icon=QMessageBox.Icon.Information, 
-                      buttons=QMessageBox.StandardButton.Ok):
+
+def create_message_box(title: str, text: str, icon=QMessageBox.Icon.Information,
+                       buttons=QMessageBox.StandardButton.Ok):
     """Create a configured message box."""
     msg_box = QMessageBox()
     msg_box.setWindowTitle(title)
@@ -287,17 +297,20 @@ def create_message_box(title: str, text: str, icon=QMessageBox.Icon.Information,
 # COMMON QT WIDGET CREATION HELPERS
 # =============================================================================
 
+
 def create_button(text: str, parent=None, enabled: bool = True):
     """Create a configured push button."""
     button = QPushButton(text, parent)
     button.setEnabled(enabled)
     return button
 
+
 def create_label(text: str, parent=None, alignment=Qt.AlignmentFlag.AlignLeft):
     """Create a configured label."""
     label = QLabel(text, parent)
     label.setAlignment(alignment)
     return label
+
 
 def create_text_edit(parent=None, placeholder: str = ""):
     """Create a configured text edit widget."""
@@ -306,6 +319,7 @@ def create_text_edit(parent=None, placeholder: str = ""):
         text_edit.setPlaceholderText(placeholder)
     return text_edit
 
+
 def create_line_edit(parent=None, placeholder: str = ""):
     """Create a configured line edit widget."""
     line_edit = QLineEdit(parent)
@@ -313,12 +327,14 @@ def create_line_edit(parent=None, placeholder: str = ""):
         line_edit.setPlaceholderText(placeholder)
     return line_edit
 
+
 def create_combo_box(parent=None, items: list = None):
     """Create a configured combo box widget."""
     combo_box = QComboBox(parent)
     if items:
         combo_box.addItems(items)
     return combo_box
+
 
 def create_progress_bar(parent=None, minimum: int = 0, maximum: int = 100):
     """Create a configured progress bar."""
@@ -331,12 +347,14 @@ def create_progress_bar(parent=None, minimum: int = 0, maximum: int = 100):
 # LAYOUT HELPERS
 # =============================================================================
 
+
 def create_vertical_layout(parent=None, spacing: int = 6, margin: int = 6):
     """Create a configured vertical layout."""
     layout = QVBoxLayout(parent)
     layout.setSpacing(spacing)
     layout.setContentsMargins(margin, margin, margin, margin)
     return layout
+
 
 def create_horizontal_layout(parent=None, spacing: int = 6, margin: int = 6):
     """Create a configured horizontal layout."""
@@ -345,12 +363,14 @@ def create_horizontal_layout(parent=None, spacing: int = 6, margin: int = 6):
     layout.setContentsMargins(margin, margin, margin, margin)
     return layout
 
+
 def create_grid_layout(parent=None, spacing: int = 6, margin: int = 6):
     """Create a configured grid layout."""
     layout = QGridLayout(parent)
     layout.setSpacing(spacing)
     layout.setContentsMargins(margin, margin, margin, margin)
     return layout
+
 
 def create_form_layout(parent=None, spacing: int = 6, margin: int = 6):
     """Create a configured form layout."""
@@ -375,4 +395,4 @@ def create_form_layout(parent=None, spacing: int = 6, margin: int = 6):
 # - Threading: QThread, QTimer, Signal, QObject
 # - Painting: QPainter, QColor, QPen, QBrush
 # - Audio: QMediaPlayer, QAudioOutput
-# - Dialogs: QMessageBox, QDialog, QFileDialog 
+# - Dialogs: QMessageBox, QDialog, QFileDialog

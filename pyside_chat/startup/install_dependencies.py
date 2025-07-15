@@ -24,5 +24,6 @@ def main():
     install_python_requirements()  # Let it find requirements.txt automatically
     print("\nAll dependencies installed. You can now run: python main.py")
 
+
 if __name__ == "__main__":
-    main() 
+    main()
