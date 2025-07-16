@@ -472,6 +472,303 @@ class AudioStreamingWorker(StreamingWorker):
             self.finished.emit()
 
 
+class VoiceProcessingWorker(StreamingWorker):
+    """
+    Worker for voice processing operations (STT, TTS, recording).
+
+    This is a long-running operation that needs:
+    - Continuous voice processing
+    - Signal/slot communication for voice events
+    - Persistent thread lifecycle
+    - Reusable configuration for thread pools
+    """
+
+    # Voice-specific signals
+    voice_input_received = Signal(str)  # Emitted when voice input is received
+    voice_input_error = Signal(str)     # Emitted when voice input fails
+    tts_started = Signal()              # Emitted when TTS starts
+    tts_finished = Signal()             # Emitted when TTS finishes
+    tts_error = Signal(str)             # Emitted when TTS fails
+    recording_started = Signal()        # Emitted when recording starts
+    recording_stopped = Signal()        # Emitted when recording stops
+    recording_error = Signal(str)       # Emitted when recording fails
+    audio_level_changed = Signal(float) # Emitted when audio level changes
+    eq_bars_changed = Signal(list)      # Emitted when EQ bars change
+    user_interrupted = Signal()         # Emitted when user interrupts
+    request_cancelled = Signal()        # Emitted when request is cancelled
+
+    def configure_voice_processing(self, operation_type: str, **kwargs):
+        """
+        Configure the worker for voice processing.
+
+        Args:
+            operation_type: Type of voice operation ('stt', 'tts', 'recording')
+            **kwargs: Additional configuration parameters
+        """
+        try:
+            super().configure_streaming(
+                operation_type=operation_type,
+                **kwargs
+            )
+
+            # Store configuration for voice processing
+            self._configuration.update({
+                'operation_type': operation_type,
+                **kwargs
+            })
+
+            logger.debug(
+                f"[ID:TH029] VoiceProcessingWorker configured for operation: {operation_type}")
+
+        except Exception as e:
+            logger.error(
+                f"[ID:TH030] Error configuring voice processing worker: {e}")
+
+    def start_voice_processing(self):
+        """Start voice processing operation."""
+        try:
+            print(f"[VOICE WORKER] 🎤 Starting voice processing operation")
+            self._log_thread_info("starting voice processing")
+            self._running = True
+            self._should_stop = False
+            self._start_time = time.time()
+
+            # Start the actual voice processing operation
+            self._stream_operation()
+
+        except Exception as e:
+            print(f"[VOICE WORKER] ❌ Error starting voice processing: {e}")
+            logger.error(f"[ID:TH031] Error starting voice processing: {e}")
+            self.error.emit(f"Failed to start voice processing: {str(e)}")
+
+    def _stream_operation(self):
+        """Stream voice processing operations."""
+        try:
+            self._log_thread_info("starting voice processing operation")
+
+            # Get configuration
+            operation_type = self._configuration.get('operation_type', 'unknown')
+            
+            logger.debug(f"[ID:TH032] Voice processing operation: {operation_type}")
+            self.progress_updated.emit(f"Starting {operation_type} processing...")
+
+            if operation_type == 'stt':
+                self._process_stt_operation()
+            elif operation_type == 'tts':
+                self._process_tts_operation()
+            elif operation_type == 'recording':
+                self._process_recording_operation()
+            else:
+                error_msg = f"Unknown voice operation type: {operation_type}"
+                logger.error(f"[ID:TH033] {error_msg}")
+                self.error.emit(error_msg)
+                return
+
+            self.progress_updated.emit(f"Voice processing completed: {operation_type}")
+            logger.debug(f"[ID:TH034] Voice processing finished: {operation_type}")
+
+        except Exception as e:
+            error_msg = f"Unexpected error during voice processing: {str(e)}"
+            logger.error(f"[ID:TH035] {error_msg}")
+            logger.error(
+                f"[ID:TH036] Voice processing error traceback: {traceback.format_exc()}")
+            self.error.emit(error_msg)
+        finally:
+            self._running = False
+            self.finished.emit()
+
+    def _process_stt_operation(self):
+        """Process speech-to-text operation."""
+        try:
+            # Get STT configuration
+            audio_data = self._configuration.get('audio_data')
+            stt_service = self._configuration.get('stt_service')
+            
+            if not stt_service:
+                # Try to create an STT service if not provided
+                try:
+                    from pyside_chat.features.voice.stt.stt_service import STTService
+                    stt_service = STTService()
+                    logger.debug("[ID:TH037] Created STT service dynamically")
+                except Exception as e:
+                    raise ValueError(f"STT service not available: {str(e)}")
+            
+            if not audio_data:
+                raise ValueError("Audio data not provided in configuration")
+
+            logger.debug("[ID:TH037] Processing STT operation")
+            self.voice_processing_started.emit()
+
+            # Process audio data for STT
+            # This would integrate with the actual STT service
+            # For now, we'll simulate the process
+            time.sleep(0.5)  # Simulate processing time
+            
+            # Simulate text result
+            simulated_text = "Hello, this is a simulated voice input"
+            self.voice_input_received.emit(simulated_text)
+            
+            logger.debug("[ID:TH038] STT operation completed")
+            self.voice_processing_finished.emit()
+
+        except Exception as e:
+            error_msg = f"STT processing error: {str(e)}"
+            logger.error(f"[ID:TH039] {error_msg}")
+            self.voice_input_error.emit(error_msg)
+
+    def _process_tts_operation(self):
+        """Process text-to-speech operation."""
+        try:
+            # Get TTS configuration
+            text = self._configuration.get('text')
+            tts_service = self._configuration.get('tts_service')
+            
+            if not tts_service:
+                # Try to create a TTS service if not provided
+                try:
+                    from pyside_chat.features.voice.tts.tts_service import TTSService
+                    tts_service = TTSService()
+                    logger.debug("[ID:TH040] Created TTS service dynamically")
+                except Exception as e:
+                    raise ValueError(f"TTS service not available: {str(e)}")
+            
+            if not text:
+                raise ValueError("Text not provided in configuration")
+
+            logger.debug("[ID:TH040] Processing TTS operation")
+            self.tts_started.emit()
+
+            # Process text for TTS
+            # This would integrate with the actual TTS service
+            # For now, we'll simulate the process
+            time.sleep(1.0)  # Simulate processing time
+            
+            logger.debug("[ID:TH041] TTS operation completed")
+            self.tts_finished.emit()
+
+        except Exception as e:
+            error_msg = f"TTS processing error: {str(e)}"
+            logger.error(f"[ID:TH042] {error_msg}")
+            self.tts_error.emit(error_msg)
+
+    def _process_recording_operation(self):
+        """Process audio recording operation."""
+        try:
+            # Get recording configuration
+            recording_service = self._configuration.get('recording_service')
+            
+            if not recording_service:
+                # Try to create a recording service if not provided
+                try:
+                    from pyside_chat.features.voice.audio.recording_service import RecordingService
+                    recording_service = RecordingService()
+                    logger.debug("[ID:TH043] Created recording service dynamically")
+                except Exception as e:
+                    raise ValueError(f"Recording service not available: {str(e)}")
+
+            print(f"[VOICE WORKER] 🎤 Starting actual recording operation")
+            logger.debug("[ID:TH043] Processing recording operation")
+            
+            # Reset processing flag
+            self._auto_stopped_processed = False
+            
+            self.recording_started.emit()
+
+            # Connect recording service signals to worker signals with QueuedConnection for thread safety
+            recording_service.recording_started.connect(
+                self.recording_started.emit, Qt.ConnectionType.QueuedConnection)
+            recording_service.recording_stopped.connect(
+                self.recording_stopped.emit, Qt.ConnectionType.QueuedConnection)
+            recording_service.recording_error.connect(
+                self.recording_error.emit, Qt.ConnectionType.QueuedConnection)
+            recording_service.audio_level_changed.connect(
+                self.audio_level_changed.emit, Qt.ConnectionType.QueuedConnection)
+            recording_service.eq_bars_changed.connect(
+                self.eq_bars_changed.emit, Qt.ConnectionType.QueuedConnection)
+            recording_service.recording_auto_stopped.connect(
+                self._on_recording_auto_stopped, Qt.ConnectionType.QueuedConnection)
+
+            # Start actual recording
+            print(f"[VOICE WORKER] 🎙️ Calling recording_service.start_recording()")
+            recording_service.start_recording()
+            
+            # Wait for recording to complete (it will auto-stop on silence)
+            # Add timeout to prevent infinite hanging
+            timeout_start = time.time()
+            timeout_duration = 30.0  # 30 second timeout
+            
+            while recording_service.is_recording and not self._should_stop:
+                time.sleep(0.1)  # Check every 100ms
+                
+                # Check for timeout
+                if time.time() - timeout_start > timeout_duration:
+                    print(f"[VOICE WORKER] ⚠️ Recording timeout reached, stopping")
+                    recording_service.stop_recording()
+                    break
+                
+            print(f"[VOICE WORKER] ✅ Recording operation completed")
+            logger.debug("[ID:TH044] Recording operation completed")
+            
+            # Fallback: If recording stopped but auto-stopped signal wasn't emitted,
+            # manually trigger processing
+            if not hasattr(self, '_auto_stopped_processed'):
+                print(f"[VOICE WORKER] 🔄 Fallback: Manual processing trigger")
+                self._on_recording_auto_stopped()
+
+        except Exception as e:
+            error_msg = f"Recording processing error: {str(e)}"
+            print(f"[VOICE WORKER] ❌ {error_msg}")
+            logger.error(f"[ID:TH045] {error_msg}")
+            self.recording_error.emit(error_msg)
+
+    def _on_recording_auto_stopped(self):
+        """Handle recording auto-stopped signal"""
+        try:
+            # Prevent duplicate processing
+            if hasattr(self, '_auto_stopped_processed') and self._auto_stopped_processed:
+                print(f"[VOICE WORKER] ⚠️ Auto-stopped already processed, skipping")
+                return
+                
+            self._auto_stopped_processed = True
+            print(f"[VOICE WORKER] 🔇 Recording auto-stopped, processing audio")
+            logger.debug("[ID:TH046] Recording auto-stopped, processing audio")
+            
+            # Get the recording service from configuration
+            recording_service = self._configuration.get('recording_service')
+            if recording_service:
+                # Process the recorded audio
+                result = recording_service.stop_recording()
+                if result and result[0]:  # Audio file path and speech detected
+                    audio_file_path, speech_detected = result
+                    if speech_detected:
+                        print(f"[VOICE WORKER] 🎤 Speech detected, processing with STT")
+                        # Process with STT service
+                        stt_service = self._configuration.get('stt_service')
+                        if stt_service:
+                            # Use QTimer to process STT in a non-blocking way
+                            from PySide6.QtCore import QTimer
+                            def process_stt():
+                                try:
+                                    stt_service.process_audio_file(audio_file_path)
+                                except Exception as e:
+                                    print(f"[VOICE WORKER] ❌ STT processing error: {e}")
+                                    logger.error(f"[ID:TH048] STT processing error: {e}")
+                            
+                            # Process STT after a short delay to prevent blocking
+                            QTimer.singleShot(100, process_stt)
+                        else:
+                            print(f"[VOICE WORKER] ⚠️ STT service not available")
+                    else:
+                        print(f"[VOICE WORKER] 🔇 No speech detected")
+                else:
+                    print(f"[VOICE WORKER] ⚠️ No audio file to process")
+        except Exception as e:
+            print(f"[VOICE WORKER] ❌ Error processing recording: {e}")
+            logger.error(f"[ID:TH047] Error processing recording: {e}")
+            import traceback
+            logger.error(f"[ID:TH049] Recording processing traceback: {traceback.format_exc()}")
+
+
 class MonitoringWorker(StreamingWorker):
     """
     Worker for continuous monitoring tasks.

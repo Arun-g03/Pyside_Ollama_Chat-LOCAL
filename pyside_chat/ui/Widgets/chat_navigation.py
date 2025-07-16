@@ -272,14 +272,17 @@ class ChatNavigationWidget(QWidget):
         """Rename a conversation file"""
         try:
             old_filename = os.path.basename(filepath)
+            # Remove .json extension for display
+            old_display_name = old_filename.replace('.json', '')
+            
             new_filename, ok = QInputDialog.getText(
                 self, "Rename Conversation",
-                "Enter new filename:",
-                text=old_filename
+                "Enter new name for the conversation:",
+                text=old_display_name
             )
 
-            if ok and new_filename and new_filename != old_filename:
-                # Ensure .json extension
+            if ok and new_filename and new_filename != old_display_name:
+                # Add .json extension if not present
                 if not new_filename.endswith('.json'):
                     new_filename += '.json'
 
@@ -289,7 +292,7 @@ class ChatNavigationWidget(QWidget):
                 # Check if new filename already exists
                 if os.path.exists(new_filepath):
                     QMessageBox.warning(
-                        self, "Error", "A file with that name already exists.")
+                        self, "Error", "A conversation with that name already exists.")
                     return
 
                 # Use conversation manager to rename the file

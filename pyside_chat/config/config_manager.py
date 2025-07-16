@@ -251,7 +251,7 @@ class ConfigManager:
 
     def get_presence_penalty(self):
         """Get the presence penalty setting"""
-        return self.get("chat_settings.presence_penalty", 0.0)
+        return self.config.get('chat_settings', {}).get('presence_penalty', 0.0)
 
     def get_max_context_messages(self) -> int:
         """Get the maximum number of context messages for memory management"""

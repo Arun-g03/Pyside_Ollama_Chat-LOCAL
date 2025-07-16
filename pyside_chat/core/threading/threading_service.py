@@ -14,7 +14,7 @@ This service provides:
 """
 
 # Import new threading components
-from .qthread_workers import ChatStreamingWorker, AudioStreamingWorker, MonitoringWorker
+from .qthread_workers import ChatStreamingWorker, AudioStreamingWorker, MonitoringWorker, VoiceProcessingWorker
 from .qrunnable_tasks import MessageProcessingTask, FileProcessingTask, DataProcessingTask
 from .thread_pool_manager import get_global_thread_pool_manager
 from .thread_monitor import get_global_thread_monitor
@@ -41,6 +41,15 @@ class ThreadingService(QObject):
     progress_updated = Signal(str)  # For progress updates
     finished = Signal()  # For completion
     error = Signal(str)  # For errors
+    
+    # Voice processing signals for UI updates
+    voice_audio_level_changed = Signal(float)  # Audio level for UI
+    voice_eq_bars_changed = Signal(list)  # EQ bars for UI
+    voice_recording_started = Signal()  # Recording started
+    voice_recording_stopped = Signal()  # Recording stopped
+    voice_recording_error = Signal(str)  # Recording error
+    voice_input_received = Signal(str)  # Voice input received
+    voice_input_error = Signal(str)  # Voice input error
 
     def __init__(self, parent=None):
         try:
@@ -173,7 +182,7 @@ class ThreadingService(QObject):
             # Initialize voice processing pool for voice service operations
             self.persistent_thread_pool.initialize_pool(
                 'voice_processing',
-                AudioStreamingWorker,  # Reuse audio streaming worker for voice processing
+                VoiceProcessingWorker,  # Use dedicated voice processing worker
                 size=voice_processing_size,
                 max_wait_time=15.0,
                 idle_timeout=240.0
@@ -435,6 +444,137 @@ class ThreadingService(QObject):
             logger.error(f"[ID:TS025] Error stopping monitoring: {e}")
             logger.error(traceback.format_exc())
 
+    def start_voice_processing(self, operation_type: str, **kwargs) -> bool:
+        """
+        Start voice processing using persistent thread pool.
+
+        Args:
+            operation_type: Type of voice operation ('stt', 'tts', 'recording')
+            **kwargs: Additional configuration parameters
+
+        Returns:
+            bool: True if started successfully, False otherwise
+        """
+        try:
+            logger.debug(
+                f"[ID:TS026] Starting voice processing for operation: {operation_type}")
+
+            # Check if persistent thread pool is available
+            if self.persistent_thread_pool is None:
+                logger.error(
+                    "[ID:TS026A] Persistent thread pool is not available")
+                return False
+
+            # Stop any existing voice processing
+            self.stop_voice_processing()
+
+            # Get thread from persistent pool
+            thread = self.persistent_thread_pool.get_thread(
+                'voice_processing', timeout=15.0)
+            if not thread:
+                logger.error(
+                    "[ID:TS027] Failed to get voice processing thread from pool")
+                return False
+
+            self.current_voice_thread = thread
+            worker = thread.worker
+
+            # Configure worker for voice processing
+            worker.configure_voice_processing(
+                operation_type=operation_type,
+                **kwargs
+            )
+
+            # Connect signals with QueuedConnection for thread safety
+            worker.voice_input_received.connect(
+                self._on_voice_input_received, Qt.ConnectionType.QueuedConnection
+            )
+            worker.voice_input_error.connect(
+                self._on_voice_input_error, Qt.ConnectionType.QueuedConnection
+            )
+            worker.tts_started.connect(
+                self._on_tts_started, Qt.ConnectionType.QueuedConnection
+            )
+            worker.tts_finished.connect(
+                self._on_tts_finished, Qt.ConnectionType.QueuedConnection
+            )
+            worker.tts_error.connect(
+                self._on_tts_error, Qt.ConnectionType.QueuedConnection
+            )
+            worker.recording_started.connect(
+                self._on_recording_started, Qt.ConnectionType.QueuedConnection
+            )
+            worker.recording_stopped.connect(
+                self._on_recording_stopped, Qt.ConnectionType.QueuedConnection
+            )
+            worker.recording_error.connect(
+                self._on_recording_error, Qt.ConnectionType.QueuedConnection
+            )
+            worker.audio_level_changed.connect(
+                self._on_audio_level_changed, Qt.ConnectionType.QueuedConnection
+            )
+            worker.eq_bars_changed.connect(
+                self._on_eq_bars_changed, Qt.ConnectionType.QueuedConnection
+            )
+            worker.user_interrupted.connect(
+                self._on_user_interrupted, Qt.ConnectionType.QueuedConnection
+            )
+            worker.request_cancelled.connect(
+                self._on_request_cancelled, Qt.ConnectionType.QueuedConnection
+            )
+            worker.finished.connect(
+                self._on_voice_processing_finished, Qt.ConnectionType.QueuedConnection
+            )
+            worker.error.connect(
+                self._on_voice_processing_error, Qt.ConnectionType.QueuedConnection
+            )
+
+            # Start voice processing
+            print(f"[THREADING SERVICE] 🎤 Starting voice processing with operation: {operation_type}")
+            worker.start_voice_processing()
+
+            logger.debug(
+                f"[ID:TS028] Voice processing started with thread: {thread.objectName()}")
+            print(f"[THREADING SERVICE] ✅ Voice processing started successfully")
+            return True
+
+        except Exception as e:
+            logger.error(f"[ID:TS029] Error starting voice processing: {e}")
+            logger.error(traceback.format_exc())
+            return False
+
+    def stop_voice_processing(self):
+        """Stop voice processing and return thread to pool."""
+        try:
+            if self.current_voice_thread and self.current_voice_thread.worker:
+                logger.debug("[ID:TS030] Stopping voice processing")
+
+                # Stop the worker
+                self.current_voice_thread.worker.stop()
+
+                # Wait for completion with timeout
+                timeout = 5.0
+                start_time = time.time()
+                while self.current_voice_thread.worker.is_running() and (time.time() - start_time) < timeout:
+                    time.sleep(0.1)
+
+                # Return thread to pool if persistent thread pool is available
+                if self.persistent_thread_pool is not None:
+                    self.persistent_thread_pool.return_thread(
+                        self.current_voice_thread)
+                else:
+                    logger.warning(
+                        "[ID:TS030A] Persistent thread pool not available, cannot return thread")
+
+                self.current_voice_thread = None
+
+                logger.debug(
+                    "[ID:TS031] Voice processing stopped and thread returned to pool")
+
+        except Exception as e:
+            logger.error(f"[ID:TS032] Error stopping voice processing: {e}")
+            logger.error(traceback.format_exc())
+
     # Signal handlers for persistent threads
     def _on_chat_chunk_received(self, chunk: str, model_name: str, msg_id: str, chunk_index: int):
         """Handle chat chunk received from persistent thread."""
@@ -567,6 +707,163 @@ class ThreadingService(QObject):
         except Exception as e:
             logger.error(f"[ID:TS043] Error handling monitoring error: {e}")
 
+    # Voice processing signal handlers
+    def _on_voice_input_received(self, text: str):
+        """Handle voice input received from persistent thread."""
+        try:
+            logger.debug(f"[ID:TS044] Voice input received: {text[:50]}...")
+            # Forward to voice service or emit signal
+            self.voice_input_received.emit(text)
+        except Exception as e:
+            logger.error(f"[ID:TS045] Error handling voice input: {e}")
+
+    def _on_voice_input_error(self, error_message: str):
+        """Handle voice input error from persistent thread."""
+        try:
+            logger.error(f"[ID:TS046] Voice input error: {error_message}")
+            # Forward to voice service or emit signal
+            self.voice_input_error.emit(error_message)
+        except Exception as e:
+            logger.error(f"[ID:TS047] Error handling voice input error: {e}")
+
+    def _on_tts_started(self):
+        """Handle TTS started from persistent thread."""
+        try:
+            logger.debug("[ID:TS048] TTS started")
+            # Forward to voice service or emit signal
+        except Exception as e:
+            logger.error(f"[ID:TS049] Error handling TTS started: {e}")
+
+    def _on_tts_finished(self):
+        """Handle TTS finished from persistent thread."""
+        try:
+            logger.debug("[ID:TS050] TTS finished")
+            # Forward to voice service or emit signal
+        except Exception as e:
+            logger.error(f"[ID:TS051] Error handling TTS finished: {e}")
+
+    def _on_tts_error(self, error_message: str):
+        """Handle TTS error from persistent thread."""
+        try:
+            logger.error(f"[ID:TS052] TTS error: {error_message}")
+            # Forward to voice service or emit signal
+        except Exception as e:
+            logger.error(f"[ID:TS053] Error handling TTS error: {e}")
+
+    def _on_recording_started(self):
+        """Handle recording started from persistent thread."""
+        try:
+            logger.debug("[ID:TS054] Recording started")
+            # Forward to voice service or emit signal
+            self.voice_recording_started.emit()
+        except Exception as e:
+            logger.error(f"[ID:TS055] Error handling recording started: {e}")
+
+    def _on_recording_stopped(self):
+        """Handle recording stopped from persistent thread."""
+        try:
+            logger.debug("[ID:TS056] Recording stopped")
+            # Forward to voice service or emit signal
+            self.voice_recording_stopped.emit()
+        except Exception as e:
+            logger.error(f"[ID:TS057] Error handling recording stopped: {e}")
+
+    def _on_recording_error(self, error_message: str):
+        """Handle recording error from persistent thread."""
+        try:
+            logger.error(f"[ID:TS058] Recording error: {error_message}")
+            # Forward to voice service or emit signal
+            self.voice_recording_error.emit(error_message)
+        except Exception as e:
+            logger.error(f"[ID:TS059] Error handling recording error: {e}")
+
+    def _on_audio_level_changed(self, audio_level: float):
+        """Handle audio level changed from persistent thread."""
+        try:
+            logger.debug(f"[ID:TS060] Audio level changed: {audio_level:.3f}")
+            # Forward to voice service or emit signal
+            # Get the global voice service and forward the signal
+            from pyside_chat.features.voice.voice_service import VoiceService
+            voice_service = VoiceService.get_instance()
+            
+            if voice_service and hasattr(voice_service, 'audio_level_changed'):
+                # Emit the signal to the voice service which will forward to UI
+                voice_service.audio_level_changed.emit(audio_level)
+                logger.debug(f"[ID:TS060A] Forwarded audio level {audio_level:.3f} to voice service")
+            else:
+                logger.warning("[ID:TS060B] No voice service available to forward audio level")
+                
+            # Emit signal for voice controls to listen to
+            self.voice_audio_level_changed.emit(audio_level)
+            print(f"[THREADING SERVICE] 🔊 Audio level: {audio_level:.3f}")
+        except Exception as e:
+            logger.error(f"[ID:TS061] Error handling audio level changed: {e}")
+
+    def _on_eq_bars_changed(self, bars: list):
+        """Handle EQ bars changed from persistent thread."""
+        try:
+            logger.debug(f"[ID:TS062] EQ bars changed: {len(bars)} bars")
+            # Forward to voice service or emit signal
+            # Get the global voice service and forward the signal
+            from pyside_chat.features.voice.voice_service import VoiceService
+            voice_service = VoiceService.get_instance()
+            
+            if voice_service and hasattr(voice_service, 'eq_bars_changed'):
+                # Emit the signal to the voice service which will forward to UI
+                voice_service.eq_bars_changed.emit(bars)
+                logger.debug(f"[ID:TS062A] Forwarded EQ bars {len(bars)} to voice service")
+            else:
+                logger.warning("[ID:TS062B] No voice service available to forward EQ bars")
+                
+            # Emit signal for voice controls to listen to
+            self.voice_eq_bars_changed.emit(bars)
+        except Exception as e:
+            logger.error(f"[ID:TS063] Error handling EQ bars changed: {e}")
+
+    def _on_user_interrupted(self):
+        """Handle user interrupted from persistent thread."""
+        try:
+            logger.debug("[ID:TS064] User interrupted")
+            # Forward to voice service or emit signal
+        except Exception as e:
+            logger.error(f"[ID:TS065] Error handling user interrupted: {e}")
+
+    def _on_request_cancelled(self):
+        """Handle request cancelled from persistent thread."""
+        try:
+            logger.debug("[ID:TS066] Request cancelled")
+            # Forward to voice service or emit signal
+        except Exception as e:
+            logger.error(f"[ID:TS067] Error handling request cancelled: {e}")
+
+    def _on_voice_processing_finished(self):
+        """Handle voice processing finished from persistent thread."""
+        try:
+            logger.debug("[ID:TS068] Voice processing finished")
+
+            # Return thread to pool
+            if self.current_voice_thread:
+                self.persistent_thread_pool.return_thread(
+                    self.current_voice_thread)
+                self.current_voice_thread = None
+
+        except Exception as e:
+            logger.error(f"[ID:TS069] Error handling voice processing finished: {e}")
+
+    def _on_voice_processing_error(self, error_message: str):
+        """Handle voice processing error from persistent thread."""
+        try:
+            logger.error(f"[ID:TS070] Voice processing error: {error_message}")
+
+            # Return thread to pool even on error
+            if self.current_voice_thread:
+                self.persistent_thread_pool.return_thread(
+                    self.current_voice_thread)
+                self.current_voice_thread = None
+
+        except Exception as e:
+            logger.error(f"[ID:TS071] Error handling voice processing error: {e}")
+
     # QRunnable task methods (unchanged)
     def process_message(self, message: str, operation: str = "spell_check",
                         callback: Optional[Callable] = None) -> str:
@@ -606,7 +903,7 @@ class ThreadingService(QObject):
         try:
             logger.debug(
                 f"[ID:TS048] Processing data with operation: {operation}")
-            task = DataProcessingTask(data, operation, callback)
+            task = DataProcessingTask(data, operation, callback=callback)
             task_id = self.thread_pool_manager.start_task(task)
             self.active_tasks[task_id] = task
             return task_id
@@ -632,6 +929,10 @@ class ThreadingService(QObject):
                     'monitoring': {
                         'active': self.current_monitoring_thread is not None,
                         'thread_name': self.current_monitoring_thread.objectName() if self.current_monitoring_thread else None
+                    },
+                    'voice_processing': {
+                        'active': self.current_voice_thread is not None,
+                        'thread_name': self.current_voice_thread.objectName() if self.current_voice_thread else None
                     }
                 },
                 'persistent_pool_status': self.persistent_thread_pool.get_pool_status(),
@@ -659,6 +960,7 @@ class ThreadingService(QObject):
             self.stop_chat_streaming()
             self.stop_audio_streaming()
             self.stop_monitoring()
+            self.stop_voice_processing()
 
             # Wait for QRunnable tasks to complete
             if self.active_tasks:

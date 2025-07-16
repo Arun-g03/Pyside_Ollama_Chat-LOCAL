@@ -7,9 +7,7 @@ from pyside_chat.core.shared_imports.pyside_imports import *
 from pyside_chat.core.shared_imports.shared_imports import *
 
 from pyside_chat.core.shared_imports.audio_imports import *
-from pyside_chat.features.voice.tts.streaming_audio_player import StreamingAudioPlayer
-
-from pyside_chat.features.voice.tts.streaming_audio_worker import StreamingAudioWorker
+from .streaming_audio import StreamingAudioPlayer, StreamingAudioWorker
 from pyside_chat.core.utils import log_thread_info
 
 logger = CustomLogger.get_logger(__name__)
@@ -935,6 +933,7 @@ class CoquiTTSService(QObject):
                 if self.available_voices:
                     self.current_voice = self.available_voices[0]
                     logger.debug(f"Set default voice to: {self.current_voice}")
+                    logger.info(f"Emitting voices_loaded signal with {len(self.available_voices)} speakers")
                     self.voices_loaded.emit(self.available_voices)
                 else:
                     self.current_voice = None

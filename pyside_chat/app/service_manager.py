@@ -54,8 +54,8 @@ class ServiceManager:
         self.memory_enabled: bool = False
         self.session_variables: dict = {}
 
-        # Voice service manager (singleton)
-        self.voice_service_manager = None
+        # Voice service (singleton)
+        self.voice_service = None
 
         self._initialize_services()
 
@@ -95,7 +95,7 @@ class ServiceManager:
 
             # Initialize personality service with error handling
             try:
-                self.personality_service = PersonalityModel()
+                self.personality_service = PersonalityModel(config_manager=self.config_manager)
                 logger.info(
                     "[ID:0095] Personality service initialized successfully")
             except Exception as e:
@@ -112,16 +112,16 @@ class ServiceManager:
             self.conversation_service.set_conversation_manager(
                 self.conversation_manager)
 
-            # Initialize voice service manager (singleton)
+            # Initialize voice service (singleton)
             try:
-                from pyside_chat.features.voice.voice_service_manager import get_voice_service_manager
-                self.voice_service_manager = get_voice_service_manager()
+                from pyside_chat.features.voice.voice_service import VoiceService
+                self.voice_service = VoiceService.get_instance()
                 logger.info(
-                    "[ID:0097] Voice service manager initialized successfully")
+                    "[ID:0097] Voice service initialized successfully")
             except Exception as e:
                 logger.error(
-                    f"[ID:0098] Error initializing voice service manager: {e}")
-                self.voice_service_manager = None
+                    f"[ID:0098] Error initializing voice service: {e}")
+                self.voice_service = None
 
             # Initialize session variables
             self.session_variables = {
@@ -172,15 +172,13 @@ class ServiceManager:
         return self.personality_service
 
     def get_voice_service(self):
-        """Get the voice service instance from the manager"""
-        if self.voice_service_manager:
-            return self.voice_service_manager.get_voice_service()
-        return None
+        """Get the voice service instance"""
+        return self.voice_service
 
     def is_voice_service_initialized(self) -> bool:
         """Check if voice service has been initialized"""
-        if self.voice_service_manager:
-            return self.voice_service_manager.is_ready()
+        if self.voice_service:
+            return self.voice_service.is_voice_available()
         return False
 
     def is_memory_enabled(self) -> bool:
@@ -206,15 +204,15 @@ class ServiceManager:
                 # Any cleanup needed for memory service
                 pass
 
-            # Clean up voice service manager
-            if self.voice_service_manager:
+            # Clean up voice service
+            if self.voice_service:
                 try:
-                    self.voice_service_manager.cleanup()
+                    self.voice_service.cleanup()
                     logger.info(
-                        "[ID:0091A] Voice service manager cleaned up successfully")
+                        "[ID:0091A] Voice service cleaned up successfully")
                 except Exception as e:
                     logger.error(
-                        f"[ID:0091B] Error cleaning up voice service manager: {e}")
+                        f"[ID:0091B] Error cleaning up voice service: {e}")
 
             logger.info("[ID:0091] Services cleaned up successfully")
 
@@ -222,7 +220,6 @@ class ServiceManager:
             logger.error(f"[ID:0090] Error during service cleanup: {e}")
 
     def _initialize_voice_service(self):
-        """Initialize voice service only when needed (deprecated - use manager)"""
-        logger.warning(
-            "[ID:0102] _initialize_voice_service is deprecated, use voice service manager")
+        """Initialize voice service only when needed"""
+        logger.debug("[ID:0102] Initializing voice service")
         return self.get_voice_service()

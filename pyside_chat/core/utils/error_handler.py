@@ -9,12 +9,14 @@ context managers, and helper functions for consistent error handling
 across the application.
 """
 
+from pyside_chat.core.shared_imports.shared_imports import *
+
 import functools
 import traceback
 from typing import Callable, Any, Optional, Dict, Type, Union
 from contextlib import contextmanager
-from pyside_chat.utils.Logging.logging_helpers import LoggingHelpers
-from pyside_chat.utils.Logging.Custom_Logger import CustomLogger
+from pyside_chat.core.logging.helpers import LoggingHelpers
+from pyside_chat.core.logging.logger import CustomLogger
 
 logger = CustomLogger.get_logger(__name__)
 

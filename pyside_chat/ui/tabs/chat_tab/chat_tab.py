@@ -461,6 +461,8 @@ class ChatTab(QWidget):
                          self.on_request_cancelled, "request_cancelled"),
                         (self.voice_controls.voice_status_changed,
                          self.on_voice_status_changed, "voice_status_changed"),
+                        (self.voice_controls.voice_mode_changed,
+                         self.on_voice_mode_changed, "voice_mode_changed"),
                         (self.voice_controls.eq_visualizer_changed,
                          self.on_eq_visualizer_changed_from_voice_controls, "eq_visualizer_changed"),
                     ]
@@ -498,6 +500,18 @@ class ChatTab(QWidget):
                 # Force UI refresh to update button state based on current voice service status
                 if self.voice_controls:
                     self.voice_controls.force_ui_refresh()
+                    
+                    # Ensure EQ visualizer mode is set from voice settings
+                    voice_settings = self.voice_controls.get_voice_settings()
+                    eq_mode = voice_settings.get("eq_visualizer", "None")
+                    logger.debug(f"Setting EQ visualizer mode from settings: {eq_mode}")
+                    self.eq_visualizer.update_eq_visualizer_mode(eq_mode)
+                    
+                    # If voice mode is enabled and EQ is set, activate EQ visualizer
+                    if self.voice_mode and eq_mode != "None":
+                        logger.debug(f"Activating EQ visualizer: {eq_mode}")
+                        self.eq_visualizer.switch_to_eq_visualizer(
+                            self.chat_display.scroll_area, self.voice_mode)
 
             except Exception as e:
                 print(f"[DEBUG] Failed to initialize voice controls: {e}")
@@ -515,8 +529,45 @@ class ChatTab(QWidget):
         try:
             if self.voice_controls and hasattr(self.voice_controls, 'audio_level_label'):
                 self.voice_controls.audio_level_label.setText(f"🎤 {status}")
+                
+            # When voice service becomes ready, ensure EQ visualizer is properly configured
+            if status == "Ready" and self.voice_mode:
+                eq_mode = self.eq_visualizer.get_eq_mode()
+                if eq_mode != "None":
+                    logger.debug(f"Voice service ready with EQ mode: {eq_mode}")
+                    # Ensure EQ visualizer is active
+                    self.eq_visualizer.switch_to_eq_visualizer(
+                        self.chat_display.scroll_area, self.voice_mode)
         except Exception as e:
             logger.error(f"Failed to update voice status indicator: {e}")
+
+    def on_voice_mode_changed(self, voice_mode: bool):
+        """Handle voice mode changes"""
+        try:
+            logger.debug(f"[VOICE DEBUG] Voice mode changed to: {voice_mode}")
+            self.voice_mode = voice_mode
+            
+            # Update chat controller voice mode
+            if hasattr(self, 'chat_controller') and self.chat_controller:
+                self.chat_controller.set_voice_mode(voice_mode)
+                logger.debug(f"[VOICE DEBUG] Updated chat controller voice mode to: {voice_mode}")
+            
+            # When voice mode is enabled, check if EQ visualizer should be activated
+            if voice_mode:
+                eq_mode = self.eq_visualizer.get_eq_mode()
+                logger.debug(f"[VOICE DEBUG] Voice mode enabled, EQ mode: {eq_mode}")
+                if eq_mode != "None":
+                    logger.debug(f"[VOICE DEBUG] Activating EQ visualizer: {eq_mode}")
+                    self.eq_visualizer.switch_to_eq_visualizer(
+                        self.chat_display.scroll_area, self.voice_mode)
+            else:
+                # When voice mode is disabled, restore chat display
+                logger.debug("[VOICE DEBUG] Voice mode disabled, restoring chat display")
+                self.eq_visualizer.switch_to_chat_display(
+                    self.chat_display.scroll_area)
+                    
+        except Exception as e:
+            logger.error(f"Error in on_voice_mode_changed: {e}")
 
     def on_input_mode_changed(self, mode: str):
         """Handle input mode change"""
@@ -584,7 +635,15 @@ class ChatTab(QWidget):
 
                 # Switch to EQ visualizer if enabled
                 eq_mode = self.voice_controls.get_voice_settings().get("eq_visualizer", "None")
+                logger.debug(f"[VOICE DEBUG] EQ mode from settings: {eq_mode}")
+                
+                # Update EQ visualizer mode
+                self.eq_visualizer.update_eq_visualizer_mode(eq_mode)
+                
                 if eq_mode != "None":
+                    logger.debug(f"[VOICE DEBUG] Switching to EQ visualizer: {eq_mode}")
+                    logger.debug(f"[VOICE DEBUG] Voice mode: {self.voice_mode}")
+                    logger.debug(f"[VOICE DEBUG] Chat display scroll area: {self.chat_display.scroll_area}")
                     self.eq_visualizer.switch_to_eq_visualizer(
                         self.chat_display.scroll_area, self.voice_mode)
                     logger.debug(
@@ -592,6 +651,9 @@ class ChatTab(QWidget):
                 else:
                     logger.debug(
                         "[VOICE DEBUG] Switched to Voice mode without EQ")
+                    
+                # Ensure voice mode is properly set
+                self.voice_mode = True
             else:
                 logger.error(
                     "Failed to initialize voice controls for voice mode")
@@ -655,8 +717,16 @@ class ChatTab(QWidget):
             logger.debug("Stopping streaming due to user interruption")
             self.stop_streaming()
 
-            # Add interruption message to chat
-            self.append_to_chat("System", "User interrupted AI response")
+        # Stop TTS if playing
+        if hasattr(self, 'voice_controls') and self.voice_controls:
+            try:
+                self.voice_controls.speak_ai_response("")  # Stop TTS
+                logger.debug("TTS stopped due to user interruption")
+            except Exception as e:
+                logger.error(f"Error stopping TTS: {e}")
+
+        # Add interruption message to chat
+        self.append_to_chat("System", "User interrupted AI response")
 
         # Reset voice mode state if needed
         if self.voice_mode:
@@ -682,7 +752,7 @@ class ChatTab(QWidget):
 
     def on_voice_input_received(self, text: str):
         try:
-            print(f"[DEBUG] ChatTab received voice input: {text}")
+            print(f"\n🎤 CHAT TAB: Voice input received: '{text}'\n")
             logger.debug(
                 f"Voice input received in chat tab: {text}", print_to_terminal=True)
 
@@ -695,6 +765,7 @@ class ChatTab(QWidget):
             # Process the voice input as a user message
             self.process_voice_input(text)
         except Exception as e:
+            print(f"[CHAT ERROR] Error in on_voice_input_received: {e}")
             logger.error(f"Error in on_voice_input_received: {e}")
             import traceback
             logger.error(f"Traceback: {traceback.format_exc()}")
@@ -732,54 +803,20 @@ class ChatTab(QWidget):
                 pass
 
     def process_voice_input(self, text: str):
-        """Process voice input as a user message"""
+        """Process voice input using the same method as text input"""
         try:
             print(f"[DEBUG] Processing voice input: '{text}'")
-            logger.debug(
-                f"Processing voice input: '{text}'", print_to_terminal=True)
-
-            # Validate text before processing
-            if not text or not text.strip():
-                logger.warning("Empty voice input received, skipping")
-                return
-
-            # Clean the text (remove extra whitespace, etc.)
-            cleaned_text = text.strip()
-
-            # Add user message to chat immediately for voice input
-            print(
-                f"[DEBUG] Adding voice input to chat display: '{cleaned_text}'")
-            logger.debug(
-                f"Adding voice input to chat display: '{cleaned_text}'", print_to_terminal=True)
-            self.append_to_chat("You", cleaned_text)
-
-            # Start streaming for AI response
-            print(f"[DEBUG] Starting streaming for voice input")
-            logger.debug("Starting streaming for voice input",
-                         print_to_terminal=True)
-            self.start_streaming()
-
-            # Emit message_sent signal to go through the same event bus system as text input
-            # This ensures the message goes through the proper chat controller and conversation service
-            print(f"[DEBUG] Emitting message_sent signal for voice input")
-            logger.debug(
-                "Emitting message_sent signal for voice input", print_to_terminal=True)
-            self.message_sent.emit(cleaned_text)
-
-            # Add additional debug info
-            print(f"[DEBUG] Voice mode: {self.voice_mode}")
-            print(f"[DEBUG] Is streaming: {self.is_streaming}")
-            logger.debug(
-                f"Voice mode: {self.voice_mode}, Is streaming: {self.is_streaming}", print_to_terminal=True)
-
+            logger.debug(f"Processing voice input: '{text}'")
+            # Use the same flow as text input
+            model = self.get_current_model()
+            temperature = self.get_temperature()
+            self.chat_controller.process_user_message(text, model, temperature)
         except Exception as e:
             print(f"[DEBUG] Error processing voice input: {e}")
-            logger.error(
-                f"Error processing voice input: {e}", print_to_terminal=True)
+            logger.error(f"Error processing voice input: {e}")
             import traceback
             logger.error(f"Traceback: {traceback.format_exc()}")
-            self.append_to_chat(
-                "System", f"Error processing voice input: {str(e)}")
+            self.append_to_chat("System", f"Error processing voice input: {str(e)}")
 
     def on_voice_input_error(self, error: str):
         """Handle voice input error"""

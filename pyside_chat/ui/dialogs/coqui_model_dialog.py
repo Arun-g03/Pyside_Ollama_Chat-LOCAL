@@ -1,6 +1,7 @@
 # Shared imports
 from pyside_chat.core.shared_imports.pyside_imports import *
 from pyside_chat.core.shared_imports.shared_imports import *
+from pyside_chat.core.utils.threading_utils import log_thread_info
 
 """
 Coqui TTS Model Selection Dialog
@@ -67,132 +68,140 @@ class CoquiModelDialog(QDialog):
 
     def setup_ui(self):
         """Setup the dialog UI"""
-        layout = QVBoxLayout(self)
+        try:
+            layout = QVBoxLayout(self)
 
-        # Create splitter for model and speaker selection
-        splitter = QSplitter(Qt.Horizontal)
-        layout.addWidget(splitter)
+            # Create splitter for model and speaker selection
+            splitter = QSplitter(Qt.Horizontal)
+            layout.addWidget(splitter)
 
-        # Model selection panel (left)
-        model_panel = self.create_model_panel()
-        splitter.addWidget(model_panel)
+            # Model selection panel (left)
+            model_panel = self.create_model_panel()
+            splitter.addWidget(model_panel)
 
-        # Speaker selection panel (right)
-        speaker_panel = self.create_speaker_panel()
-        splitter.addWidget(speaker_panel)
+            # Speaker selection panel (right)
+            speaker_panel = self.create_speaker_panel()
+            splitter.addWidget(speaker_panel)
 
-        # Set splitter proportions
-        splitter.setSizes([300, 300])
+            # Set splitter proportions
+            splitter.setSizes([300, 300])
 
-        # Progress bar for downloads
-        self.progress_bar = QProgressBar()
-        self.progress_bar.setVisible(False)
-        layout.addWidget(self.progress_bar)
+            # Progress bar for downloads
+            self.progress_bar = QProgressBar()
+            self.progress_bar.setVisible(False)
+            layout.addWidget(self.progress_bar)
 
-        # Status text
-        self.status_text = QTextEdit()
-        self.status_text.setMaximumHeight(100)
-        self.status_text.setReadOnly(True)
-        self.status_text.setStyleSheet("""
-            QTextEdit {
-                background-color: #1e1e1e;
-                color: #ffffff;
-                border: 1px solid #444;
-                border-radius: 5px;
-                padding: 5px;
-                font-family: 'Consolas', 'Monaco', monospace;
-                font-size: 12px;
-            }
-        """)
-        layout.addWidget(self.status_text)
+            # Status text
+            self.status_text = QTextEdit()
+            self.status_text.setMaximumHeight(100)
+            self.status_text.setReadOnly(True)
+            self.status_text.setStyleSheet("""
+                QTextEdit {
+                    background-color: #1e1e1e;
+                    color: #ffffff;
+                    border: 1px solid #444;
+                    border-radius: 5px;
+                    padding: 5px;
+                    font-family: 'Consolas', 'Monaco', monospace;
+                    font-size: 12px;
+                }
+            """)
+            layout.addWidget(self.status_text)
 
-        # Buttons
-        button_layout = QHBoxLayout()
+            # Buttons
+            button_layout = QHBoxLayout()
 
-        self.refresh_button = QPushButton("Refresh Models")
-        self.refresh_button.clicked.connect(self.load_models)
-        button_layout.addWidget(self.refresh_button)
+            self.refresh_button = QPushButton("Refresh Models")
+            self.refresh_button.clicked.connect(self.load_models)
+            button_layout.addWidget(self.refresh_button)
 
-        button_layout.addStretch()
+            button_layout.addStretch()
 
-        self.cancel_button = QPushButton("Cancel")
-        self.cancel_button.clicked.connect(self.reject)
-        button_layout.addWidget(self.cancel_button)
+            self.cancel_button = QPushButton("Cancel")
+            self.cancel_button.clicked.connect(self.reject)
+            button_layout.addWidget(self.cancel_button)
 
-        self.select_button = QPushButton("Select Model & Speaker")
-        self.select_button.clicked.connect(self.accept_selection)
-        self.select_button.setEnabled(False)
-        button_layout.addWidget(self.select_button)
+            self.select_button = QPushButton("Select Model & Speaker")
+            self.select_button.clicked.connect(self.accept_selection)
+            self.select_button.setEnabled(False)
+            button_layout.addWidget(self.select_button)
 
-        layout.addLayout(button_layout)
+            layout.addLayout(button_layout)
 
-        # Apply dark theme
-        self.setStyleSheet("""
-            QDialog {
-                background-color: #232323;
-                color: #ffffff;
-            }
-            QGroupBox {
-                border: 1px solid #444;
-                border-radius: 8px;
-                margin-top: 16px;
-                font-weight: bold;
-                color: #fff;
-            }
-            QGroupBox:title {
-                subcontrol-origin: margin;
-                subcontrol-position: top left;
-                padding: 0 8px;
-                background: #232323;
-                color: #fff;
-            }
-            QListWidget {
-                background-color: #1e1e1e;
-                color: #ffffff;
-                border: 1px solid #444;
-                border-radius: 5px;
-                padding: 5px;
-                font-family: 'Segoe UI', Arial, sans-serif;
-                font-size: 14px;
-            }
-            QListWidget::item {
-                padding: 8px;
-                border-bottom: 1px solid #333;
-            }
-            QListWidget::item:selected {
-                background-color: #0078d4;
-                color: #ffffff;
-            }
-            QListWidget::item:hover {
-                background-color: #2d2d2d;
-            }
-            QPushButton {
-                background-color: #0078d4;
-                color: #ffffff;
-                border: none;
-                border-radius: 5px;
-                padding: 8px 16px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #106ebe;
-            }
-            QPushButton:disabled {
-                background-color: #555;
-                color: #888;
-            }
-            QProgressBar {
-                border: 1px solid #444;
-                border-radius: 5px;
-                text-align: center;
-                background-color: #1e1e1e;
-                color: #ffffff;
-            }
-            QProgressBar::chunk {
-                background-color: #0078d4;
-                border-radius: 5px;
-            }
-        """)
+            # Apply dark theme
+            self.setStyleSheet("""
+                QDialog {
+                    background-color: #232323;
+                    color: #ffffff;
+                }
+                QGroupBox {
+                    border: 1px solid #444;
+                    border-radius: 8px;
+                    margin-top: 16px;
+                    font-weight: bold;
+                    color: #fff;
+                }
+                QGroupBox:title {
+                    subcontrol-origin: margin;
+                    subcontrol-position: top left;
+                    padding: 0 8px;
+                    background: #232323;
+                    color: #fff;
+                }
+                QListWidget {
+                    background-color: #1e1e1e;
+                    color: #ffffff;
+                    border: 1px solid #444;
+                    border-radius: 5px;
+                    padding: 5px;
+                    font-family: 'Segoe UI', Arial, sans-serif;
+                    font-size: 14px;
+                }
+                QListWidget::item {
+                    padding: 8px;
+                    border-bottom: 1px solid #333;
+                }
+                QListWidget::item:selected {
+                    background-color: #0078d4;
+                    color: #ffffff;
+                }
+                QListWidget::item:hover {
+                    background-color: #2d2d2d;
+                }
+                QPushButton {
+                    background-color: #0078d4;
+                    color: #ffffff;
+                    border: none;
+                    border-radius: 5px;
+                    padding: 8px 16px;
+                    font-weight: bold;
+                }
+                QPushButton:hover {
+                    background-color: #106ebe;
+                }
+                QPushButton:disabled {
+                    background-color: #555;
+                    color: #888;
+                }
+                QProgressBar {
+                    border: 1px solid #444;
+                    border-radius: 5px;
+                    text-align: center;
+                    background-color: #1e1e1e;
+                    color: #ffffff;
+                }
+                QProgressBar::chunk {
+                    background-color: #0078d4;
+                    border-radius: 5px;
+                }
+            """)
+        except Exception as e:
+            # Optionally log or display the error
+            import traceback
+            error_msg = f"Error setting up UI: {e}\n{traceback.format_exc()}"
+            print(error_msg)
+            if hasattr(self, "status_text"):
+                self.status_text.append(error_msg)
 
     def create_model_panel(self):
         """Create the model selection panel"""
@@ -253,8 +262,10 @@ class CoquiModelDialog(QDialog):
         try:
             from pyside_chat.features.voice.tts.coqui_tts_service import CoquiTTSService
 
+            logger.debug("Getting CoquiTTSService instance for model loading")
             self.coqui_service = CoquiTTSService.get_instance()
             self.available_models = self.coqui_service.get_available_models()
+            logger.info(f"Found {len(self.available_models)} available Coqui TTS models: {self.available_models}")
 
             self.model_list.clear()
             for model in self.available_models:
@@ -262,10 +273,12 @@ class CoquiModelDialog(QDialog):
 
                 # Check if model is downloaded
                 if self.coqui_service.is_model_downloaded(model):
+                    logger.debug(f"Model '{model}' is already downloaded")
                     item.setText(f"✅ {model}")
                     item.setData(Qt.UserRole, {"downloaded": True})
                 else:
                     size = self.coqui_service.get_model_download_size(model)
+                    logger.debug(f"Model '{model}' is not downloaded, size: {size}")
                     item.setText(f"⬇️ {model} ({size})")
                     item.setData(
                         Qt.UserRole, {"downloaded": False, "size": size})
@@ -274,11 +287,18 @@ class CoquiModelDialog(QDialog):
 
             self.log_status(
                 f"Loaded {len(self.available_models)} available models")
+            logger.info(f"Loaded {len(self.available_models)} available models into the dialog")
 
         except Exception as e:
+            logger.error(f"Failed to load Coqui TTS models: {str(e)}", exc_info=True)
             self.log_status(f"Failed to load models: {str(e)}")
-            QMessageBox.warning(
-                self, "Error", f"Failed to load Coqui TTS models:\n{str(e)}")
+            from pyside_chat.ui.dialogs.error_dialog import show_error_dialog
+            show_error_dialog(
+                title="Error",
+                message="Failed to load Coqui TTS models",
+                details=str(e),
+                parent=self
+            )
 
     def on_model_selected(self, item):
         """Handle model selection"""

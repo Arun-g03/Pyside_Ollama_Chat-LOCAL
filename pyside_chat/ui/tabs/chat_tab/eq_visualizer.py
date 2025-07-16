@@ -68,6 +68,8 @@ class EQVisualizer(QObject):
                 logger.debug(
                     f"[EQ DEBUG] Skipping EQ switch - voice_mode: {voice_mode}, eq_visualizer_mode: {self.eq_visualizer_mode}")
                 return
+                
+            logger.debug(f"[EQ DEBUG] Proceeding with EQ switch - voice_mode: {voice_mode}, eq_visualizer_mode: {self.eq_visualizer_mode}")
 
             # Get the current EQ widget
             if self.eq_visualizer_mode in self.eq_widgets:

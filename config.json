@@ -1,18 +1,18 @@
 {
   "default_model": "qwen3:0.6b",
-  "default_temperature": 0.7,
+  "default_temperature": 0.3,
   "default_personality": "Specialists.assistant",
   "auto_save_enabled": true,
   "spellcheck_enabled": true,
   "window_size": {
-    "width": 1447,
-    "height": 911
+    "width": 1920,
+    "height": 1017
   },
   "chat_settings": {
     "max_tokens": 2048,
     "top_p": 0.9,
-    "frequency_penalty": 0.0,
-    "presence_penalty": 0.0
+    "frequency_penalty": 0.1,
+    "presence_penalty": 0.1
   },
   "voice_settings": {
     "stt_api": "Vosk",
@@ -22,10 +22,10 @@
     "voice_speed": 1.0,
     "recording_timeout": 5,
     "silence_duration": 1,
-    "silence_threshold": 0.001,
+    "silence_threshold": 0.004,
     "coqui_model": "tts_models/en/vctk/vits",
-    "coqui_speaker": "No speakers available",
-    "eq_visualizer": "None",
+    "coqui_speaker": "ED",
+    "eq_visualizer": "Bar EQ",
     "tts_streaming": true,
     "allow_interruptions": false,
     "interruption_threshold": 0.5
@@ -39,5 +39,35 @@
   "theme": "Dark",
   "memory_enabled": true,
   "logging_enabled": true,
+  "logging_config": {
+    "disabled_modules": [
+      "pyside_chat.ui.tabs.chat_tab.voice_controls",
+      "pyside_chat.ui.tabs.chat_tab.chat_display",
+      "pyside_chat.ui.tabs.chat_tab.chat_renderer",
+      "pyside_chat.ui.tabs.chat_tab.input_controls",
+      "pyside_chat.core.threading.thread_calculator",
+      "pyside_chat.features.memory.semantic_search",
+      "pyside_chat.features.memory.memory_service",
+      "pyside_chat.features.chat.enhancers.enhancement_service"
+    ],
+    "enabled_modules": [
+      "pyside_chat.app.main",
+      "pyside_chat.features.ollama.ollama_service",
+      "pyside_chat.features.chat.chat_controller",
+      "pyside_chat.features.voice.voice_service",
+      "pyside_chat.features.voice.tts.coqui_tts_service",
+      "pyside_chat.features.voice.tts.streaming_audio_player",
+      "pyside_chat.features.voice.tts.streaming_audio_worker",
+      "pyside_chat.features.voice.audio.recording_service",
+      "pyside_chat.features.voice.stt.stt_service",
+      "pyside_chat.ui.tabs.chat_tab.voice_controls",
+      "pyside_chat.app.event_bus",
+      "pyside_chat.app.app_lifecycle",
+      "pyside_chat.features.chat.conversation_service",
+      "pyside_chat.core.threading.thread_monitor",
+      "pyside_chat.core.threading.persistent_thread_pool",
+      "pyside_chat.core.threading.qthread_workers"
+    ]
+  },
   "typewriter_enabled": false
 }

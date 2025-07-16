@@ -116,6 +116,7 @@ class CustomLogger(logging.Logger):
     _instance = None
     _loggers = {}
     _cleared_files = set()
+    _disabled_modules = set()  # Track disabled modules
     logging_enabled = True
     _config_checked = False
 
@@ -132,6 +133,27 @@ class CustomLogger(logging.Logger):
         except Exception:
             cls.logging_enabled = True
         cls._config_checked = True
+
+    @classmethod
+    def disable_logging_for_module(cls, module_name: str):
+        """Disable logging for a specific module"""
+        cls._disabled_modules.add(module_name)
+        # Remove existing logger for this module if it exists
+        if module_name in cls._loggers:
+            del cls._loggers[module_name]
+
+    @classmethod
+    def enable_logging_for_module(cls, module_name: str):
+        """Enable logging for a specific module"""
+        cls._disabled_modules.discard(module_name)
+        # Remove existing logger for this module if it exists to force recreation
+        if module_name in cls._loggers:
+            del cls._loggers[module_name]
+
+    @classmethod
+    def is_module_logging_disabled(cls, module_name: str) -> bool:
+        """Check if logging is disabled for a specific module"""
+        return module_name in cls._disabled_modules
 
     def __new__(cls):
         if cls._instance is None:
@@ -151,9 +173,11 @@ class CustomLogger(logging.Logger):
             cls._cleared_files.add(filepath)
 
     @classmethod
-    def get_logger(cls, name: str = None):
+    def get_logger(cls, name: str = None, disable: bool = False):
         cls._check_config_for_logging()
-        if not cls.logging_enabled:
+        
+        # Check if logging is disabled globally, by parameter, or for this specific module
+        if not cls.logging_enabled or disable:
             # Return a dummy logger that does nothing
             class DummyLogger:
                 def info(self, *a, **k): pass
@@ -162,12 +186,25 @@ class CustomLogger(logging.Logger):
                 def error(self, *a, **k): pass
                 def critical(self, *a, **k): pass
             return DummyLogger()
+        
         global _warned_about_default
         if not name:
             name = "PyChat"
             if not _warned_about_default:
                 print("[ID:0004] [CustomLogger WARNING] No logger name specified. Using default 'PyChat' logger. Specify a module name for module-specific logging.")
                 _warned_about_default = True
+        
+        # Check if this specific module is disabled
+        if name in cls._disabled_modules:
+            # Return a dummy logger that does nothing
+            class DummyLogger:
+                def info(self, *a, **k): pass
+                def debug(self, *a, **k): pass
+                def warning(self, *a, **k): pass
+                def error(self, *a, **k): pass
+                def critical(self, *a, **k): pass
+            return DummyLogger()
+        
         if name in cls._loggers:
             return cls._loggers[name]
         logger = logging.getLogger(name)

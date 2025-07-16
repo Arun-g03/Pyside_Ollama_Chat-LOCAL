@@ -11,6 +11,80 @@ from pyside_chat.startup.dependency_checker import check_and_install_dependencie
 
 logger = CustomLogger.get_logger(__name__)
 
+def configure_logging():
+    """Configure logging for the application, including disabling specific modules."""
+    try:
+        logger.info("[ID:LOGGING_CONFIG] Configuring application logging...", print_to_terminal=True)
+        
+        # Try to read logging configuration from config.json
+        config_path = os.path.join(os.path.dirname(__file__), "config.json")
+        disabled_modules = []
+        enabled_modules = []
+        
+        try:
+            with open(config_path, 'r') as f:
+                config = json.load(f)
+            
+            # Get logging configuration from config file
+            logging_config = config.get("logging_config", {})
+            disabled_modules = logging_config.get("disabled_modules", [])
+            enabled_modules = logging_config.get("enabled_modules", [])
+            
+            logger.info(f"[ID:LOGGING_CONFIG] Loaded logging config from {config_path}")
+            
+        except Exception as e:
+            logger.warning(f"[ID:LOGGING_CONFIG] Could not load logging config from {config_path}: {e}")
+            # Fallback to hardcoded list
+            disabled_modules = [
+                # Voice-related modules (often verbose)
+                "pyside_chat.features.voice.voice_service",
+                "pyside_chat.features.voice.tts.coqui_tts_service",
+                "pyside_chat.features.voice.tts.streaming_audio_player",
+                "pyside_chat.features.voice.tts.streaming_audio_worker",
+                "pyside_chat.features.voice.audio.recording_service",
+                "pyside_chat.features.voice.stt.stt_service",
+                
+                # UI components that are very verbose
+                "pyside_chat.ui.tabs.chat_tab.voice_controls",
+                "pyside_chat.ui.tabs.chat_tab.chat_display",
+                "pyside_chat.ui.tabs.chat_tab.chat_renderer",
+                "pyside_chat.ui.tabs.chat_tab.input_controls",
+                
+                # Threading and background services
+                "pyside_chat.core.threading.thread_monitor",
+                "pyside_chat.core.threading.persistent_thread_pool",
+                "pyside_chat.core.threading.qthread_workers",
+                "pyside_chat.core.threading.thread_calculator",
+                
+                # Memory and search services
+                "pyside_chat.features.memory.semantic_search",
+                "pyside_chat.features.memory.memory_service",
+                
+                # Enhancement and conversation services
+                "pyside_chat.features.chat.conversation_service",
+                "pyside_chat.features.chat.enhancers.enhancement_service",
+                
+                # Event bus and app lifecycle
+                "pyside_chat.app.event_bus",
+                "pyside_chat.app.app_lifecycle",
+            ]
+        
+        # Disable logging for specified modules
+        for module in disabled_modules:
+            CustomLogger.disable_logging_for_module(module)
+            logger.debug(f"[ID:LOGGING_CONFIG] Disabled logging for module: {module}")
+        
+        # Enable logging for specified modules (overrides disabled list)
+        for module in enabled_modules:
+            CustomLogger.enable_logging_for_module(module)
+            logger.debug(f"[ID:LOGGING_CONFIG] Enabled logging for module: {module}")
+        
+        logger.info(f"[ID:LOGGING_CONFIG] Disabled logging for {len(disabled_modules)} modules, enabled for {len(enabled_modules)} modules", print_to_terminal=True)
+        
+    except Exception as e:
+        logger.error(f"[ID:LOGGING_CONFIG] Error configuring logging: {e}")
+        logger.error(traceback.format_exc())
+
 def parse_arguments():
     """Parse command line arguments."""
     import argparse
@@ -89,6 +163,14 @@ def main():
             logger.error(f"[ID:PARSE_ARGS_MAIN] Exception in parse_arguments: {e}")
             logger.error(traceback.format_exc())
             raise
+
+        # Configure logging for the application
+        try:
+            configure_logging()
+        except Exception as e:
+            logger.error(f"[ID:LOGGING_CONFIG_MAIN] Exception configuring logging: {e}")
+            logger.error(traceback.format_exc())
+            # Don't raise here - logging is not critical for app startup
 
         # Check dependencies before starting the application (unless skipped)
         try:

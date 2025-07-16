@@ -88,6 +88,7 @@ class RecordingService(QObject):
             logger.warning("Recording already in progress")
             return
         try:
+            print(f"[RECORDING] 🎤 Starting recording...")
             self.is_recording = True
             self.frames = []
             self.speech_detected = False  # Reset at start
@@ -95,17 +96,23 @@ class RecordingService(QObject):
                 target=self._record_audio, name="RecordingThread")
             # Check if thread is already running (safety check)
             if not self.recording_thread.is_alive():
+                print(f"[RECORDING] 🧵 Starting recording thread...")
                 self.recording_thread.start()
+                print(f"[RECORDING] ✅ Recording thread started successfully")
+            else:
+                print(f"[RECORDING] ⚠️ Recording thread already running")
             self.recording_started.emit()
             logger.debug("Audio recording started")
         except Exception as e:
             self.is_recording = False
+            print(f"[RECORDING] ❌ Failed to start recording: {e}")
             logger.error(f"Failed to start recording: {e}")
             self.recording_error.emit(f"Failed to start recording: {str(e)}")
 
     def _record_audio(self):
         log_thread_info("Recording audio thread started", logger)
         try:
+            print(f"[RECORDING] 🎙️ Opening audio stream...")
             self.stream = self.audio.open(
                 format=pyaudio.paInt16,
                 channels=1,
@@ -113,12 +120,14 @@ class RecordingService(QObject):
                 input=True,
                 frames_per_buffer=1024
             )
+            print(f"[RECORDING] ✅ Audio stream opened successfully")
             logger.debug("Recording audio with improved speech detection...")
 
             speech_started = False
             silence_start_time = None
             frame_count = 0
 
+            print(f"[RECORDING] 🎤 Starting audio capture loop...")
             while self.is_recording:
                 try:
                     data = self.stream.read(1024, exception_on_overflow=False)
@@ -126,6 +135,12 @@ class RecordingService(QObject):
                     audio_level = self._calculate_audio_level(data)
                     self.last_audio_level = audio_level
                     frame_count += 1
+                    
+                    # Debug first few frames to see if audio is being captured
+                    if frame_count <= 5:
+                        print(f"[RECORDING] 📊 Frame {frame_count}: audio_level={audio_level:.6f}, data_length={len(data)}")
+                    elif frame_count == 10:
+                        print(f"[RECORDING] 📊 Frame {frame_count}: audio_level={audio_level:.6f} (continuing...)")
 
                     # --- FFT-based EQ bar calculation ---
                     def calculate_eq_bars_pcm(audio_bytes, num_bars=24, sample_rate=16000):
@@ -176,7 +191,12 @@ class RecordingService(QObject):
                             self.last_speech_time = time.time()
                             silence_start_time = None
                             self.consecutive_silence_frames = 0
+                            print(f"[RECORDING] 🎤 Speech detected, starting recording")
                             logger.debug("Speech detected, starting recording")
+                        else:
+                            # Debug audio levels when not detecting speech
+                            if frame_count % 100 == 0:  # Print every 100 frames to avoid spam
+                                print(f"[RECORDING] 🔍 Audio level: {audio_level:.6f} (threshold: {self.speech_detection_threshold:.6f})")
                     else:
                         # Speech has been detected, now monitor for continuation
                         if audio_level > self.silence_threshold:
@@ -184,6 +204,9 @@ class RecordingService(QObject):
                             self.last_speech_time = time.time()
                             silence_start_time = None
                             self.consecutive_silence_frames = 0
+                            # Debug ongoing speech
+                            if frame_count % 200 == 0:  # Print every 200 frames
+                                print(f"[RECORDING] 🎤 Speech continuing, audio level: {audio_level:.6f}")
                         else:
                             # Potential silence
                             self.consecutive_silence_frames += 1
@@ -195,6 +218,10 @@ class RecordingService(QObject):
                             silence_duration = time.time() - silence_start_time
                             speech_duration = time.time() - self.speech_start_time
 
+                            # Debug silence detection
+                            if frame_count % 100 == 0:  # Print every 100 frames
+                                print(f"[RECORDING] 🔇 Silence frames: {self.consecutive_silence_frames}, silence duration: {silence_duration:.1f}s")
+
                             # Only stop if:
                             # 1. We have enough speech (minimum duration)
                             # 2. Silence has been continuous for the required duration
@@ -203,6 +230,7 @@ class RecordingService(QObject):
                                 silence_duration >= self.silence_duration and
                                     self.consecutive_silence_frames >= 30):  # At least 30 frames of silence
 
+                                print(f"[RECORDING] 🔇 Stopping recording: speech={speech_duration:.1f}s, silence={silence_duration:.1f}s")
                                 logger.debug(
                                     f"Stopping recording: speech={speech_duration:.1f}s, silence={silence_duration:.1f}s")
                                 try:
@@ -299,15 +327,18 @@ class RecordingService(QObject):
             logger.warning("No recording in progress")
             return None
         try:
+            print(f"[RECORDING] 🔇 Stopping recording...")
             if self.is_recording:
                 self.is_recording = False
                 if self.recording_thread and self.recording_thread.is_alive():
                     self.recording_thread.join(timeout=2.0)
             self.recording_stopped.emit()
             if not self.frames:
+                print(f"[RECORDING] ⚠️ No audio frames recorded")
                 logger.warning("No audio frames recorded")
                 return None
             if not self.speech_detected:
+                print(f"[RECORDING] 🔇 No speech detected, not saving audio file")
                 logger.info("No speech detected, not saving audio file.")
                 return (None, False)
             audio_folder = os.path.join(os.getcwd(), "User_history", "audio")
@@ -322,11 +353,14 @@ class RecordingService(QObject):
                 wf.setframerate(16000)
                 wf.writeframes(b''.join(self.frames))
             self.audio_file = audio_file_path
+            print(f"[RECORDING] 💾 Audio saved to: {self.audio_file}")
+            print(f"[RECORDING] 🎤 Speech detected: {self.speech_detected}")
             logger.debug(f"Audio saved to: {self.audio_file}")
             return (self.audio_file, self.speech_detected)
         except Exception as e:
             if self.is_recording:
                 self.is_recording = False
+            print(f"[RECORDING] ❌ Error stopping recording: {e}")
             logger.error(f"Failed to stop recording: {e}")
             self.recording_error.emit(f"Failed to stop recording: {str(e)}")
             return None

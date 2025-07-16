@@ -1,6 +1,7 @@
 from pyside_chat.core.shared_imports.shared_imports import *
 from pyside_chat.core.shared_imports.pyside_imports import *
 from pyside_chat.features.personality.models.personality_model import PersonalityModel
+from pyside_chat.ui.dialogs.error_dialog import show_error_dialog
 
 """
 Personality Tab - Extracted from ollama_chat.py
@@ -16,10 +17,11 @@ class PersonalityTab(QWidget):
     # Signals
     personality_changed = Signal(str)  # Emitted when personality changes
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, config_manager=None):
         super().__init__(parent)
         self.parent = parent
-        self.personality_model = PersonalityModel()
+        self.config_manager = config_manager
+        self.personality_model = PersonalityModel(config_manager=config_manager)
         self.setup_ui()
         self.load_personalities()
 
@@ -731,8 +733,47 @@ class PersonalityTab(QWidget):
 
         # Set default personality
         if personalities:
-            # Try to set Specialists.assistant personality first, then assistant, otherwise use first available
-            if "Specialists.assistant" in personalities:
+            # Get default personality from config if available
+            default_personality = None
+            if self.config_manager:
+                try:
+                    default_personality = self.config_manager.get_default_personality()
+                except Exception as e:
+                    logger.debug(f"Error getting default personality from config: {e}")
+            
+            # Try to set the default personality from config, then fallback to hardcoded defaults
+            if default_personality and default_personality in personalities:
+                # Find the display name for the default personality
+                for i in range(self.personality_combo.count()):
+                    item_data = self.personality_combo.itemData(i)
+                    if item_data == default_personality:
+                        self.personality_combo.setCurrentIndex(i)
+                        self.personality_model.set_current_personality(default_personality)
+                        self.update_personality_info(default_personality)
+                        break
+            elif default_personality:
+                # Config personality not found - report error and fallback
+                error_msg = f"Default personality '{default_personality}' from config not found in available personalities"
+                error_details = f"Available personalities: {personalities}\n\nThis may be due to:\n- Missing personality file\n- Incorrect folder structure\n- Typos in config.json"
+                logger.error(f"{error_msg}: {personalities}")
+                logger.info("Falling back to first available personality")
+                
+                # Show error dialog to user
+                try:
+                    show_error_dialog(
+                        title="Personality Not Found",
+                        message=error_msg,
+                        details=error_details,
+                        parent=self
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to show error dialog: {e}")
+                
+                first_personality = sorted_personalities[0]
+                self.personality_combo.setCurrentText(first_personality)
+                self.personality_model.set_current_personality(first_personality)
+                self.update_personality_info(first_personality)
+            elif "Specialists.assistant" in personalities:
                 self.personality_combo.setCurrentText(
                     "Specialists → assistant")
                 self.personality_model.set_current_personality(
@@ -748,6 +789,10 @@ class PersonalityTab(QWidget):
                 self.personality_model.set_current_personality(
                     first_personality)
                 self.update_personality_info(first_personality)
+        else:
+            # If no personalities are available, show an error dialog
+            show_error_dialog(self, "No Personalities Found", "No personality files found in the 'personalities' directory. Please ensure you have personality files or check the directory path.")
+
 
     def update_system_personalities_list(self):
         """Update the system personalities list"""

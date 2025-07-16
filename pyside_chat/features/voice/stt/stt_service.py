@@ -68,6 +68,8 @@ class STTService(QObject):
             rec = KaldiRecognizer(self.vosk_model, wf.getframerate())
             rec.SetWords(True)
             results = []
+            print(f"[STT DEBUG] Starting Vosk processing with real-time detection...")
+            
             while True:
                 data = wf.readframes(4000)
                 if len(data) == 0:
@@ -75,17 +77,29 @@ class STTService(QObject):
                 if rec.AcceptWaveform(data):
                     result = json.loads(rec.Result())
                     if result.get('text'):
-                        results.append(result['text'])
+                        intermediate_text = result['text'].strip()
+                        if intermediate_text:
+                            print(f"[STT DETECTION] Intermediate: '{intermediate_text}'")
+                            logger.debug(f"STT intermediate detection: '{intermediate_text}'", print_to_terminal=True)
+                            results.append(intermediate_text)
+            
             final_result = json.loads(rec.FinalResult())
             if final_result.get('text'):
-                results.append(final_result['text'])
+                final_text = final_result['text'].strip()
+                if final_text:
+                    print(f"[STT DETECTION] Final: '{final_text}'")
+                    logger.debug(f"STT final detection: '{final_text}'", print_to_terminal=True)
+                    results.append(final_text)
+            
             wf.close()
             text = ' '.join(results).strip()
             if text:
-                logger.debug(
-                    f"Vosk STT result: {text}", print_to_terminal=True)
+                # Print final detection result prominently
+                print(f"\n🎤 STT DETECTED: '{text}'\n")
+                logger.info(f"STT final result: '{text}'", print_to_terminal=True)
                 self.text_received.emit(text)
             else:
+                print(f"[STT INFO] No text detected in audio")
                 logger.warning("Vosk could not understand audio",
                                print_to_terminal=True)
                 self.error_occurred.emit(
@@ -135,15 +149,25 @@ class STTService(QObject):
             rec = KaldiRecognizer(self.vosk_model, wf.getframerate())
             rec.SetWords(True)
 
-            print(f"[DEBUG] Processing audio frames")
+            print(f"[DEBUG] Processing audio frames with real-time detection...")
             frame_count = 0
+            intermediate_results = []
+            
             while True:
                 data = wf.readframes(4000)
                 if len(data) == 0:
                     break
                 frame_count += 1
+                
                 if rec.AcceptWaveform(data):
-                    pass
+                    # Get intermediate result
+                    result = json.loads(rec.Result())
+                    if result.get('text'):
+                        intermediate_text = result['text'].strip()
+                        if intermediate_text:
+                            print(f"[STT DETECTION] Intermediate: '{intermediate_text}'")
+                            logger.debug(f"STT intermediate detection: '{intermediate_text}'", print_to_terminal=True)
+                            intermediate_results.append(intermediate_text)
 
             print(f"[DEBUG] Processed {frame_count} frames")
             result = rec.FinalResult()
@@ -153,10 +177,21 @@ class STTService(QObject):
             print(f"[DEBUG] STT final result: {text}")
             logger.debug(f"STT final result: {text}", print_to_terminal=True)
 
+            # If final result is empty but we have intermediate results, use the last intermediate result
+            if not text.strip() and intermediate_results:
+                text = intermediate_results[-1]  # Use the last intermediate result
+                print(f"[STT FIX] Using last intermediate result: '{text}'")
+                logger.info(f"Using last intermediate result: '{text}'", print_to_terminal=True)
+
             if text.strip():
+                # Print final detection result prominently
+                print(f"\n🎤 STT DETECTED: '{text}'\n")
+                logger.info(f"STT final detection: '{text}'", print_to_terminal=True)
                 self.text_received.emit(text)
             else:
                 print(f"[DEBUG] No text recognized")
+                if intermediate_results:
+                    print(f"[STT INFO] Intermediate results found but no final text: {intermediate_results}")
                 self.error_occurred.emit("No speech detected")
 
         except Exception as e:

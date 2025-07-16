@@ -1,5 +1,7 @@
-from pyside_chat.core.shared_imports.pyside_imports import *
 from pyside_chat.core.shared_imports.shared_imports import *
+from pyside_chat.core.shared_imports.pyside_imports import *
+from pyside_chat.ui.dialogs.error_dialog import show_error_dialog
+
 """
 Input Controls Component - Message input, send/cancel buttons, and settings
 """
@@ -392,7 +394,8 @@ class InputControls(QObject):
 
     def update_personality_list(self, personalities: list):
         """Update the personality combo box with available personalities"""
-        current_personality = self.personality_combo.currentText()
+        current_personality = self.get_current_personality()  # Get the actual personality data, not display text
+        logger.debug(f"[INPUT_CONTROLS] Updating personality list. Current: {current_personality}, Available: {personalities}")
         self.personality_combo.clear()
 
         # Sort personalities to group by folder structure
@@ -411,20 +414,61 @@ class InputControls(QObject):
                 # Simple personality name
                 self.personality_combo.addItem(personality, personality)
 
-        # Try to restore the previously selected personality
-        if current_personality:
+        # Try to restore the previously selected personality or set default from config
+        if current_personality and current_personality in personalities:
             # Find the item with the current personality name
             for i in range(self.personality_combo.count()):
                 item_data = self.personality_combo.itemData(i)
                 if item_data == current_personality:
                     self.personality_combo.setCurrentIndex(i)
+                    logger.debug(f"[INPUT_CONTROLS] Restored current personality: {current_personality}")
                     break
-            else:
-                # If not found, try to set to first available
+        else:
+            # Try to get default personality from config
+            default_personality = None
+            if hasattr(self.parent, 'get_service_manager'):
+                service_manager = self.parent.get_service_manager()
+                if hasattr(service_manager, 'get_config_manager'):
+                    config_manager = service_manager.get_config_manager()
+                    if config_manager:
+                        try:
+                            default_personality = config_manager.get_default_personality()
+                            logger.debug(f"[INPUT_CONTROLS] Got default personality from config: {default_personality}")
+                        except Exception as e:
+                            logger.debug(f"Error getting default personality from config: {e}")
+            
+            # Set to default personality from config if available, otherwise first available
+            if default_personality and default_personality in personalities:
+                for i in range(self.personality_combo.count()):
+                    item_data = self.personality_combo.itemData(i)
+                    if item_data == default_personality:
+                        self.personality_combo.setCurrentIndex(i)
+                        logger.debug(f"[INPUT_CONTROLS] Set to config default personality: {default_personality}")
+                        break
+            elif default_personality:
+                # Config personality not found - report error and fallback
+                error_msg = f"Default personality '{default_personality}' from config not found in available personalities"
+                error_details = f"Available personalities: {personalities}\n\nThis may be due to:\n- Missing personality file\n- Incorrect folder structure\n- Typos in config.json"
+                logger.error(f"[INPUT_CONTROLS] {error_msg}: {personalities}")
+                logger.info("[INPUT_CONTROLS] Falling back to first available personality")
+                
+                # Show error dialog to user
+                try:
+                    show_error_dialog(
+                        title="Personality Not Found",
+                        message=error_msg,
+                        details=error_details,
+                        parent=self.parent if hasattr(self, 'parent') else None
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to show error dialog: {e}")
+                
                 if self.personality_combo.count() > 0:
                     self.personality_combo.setCurrentIndex(0)
-        elif self.personality_combo.count() > 0:
-            self.personality_combo.setCurrentIndex(0)
+                    logger.debug(f"[INPUT_CONTROLS] Set to first available personality: {self.personality_combo.itemData(0)}")
+            elif self.personality_combo.count() > 0:
+                self.personality_combo.setCurrentIndex(0)
+                logger.debug(f"[INPUT_CONTROLS] Set to first available personality: {self.personality_combo.itemData(0)}")
 
     def get_current_model(self) -> str:
         """Get the currently selected model"""
@@ -474,9 +518,20 @@ class InputControls(QObject):
                             f"[INPUT_CONTROLS] Initialized personality list from personality tab with {len(personalities)} personalities")
                         return
 
-            # Final fallback: use default personality
-            logger.debug("[INPUT_CONTROLS] Using default personality list")
-            self.update_personality_list(["Specialists.assistant"])
+            # Final fallback: try to get default personality from config
+            default_personality = "Specialists.assistant"  # Default fallback
+            if hasattr(self.parent, 'get_service_manager'):
+                service_manager = self.parent.get_service_manager()
+                if hasattr(service_manager, 'get_config_manager'):
+                    config_manager = service_manager.get_config_manager()
+                    if config_manager:
+                        try:
+                            default_personality = config_manager.get_default_personality()
+                        except Exception as e:
+                            logger.debug(f"Error getting default personality from config: {e}")
+            
+            logger.debug(f"[INPUT_CONTROLS] Using default personality: {default_personality}")
+            self.update_personality_list([default_personality])
 
         except Exception as e:
             logger.error(

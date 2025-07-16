@@ -20,9 +20,9 @@ class PersonalityModel(PersonalityService):
     maintaining the same interface as the original PersonalityModel.
     """
 
-    def __init__(self, personalities_dir: str = "pyside_chat/features/personality/profiles"):
+    def __init__(self, personalities_dir: str = "pyside_chat/features/personality/profiles", config_manager=None):
         try:
-            super().__init__(personalities_dir)
+            super().__init__(personalities_dir, config_manager)
 
             # Backward compatibility: expose personalities and current_personality
             self.personalities = self.personalities

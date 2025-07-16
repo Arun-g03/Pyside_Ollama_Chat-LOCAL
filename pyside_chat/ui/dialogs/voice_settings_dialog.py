@@ -50,7 +50,7 @@ class VoiceSettingsDialog(QDialog):
             self.setWindowTitle("Voice Settings")
             self.setModal(True)
             self.setMinimumWidth(500)
-            self.setMinimumHeight(400)
+            self.setMinimumHeight(700)
             self.config_manager = config_manager
             logger.debug("VoiceSettingsDialog initialized successfully")
         except Exception as e:
@@ -713,6 +713,13 @@ class VoiceSettingsDialog(QDialog):
     def refresh_coqui_ui(self, force_refresh_service=False):
         """Refresh Coqui TTS UI, reusing the service if possible and updating models/speakers."""
         try:
+            # Prevent multiple simultaneous refreshes
+            if hasattr(self, '_refreshing_coqui_ui') and self._refreshing_coqui_ui:
+                logger.debug("Coqui UI refresh already in progress, skipping")
+                return
+            
+            self._refreshing_coqui_ui = True
+            
             # Only fetch or instantiate if needed or forced
             if force_refresh_service or not hasattr(self, 'coqui_service') or self.coqui_service is None:
                 from pyside_chat.features.voice.tts.coqui_tts_service import CoquiTTSService
@@ -721,6 +728,10 @@ class VoiceSettingsDialog(QDialog):
             # Disconnect previous signal to avoid duplicates
             safe_disconnect(self.coqui_service.voices_loaded,
                             self._on_voices_loaded)
+            
+            # Reconnect the signal
+            self.coqui_service.voices_loaded.connect(self._on_voices_loaded)
+            logger.info("Connected voices_loaded signal to _on_voices_loaded slot")
 
             # Always refresh model list from backend
             if hasattr(self.coqui_service, 'get_available_models'):
@@ -755,11 +766,18 @@ class VoiceSettingsDialog(QDialog):
             self.speaker_combo.clear()
             self.speaker_combo.addItem("No speakers available")
             self.speaker_combo.setEnabled(False)
+        finally:
+            # Reset the refresh flag
+            self._refreshing_coqui_ui = False
 
     def _on_voices_loaded(self, speakers):
         """Slot to update speaker list when voices_loaded fires."""
-        self.speaker_combo.clear()
-        if speakers:
+        logger.info(f"_on_voices_loaded called with {len(speakers) if speakers else 0} speakers")
+        
+        # Only update if we have speakers and the combo is empty or has "No speakers available"
+        current_text = self.speaker_combo.currentText()
+        if speakers and (self.speaker_combo.count() == 0 or current_text == "No speakers available"):
+            self.speaker_combo.clear()
             for speaker in speakers:
                 clean_speaker = speaker.strip()
                 speaker_info = self.get_speaker_info(
@@ -778,7 +796,10 @@ class VoiceSettingsDialog(QDialog):
                     if self.speaker_combo.itemData(i) == self.selected_coqui_speaker:
                         self.speaker_combo.setCurrentIndex(i)
                         break
-        else:
+            logger.info(f"Successfully loaded {len(speakers)} speakers into UI")
+        elif not speakers:
+            # Only clear if we don't have speakers
+            self.speaker_combo.clear()
             # Fallback: add a default speaker if TTS works
             self.speaker_combo.addItem("Default")
             self.speaker_combo.setEnabled(True)
@@ -786,6 +807,9 @@ class VoiceSettingsDialog(QDialog):
                 "No named speakers found, using default voice.")
             self.speaker_filter_widget.setVisible(False)
             self.preview_speaker_button.setEnabled(True)
+            logger.info("No speakers found, using default voice")
+        else:
+            logger.debug(f"Speakers already loaded ({len(speakers)}), skipping UI update")
 
     def on_tts_api_changed(self, api_name: str):
         """Handle TTS API selection change"""
@@ -877,7 +901,14 @@ class VoiceSettingsDialog(QDialog):
         """Load available speakers for the selected model with enhanced information (now async via voices_loaded)."""
         # Just trigger model load; speakers will be updated via voices_loaded
         if hasattr(self.coqui_service, 'load_model'):
-            self.coqui_service.load_model(model_name)
+            logger.info(f"Loading model {model_name} to get speakers")
+            success = self.coqui_service.load_model(model_name)
+            if success:
+                logger.info(f"Model {model_name} loaded successfully, speakers should be available")
+            else:
+                logger.error(f"Failed to load model {model_name}")
+        else:
+            logger.error("Coqui service does not have load_model method")
 
     def get_speaker_info(self, speaker_name: str, model_name: str) -> dict:
         """Get speaker information for display"""
@@ -1041,21 +1072,21 @@ class VoiceSettingsDialog(QDialog):
             self.preview_speaker_button.setText("Previewing...")
 
             # Create a simple TTS service for preview
-            from pyside_chat.features.voice.tts.tts_service import TTSService
-            preview_tts = TTSService.get_instance()
+            from pyside_chat.features.voice.tts.coqui_tts_service import CoquiTTSService
+            preview_tts = CoquiTTSService.get_instance()
 
             # Load the model and set the speaker
             if hasattr(
                     self,
                     'selected_coqui_model') and self.selected_coqui_model:
-                preview_tts.set_coqui_model(self.selected_coqui_model)
-                preview_tts.update_voice(self.selected_coqui_speaker)
+                preview_tts.load_model(self.selected_coqui_model)
+                preview_tts.set_voice(self.selected_coqui_speaker)
 
             # Generate a short preview text
             preview_text = "Hello, this is a voice preview. How do I sound?"
 
             # Use non-streaming mode for preview to avoid complexity
-            preview_tts.speak_text_non_streaming(preview_text)
+            preview_tts.speak_text(preview_text, use_streaming=False)
 
             # Re-enable the preview button after a short delay
             QTimer.singleShot(
@@ -1246,17 +1277,11 @@ class VoiceSettingsDialog(QDialog):
         self.accept()
         if hasattr(self, "coqui_service") and self.selected_coqui_model:
             try:
-                # Use the correct method for TTSService
-                if hasattr(self.coqui_service, 'load_coqui_model'):
-                    self.coqui_service.load_coqui_model(
-                        self.selected_coqui_model)
-                elif hasattr(self.coqui_service, 'load_model'):
+                # Use the correct method for CoquiTTSService
+                if hasattr(self.coqui_service, 'load_model'):
                     self.coqui_service.load_model(self.selected_coqui_model)
 
-                if coqui_speaker and hasattr(
-                        self.coqui_service, 'update_voice'):
-                    self.coqui_service.update_voice(coqui_speaker)
-                elif coqui_speaker and hasattr(self.coqui_service, 'set_voice'):
+                if coqui_speaker and hasattr(self.coqui_service, 'set_voice'):
                     self.coqui_service.set_voice(coqui_speaker)
             except Exception as e:
                 logger.warning(f"Failed to load Coqui model or set voice: {e}")
@@ -1391,9 +1416,13 @@ class VoiceSettingsDialog(QDialog):
         model = settings.get("coqui_model")
         speaker = settings.get("coqui_speaker")
         if model:
-            self.main_tts_service.load_model(model)
-            if speaker:
-                self.main_tts_service.set_voice(speaker)
+            # Use the consolidated voice service
+            from pyside_chat.features.voice.voice_service import VoiceService
+            voice_service = VoiceService.get_instance()
+            if hasattr(voice_service, 'tts_service') and voice_service.tts_service:
+                voice_service.tts_service.load_model(model)
+                if speaker:
+                    voice_service.tts_service.set_voice(speaker)
 
     def open_calibration_dialog(self):
         dialog = CalibrateSilenceThresholdDialog(self)

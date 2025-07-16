@@ -15,6 +15,7 @@ from pyside_chat.features.personality.models.personality_types import Personalit
 from pyside_chat.features.personality.loader import PersonalityLoader
 from pyside_chat.features.personality.formatter import PersonalityFormatter
 from pyside_chat.core.logging.logger import CustomLogger
+from pyside_chat.ui.dialogs.error_dialog import show_error_dialog
 
 logger = CustomLogger.get_logger(__name__)
 
@@ -22,12 +23,13 @@ logger = CustomLogger.get_logger(__name__)
 class PersonalityService:
     """Main service for managing AI personalities"""
 
-    def __init__(self, personalities_dir: str = "pyside_chat/Personalities/personality_Profiles"):
+    def __init__(self, personalities_dir: str = "pyside_chat/features/personality/profiles", config_manager=None):
         self.personalities_dir = personalities_dir
         self.personalities: Dict[str, Dict[str, Any]] = {}
         # Track file paths for each personality
         self.personality_file_paths: Dict[str, str] = {}
         self.current_personality: Optional[str] = None
+        self.config_manager = config_manager
 
         # Initialize components
         self.loader = PersonalityLoader(personalities_dir)
@@ -53,13 +55,51 @@ class PersonalityService:
 
         # Set default current personality if available
         if self.personalities:
-            # Prefer Specialists.assistant personality, otherwise use first available
-            if "Specialists.assistant" in self.personalities:
+            # Get default personality from config if available
+            default_personality = None
+            if self.config_manager:
+                try:
+                    default_personality = self.config_manager.get_default_personality()
+                    logger.debug(f"Got default personality from config: {default_personality}")
+                except Exception as e:
+                    logger.debug(f"Error getting default personality from config: {e}")
+            
+            # Try to set the default personality from config, then fallback to hardcoded defaults
+            if default_personality and default_personality in self.personalities:
+                self.current_personality = default_personality
+                logger.debug(f"Set current personality to config default: {default_personality}")
+            elif default_personality:
+                # Config personality not found - report error and fallback
+                error_msg = f"Default personality '{default_personality}' from config not found in available personalities"
+                error_details = f"Available personalities: {list(self.personalities.keys())}\n\nThis may be due to:\n- Missing personality file\n- Incorrect folder structure\n- Typos in config.json"
+                logger.error(f"{error_msg}: {list(self.personalities.keys())}")
+                logger.info("Falling back to first available personality")
+                
+                # Show error dialog to user
+                try:
+                    show_error_dialog(
+                        title="Personality Not Found",
+                        message=error_msg,
+                        details=error_details,
+                        parent=None  # Will be set by caller if needed
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to show error dialog: {e}")
+                
+                self.current_personality = list(self.personalities.keys())[0]
+                logger.debug(f"Set current personality to first available: {self.current_personality}")
+            elif "Specialists.assistant" in self.personalities:
                 self.current_personality = "Specialists.assistant"
+                logger.debug("Set current personality to Specialists.assistant (fallback)")
             elif "assistant" in self.personalities:
                 self.current_personality = "assistant"
+                logger.debug("Set current personality to assistant (fallback)")
             else:
                 self.current_personality = list(self.personalities.keys())[0]
+                logger.debug(f"Set current personality to first available: {self.current_personality}")
+            
+            logger.debug(f"Available personalities: {list(self.personalities.keys())}")
+            logger.debug(f"Final current personality: {self.current_personality}")
 
     def is_system_personality(self, name: str) -> bool:
         """Check if a personality is a system personality (read-only)"""

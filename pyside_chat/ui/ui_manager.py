@@ -46,6 +46,9 @@ class UIManager:
             self.main_window.setWindowTitle(
                 "Ollama Chat - Local LLM Chat Application")
             self.main_window.setGeometry(100, 100, 1200, 800)
+            
+            # Apply custom title bar styling
+            self._setup_custom_title_bar()
 
             # Create central widget
             central_widget = QWidget()
@@ -68,7 +71,7 @@ class UIManager:
                 config_manager=self.config_manager
             )
             self.model_tab = ModelTab()
-            self.personality_tab = PersonalityTab()
+            self.personality_tab = PersonalityTab(config_manager=self.config_manager)
 
             self.tabs.addTab(self.chat_tab, "Chat")
             self.tabs.addTab(self.model_tab, "Model Manager")
@@ -229,6 +232,127 @@ class UIManager:
     def get_tabs(self) -> Optional[QTabWidget]:
         """Get the tab widget"""
         return self.tabs
+
+    def _setup_custom_title_bar(self):
+        """Setup custom title bar styling"""
+        try:
+            # Apply custom title bar stylesheet
+            # Note: Title bar styling varies by platform and may not work on all systems
+            title_bar_style = """
+            QMainWindow {
+                background-color: #2d2d2d;
+            }
+            
+            /* Title bar styling - may not work on all platforms */
+            QMainWindow::title {
+                background-color: #1e1e1e;
+                color: #ffffff;
+                padding: 5px;
+                font-weight: bold;
+                font-size: 12px;
+            }
+            
+            QMainWindow::title:active {
+                background-color: #0078d4;
+            }
+            
+            QMainWindow::title:inactive {
+                background-color: #3d3d3d;
+            }
+            
+            /* Alternative approach for Windows */
+            QMainWindow QWidget {
+                background-color: #2d2d2d;
+            }
+            """
+            
+            self.main_window.setStyleSheet(title_bar_style)
+            
+            # Set window properties for better title bar appearance
+            self.main_window.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, False)
+            self.main_window.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground, False)
+            
+            logger.info("[ID:0107] Custom title bar styling applied successfully")
+            
+        except Exception as e:
+            logger.error(f"[ID:0106] Error setting up custom title bar: {e}")
+
+    def set_title_bar_color(self, color: str):
+        """Set the title bar color
+        
+        Args:
+            color: Hex color code (e.g., '#1e1e1e', '#0078d4', '#2d2d2d')
+        """
+        try:
+            # Create stylesheet with custom color
+            title_bar_style = f"""
+            QMainWindow {{
+                background-color: #2d2d2d;
+            }}
+            
+            QMainWindow::title {{
+                background-color: {color};
+                color: #ffffff;
+                padding: 5px;
+                font-weight: bold;
+                font-size: 12px;
+            }}
+            
+            QMainWindow::title:active {{
+                background-color: {color};
+            }}
+            
+            QMainWindow::title:inactive {{
+                background-color: {color};
+                opacity: 0.7;
+            }}
+            
+            QMainWindow QWidget {{
+                background-color: #2d2d2d;
+            }}
+            """
+            
+            self.main_window.setStyleSheet(title_bar_style)
+            logger.info(f"[ID:0108] Title bar color changed to: {color}")
+            
+        except Exception as e:
+            logger.error(f"[ID:0109] Error setting title bar color: {e}")
+
+    def get_title_bar_preset_colors(self) -> dict:
+        """Get preset title bar colors
+        
+        Returns:
+            Dictionary of preset color names and hex codes
+        """
+        return {
+            "Dark Gray": "#1e1e1e",
+            "Medium Gray": "#2d2d2d", 
+            "Light Gray": "#3d3d3d",
+            "Blue": "#0078d4",
+            "Dark Blue": "#106ebe",
+            "Purple": "#5b2bd9",
+            "Green": "#107c10",
+            "Orange": "#d83b01",
+            "Red": "#d13438",
+            "Teal": "#008272"
+        }
+
+    def set_title_bar_preset_color(self, preset_name: str):
+        """Set title bar color using a preset
+        
+        Args:
+            preset_name: Name of the preset color
+        """
+        try:
+            presets = self.get_title_bar_preset_colors()
+            if preset_name in presets:
+                self.set_title_bar_color(presets[preset_name])
+                logger.info(f"[ID:0110] Applied preset title bar color: {preset_name}")
+            else:
+                logger.warning(f"[ID:0111] Unknown preset color: {preset_name}")
+                
+        except Exception as e:
+            logger.error(f"[ID:0112] Error setting preset title bar color: {e}")
 
     def show_about_dialog(self):
         """Show the about dialog"""

@@ -10,6 +10,7 @@ from pyside_chat.core.models.conversation_metadata import ConversationManager
 from pyside_chat.core.utils.prompts import PromptFormatter
 from pyside_chat.features.chat.complexity_analyser.complexity_analyzer import RequestComplexityAnalyzer
 
+
 """
 Chat Controller Module
 
@@ -90,6 +91,14 @@ class ChatController(QObject):
 
         # EventBus reference for preventing duplicate message processing
         self.event_bus = None
+        
+        # Voice service for TTS functionality
+        self.voice_service = None
+        self._initialize_voice_service()
+        
+        # Voice mode and message tracking
+        self.voice_mode_enabled = False
+        self.last_ai_response_received = None
 
         logger.debug("[ID:0156] ChatController initialized successfully")
 
@@ -154,10 +163,8 @@ class ChatController(QObject):
                 self.event_bus._send_to_ollama(message, model, temperature)
             else:
                 # Fallback: use the old method if event_bus is not available
+                logger.debug("[ID:0158] DEBUG: EventBus not available, using fallback method")
                 self._send_to_ollama(message, model, temperature)
-
-            # Message length, response length (will be updated later)
-            LoggingHelpers.log_message_sent_end(len(message), 0)
 
         except Exception as e:
             LoggingHelpers.log_exception_with_context(
@@ -339,10 +346,49 @@ class ChatController(QObject):
         return False
 
     def _build_context(self, context_messages: List[Dict[str, Any]], is_new_conversation: bool) -> List[Dict[str, Any]]:
-        """Build the final context for the AI"""
-        # This would integrate with personality system
-        # For now, return the context messages as-is
-        return context_messages
+        """Build the final context for the AI with personality injection"""
+        try:
+            # Start with the original context messages
+            final_context = context_messages.copy()
+            
+            # Add personality system message if personality service is available
+            if hasattr(self, 'personality_service') and self.personality_service:
+                # Get the current personality
+                current_personality = self.personality_service.get_current_personality()
+                if current_personality:
+                    # Build comprehensive system prompt with personality
+                    system_prompt = self.personality_service.build_comprehensive_system_prompt(
+                        memory_service=self.memory_service
+                    )
+                    
+                    if system_prompt:
+                        # Add personality system message at the beginning
+                        personality_message = {
+                            "role": "system",
+                            "content": system_prompt
+                        }
+                        final_context.insert(0, personality_message)
+                        logger.debug(f"[PERSONALITY] Added personality system message: {system_prompt[:100]}...")
+                    
+                    # Add user context messages if memory is active and this is a new conversation
+                    if self.is_memory_active() and is_new_conversation:
+                        user_context_messages = self.personality_service.get_user_context_messages(
+                            memory_service=self.memory_service,
+                            is_new_conversation=is_new_conversation
+                        )
+                        if user_context_messages:
+                            # Insert user context messages after the personality system message
+                            for context_msg in user_context_messages:
+                                final_context.insert(1, context_msg)
+                            logger.debug(f"[PERSONALITY] Added {len(user_context_messages)} user context messages")
+            
+            logger.debug(f"[PERSONALITY] Final context has {len(final_context)} messages")
+            return final_context
+            
+        except Exception as e:
+            logger.error(f"[PERSONALITY] Error building context with personality: {e}")
+            # Fallback to original context
+            return context_messages
 
     def _select_model(self, requested_model: str, message: str, context_messages: List[Dict[str, Any]]) -> str:
         """Select the appropriate model for the request"""
@@ -839,6 +885,8 @@ class ChatController(QObject):
 
     def handle_ai_response(self) -> None:
         """Handle AI response completion using accumulated response."""
+        print(f"[HANDLE_AI_RESPONSE] 🎯 Starting AI response handling...")
+        
         # Check typewriter setting
         typewriter_enabled = self.config_manager.get(
             "typewriter_enabled", False) if self.config_manager else False
@@ -848,6 +896,7 @@ class ChatController(QObject):
             complete_response = self._typewriter_disabled_buffer
             logger.debug(
                 f"[HANDLE_AI_RESPONSE] Typewriter disabled, processing complete response: '{complete_response[:100]}...'")
+            print(f"[HANDLE_AI_RESPONSE] 📝 Typewriter disabled, processing complete response: '{complete_response[:100]}...'")
 
             # Use MessageFormatter to properly split thoughts and answer
             from pyside_chat.ui.themes.message_formatter import MessageFormatter
@@ -885,15 +934,18 @@ class ChatController(QObject):
         else:
             # Typewriter enabled: handle normal streaming response
             response_content = ""
+            print(f"[HANDLE_AI_RESPONSE] 🔍 Typewriter enabled, checking for streaming content...")
 
             # Find the streaming message with actual content
             streaming_message_with_content = self.conversation_service.get_streaming_message_with_content()
+            print(f"[HANDLE_AI_RESPONSE] 📋 Streaming message with content: {streaming_message_with_content}")
 
             if streaming_message_with_content:
                 # Finalize the message with content
                 message_id = streaming_message_with_content["id"]
                 logger.debug(
                     f"[ID:0156] Found streaming message with content: {message_id}, content length: {len(streaming_message_with_content['content'])}")
+                print(f"[HANDLE_AI_RESPONSE] ✅ Found streaming message: {message_id}, content: {streaming_message_with_content['content'][:50]}...")
 
                 # Update the streaming message ID to the one with content
                 self.conversation_service._streaming_message_id = message_id
@@ -904,10 +956,12 @@ class ChatController(QObject):
             else:
                 # Check if there's a current streaming message ID (might be empty)
                 streaming_id = self.conversation_service.get_streaming_message_id()
+                print(f"[HANDLE_AI_RESPONSE] 🔍 Streaming ID: {streaming_id}")
                 if streaming_id:
                     self.finalize_streaming_response()
                     response_msg = self.conversation_service.get_message_by_id(
                         streaming_id)
+                    print(f"[HANDLE_AI_RESPONSE] 📋 Response message: {response_msg}")
                     if response_msg:
                         response_content = response_msg["content"]
                     else:
@@ -915,15 +969,40 @@ class ChatController(QObject):
                 else:
                     # Add the assistant response to the conversation service
                     response_content = self._pending_assistant_response
+                    print(f"[HANDLE_AI_RESPONSE] 📋 Pending response: '{response_content}'")
                     if response_content.strip():
                         current_personality = None
                         if hasattr(self, 'personality_service') and self.personality_service:
                             current_personality = self.personality_service.get_selected_model()
                         self.conversation_service.add_message(
                             "assistant", response_content, personality=current_personality)
+            
+            # CRITICAL FIX: If we still don't have response content, get it from the latest assistant message
+            if not response_content or not response_content.strip():
+                print(f"[HANDLE_AI_RESPONSE] 🔍 No response content found, checking latest assistant message...")
+                messages = self.conversation_service.get_messages()
+                assistant_messages = [msg for msg in messages if msg.get('role') == 'assistant']
+                if assistant_messages:
+                    latest_assistant = assistant_messages[-1]
+                    response_content = latest_assistant.get('content', '')
+                    print(f"[HANDLE_AI_RESPONSE] ✅ Found latest assistant message: {response_content[:50]}...")
+                else:
+                    print(f"[HANDLE_AI_RESPONSE] 🔇 No assistant messages found in conversation service")
 
         logger.debug(
             f"[ID:0155] DEBUG: handle_ai_response called with response length: {len(response_content)}")
+        print(f"[HANDLE_AI_RESPONSE] 📊 Response content length: {len(response_content)}")
+        print(f"[HANDLE_AI_RESPONSE] 📊 Response content: '{response_content}'")
+        
+        # Debug: Check the latest assistant message in conversation service
+        messages = self.conversation_service.get_messages()
+        assistant_messages = [msg for msg in messages if msg.get('role') == 'assistant']
+        if assistant_messages:
+            latest_assistant = assistant_messages[-1]
+            print(f"[HANDLE_AI_RESPONSE] 📋 Latest assistant message: {latest_assistant.get('content', '')[:50]}...")
+        else:
+            print("[HANDLE_AI_RESPONSE] 📋 No assistant messages found")
+            
         self.clear_pending_assistant_response()
         if self.is_memory_active():
             result = self.memory_service.intelligent_add_message(
@@ -947,15 +1026,70 @@ class ChatController(QObject):
         self.message_received.emit(response_content)
         self.conversation_updated.emit()
         self.status_updated.emit("Ready")
-        voice_mode = getattr(
-            getattr(self, '_chat_tab_reference', None), 'voice_mode', None)
-        if voice_mode:
-            self._trigger_tts_for_response(response_content)
+        
+        # Store the AI response and trigger TTS if voice mode is enabled
+        if response_content and response_content.strip():
+            self.last_ai_response_received = response_content
+            logger.debug(f"[TTS_TRIGGER] AI response received: {response_content[:50]}...")
+            print(f"[TTS_TRIGGER] 🎤 AI response received: {response_content[:50]}...")
+            
+            # Check voice mode from chat tab reference if available
+            voice_mode_active = False
+            if hasattr(self, '_chat_tab_reference') and self._chat_tab_reference:
+                voice_mode_active = getattr(self._chat_tab_reference, 'voice_mode', False)
+                logger.debug(f"[TTS_TRIGGER] Voice mode from chat tab: {voice_mode_active}")
+                print(f"[TTS_TRIGGER] 🎤 Voice mode from chat tab: {voice_mode_active}")
+                print(f"[TTS_TRIGGER] 🎤 Chat tab reference: {self._chat_tab_reference}")
+                print(f"[TTS_TRIGGER] 🎤 Chat tab voice_mode attribute: {getattr(self._chat_tab_reference, 'voice_mode', 'Not found')}")
+            else:
+                # Fallback to controller's voice mode flag
+                voice_mode_active = self.voice_mode_enabled
+                logger.debug(f"[TTS_TRIGGER] Voice mode from controller: {voice_mode_active}")
+                print(f"[TTS_TRIGGER] 🎤 Voice mode from controller: {voice_mode_active}")
+                print(f"[TTS_TRIGGER] 🎤 Has _chat_tab_reference: {hasattr(self, '_chat_tab_reference')}")
+                if hasattr(self, '_chat_tab_reference'):
+                    print(f"[TTS_TRIGGER] 🎤 _chat_tab_reference value: {self._chat_tab_reference}")
+            
+            # Trigger TTS if voice mode is enabled
+            if voice_mode_active:
+                logger.debug("[TTS_TRIGGER] Voice mode enabled, triggering TTS")
+                print(f"[TTS_TRIGGER] 🎤 Triggering TTS for: {response_content[:50]}...")
+                self._trigger_tts_direct(response_content)
+            else:
+                logger.debug("[TTS_TRIGGER] Voice mode disabled, skipping TTS")
+                print(f"[TTS_TRIGGER] 🔇 Voice mode disabled, skipping TTS")
         else:
-            logger.debug(
-                "[ID:0151] DEBUG: Voice mode not active, skipping TTS")
-            logger.debug(
-                f"[ID:0151A] Voice mode value: {voice_mode if voice_mode is not None else 'Not set (no _chat_tab_reference or no voice_mode attribute)'}")
+            logger.debug("[TTS_TRIGGER] No response content to speak")
+            print("[TTS_TRIGGER] 🔇 No response content to speak")
+            
+            # Fallback: Try to get the latest assistant message from conversation service
+            print("[TTS_TRIGGER] 🔍 Trying fallback: getting latest assistant message...")
+            messages = self.conversation_service.get_messages()
+            assistant_messages = [msg for msg in messages if msg.get('role') == 'assistant']
+            if assistant_messages:
+                latest_assistant = assistant_messages[-1]
+                fallback_content = latest_assistant.get('content', '')
+                if fallback_content and fallback_content.strip():
+                    print(f"[TTS_TRIGGER] 🎤 Found fallback content: {fallback_content[:50]}...")
+                    
+                    # Check voice mode again for fallback
+                    voice_mode_active = False
+                    if hasattr(self, '_chat_tab_reference') and self._chat_tab_reference:
+                        voice_mode_active = getattr(self._chat_tab_reference, 'voice_mode', False)
+                    else:
+                        voice_mode_active = self.voice_mode_enabled
+                    
+                    if voice_mode_active:
+                        print(f"[TTS_TRIGGER] 🎤 Triggering TTS with fallback content: {fallback_content[:50]}...")
+                        self._trigger_tts_direct(fallback_content)
+                    else:
+                        print("[TTS_TRIGGER] 🔇 Voice mode disabled, skipping fallback TTS")
+                else:
+                    print("[TTS_TRIGGER] 🔇 Fallback content is empty")
+            else:
+                print("[TTS_TRIGGER] 🔇 No assistant messages found for fallback")
+        
+        print(f"[HANDLE_AI_RESPONSE] ✅ AI response handling completed")
 
     def _trigger_tts_for_response(self, response: str) -> None:
         """Trigger TTS for AI response if voice mode is active"""
@@ -1057,6 +1191,157 @@ class ChatController(QObject):
             logger.error(
                 f"Error getting AI name from personality service: {e}", print_to_terminal=True)
         return "AI Assistant"
+
+    def _check_and_trigger_tts(self):
+        """Check if there's a recent assistant response and trigger TTS if needed"""
+        try:
+            # Get the most recent assistant message
+            messages = self.conversation_service.get_messages()
+            if not messages:
+                return
+
+            # Find the most recent assistant message
+            assistant_messages = [msg for msg in messages if msg.get('role') == 'assistant']
+            if not assistant_messages:
+                return
+
+            latest_assistant = assistant_messages[-1]
+            response_content = latest_assistant.get('content', '')
+
+            if response_content and response_content.strip():
+                logger.debug(f"[TTS_CHECK] Found assistant response: {response_content[:50]}...")
+                # Use a try-catch to prevent crashes
+                try:
+                    self._trigger_tts_direct(response_content)
+                except Exception as tts_error:
+                    logger.error(f"[TTS_CHECK] Error triggering TTS: {tts_error}")
+            else:
+                logger.debug("[TTS_CHECK] No valid assistant response found")
+
+        except Exception as e:
+            logger.error(f"Error in _check_and_trigger_tts: {e}")
+            # Don't let this crash the app
+            pass
+
+    def _initialize_voice_service(self):
+        """Initialize voice service for TTS functionality"""
+        try:
+            from pyside_chat.features.voice.voice_service import VoiceService
+            self.voice_service = VoiceService.get_instance()
+            if self.voice_service:
+                logger.debug("[VOICE_INIT] Voice service initialized successfully")
+            else:
+                logger.warning("[VOICE_INIT] Voice service initialization failed")
+        except Exception as e:
+            logger.error(f"[VOICE_INIT] Error initializing voice service: {e}")
+
+    def _trigger_tts_direct(self, text: str):
+        """Direct TTS trigger - simple and reliable"""
+        try:
+            print(f"[TTS_DIRECT] 🎤 Starting TTS for text: {text[:50]}...")
+            
+            if not text or not text.strip():
+                logger.debug("[TTS_DIRECT] Empty text, skipping TTS")
+                print("[TTS_DIRECT] 🔇 Empty text, skipping TTS")
+                return
+                
+            if not self.voice_service:
+                logger.debug("[TTS_DIRECT] No voice service available")
+                print("[TTS_DIRECT] 🔇 No voice service available")
+                return
+                
+            # Clean the text for TTS
+            import re
+            # Remove all <think>...</think> blocks
+            spoken_text = re.sub(r'<think>.*?</think>', '', text, flags=re.DOTALL).strip()
+            # Remove emojis
+            spoken_text = remove_emojis(spoken_text)
+            # Remove markdown code blocks
+            spoken_text = re.sub(r'```.*?```', '', spoken_text, flags=re.DOTALL)
+            # Remove inline code
+            spoken_text = re.sub(r'`.*?`', '', spoken_text)
+            # Remove markdown links but keep the text
+            spoken_text = re.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', spoken_text)
+            # Remove markdown formatting
+            spoken_text = re.sub(r'\*\*(.*?)\*\*', r'\1', spoken_text)  # Bold
+            spoken_text = re.sub(r'\*(.*?)\*', r'\1', spoken_text)      # Italic
+            spoken_text = re.sub(r'__(.*?)__', r'\1', spoken_text)      # Bold
+            spoken_text = re.sub(r'_(.*?)_', r'\1', spoken_text)        # Italic
+            # Remove extra whitespace
+            spoken_text = re.sub(r'\s+', ' ', spoken_text).strip()
+            
+            if not spoken_text:
+                logger.debug("[TTS_DIRECT] Text was empty after cleaning, skipping TTS")
+                print("[TTS_DIRECT] 🔇 Text was empty after cleaning, skipping TTS")
+                return
+                
+            logger.debug(f"[TTS_DIRECT] Speaking text: {spoken_text[:50]}...")
+            print(f"[TTS_DIRECT] 🎤 Speaking cleaned text: {spoken_text[:50]}...")
+            self.voice_service.speak_text(spoken_text)
+            logger.debug("[TTS_DIRECT] TTS triggered successfully")
+            print("[TTS_DIRECT] ✅ TTS triggered successfully")
+            
+        except Exception as e:
+            logger.error(f"[TTS_DIRECT] Error triggering TTS: {e}")
+            print(f"[TTS_DIRECT] ❌ Error triggering TTS: {e}")
+            import traceback
+            traceback.print_exc()
+
+    def set_voice_mode(self, enabled: bool):
+        """Set voice mode enabled/disabled"""
+        self.voice_mode_enabled = enabled
+        logger.debug(f"[VOICE_MODE] Voice mode set to: {enabled}")
+        
+        # Also log the chat tab voice mode for debugging
+        if hasattr(self, '_chat_tab_reference') and self._chat_tab_reference:
+            chat_tab_voice_mode = getattr(self._chat_tab_reference, 'voice_mode', 'Not set')
+            logger.debug(f"[VOICE_MODE] Chat tab voice mode: {chat_tab_voice_mode}")
+        else:
+            logger.debug("[VOICE_MODE] No chat tab reference available")
+
+    def _check_and_trigger_tts_simple(self):
+        """Simple TTS trigger based on voice mode and AI response"""
+        try:
+            # Check voice mode from chat tab reference if available
+            voice_mode_active = False
+            if hasattr(self, '_chat_tab_reference') and self._chat_tab_reference:
+                voice_mode_active = getattr(self._chat_tab_reference, 'voice_mode', False)
+                logger.debug(f"[TTS_SIMPLE] Voice mode from chat tab: {voice_mode_active}")
+            else:
+                # Fallback to controller's voice mode flag
+                voice_mode_active = self.voice_mode_enabled
+                logger.debug(f"[TTS_SIMPLE] Voice mode from controller: {voice_mode_active}")
+            
+            if not voice_mode_active:
+                logger.debug("[TTS_SIMPLE] Voice mode not enabled, skipping TTS")
+                return
+                
+            if not self.last_ai_response_received:
+                logger.debug("[TTS_SIMPLE] No AI response received, skipping TTS")
+                return
+                
+            logger.debug(f"[TTS_SIMPLE] Triggering TTS for response: {self.last_ai_response_received[:50]}...")
+            self._trigger_tts_direct(self.last_ai_response_received)
+            
+        except Exception as e:
+            logger.error(f"[TTS_SIMPLE] Error in simple TTS trigger: {e}")
+
+    def get_voice_mode_status(self) -> dict:
+        """Get current voice mode status for debugging"""
+        status = {
+            'controller_voice_mode': self.voice_mode_enabled,
+            'chat_tab_reference_available': hasattr(self, '_chat_tab_reference') and self._chat_tab_reference is not None,
+            'voice_service_available': hasattr(self, 'voice_service') and self.voice_service is not None
+        }
+        
+        if hasattr(self, '_chat_tab_reference') and self._chat_tab_reference:
+            status['chat_tab_voice_mode'] = getattr(self._chat_tab_reference, 'voice_mode', 'Not set')
+            status['voice_controls_initialized'] = getattr(self._chat_tab_reference, 'voice_controls_initialized', False)
+        else:
+            status['chat_tab_voice_mode'] = 'No chat tab reference'
+            status['voice_controls_initialized'] = False
+            
+        return status
 
     def _trigger_name_generation(self, filepath: str) -> None:
         """Trigger AI name generation for a conversation"""

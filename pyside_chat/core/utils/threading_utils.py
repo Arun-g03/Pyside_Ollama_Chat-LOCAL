@@ -311,7 +311,10 @@ def log_thread_info(operation: str, logger_instance=None):
     """
     try:
         current_thread = QThread.currentThread()
-        thread_name = current_thread.objectName() or "Unknown"
+        if current_thread is None:
+            thread_name = "Unknown"
+        else:
+            thread_name = current_thread.objectName() or "Unknown"
         is_main = is_main_thread()
 
         log_func = logger_instance or logger
@@ -333,10 +336,16 @@ def safe_log_thread_info(operation: str):
         main_thread = QApplication.instance().thread() if QApplication.instance() else None
 
         logger.debug(f"Thread info for {operation}:")
-        logger.debug(
-            f"  Current thread: {current_thread.objectName() or 'unnamed'}")
-        logger.debug(
-            f"  Main thread: {main_thread.objectName() if main_thread else 'None'}")
+        if current_thread is None:
+            logger.debug("  Current thread: None")
+        else:
+            logger.debug(
+                f"  Current thread: {current_thread.objectName() or 'unnamed'}")
+        if main_thread is None:
+            logger.debug("  Main thread: None")
+        else:
+            logger.debug(
+                f"  Main thread: {main_thread.objectName() or 'unnamed'}")
         logger.debug(f"  Is main thread: {is_main_thread()}")
     except Exception as e:
         logger.error(f"Error logging thread info: {e}")

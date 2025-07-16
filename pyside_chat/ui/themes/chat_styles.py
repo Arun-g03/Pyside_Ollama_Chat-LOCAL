@@ -147,12 +147,22 @@ class ChatBubbleWidget(QWidget):
                 bubble_width = max(
                     min(content_width + padding, max_bubble_width), 150)
 
-        # Reduce vertical padding for more compact bubbles
-        # Use minimal padding for long content, slightly more for short content
-        if content_length > 100:
-            vertical_padding = 0  # No padding for very long content
+        # Improved vertical padding for better text bubble styling
+        # Large messages: reduce vertical padding for more compact display
+        # Small messages: increase horizontal space usage
+        if content_length > 200:
+            # Very long content: minimal padding
+            vertical_padding = 4
+        elif content_length > 100:
+            # Long content: reduced padding
+            vertical_padding = 8
+        elif content_length > 50:
+            # Medium content: standard padding
+            vertical_padding = 12
         else:
-            vertical_padding = 8  # Slightly more padding for short content
+            # Short content: more padding for better visual balance
+            vertical_padding = 16
+            
         bubble_height = content_size.height() + vertical_padding
 
         # Calculate bubble position based on alignment
@@ -170,12 +180,17 @@ class ChatBubbleWidget(QWidget):
 
         # Update content label width to use full bubble width
         content_width = bubble_width - padding
-        # Position content at the top of the bubble with minimal padding
-        # Use even less padding for long content
-        if content_length > 100:
-            content_y = bubble_y + 1  # Minimal top padding for long content
+        # Position content with improved padding for better text bubble styling
+        # Large messages: minimal top padding for compact display
+        # Small messages: more balanced padding
+        if content_length > 200:
+            content_y = bubble_y + 2  # Minimal top padding for very long content
+        elif content_length > 100:
+            content_y = bubble_y + 4  # Reduced top padding for long content
+        elif content_length > 50:
+            content_y = bubble_y + 6  # Standard top padding for medium content
         else:
-            content_y = bubble_y + 4  # Small top padding for short content
+            content_y = bubble_y + 8  # More top padding for short content
         self.content_label.setGeometry(bubble_x + padding // 2, content_y,
                                        content_width, content_size.height())
 
