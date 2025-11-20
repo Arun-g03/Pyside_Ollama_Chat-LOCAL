@@ -3,11 +3,15 @@ Ollama Chat Main Window - Refactored Version
 This shows how the main window would look after extracting functionality into separate modules.
 """
 
+import sys
+import os
+# Add the parent directory to sys.path to enable imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from PySide6.QtWidgets import (QMainWindow, QTabWidget, QVBoxLayout, QWidget, QStatusBar,
                                QMenuBar, QMenu, QToolBar, QMessageBox)
 from PySide6.QtCore import QTimer, QThread, Qt
 from PySide6.QtGui import QIcon, QAction
-import os
 
 # Import extracted components
 from SRC.ui.chat_tab import ChatTab

@@ -257,6 +257,10 @@ class ChatController(QObject):
     
     def handle_ai_response(self, response: str) -> None:
         """Handle AI response completion"""
+        # Check for web search requests
+        if self._check_for_search_request(response):
+            return  # Don't process normal response if search was requested
+
         self.conversation_service.add_message("assistant", response)
         
         if self.is_memory_active():
@@ -272,7 +276,71 @@ class ChatController(QObject):
         self.message_received.emit(response)
         self.conversation_updated.emit()
         self.status_updated.emit("Ready")
-    
+
+    def _check_for_search_request(self, response: str) -> bool:
+        """Check if AI response contains a web search request and handle it"""
+        import re
+
+        # Look for SEARCH: pattern in the response
+        search_match = re.search(r'SEARCH:\s*(.+?)(?:\n|$)', response, re.IGNORECASE)
+        if search_match:
+            search_query = search_match.group(1).strip()
+            LoggingHelpers.log_debug(f"Web search requested: '{search_query}'")
+
+            # Perform web search
+            try:
+                # Import here to avoid circular imports
+                from SRC.services import WebSearchService
+                search_service = WebSearchService(max_results=5)
+                search_results = search_service.search_sync(search_query)
+
+                if search_results:
+                    # Format search results for AI consumption
+                    search_context = f"Web Search Results for '{search_query}' ({len(search_results)} found):\n"
+                    for i, result in enumerate(search_results[:3], 1):
+                        title = result.get('title', 'Untitled')[:80]
+                        body = result.get('body', '')[:150]
+                        href = result.get('href', '')
+                        search_context += f"{i}. {title}: {body}"
+                        if href:
+                            search_context += f" [Source: {href}]"
+                        search_context += "\n"
+
+                    # Continue conversation with search results
+                    # Add the search results as a system message
+                    self.conversation_service.add_message("system", search_context)
+
+                    # Get AI to process the search results
+                    self.status_updated.emit(f"Processing search results for: {search_query}")
+                    self._continue_with_search_results(search_query, search_context)
+
+                else:
+                    # No results found
+                    no_results_msg = f"No web search results found for: {search_query}"
+                    self.conversation_service.add_message("system", no_results_msg)
+                    self._continue_with_search_results(search_query, no_results_msg)
+
+            except Exception as e:
+                LoggingHelpers.log_error(f"Web search failed: {e}")
+                error_msg = f"Web search error: {str(e)}"
+                self.conversation_service.add_message("system", error_msg)
+                self._continue_with_search_results(search_query, error_msg)
+
+            return True  # Search was handled
+
+        return False  # No search request found
+
+    def _continue_with_search_results(self, original_query: str, search_context: str) -> None:
+        """Continue the conversation with search results incorporated"""
+        # Create a follow-up message for the AI to process the search results
+        follow_up_prompt = f"I searched for '{original_query}' and here are the results:\n\n{search_context}\n\nPlease provide a helpful response based on this information."
+
+        # Add as a system message and trigger a new AI response
+        self.conversation_service.add_message("system", follow_up_prompt)
+
+        # Emit signal to trigger a new AI response with the search context
+        self.message_sent.emit(follow_up_prompt)
+
     def start_new_conversation(self) -> None:
         """Start a new conversation"""
         self.is_new_conversation = True

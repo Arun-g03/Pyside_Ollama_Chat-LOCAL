@@ -14,6 +14,7 @@ from SRC.ui.spellchecker_widget import SpellCheckerTextEdit
 from SRC.ui.Widgets.chat_navigation import ChatNavigationWidget
 from SRC.utils.message_formatter import MessageFormatter
 from SRC.utils.streaming_handler import StreamingHandler
+from SRC.services.web_search_service import WebSearchService
 from SRC.utils.Logging.Custom_Logger import CustomLogger
 
 logger = CustomLogger.get_logger(__name__)
@@ -34,10 +35,14 @@ class ChatTab(QWidget):
         super().__init__(parent)
         self.parent = parent
         self.conversation_manager = conversation_manager
+
+        # Initialize web search service for AI-driven searches
+        self.web_search_service = WebSearchService(max_results=5)
+
         self.setup_ui()
         self.setup_streaming_handler()
         self.setup_connections()
-        
+
         # State variables
         self.current_model = None
         self.temperature = 0.7
@@ -375,6 +380,7 @@ class ChatTab(QWidget):
         """)
         input_layout.addWidget(self.message_input)
         
+
         # Send button
         self.send_button = QPushButton("Send")
         self.send_button.setMinimumHeight(40)
@@ -435,15 +441,52 @@ class ChatTab(QWidget):
         """Setup signal connections"""
         # Connect send button
         self.send_button.clicked.connect(self.send_message)
-        
+
         # Connect cancel button
         self.cancel_button.clicked.connect(self.cancel_message)
         
         # Connect enter key in message input
         self.message_input.installEventFilter(self)
-        
+
         # Connect personality combo
         self.personality_combo.currentTextChanged.connect(self.on_personality_combo_changed)
+
+    def perform_web_search(self, query: str) -> str:
+        """
+        Perform web search and return formatted results for AI consumption
+
+        Args:
+            query: Search query string
+
+        Returns:
+            Formatted search results string
+        """
+        try:
+            self.append_to_chat("System", f"🔍 Searching: {query}")
+            search_results = self.web_search_service.search_sync(query)
+
+            if search_results:
+                # Create a concise context summary for the AI
+                context = f"Web Search Results for '{query}' ({len(search_results)} found):\n"
+                for i, result in enumerate(search_results[:3], 1):  # Limit to top 3 results
+                    title = result.get('title', 'Untitled')[:80]
+                    body = result.get('body', '')[:150]
+                    href = result.get('href', '')
+                    context += f"{i}. {title}: {body}"
+                    if href:
+                        context += f" [Source: {href}]"
+                    context += "\n"
+
+                self.append_to_chat("System", f"✅ Found {len(search_results)} results")
+                return context
+            else:
+                self.append_to_chat("System", "⚠️ No search results found")
+                return f"No web search results found for: {query}"
+
+        except Exception as e:
+            logger.error(f"Web search failed: {e}")
+            self.append_to_chat("System", f"⚠️ Search failed: {str(e)}")
+            return f"Web search error: {str(e)}"
         
         # Connect navigation widget signals
         if hasattr(self, 'navigation_widget'):
@@ -473,17 +516,17 @@ class ChatTab(QWidget):
         message = self.message_input.toPlainText().strip()
         if not message:
             return
-        
+
         # Add user message to chat immediately
         self.append_to_chat("You", message)
-        
+
         # Clear input
         self.message_input.clear()
-        
+
         # Start streaming state BEFORE emitting signal
         self.start_streaming()
-        
-        # Emit signal
+
+        # Emit signal with message - web search will be handled by AI if needed
         self.message_sent.emit(message)
         
     def cancel_message(self):

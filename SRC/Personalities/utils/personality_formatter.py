@@ -133,7 +133,24 @@ class PersonalityFormatter:
                 # Format constraints with user references
                 formatted_constraint = pronouns.format_user_reference(constraint)
                 comprehensive_prompt.append(f"• {formatted_constraint}")
-        
+
+        # 7. Add web search capabilities
+        comprehensive_prompt.append("\n\nWEB SEARCH CAPABILITIES:")
+        comprehensive_prompt.append("You have access to real-time web search to provide current and accurate information.")
+        comprehensive_prompt.append("When users ask about:")
+        comprehensive_prompt.append("• Current events, news, or recent developments")
+        comprehensive_prompt.append("• Latest information, statistics, or data")
+        comprehensive_prompt.append("• Topics that require up-to-date knowledge")
+        comprehensive_prompt.append("• Questions about recent changes or updates")
+        comprehensive_prompt.append("")
+        comprehensive_prompt.append("First analyze if web search is needed, then:")
+        comprehensive_prompt.append("1. If search needed: Respond with 'SEARCH: <specific search query>'")
+        comprehensive_prompt.append("2. The system will perform the search and provide results")
+        comprehensive_prompt.append("3. Use the search results to provide accurate, current information")
+        comprehensive_prompt.append("")
+        comprehensive_prompt.append("Example: If user asks 'What's the latest news about AI?', respond with 'SEARCH: latest AI news 2024'")
+        comprehensive_prompt.append("Do not mention web search capabilities unless asked. Use them naturally when appropriate.")
+
         return "\n".join(comprehensive_prompt)
     
     @staticmethod
