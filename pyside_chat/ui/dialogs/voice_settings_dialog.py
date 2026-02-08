@@ -1079,13 +1079,27 @@ class VoiceSettingsDialog(QDialog):
             if hasattr(
                     self,
                     'selected_coqui_model') and self.selected_coqui_model:
-                preview_tts.load_model(self.selected_coqui_model)
-                preview_tts.set_voice(self.selected_coqui_speaker)
+                logger.info(f"Loading TTS model for preview: {self.selected_coqui_model}")
+                model_loaded = preview_tts.load_model(self.selected_coqui_model)
+                if not model_loaded:
+                    raise Exception(f"Failed to load TTS model: {self.selected_coqui_model}")
+                logger.info(f"TTS model loaded successfully")
+                
+                if self.selected_coqui_speaker:
+                    preview_tts.set_voice(self.selected_coqui_speaker)
+                    logger.info(f"TTS speaker set to: {self.selected_coqui_speaker}")
+            else:
+                # Try to load default model if no model selected
+                logger.warning("No model selected, attempting to load default model")
+                preview_tts._load_default_model()
+                if not preview_tts.is_available():
+                    raise Exception("No TTS model available for preview")
 
             # Generate a short preview text
             preview_text = "Hello, this is a voice preview. How do I sound?"
 
             # Use non-streaming mode for preview to avoid complexity
+            logger.info("Starting TTS preview...")
             preview_tts.speak_text(preview_text, use_streaming=False)
 
             # Re-enable the preview button after a short delay

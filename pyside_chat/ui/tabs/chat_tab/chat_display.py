@@ -93,6 +93,12 @@ class ChatDisplay(QWidget):
         # Add hidden text edit to layout (for selection functionality)
         self.main_layout.addWidget(self.selection_text_edit)
 
+        # Add loading wave widget
+        from pyside_chat.ui.animations.loading_wave_widget import LoadingWaveWidget
+        self.loading_widget = LoadingWaveWidget(self, num_dots=4, dot_size=6, spacing=10)
+        self.loading_widget.setVisible(False)
+        self.main_layout.addWidget(self.loading_widget)
+
         # Make the chat display focusable for selection
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
@@ -579,11 +585,24 @@ class ChatDisplay(QWidget):
         """Scroll to the bottom of the chat"""
         try:
             # Use QTimer to ensure scrolling happens after layout update
-            QTimer.singleShot(100, lambda: self.scroll_area.verticalScrollBar().setValue(
-                self.scroll_area.verticalScrollBar().maximum()
-            ))
+            # Increased delay to ensure layout is fully updated
+            QTimer.singleShot(150, lambda: self._perform_scroll_to_bottom())
         except Exception as e:
             logger.debug(f"Error scrolling to bottom: {e}")
+    
+    def _perform_scroll_to_bottom(self):
+        """Perform the actual scroll to bottom operation"""
+        try:
+            scroll_bar = self.scroll_area.verticalScrollBar()
+            if scroll_bar:
+                scroll_bar.setValue(scroll_bar.maximum())
+                logger.debug("Scrolled to bottom successfully")
+            else:
+                logger.warning("Scroll bar not available")
+        except Exception as e:
+            logger.debug(f"Error in _perform_scroll_to_bottom: {e}")
+            # Fallback: try again after a short delay
+            QTimer.singleShot(50, lambda: self._perform_scroll_to_bottom())
 
     def _handle_resize(self, event):
         """Handle resize events to update bubble layouts"""
@@ -600,12 +619,22 @@ class ChatDisplay(QWidget):
     # STREAMING FUNCTIONALITY
     # ============================================================================
 
+    def show_loading_animation_for_ai_response(self):
+        """Show the loading animation and set a flag to hide it on first AI chunk."""
+        self._waiting_for_first_chunk = True
+        self.show_loading_animation()
+
     def append_response_chunk(self, chunk: str, model_name: str = None, msg_id: str = None, chunk_index: int = None):
         """Append a streaming response chunk, now with msg_id and chunk_index support and duplicate guard."""
         import traceback
         try:
             logger.debug(
                 f"[PATCH] append_response_chunk called with chunk: {chunk[:50]}, model_name: {model_name}, msg_id: {msg_id}, chunk_index: {chunk_index}")
+
+            # Hide loading animation on first AI chunk
+            if getattr(self, '_waiting_for_first_chunk', False):
+                self.hide_loading_animation()
+                self._waiting_for_first_chunk = False
 
             # Validate chunk content
             if not chunk or not chunk.strip():
@@ -638,6 +667,9 @@ class ChatDisplay(QWidget):
             ai_name = self.get_ai_name()
             label = f"{ai_name} ({model_name})" if model_name else ai_name
 
+            # Scroll to bottom after each chunk to keep the latest content visible
+            self._scroll_to_bottom()
+
             # UI will be updated by conversation service signals
 
         except Exception as e:
@@ -651,6 +683,9 @@ class ChatDisplay(QWidget):
             self.current_response = ""
             ai_name = self.get_ai_name()
 
+            # Show loading animation
+            self.show_loading_animation()
+
             # UI will be updated by conversation service signals
 
     def stop_streaming(self):
@@ -658,6 +693,9 @@ class ChatDisplay(QWidget):
         logger.debug(
             "[DEBUG] stop_streaming called. is_streaming: %s", self.is_streaming)
         self.is_streaming = False
+
+        # Hide loading animation
+        self.hide_loading_animation()
 
         # Always use conversation service - no fallback needed
         if not hasattr(self.parent, 'chat_controller') or not hasattr(self.parent.chat_controller, 'conversation_service'):
@@ -668,7 +706,24 @@ class ChatDisplay(QWidget):
         conversation_service = self.parent.chat_controller.conversation_service
         conversation_service.finalize_streaming_message()
 
+        # Scroll to bottom when streaming stops to ensure final message is visible
+        self._scroll_to_bottom()
+
         # UI will be updated by conversation service signals
+
+    def show_loading_animation(self):
+        """Show the loading wave animation"""
+        if hasattr(self, 'loading_widget'):
+            self.loading_widget.setVisible(True)
+            self.loading_widget.start_animation()
+            logger.debug("Loading animation started")
+
+    def hide_loading_animation(self):
+        """Hide the loading wave animation"""
+        if hasattr(self, 'loading_widget'):
+            self.loading_widget.stop_animation()
+            self.loading_widget.setVisible(False)
+            logger.debug("Loading animation stopped")
 
     # ============================================================================
     # UI EVENTS AND INTERACTIONS

@@ -28,7 +28,8 @@ sounddevice                       # Audio library for real-time audio processing
 soundfile>=0.12.0                # Audio file I/O
 pydub>=0.25.1                    # Audio manipulation
 librosa>=0.10.0                  # Audio processing library
-playsound>=1.3.0                 # Simple audio playback library
+playsound==1.2.2
+               # Simple audio playback library
 
 # =============================================================================
 # TTS (TEXT-TO-SPEECH) OPTIONS
@@ -78,6 +79,7 @@ vosk                              # Offline speech recognition library
 # These are marked as optional in the install script
 blis==0.7.9                      # Pre-built blis wheel for Coqui TTS
 thinc==8.1.10                    # Pre-built thinc wheel for Coqui TTS
+spacy<3.7.0
 
 # =============================================================================
 # DEVELOPMENT AND PACKAGING (Optional)

@@ -215,8 +215,8 @@ class MessageFormatter:
         protected_message = protected_message.replace(
             '\\n', '\n')     # Handle single escaped
 
-        # Convert actual newlines to HTML line breaks for proper display
-        protected_message = protected_message.replace('\n', '<br>')
+        # Clean up malformed markdown before processing
+        protected_message = MessageFormatter._cleanup_malformed_markdown(protected_message)
 
         # Clean up excessive horizontal rules and separators
         protected_message = re.sub(
@@ -235,49 +235,19 @@ class MessageFormatter:
         protected_message = re.sub(
             r'^---$', f'<hr style="border: none; border-top: 1px solid {MessageFormatter.COLORS["border"]}; margin: 20px 0;">', protected_message, flags=re.MULTILINE)
 
-        # Format unordered lists with better styling
-        protected_message = re.sub(
-            r'^\s*[-*•]\s+(.+)$', f'<li style="margin: 8px 0; padding-left: 5px; color: {MessageFormatter.COLORS["ai_text"]};">\\1</li>', protected_message, flags=re.MULTILINE)
-
-        # Group consecutive list items into proper lists
-        lines = protected_message.split('\n')
-        formatted_lines = []
-        in_list = False
-        list_items = []
-
-        for line in lines:
-            if line.strip().startswith('<li'):
-                if not in_list:
-                    in_list = True
-                    list_items = []
-                list_items.append(line)
-            else:
-                if in_list and list_items:
-                    # Close the previous list
-                    formatted_lines.append(
-                        f'<ul style="list-style-type: none; padding-left: 20px; margin: 15px 0; border-left: 2px solid {MessageFormatter.COLORS["border"]};">')
-                    formatted_lines.extend(list_items)
-                    formatted_lines.append('</ul>')
-                    list_items = []
-                    in_list = False
-                formatted_lines.append(line)
-
-        # Handle any remaining list items
-        if in_list and list_items:
-            formatted_lines.append(
-                f'<ul style="list-style-type: none; padding-left: 20px; margin: 15px 0; border-left: 2px solid {MessageFormatter.COLORS["border"]};">')
-            formatted_lines.extend(list_items)
-            formatted_lines.append('</ul>')
-
-        protected_message = '\n'.join(formatted_lines)
-
-        # Format bold text (reduce excessive bold usage)
+        # Format bold text first (before list processing)
         protected_message = re.sub(
             r'\*\*(.+?)\*\*', f'<strong style="color: {MessageFormatter.COLORS["bold_text"]}; font-weight: 600;">\\1</strong>', protected_message)
 
         # Format italic text
         protected_message = re.sub(
             r'\*(.+?)\*', f'<em style="color: {MessageFormatter.COLORS["italic_text"]}; font-style: italic;">\\1</em>', protected_message)
+
+        # Process lists (both ordered and unordered) after bold/italic formatting but before newline conversion
+        protected_message = MessageFormatter._format_lists(protected_message)
+
+        # Convert actual newlines to HTML line breaks for proper display (after list processing)
+        protected_message = protected_message.replace('\n', '<br>')
 
         # Format inline code using local styling
         protected_message = re.sub(
@@ -293,6 +263,137 @@ class MessageFormatter:
         protected_message = re.sub(r'<p[^>]*>\s*</p>', '', protected_message)
 
         return protected_message
+
+    @staticmethod
+    def _format_lists(message: str) -> str:
+        """
+        Format both ordered and unordered lists properly.
+        """
+        # First, handle concatenated list items (items without proper line breaks)
+        # Split on numbered list patterns to separate items
+        message = re.sub(r'(\d+)\.\s+', r'\n\1. ', message)
+        
+        # Also handle cases where items are concatenated without spaces
+        # e.g., "1.**Fruits**-Apples-Pears" should become "1. **Fruits** - Apples - Pears"
+        message = re.sub(r'(\d+)\.\*\*', r'\1. **', message)
+        message = re.sub(r'\*\*([^*]+)\*\*([A-Za-z])', r'**\1** - \2', message)
+        
+        lines = message.split('\n')
+        formatted_lines = []
+        in_ordered_list = False
+        in_unordered_list = False
+        ordered_items = []
+        unordered_items = []
+
+        for line in lines:
+            stripped_line = line.strip()
+            
+            # Check for ordered list items (1. 2. 3. etc.)
+            ordered_match = re.match(r'^(\d+)\.\s+(.+)$', stripped_line)
+            # Check for unordered list items (- * •)
+            unordered_match = re.match(r'^[-*•]\s+(.+)$', stripped_line)
+            
+            if ordered_match:
+                # Start or continue ordered list
+                if not in_ordered_list:
+                    # Close any existing unordered list
+                    if in_unordered_list and unordered_items:
+                        formatted_lines.append(
+                            f'<ul style="list-style-type: none; padding-left: 20px; margin: 15px 0; border-left: 2px solid {MessageFormatter.COLORS["border"]};">')
+                        formatted_lines.extend(unordered_items)
+                        formatted_lines.append('</ul>')
+                        unordered_items = []
+                        in_unordered_list = False
+                    
+                    in_ordered_list = True
+                    ordered_items = []
+                
+                content = ordered_match.group(2)
+                ordered_items.append(f'<li style="margin: 8px 0; padding-left: 5px; color: {MessageFormatter.COLORS["ai_text"]};">{content}</li>')
+                
+            elif unordered_match:
+                # Start or continue unordered list
+                if not in_unordered_list:
+                    # Close any existing ordered list
+                    if in_ordered_list and ordered_items:
+                        formatted_lines.append(
+                            f'<ol style="padding-left: 20px; margin: 15px 0; border-left: 2px solid {MessageFormatter.COLORS["border"]};">')
+                        formatted_lines.extend(ordered_items)
+                        formatted_lines.append('</ol>')
+                        ordered_items = []
+                        in_ordered_list = False
+                    
+                    in_unordered_list = True
+                    unordered_items = []
+                
+                content = unordered_match.group(1)
+                unordered_items.append(f'<li style="margin: 8px 0; padding-left: 5px; color: {MessageFormatter.COLORS["ai_text"]};">{content}</li>')
+                
+            else:
+                # Not a list item, close any existing lists
+                if in_ordered_list and ordered_items:
+                    formatted_lines.append(
+                        f'<ol style="padding-left: 20px; margin: 15px 0; border-left: 2px solid {MessageFormatter.COLORS["border"]};">')
+                    formatted_lines.extend(ordered_items)
+                    formatted_lines.append('</ol>')
+                    ordered_items = []
+                    in_ordered_list = False
+                
+                if in_unordered_list and unordered_items:
+                    formatted_lines.append(
+                        f'<ul style="list-style-type: none; padding-left: 20px; margin: 15px 0; border-left: 2px solid {MessageFormatter.COLORS["border"]};">')
+                    formatted_lines.extend(unordered_items)
+                    formatted_lines.append('</ul>')
+                    unordered_items = []
+                    in_unordered_list = False
+                
+                formatted_lines.append(line)
+
+        # Handle any remaining list items
+        if in_ordered_list and ordered_items:
+            formatted_lines.append(
+                f'<ol style="padding-left: 20px; margin: 15px 0; border-left: 2px solid {MessageFormatter.COLORS["border"]};">')
+            formatted_lines.extend(ordered_items)
+            formatted_lines.append('</ol>')
+        
+        if in_unordered_list and unordered_items:
+            formatted_lines.append(
+                f'<ul style="list-style-type: none; padding-left: 20px; margin: 15px 0; border-left: 2px solid {MessageFormatter.COLORS["border"]};">')
+            formatted_lines.extend(unordered_items)
+            formatted_lines.append('</ul>')
+
+        return '\n'.join(formatted_lines)
+
+    @staticmethod
+    def _cleanup_malformed_markdown(message: str) -> str:
+        """
+        Clean up common malformed markdown patterns before processing.
+        """
+        # Fix malformed numbered lists (e.g., "###1." should be "### 1.")
+        message = re.sub(r'^###(\d+\.)', r'### \1', message, flags=re.MULTILINE)
+        message = re.sub(r'^##(\d+\.)', r'## \1', message, flags=re.MULTILINE)
+        message = re.sub(r'^#(\d+\.)', r'# \1', message, flags=re.MULTILINE)
+        
+        # Fix malformed headers (e.g., "###Header" should be "### Header")
+        message = re.sub(r'^###([A-Za-z])', r'### \1', message, flags=re.MULTILINE)
+        message = re.sub(r'^##([A-Za-z])', r'## \1', message, flags=re.MULTILINE)
+        message = re.sub(r'^#([A-Za-z])', r'# \1', message, flags=re.MULTILINE)
+        
+        # Fix malformed list items (e.g., "1.Item" should be "1. Item")
+        message = re.sub(r'^(\d+)\.([A-Za-z])', r'\1. \2', message, flags=re.MULTILINE)
+        
+        # Fix malformed unordered list items (e.g., "-Item" should be "- Item")
+        message = re.sub(r'^[-*•]([A-Za-z])', r'- \1', message, flags=re.MULTILINE)
+        
+        # Remove excessive whitespace around headers
+        message = re.sub(r'^###\s+', '### ', message, flags=re.MULTILINE)
+        message = re.sub(r'^##\s+', '## ', message, flags=re.MULTILINE)
+        message = re.sub(r'^#\s+', '# ', message, flags=re.MULTILINE)
+        
+        # Fix malformed conclusions (e.g., "###Conclusion" should be "### Conclusion")
+        message = re.sub(r'###([A-Z][a-z]+)$', r'### \1', message, flags=re.MULTILINE)
+        
+        return message
 
     @staticmethod
     def handle_html_tags(message: str) -> str:

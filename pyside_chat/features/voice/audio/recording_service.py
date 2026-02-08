@@ -233,6 +233,30 @@ class RecordingService(QObject):
                                 print(f"[RECORDING] 🔇 Stopping recording: speech={speech_duration:.1f}s, silence={silence_duration:.1f}s")
                                 logger.debug(
                                     f"Stopping recording: speech={speech_duration:.1f}s, silence={silence_duration:.1f}s")
+                                
+                                # Save the audio file before emitting the signal
+                                self.is_recording = False
+                                if self.frames and self.speech_detected:
+                                    try:
+                                        audio_folder = os.path.join(os.getcwd(), "User_history", "audio")
+                                        os.makedirs(audio_folder, exist_ok=True)
+                                        import datetime
+                                        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+                                        filename = f"voice_input_{timestamp}.wav"
+                                        audio_file_path = os.path.join(audio_folder, filename)
+                                        with wave.open(audio_file_path, 'wb') as wf:
+                                            wf.setnchannels(1)
+                                            wf.setsampwidth(self.audio.get_sample_size(pyaudio.paInt16))
+                                            wf.setframerate(16000)
+                                            wf.writeframes(b''.join(self.frames))
+                                        self.audio_file = audio_file_path
+                                        print(f"[RECORDING] 💾 Audio saved to: {self.audio_file}")
+                                        print(f"[RECORDING] 🎤 Speech detected: {self.speech_detected}")
+                                        logger.debug(f"Audio saved to: {self.audio_file}")
+                                    except Exception as e:
+                                        print(f"[RECORDING] ❌ Error saving audio file: {e}")
+                                        logger.error(f"Error saving audio file: {e}")
+                                
                                 try:
                                     self.recording_auto_stopped.emit()
                                 except Exception:

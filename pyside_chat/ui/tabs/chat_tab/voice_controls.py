@@ -464,9 +464,10 @@ class VoiceControls(QObject):
             # Apply initial settings
             self.voice_service.update_settings(self.voice_settings)
 
-            # Check if service is ready
-            if self.voice_service.is_voice_available():
-                logger.info(f"{service_type} is ready", print_to_terminal=True)
+            # Check if voice input is ready (STT + Recording)
+            # TTS is not required for voice input
+            if self.voice_service.is_voice_input_available():
+                logger.info(f"{service_type} is ready for voice input", print_to_terminal=True)
                 self.voice_status_changed.emit("Ready")
                 self.voice_service_initialized = True
                 
@@ -498,9 +499,9 @@ class VoiceControls(QObject):
             print_to_terminal=True)
 
         if hasattr(self, 'voice_button') and self.voice_button is not None:
-            if self.voice_service and self.voice_service.is_voice_available():
+            if self.voice_service and self.voice_service.is_voice_input_available():
                 logger.info(
-                    "Voice service is ready, enabling button",
+                    "Voice input is ready, enabling button",
                     print_to_terminal=True)
                 self._update_voice_button_state(True, "Ready")
                 self.voice_status_changed.emit("Ready")
@@ -569,7 +570,8 @@ class VoiceControls(QObject):
                 self.voice_service):
 
             # Only update if status changed
-            current_status = "Ready" if self.voice_service.is_voice_available() else "Initializing"
+            # Check voice input availability (STT + Recording), not full voice service
+            current_status = "Ready" if self.voice_service.is_voice_input_available() else "Initializing"
             if not hasattr(
                     self,
                     '_last_periodic_status') or self._last_periodic_status != current_status:
@@ -672,11 +674,11 @@ class VoiceControls(QObject):
         self._voice_signals_connected = False
 
     def _is_voice_service_ready(self) -> bool:
-        """Check if voice service is ready"""
+        """Check if voice service is ready for voice input"""
         try:
             if self.voice_service:
-                # Check if the simplified voice service is available
-                return self.voice_service.is_voice_available()
+                # For voice input, we only need STT and Recording, not TTS
+                return self.voice_service.is_voice_input_available()
             return False
         except Exception as e:
             logger.error(f"Error checking voice service readiness: {e}")
@@ -700,9 +702,10 @@ class VoiceControls(QObject):
                     logger.error(f"Voice service missing required method: {method}")
                     return False
             
-            # Check if service is available
-            if not voice_service.is_voice_available():
-                logger.warning("Voice service reports not available")
+            # Check if voice input is available (STT + Recording)
+            # TTS is not required for voice input validation
+            if not voice_service.is_voice_input_available():
+                logger.warning("Voice input not available (STT or Recording not ready)")
                 return False
                 
             logger.info("Voice service capabilities validated successfully")
@@ -818,10 +821,11 @@ class VoiceControls(QObject):
                 logger.debug(
                     "Voice service available for continuous mode", print_to_terminal=True)
 
-                # Check if voice service is actually ready
-                if not self.voice_service.is_voice_available():
+                # Check if voice input (STT + Recording) is available
+                # TTS is not required for voice input, only for output
+                if not self.voice_service.is_voice_input_available():
                     logger.error(
-                        "Voice service not ready yet, cannot start voice input", print_to_terminal=True)
+                        "Voice input not ready yet (STT or Recording not available), cannot start voice input", print_to_terminal=True)
                     self.voice_mode = False
                     self._reset_voice_button()
                     return

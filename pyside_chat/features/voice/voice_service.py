@@ -148,8 +148,8 @@ class VoiceService(QObject):
                 self.recording_service.recording_auto_stopped.connect(self._on_recording_auto_stopped)
                 
             logger.info("Voice service connections established")
-            
         except Exception as e:
+            
             logger.error(f"Failed to setup voice service connections: {e}")
 
     def is_voice_available(self) -> bool:
@@ -157,10 +157,12 @@ class VoiceService(QObject):
         stt_ready = self.stt_service and self.stt_service.is_initialized()
         tts_ready = self.tts_service and self.tts_service.is_initialized()
         recording_ready = self.recording_service and self.recording_service.is_initialized()
-        
-        print(f"[VOICE_AVAILABILITY] STT ready: {stt_ready}")
-        print(f"[VOICE_AVAILABILITY] TTS ready: {tts_ready}")
-        print(f"[VOICE_AVAILABILITY] Recording ready: {recording_ready}")
+        if stt_ready:
+            print((f"\033[32m[VOICE_AVAILABILITY] STT ready: {stt_ready}\033[0m"))
+        if tts_ready:
+            print((f"\033[32m[VOICE_AVAILABILITY] TTS ready: {tts_ready}\033[0m"))
+        if recording_ready:
+            print((f"\033[32m[VOICE_AVAILABILITY] Recording ready: {recording_ready}\033[0m"))
         
         if not stt_ready:
             print(f"[VOICE_AVAILABILITY] STT service: {self.stt_service}")
@@ -170,7 +172,7 @@ class VoiceService(QObject):
         if not tts_ready:
             print(f"[VOICE_AVAILABILITY] TTS service: {self.tts_service}")
             if self.tts_service:
-                print(f"[VOICE_AVAILABILITY] TTS initialized: {self.tts_service.is_initialized()}")
+                print((f"\033[31m[VOICE_AVAILABILITY] TTS initialized: {self.tts_service.is_initialized()}\033[0m"))
         
         if not recording_ready:
             print(f"[VOICE_AVAILABILITY] Recording service: {self.recording_service}")
@@ -178,6 +180,24 @@ class VoiceService(QObject):
                 print(f"[VOICE_AVAILABILITY] Recording initialized: {self.recording_service.is_initialized()}")
 
         return stt_ready and tts_ready and recording_ready
+
+    def is_voice_input_available(self) -> bool:
+        """Check if voice input (STT + Recording) is available"""
+        stt_ready = self.stt_service and self.stt_service.is_initialized()
+        recording_ready = self.recording_service and self.recording_service.is_initialized()
+        return stt_ready and recording_ready
+
+    def is_initializing(self) -> bool:
+        """Check if voice service is currently initializing"""
+        # Service is initializing if it exists but is not yet fully available
+        # This means at least one of the sub-services is not yet initialized
+        if not self.is_voice_available():
+            # Check if any services exist (initialization has started)
+            has_services = (self.stt_service is not None or 
+                          self.tts_service is not None or 
+                          self.recording_service is not None)
+            return has_services
+        return False
 
     def start_voice_input(self):
         """Start voice recording"""
@@ -294,21 +314,59 @@ class VoiceService(QObject):
 
     def _on_recording_auto_stopped(self):
         """Handle automatic recording stop"""
+        print(f"[VOICE SERVICE] 🔇 Recording auto-stopped signal received")
+        logger.debug("Recording auto-stopped signal received")
         self.is_recording = False
 
         # Process the recorded audio with STT
-        if self.recording_service and self.stt_service:
-            try:
+        if not self.recording_service:
+            print(f"[VOICE SERVICE] ⚠️ Recording service not available")
+            logger.warning("Recording service not available")
+            return
+            
+        if not self.stt_service:
+            print(f"[VOICE SERVICE] ⚠️ STT service not available")
+            logger.warning("STT service not available")
+            return
+            
+        try:
+            # When auto-stopped, the file is already saved by the recording service
+            # Get the audio file path directly instead of calling stop_recording() again
+            audio_file_path = getattr(self.recording_service, 'audio_file', None)
+            speech_detected = getattr(self.recording_service, 'speech_detected', False)
+            
+            print(f"[VOICE SERVICE] 📁 Audio file path: {audio_file_path}")
+            print(f"[VOICE SERVICE] 🎤 Speech detected: {speech_detected}")
+            
+            if audio_file_path and speech_detected:
+                print(f"[VOICE SERVICE] 🎤 Processing auto-stopped recording with STT: {audio_file_path}")
+                logger.info(f"Processing recorded audio with STT: {audio_file_path}", print_to_terminal=True)
+                self.stt_service.process_audio_file(audio_file_path)
+            elif audio_file_path:
+                print(f"[VOICE SERVICE] 🔇 Audio file saved but no speech detected: {audio_file_path}")
+                logger.debug("No speech detected in recording")
+            else:
+                # Fallback: try stop_recording() if audio_file is not set
+                print(f"[VOICE SERVICE] ⚠️ Audio file not found, trying stop_recording() fallback")
                 result = self.recording_service.stop_recording()
                 if result and result[0]:
                     audio_file_path, speech_detected = result
                     if speech_detected:
-                        logger.debug(f"Processing recorded audio with STT: {audio_file_path}")
+                        print(f"[VOICE SERVICE] 🎤 Processing recording with STT (fallback): {audio_file_path}")
+                        logger.info(f"Processing recorded audio with STT (fallback): {audio_file_path}", print_to_terminal=True)
                         self.stt_service.process_audio_file(audio_file_path)
                     else:
+                        print(f"[VOICE SERVICE] 🔇 No speech detected in recording (fallback)")
                         logger.debug("No speech detected in recording")
-            except Exception as e:
-                logger.error(f"Error processing recorded audio: {e}")
+                else:
+                    print(f"[VOICE SERVICE] ❌ stop_recording() returned no result")
+                    logger.warning("stop_recording() returned no result")
+        except Exception as e:
+            print(f"[VOICE SERVICE] ❌ Error processing recorded audio: {e}")
+            logger.error(f"Error processing recorded audio: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            print(f"[VOICE SERVICE] Traceback: {traceback.format_exc()}")
 
     def _on_stt_text_received(self, text: str):
         """Handle STT text received"""

@@ -5,14 +5,14 @@
   "auto_save_enabled": true,
   "spellcheck_enabled": true,
   "window_size": {
-    "width": 1920,
-    "height": 1017
+    "width": 1510,
+    "height": 658
   },
   "chat_settings": {
     "max_tokens": 2048,
     "top_p": 0.9,
-    "frequency_penalty": 0.1,
-    "presence_penalty": 0.1
+    "frequency_penalty": 0.0,
+    "presence_penalty": 0.0
   },
   "voice_settings": {
     "stt_api": "Vosk",
@@ -24,7 +24,7 @@
     "silence_duration": 1,
     "silence_threshold": 0.004,
     "coqui_model": "tts_models/en/vctk/vits",
-    "coqui_speaker": "ED",
+    "coqui_speaker": "No speakers available",
     "eq_visualizer": "Bar EQ",
     "tts_streaming": true,
     "allow_interruptions": false,
@@ -69,5 +69,5 @@
       "pyside_chat.core.threading.qthread_workers"
     ]
   },
-  "typewriter_enabled": false
+  "typewriter_enabled": true
 }

@@ -62,7 +62,7 @@ from PySide6.QtWidgets import (
     QSpinBox, QDoubleSpinBox, QSlider, QProgressBar, QScrollArea,
     QTabWidget, QTabBar, QGroupBox, QFrame, QMenu, QMenuBar,
     QStatusBar, QToolBar, QToolButton, QMessageBox, QInputDialog,
-    QFileDialog, QColorDialog, QFontDialog,
+    QFileDialog, QColorDialog, QFontDialog, QSizePolicy,
 
     # Advanced widgets
     QTableWidget, QTableWidgetItem, QTreeWidget, QTreeWidgetItem,

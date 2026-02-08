@@ -124,7 +124,31 @@ class CoquiTTSService(QObject):
     def _initialize_service(self):
         """Initialize the Coqui TTS service"""
         try:
-            from TTS.api import TTS
+            # Check Python version - TTS requires Python 3.10+ due to union type syntax in dependencies
+            import sys
+            if sys.version_info < (3, 10):
+                error_msg = f"Coqui TTS requires Python 3.10+, but you're running Python {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}. Please upgrade Python or use a different TTS service."
+                print(f"[TTS] ❌ {error_msg}")
+                logger.error(error_msg, print_to_terminal=True)
+                self.available = False
+                return
+            
+            # Try to import TTS - this may fail due to dependency issues
+            try:
+                from TTS.api import TTS
+            except TypeError as e:
+                if "unsupported operand type(s) for |" in str(e):
+                    error_msg = f"TTS import failed due to Python version compatibility issue. The 'bangla' dependency uses Python 3.10+ syntax. Error: {e}"
+                    print(f"[TTS] ❌ {error_msg}")
+                    logger.error(error_msg, print_to_terminal=True)
+                    # Try to provide helpful solution
+                    print("[TTS] 💡 Solution: Upgrade to Python 3.10+ or install a compatible version of the 'bangla' package")
+                    logger.error("Solution: Upgrade to Python 3.10+ or install a compatible version of the 'bangla' package")
+                    self.available = False
+                    return
+                else:
+                    raise  # Re-raise if it's a different TypeError
+            
             self.available = True
             logger.info("Coqui TTS service initialized successfully")
 
@@ -146,35 +170,77 @@ class CoquiTTSService(QObject):
     def _load_default_model(self):
         """Load the default TTS model"""
         try:
-            # Try to load a default model
-            default_models = [
-                "tts_models/en/ljspeech/tacotron2-DDC",
-                "tts_models/en/ljspeech/glow-tts",
-                "tts_models/en/vctk/vits"
+            # First, try to use actually downloaded models
+            downloaded_models = self.get_downloaded_models()
+            print(f"[TTS] 📦 Downloaded models available: {downloaded_models}")
+            
+            # Filter out vocoder models
+            tts_models = [m for m in downloaded_models if not m.startswith("vocoder_models/")]
+            
+            # Priority order for models to try
+            preferred_models = [
+                "tts_models/en/vctk/vits",  # Multi-speaker, good quality
+                "tts_models/en/ljspeech/glow-tts",  # Fast, good quality
+                "tts_models/en/ljspeech/tacotron2-DDC",  # Standard
+                "tts_models/en/ljspeech/tacotron2-DDC_ph",  # Variant
+                "tts_models/en/ljspeech/tacotron2-DCA",  # Another variant
             ]
+            
+            # Build list: preferred models that are downloaded, then other downloaded models
+            models_to_try = []
+            for model in preferred_models:
+                # Check for exact match or variant match
+                matching = [m for m in tts_models if model in m or m in model]
+                if matching:
+                    models_to_try.extend(matching)
+                elif model in tts_models:
+                    models_to_try.append(model)
+            
+            # Add any remaining downloaded models not in preferred list
+            for model in tts_models:
+                if model not in models_to_try:
+                    models_to_try.append(model)
+            
+            # Fallback to default list if no downloaded models
+            if not models_to_try:
+                models_to_try = [
+                    "tts_models/en/ljspeech/tacotron2-DDC",
+                    "tts_models/en/ljspeech/glow-tts",
+                    "tts_models/en/vctk/vits"
+                ]
+            
+            print(f"[TTS] 🔄 Models to try (in order): {models_to_try}")
 
-            for model_name in default_models:
+            for model_name in models_to_try:
                 try:
+                    print(f"[TTS] 🔄 Attempting to load default model: {model_name}")
                     # Use the new load_model method which includes caching
                     if self.load_model(model_name):
-                        logger.info(f"Loaded Coqui TTS model: {model_name}")
+                        print(f"[TTS] ✅ Successfully loaded default model: {model_name}")
+                        logger.info(f"Loaded Coqui TTS model: {model_name}", print_to_terminal=True)
                         self.model_loaded.emit(model_name)
                         return
+                    else:
+                        print(f"[TTS] ⚠️ load_model returned False for: {model_name}")
                 except Exception as e:
-                    logger.warning(f"Failed to load model {model_name}: {e}")
+                    error_msg = f"Failed to load model {model_name}: {e}"
+                    print(f"[TTS] ❌ {error_msg}")
+                    logger.warning(error_msg, print_to_terminal=True)
+                    import traceback
+                    print(f"[TTS] Traceback:\n{traceback.format_exc()}")
                     continue
 
-            logger.error("No Coqui TTS models could be loaded")
-            self.available = False
-            # Emit error signal to notify other components
+            logger.warning("No Coqui TTS models could be loaded - TTS library is available but no model loaded yet")
+            # Don't set self.available = False here - the library is available, model can be loaded lazily
+            # Emit warning signal to notify other components
             self.tts_error.emit(
-                "No TTS models available. Voice features will be disabled.")
+                "No TTS models loaded yet. Model will be loaded when TTS is needed.")
 
         except Exception as e:
-            logger.error(f"Failed to load default model: {e}")
-            self.available = False
-            # Emit error signal to notify other components
-            self.tts_error.emit(f"TTS initialization failed: {str(e)}")
+            logger.warning(f"Failed to load default model: {e} - TTS library is available but model loading failed")
+            # Don't set self.available = False here - the library is available, model can be loaded lazily
+            # Emit warning signal to notify other components
+            self.tts_error.emit(f"TTS model loading failed: {str(e)}. Model will be loaded when TTS is needed.")
 
     def _load_available_voices(self):
         """Load available voices for the current model"""
@@ -198,7 +264,9 @@ class CoquiTTSService(QObject):
 
     def is_initialized(self) -> bool:
         """Check if Coqui TTS service is properly initialized"""
-        return self.available and self.tts_model is not None
+        # Service is initialized if TTS library is available
+        # Model loading can happen lazily when needed
+        return self.available
 
     def _get_tts_model_cache_dirs(self):
         import os
@@ -350,9 +418,19 @@ class CoquiTTSService(QObject):
 
         # Check if TTS is available
         if not self.is_available():
-            logger.warning("TTS not available, skipping speech synthesis")
-            self.tts_error.emit("TTS not available - voice features disabled")
-            return
+            # Try lazy loading if service is initialized but no model is loaded
+            if self.is_initialized() and self.tts_model is None:
+                logger.info("TTS service initialized but no model loaded, attempting to load default model...")
+                self._load_default_model()
+                # Check again after attempting to load
+                if not self.is_available():
+                    logger.warning("TTS not available after model loading attempt, skipping speech synthesis")
+                    self.tts_error.emit("TTS not available - voice features disabled")
+                    return
+            else:
+                logger.warning("TTS not available, skipping speech synthesis")
+                self.tts_error.emit("TTS not available - voice features disabled")
+                return
 
         # Prevent multiple simultaneous TTS operations
         if hasattr(self, '_tts_in_progress') and self._tts_in_progress:
@@ -895,10 +973,37 @@ class CoquiTTSService(QObject):
                     return True
 
                 # Load new model
-                from TTS.api import TTS
-                logger.debug(f"Loading new model: {model_name}")
-                self.tts_model = TTS(model_name=model_name)
-                self.current_model = model_name
+                # Import TTS here - catch Python version compatibility errors
+                try:
+                    from TTS.api import TTS
+                except TypeError as e:
+                    if "unsupported operand type(s) for |" in str(e):
+                        import sys
+                        error_msg = f"Cannot import TTS: Python version compatibility issue. The 'bangla' dependency requires Python 3.10+, but you're running Python {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}. Please upgrade Python to 3.10+."
+                        print(f"[TTS] ❌ {error_msg}")
+                        logger.error(error_msg, print_to_terminal=True)
+                        raise ImportError(error_msg) from e
+                    else:
+                        raise  # Re-raise if it's a different TypeError
+                except Exception as e:
+                    # Catch any other import errors
+                    error_msg = f"Cannot import TTS: {e}"
+                    print(f"[TTS] ❌ {error_msg}")
+                    logger.error(error_msg, print_to_terminal=True)
+                    raise ImportError(error_msg) from e
+                
+                print(f"[TTS] 🔄 Loading new model: {model_name}")
+                logger.info(f"Loading new TTS model: {model_name}", print_to_terminal=True)
+                try:
+                    self.tts_model = TTS(model_name=model_name)
+                    self.current_model = model_name
+                    print((f"\033[32m[TTS] Model {model_name} instantiated successfully\033[0m"))
+                except Exception as e:
+                    print((f"\033[31m[TTS] Error instantiating TTS model {model_name}: {e}\033[0m"))
+                    logger.error(f"Error instantiating TTS model {model_name}: {e}", print_to_terminal=True)
+                    import traceback
+                    print((f"\033[31m[TTS] Traceback:\n{traceback.format_exc()}\033[0m"))
+                    raise  # Re-raise to be caught by outer exception handler
 
                 # Always try to get voices
                 if hasattr(self.tts_model, 'list_voices'):
@@ -949,12 +1054,21 @@ class CoquiTTSService(QObject):
 
                 logger.debug(
                     f"Speaker count for model {model_name}: {len(self.available_voices)}")
+                print(f"[TTS] ✅ Successfully loaded model: {model_name}")
+                logger.info(f"Successfully loaded TTS model: {model_name}", print_to_terminal=True)
                 return True
 
         except Exception as e:
-            logger.error(f"Failed to load model {model_name}: {e}")
+            error_msg = f"Failed to load model {model_name}: {e}"
+            print(f"[TTS] ❌ {error_msg}")
+            logger.error(error_msg, print_to_terminal=True)
+            import traceback
+            traceback_str = traceback.format_exc()
+            print(f"[TTS] Traceback:\n{traceback_str}")
+            logger.error(f"Traceback: {traceback_str}")
             self.tts_model = None
             self.available_voices = []
+            self.tts_error.emit(f"Failed to load TTS model {model_name}: {str(e)}")
             return False
 
     def is_multi_speaker(self) -> bool:

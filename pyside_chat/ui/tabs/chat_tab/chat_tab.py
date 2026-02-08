@@ -328,6 +328,12 @@ class ChatTab(QWidget):
                                 for msg in conversation)
         logger.debug(
             f"[STATE_SYNC] Calculated is_streaming: {self.is_streaming} (was {prev_streaming})")
+        
+        # Update chat display with auto-scroll to bottom
+        if hasattr(self, 'chat_display'):
+            self.chat_display.render_conversation(conversation, scroll_to_bottom=True)
+            logger.debug("[STATE_SYNC] Chat display updated with auto-scroll")
+        
         # Update UI state based on streaming
         input_components = self.input_controls.get_ui_components()
         logger.debug(
@@ -362,6 +368,14 @@ class ChatTab(QWidget):
 
         # Start streaming state
         self.start_streaming()
+
+        # Show loading animation for AI response
+        if hasattr(self, 'chat_display'):
+            self.chat_display.show_loading_animation_for_ai_response()
+
+        # Force scroll to bottom when message is sent
+        if hasattr(self, 'chat_display'):
+            self.chat_display._scroll_to_bottom()
 
         # Emit signal for parent
         logger.debug(f"[VOICE DEBUG] Emitting message_sent signal for parent")
@@ -1172,11 +1186,21 @@ class ChatTab(QWidget):
         """Start streaming state safely in the main thread (UI only)."""
         input_components = self.input_controls.get_ui_components()
         # Button state now handled by conversation service signals
+        
+        # Show loading animation in chat display
+        if hasattr(self, 'chat_display'):
+            self.chat_display.show_loading_animation()
+        
         self.update()
 
     def stop_streaming(self):
         """Stop streaming state (UI only updates, no internal is_streaming flag)."""
         logger.debug("[DEBUG] stop_streaming called (UI only)")
+        
+        # Hide loading animation in chat display
+        if hasattr(self, 'chat_display'):
+            self.chat_display.hide_loading_animation()
+        
         # Finalize streaming message in conversation service
         if hasattr(self, 'chat_controller') and hasattr(self.chat_controller, 'conversation_service'):
             try:
@@ -1209,6 +1233,11 @@ class ChatTab(QWidget):
         """Force enable the send button safely in the main thread (emergency UI reset only)"""
         logger.debug("Force enabling send button")
         self.is_streaming = False
+        
+        # Hide loading animation in chat display
+        if hasattr(self, 'chat_display'):
+            self.chat_display.hide_loading_animation()
+        
         input_components = self.input_controls.get_ui_components()
         # Only manage send/cancel buttons in text mode (emergency UI reset only)
         if not self.voice_mode:
